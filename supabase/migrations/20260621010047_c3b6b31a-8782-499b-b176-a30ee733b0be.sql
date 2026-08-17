@@ -1,1 +1,0 @@
-ALTER TABLE public.resident ADD COLUMN IF NOT EXISTS first_name TEXT;

@@ -1,1 +1,0 @@
-ALTER TABLE public.credential_request ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ;
