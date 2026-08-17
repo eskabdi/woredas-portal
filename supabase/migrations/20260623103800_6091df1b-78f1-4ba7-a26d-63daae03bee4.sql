@@ -1,0 +1,1 @@
+ALTER VIEW public.household_member_roster SET (security_invoker = true);
