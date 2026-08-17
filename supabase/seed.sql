@@ -1176,8 +1176,17 @@ INSERT INTO public.tenant_module_config (woreda_id, module_key, is_enabled, upda
 INSERT INTO public.tenant_module_config (woreda_id, module_key, is_enabled, updated_at, updated_by) VALUES ('d43c7fea-c2bb-491c-99e7-56c76aa577f1', 'services', 'true', '2026-08-15T14:10:35.820609+00:00', NULL) ON CONFLICT DO NOTHING;
 
 -- ===== id_card_template (2 rows) =====
-INSERT INTO public.id_card_template (template_type, background_image_url, status, updated_at, updated_by) VALUES ('card_front', 'card_front.jpg', 'active', '2026-07-14T17:49:19.583+00:00', NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.id_card_template (template_type, background_image_url, status, updated_at, updated_by) VALUES ('card_back', 'card_back.jpg', 'active', '2026-07-14T17:49:19.583+00:00', NULL) ON CONFLICT DO NOTHING;
+-- Template backgrounds are PNG files; the source project recorded them with a
+-- .jpg suffix. The app passes this column straight to createSignedUrl(), so
+-- the value has to match the object's real name in the bucket.
+INSERT INTO public.id_card_template (template_type, background_image_url, status, updated_at, updated_by) VALUES ('card_front', 'card_front.png', 'active', '2026-07-14T17:49:19.583+00:00', NULL) ON CONFLICT DO NOTHING;
+INSERT INTO public.id_card_template (template_type, background_image_url, status, updated_at, updated_by) VALUES ('card_back', 'card_back.png', 'active', '2026-07-14T17:49:19.583+00:00', NULL) ON CONFLICT DO NOTHING;
+-- The inserts above are ON CONFLICT DO NOTHING, so they leave an existing row
+-- untouched. This corrects a database already seeded with the .jpg values.
+UPDATE public.id_card_template
+   SET background_image_url = replace(background_image_url, '.jpg', '.png')
+ WHERE template_type IN ('card_front', 'card_back')
+   AND background_image_url LIKE '%.jpg';
 
 -- ===== id_card_template_field (19 rows) =====
 INSERT INTO public.id_card_template_field (template_field_id, template_type, field_key, x, y, width, height, font_size, font_weight, text_align, z_index, canvas_width, canvas_height, field_type, color, font_family, font_style, text_decoration, binding_mode, static_value) VALUES ('99ad2ce0-aa5f-4dcf-99b4-fac11abb47f5', 'card_back', 'place_of_issue', '90', '360', '900', '90', '20', 'normal', 'left', '2', '1688', '1063', 'text', '#000000', 'Inter', 'normal', 'none', 'bound', NULL) ON CONFLICT DO NOTHING;
