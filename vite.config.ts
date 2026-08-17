@@ -1,20 +1,17 @@
-import { fileURLToPath } from "node:url";
-
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import { nitro } from "nitro/vite";
 import { defineConfig } from "vite";
-import tsConfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig(({ command }) => ({
   css: {
     transformer: "lightningcss",
   },
   resolve: {
-    alias: {
-      "@": fileURLToPath(new URL("./src", import.meta.url)),
-    },
+    // Resolves "@/*" from the paths mapping in tsconfig.json, so that file
+    // stays the single source of truth for path aliases.
+    tsconfigPaths: true,
     // React and TanStack Query must resolve to a single copy, or hooks break.
     dedupe: [
       "react",
@@ -34,11 +31,10 @@ export default defineConfig(({ command }) => ({
       "react/jsx-dev-runtime",
     ],
   },
-  // Plugin order matters: Tailwind and path resolution run before TanStack
-  // Start, and the React plugin runs last.
+  // Plugin order matters: Tailwind runs before TanStack Start, and the React
+  // plugin runs last.
   plugins: [
     tailwindcss(),
-    tsConfigPaths({ projects: ["./tsconfig.json"] }),
     tanstackStart({
       // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
       // nitro/vite builds from this.
