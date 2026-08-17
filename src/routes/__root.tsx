@@ -7,10 +7,9 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
 import { useAuthBootstrap } from "@/hooks/useAuthBootstrap";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -39,9 +38,6 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
-  useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
-  }, [error]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
@@ -102,8 +98,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "description", content: "Harari Woreda Connect digitizes woreda administration for Ethiopia's Harari region." },
       { property: "og:description", content: "Harari Woreda Connect digitizes woreda administration for Ethiopia's Harari region." },
       { name: "twitter:description", content: "Harari Woreda Connect digitizes woreda administration for Ethiopia's Harari region." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d4f3b303-e192-4c1f-baff-9c4a4ac6dcb6/id-preview-86cf8d36--2f4d2bff-bba3-4b3f-bf29-8ab8f49722d3.lovable.app-1781939591079.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d4f3b303-e192-4c1f-baff-9c4a4ac6dcb6/id-preview-86cf8d36--2f4d2bff-bba3-4b3f-bf29-8ab8f49722d3.lovable.app-1781939591079.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
