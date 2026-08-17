@@ -51,9 +51,10 @@ export default defineConfig(({ command }) => ({
         },
       },
     }),
-    // Deploy plugin is build-only. `defaultPreset` is a fallback: set
-    // NITRO_PRESET or SERVER_PRESET to build for a different target.
-    ...(command === "build" ? [nitro({ defaultPreset: "cloudflare-module" })] : []),
+    // Deploy plugin is build-only. No preset is pinned, so nitro builds its
+    // portable Node server output; set NITRO_PRESET or SERVER_PRESET to
+    // target a specific host.
+    ...(command === "build" ? [nitro()] : []),
     viteReact(),
   ],
 }));
