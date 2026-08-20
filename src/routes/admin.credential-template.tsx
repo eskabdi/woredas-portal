@@ -31,6 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { toWebp, storageExtension, TEMPLATE_WEBP } from "@/utils/imageCompression";
 import { useAuthStore } from "@/stores/authStore";
 
 export const Route = createFileRoute("/admin/credential-template")({
@@ -270,11 +271,13 @@ function CredentialTemplatePage() {
 
   const handleUpload = async (side: Side, file: File) => {
     if (!isSuper) return;
-    const ext = file.name.split(".").pop() ?? "png";
-    const path = `${side}.${ext}`;
+    // Card artwork is printed at card size, so this is the least aggressive
+    // of the three presets — the conversion is for bandwidth, not for bytes.
+    const upload = await toWebp(file, TEMPLATE_WEBP);
+    const path = `${side}.${storageExtension(upload, "png")}`;
     const { error: upErr } = await supabase.storage
       .from("credential-templates")
-      .upload(path, file, { upsert: true, contentType: file.type });
+      .upload(path, upload, { upsert: true, contentType: upload.type });
     if (upErr) {
       toast.error(`Upload failed: ${upErr.message}`);
       return;

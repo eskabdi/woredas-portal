@@ -44,6 +44,7 @@ import { P } from "@/config/permissions";
 import { useAuthStore } from "@/stores/authStore";
 import { useWoredaInfo } from "@/hooks/useWoredaInfo";
 import { supabase } from "@/integrations/supabase/client";
+import { toWebp, storageExtension, BRANDING_WEBP } from "@/utils/imageCompression";
 import { RolesPermissionsTab } from "@/components/settings/RolesPermissionsTab";
 import { UsersRolesTab } from "@/components/settings/UsersRolesTab";
 import { LetterTemplatesTab } from "@/components/settings/LetterTemplatesTab";
@@ -548,11 +549,14 @@ function ImageUploadCard({
     }
     setUploading(true);
     try {
-      const ext = file.name.split(".").pop()?.toLowerCase() || "png";
-      const path = `${woredaId}/${field}.${ext}`;
+      // High quality: these end up on printed letterheads and ID cards. WebP
+      // keeps the alpha channel, so cut-out logos and signatures stay
+      // transparent where a JPEG would have flattened them onto black.
+      const upload = await toWebp(file, BRANDING_WEBP);
+      const path = `${woredaId}/${field}.${storageExtension(upload, "png")}`;
       const { error } = await supabase.storage
         .from("tenant-assets")
-        .upload(path, file, { upsert: true, contentType: file.type });
+        .upload(path, upload, { upsert: true, contentType: upload.type });
       if (error) throw error;
       onChange(path);
       toast.success("Uploaded — remember to save");

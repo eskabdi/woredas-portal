@@ -23,6 +23,7 @@ import { Card } from "@/components/ui/card";
 import { EthiopianDateInput } from "@/components/common/EthiopianDateInput";
 import { Section, Grid, FieldWrap, Select } from "@/components/forms/FormSection";
 import { supabase } from "@/integrations/supabase/client";
+import { toWebp, storageExtension, PHOTO_WEBP } from "@/utils/imageCompression";
 import { useWoredaInfo } from "@/hooks/useWoredaInfo";
 import {
   EDUCATION_OPTIONS,
@@ -176,11 +177,14 @@ export function ResidentWizardSteps({
     }
     setUploadingPhoto(true);
     try {
-      const ext = file.name.split(".").pop() ?? "jpg";
-      const path = `${woredaId}/${crypto.randomUUID()}.${ext}`;
+      // Camera photos are several megabytes; WebP takes them to a fraction of
+      // that before the upload starts. The size check above still runs against
+      // the original, so a huge file is rejected rather than quietly shrunk.
+      const upload = await toWebp(file, PHOTO_WEBP);
+      const path = `${woredaId}/${crypto.randomUUID()}.${storageExtension(upload, "jpg")}`;
       const { error } = await supabase.storage
         .from("resident-photos")
-        .upload(path, file, { upsert: false, contentType: file.type });
+        .upload(path, upload, { upsert: false, contentType: upload.type });
       if (error) throw error;
       setValue("photo_url", path, { shouldDirty: true });
       toast.success("ፎቶ ተጭኗል / Photo uploaded");
