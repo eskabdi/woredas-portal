@@ -5,6 +5,9 @@ import { useReactToPrint } from "react-to-print";
 import { QRCodeCanvas } from "qrcode.react";
 import { toast } from "sonner";
 
+import { credentialVerifyUrl } from "@/config/credentialCryptoConfig";
+import { CredentialBarcode } from "@/components/credentials/CredentialBarcode";
+
 import {
   ArrowLeft,
   CheckCircle2,
@@ -75,15 +78,33 @@ interface TemplateField {
   canvas_height: number;
 }
 
-// A signed credential token is JWT-shaped: three base64url segments joined
-// by dots. If the token is missing or malformed we must NEVER silently fall
-// back to a plain credential_number QR — a forgeable-looking QR must never
-// be printed. Callers must gate rendering with isSignedToken() and show the
-// "not yet signed" block instead.
-const JWT_SHAPE = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
+// A signed credential token is two base64url segments joined by a dot:
+// payload.signature. There is no JWT header — the algorithm is pinned in code,
+// so a token cannot claim its own.
+//
+// If the token is missing or malformed we must NEVER silently fall back to a
+// plain credential_number QR — a forgeable-looking QR must never be printed.
+// Callers must gate rendering with isSignedToken() and show the "not yet
+// signed" block instead.
+const TOKEN_SHAPE = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
 function isSignedToken(v: string | null | undefined): v is string {
-  return typeof v === "string" && JWT_SHAPE.test(v);
+  return typeof v === "string" && TOKEN_SHAPE.test(v);
 }
+
+// CSS treats 1mm as 96/25.4 px, and the card prints at a fixed 85.6mm, so a
+// millimetre size here is a real millimetre on the finished card.
+const mmToPx = (mm: number) => Math.round((mm / 25.4) * 96);
+
+/**
+ * Printed size of the verification QR.
+ *
+ * 24mm, not the 19mm this used to be. At 19mm the modules came out about 1.3
+ * dots wide on a 300 dpi card printer — finer than the printer can resolve, so
+ * the grid smeared and the code would not scan no matter how good the camera
+ * was. 24mm puts roughly 3.9 printer dots behind every module.
+ */
+const QR_PRINT_MM = 24;
+const QR_PRINT_PX = mmToPx(QR_PRINT_MM);
 
 // If the QR encoder still throws (e.g. payload exceeds even level-L v40
 // capacity ~2953 binary chars), render a visible red error placeholder —
@@ -937,9 +958,9 @@ function CardFront({ resident, cred, woreda, settings, photoUrl, logoUrl, dobEth
             </div>
           </div>
 
-          <div className="absolute inset-x-0 bottom-0 top-[68px] bg-white/95 p-4 text-slate-900">
+          <div className="absolute inset-x-0 bottom-[34px] top-[68px] bg-white/95 px-4 pt-3 text-slate-900">
             <div className="flex gap-4">
-              <div className="h-28 w-24 shrink-0 overflow-hidden rounded border-2 border-white bg-slate-200 shadow">
+              <div className="h-24 w-20 shrink-0 overflow-hidden rounded border-2 border-white bg-slate-200 shadow">
                 {photoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={photoUrl} alt="" className="h-full w-full object-cover" />
@@ -975,6 +996,13 @@ function CardFront({ resident, cred, woreda, settings, photoUrl, logoUrl, dobEth
                 <FrontRow labelAm="የተሰጠበት" labelEn="Issue Date" value={issueEth || "—"} />
               </div>
             </div>
+          </div>
+
+          {/* Machine-readable credential number. Code 128 rather than Code 39:
+              the number is all digits, which Set C packs two per symbol, so it
+              fits this strip at a density a card printer can hold. */}
+          <div className="absolute inset-x-0 bottom-0 flex h-[34px] items-center justify-center bg-white/95">
+            <CredentialBarcode credentialNumber={cred?.credential_number} />
           </div>
         </>
       )}
@@ -1051,11 +1079,18 @@ function CardBack({ cred, kebele, household, signatureUrl, expiryEth, bgUrl, ori
             <div className="flex flex-col items-center">
               <div className="rounded bg-white p-1.5 shadow-sm ring-1 ring-slate-200">
                 {isSignedToken(cred.qr_payload) ? (
-                  <QRBoundary size={72}>
-                    <QRCodeCanvas value={cred.qr_payload} size={72} level="L" />
+                  <QRBoundary size={QR_PRINT_PX}>
+                    <QRCodeCanvas
+                      value={credentialVerifyUrl(cred.qr_payload)}
+                      size={QR_PRINT_PX}
+                      level="L"
+                    />
                   </QRBoundary>
                 ) : (
-                  <div className="flex h-[72px] w-[72px] items-center justify-center border border-amber-300 bg-amber-50 text-center text-[8px] font-medium text-amber-800">
+                  <div
+                    className="flex items-center justify-center border border-amber-300 bg-amber-50 text-center text-[8px] font-medium text-amber-800"
+                    style={{ width: QR_PRINT_PX, height: QR_PRINT_PX }}
+                  >
                     Not signed
                   </div>
                 )}
@@ -1164,7 +1199,11 @@ function PrintableCard({
               >
                 {isSignedToken(qrPayload) ? (
                   <QRBoundary size={Math.floor(f.width * 0.6)}>
-                    <QRCodeCanvas value={qrPayload} size={Math.floor(f.width * 0.6)} level="L" />
+                    <QRCodeCanvas
+                      value={credentialVerifyUrl(qrPayload)}
+                      size={Math.floor(f.width * 0.6)}
+                      level="L"
+                    />
                   </QRBoundary>
                 ) : null}
 

@@ -1,25 +1,31 @@
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-interface HarariQRVerificationPayload {
-  idNumber: string;
-  fullNameEnglish: string;
-  gender: "Male" | "Female";
-  dobGregorian: string;
-  woreda: string;
-  kebele: string;
-  houseNumber: string;
-  photoBase64: string;
-  issueDate: string;
-  expiryDate: string;
-  placeOfIssue: string;
-  iss: "HARARI_REGIONAL_GOVERNMENT";
-  iat: number;
-  credentialNumber: string;
+/**
+ * Compact signed credential payload.
+ *
+ * Keys are single characters and dates are YYYYMMDD on purpose: every byte here
+ * becomes QR modules, and the printed code has to stay coarse enough for a
+ * 300 dpi card printer to resolve. See the card design notes before adding a
+ * field — a payload that grows past ~500 characters pushes the QR into a version
+ * the printer cannot render cleanly.
+ */
+interface CompactPayload {
+  c: string; // credential number (13 digits)
+  i: string; // resident number
+  n: string; // full name (English)
+  g: "M" | "F"; // gender
+  b: string; // date of birth, YYYYMMDD
+  w: string; // woreda
+  k: string; // kebele
+  h: string; // house number
+  s: string; // issue date, YYYYMMDD
+  e: string; // expiry date, YYYYMMDD
+  p: string; // place of issue
+  t: number; // issued at, unix seconds
 }
 
 interface RequestBody {
-  payload: HarariQRVerificationPayload;
   credentialId: string;
   woredaId: string;
 }
@@ -58,10 +64,11 @@ function pemToDer(pem: string): Uint8Array {
   return out;
 }
 
-function hasControlChars(v: unknown): boolean {
-  if (typeof v !== "string") return false;
-  // eslint-disable-next-line no-control-regex
-  return /[\x00-\x08\x0B\x0C\x0E-\x1F]/.test(v);
+/** "2026-08-20" -> "20260820". Anything unparseable becomes "". */
+function compactDate(d: string | null | undefined): string {
+  if (!d) return "";
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d);
+  return m ? `${m[1]}${m[2]}${m[3]}` : "";
 }
 
 Deno.serve(async (req: Request) => {
@@ -71,7 +78,7 @@ Deno.serve(async (req: Request) => {
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const PRIVATE_KEY_PEM = Deno.env.get("HARARI_RSA_PRIVATE_KEY");
+    const PRIVATE_KEY_PEM = Deno.env.get("HARARI_EC_PRIVATE_KEY");
     if (!PRIVATE_KEY_PEM) return json(500, { error: "Signing key not configured" });
 
     const authHeader = req.headers.get("Authorization") ?? "";
@@ -87,21 +94,9 @@ Deno.serve(async (req: Request) => {
     const callerId = userData.user.id;
 
     const body = (await req.json()) as RequestBody;
-    if (!body?.payload || !body.credentialId || !body.woredaId) {
+    if (!body?.credentialId || !body.woredaId) {
       return json(400, { error: "Missing fields" });
     }
-
-    // Photo size check (only client-supplied field kept in the signed payload)
-    if (
-      typeof body.payload.photoBase64 === "string" &&
-      body.payload.photoBase64.length > 2048
-    ) {
-      return json(400, { error: "Photo payload too large (max 2048 bytes)" });
-    }
-    if (hasControlChars(body.payload.photoBase64)) {
-      return json(400, { error: "Illegal characters in field photoBase64" });
-    }
-
 
     // Woreda match check
     const { data: appUser, error: auErr } = await admin
@@ -131,11 +126,11 @@ Deno.serve(async (req: Request) => {
     }
     if (cred.qr_payload) return json(409, { error: "Credential already signed" });
 
-    // SECURITY: identity fields are rebuilt from the database, never trusted
-    // from the client. Only the compressed photo comes from the request.
+    // SECURITY: every field in the signed payload is read from the database.
+    // The request supplies only which credential to sign.
     const { data: resident, error: resErr } = await admin
       .from("resident")
-      .select("resident_number, national_id_no, full_name, sex, date_of_birth, current_household_id")
+      .select("resident_number, full_name, sex, date_of_birth, current_household_id")
       .eq("resident_id", cred.resident_id)
       .maybeSingle();
     if (resErr) return json(500, { error: "Resident lookup failed" });
@@ -163,47 +158,46 @@ Deno.serve(async (req: Request) => {
       houseNumber = hh?.house_number ?? "";
     }
 
-    const verifiedPayload: HarariQRVerificationPayload = {
-      idNumber: resident.national_id_no || resident.resident_number || "",
-      fullNameEnglish: resident.full_name ?? "",
-      gender: resident.sex === "female" ? "Female" : "Male",
-      dobGregorian: resident.date_of_birth ?? "",
-      woreda: woredaRow?.woreda_name_en ?? "",
-      kebele: kebeleRow?.kebele_name_en ?? "",
-      houseNumber,
-      photoBase64: typeof body.payload.photoBase64 === "string" ? body.payload.photoBase64 : "",
-      issueDate: cred.issue_date ?? new Date().toISOString().slice(0, 10),
-      expiryDate: cred.expiry_date ?? "",
-      placeOfIssue: woredaRow?.woreda_name_en ?? "",
-      iss: "HARARI_REGIONAL_GOVERNMENT",
-      iat: Math.floor(Date.now() / 1000),
-      credentialNumber: cred.credential_number,
+    const payload: CompactPayload = {
+      c: (cred.credential_number ?? "").replace(/-/g, ""),
+      i: resident.resident_number ?? "",
+      n: resident.full_name ?? "",
+      g: resident.sex === "female" ? "F" : "M",
+      b: compactDate(resident.date_of_birth),
+      w: woredaRow?.woreda_name_en ?? "",
+      k: kebeleRow?.kebele_name_en ?? "",
+      h: houseNumber,
+      s: compactDate(cred.issue_date) || compactDate(new Date().toISOString().slice(0, 10)),
+      e: compactDate(cred.expiry_date),
+      p: woredaRow?.woreda_name_en ?? "",
+      t: Math.floor(Date.now() / 1000),
     };
 
-
-    // Import RSA private key
+    // ES256. The algorithm is pinned here rather than carried in a JWT header:
+    // a header-supplied "alg" is what makes the classic alg:none forgery
+    // possible, and both ends of this token are ours.
     const der = pemToDer(PRIVATE_KEY_PEM);
     const key = await crypto.subtle.importKey(
       "pkcs8",
       der.buffer.slice(der.byteOffset, der.byteOffset + der.byteLength) as ArrayBuffer,
-      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+      { name: "ECDSA", namedCurve: "P-256" },
       false,
       ["sign"],
     );
 
-    const header = { alg: "RS256", typ: "JWT" };
-    const headerB64 = base64UrlEncodeString(JSON.stringify(header));
-    const payloadJson = JSON.stringify(verifiedPayload);
-    const payloadB64 = base64UrlEncodeString(payloadJson);
-    const signingInput = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
+    const payloadB64 = base64UrlEncodeString(JSON.stringify(payload));
+    const signingInput = new TextEncoder().encode(payloadB64);
     const sig = new Uint8Array(
       await crypto.subtle.sign(
-        { name: "RSASSA-PKCS1-v1_5" },
+        { name: "ECDSA", hash: "SHA-256" },
         key,
-        signingInput.buffer.slice(signingInput.byteOffset, signingInput.byteOffset + signingInput.byteLength) as ArrayBuffer,
+        signingInput.buffer.slice(
+          signingInput.byteOffset,
+          signingInput.byteOffset + signingInput.byteLength,
+        ) as ArrayBuffer,
       ),
     );
-    const token = `${headerB64}.${payloadB64}.${base64UrlEncodeBytes(sig)}`;
+    const token = `${payloadB64}.${base64UrlEncodeBytes(sig)}`;
 
     // Persist token
     const { error: updErr } = await admin

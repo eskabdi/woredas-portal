@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.15"
   }
   public: {
     Tables: {
@@ -2551,11 +2551,29 @@ export type Database = {
         Returns: string
       }
       get_user_woreda_id: { Args: never; Returns: string }
+      is_active_app_user: { Args: never; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
       is_tenant_admin: { Args: never; Returns: boolean }
+      luhn_check_digit: { Args: { _digits: string }; Returns: number }
       storage_path_woreda_id: { Args: { object_name: string }; Returns: string }
       user_has_any_perm: { Args: { _perms: string[] }; Returns: boolean }
       user_has_perm: { Args: { _perm: string }; Returns: boolean }
+      verify_credential_token: {
+        Args: { _credential_digits: string }
+        Returns: {
+          credential_number: string
+          date_of_birth: string
+          expiry_date: string
+          issue_date: string
+          kebele_name_am: string
+          kebele_name_en: string
+          photo_path: string
+          resident_full_name: string
+          status: string
+          woreda_name_am: string
+          woreda_name_en: string
+        }[]
+      }
       verify_service_letter: {
         Args: { _token: string }
         Returns: {

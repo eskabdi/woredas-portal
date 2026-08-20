@@ -1742,40 +1742,11 @@ function CredentialReadinessCard({
       setSigning(true);
       setSignError(null);
       try {
-        const { buildQRPayload, compressResidentPhoto, signCredentialPayload } = await import(
-          "@/utils/harariCredentialCrypto"
-        );
-        const compressed = photoSignedUrl ? await compressResidentPhoto(photoSignedUrl) : "";
-        const issue = cred.issue_date ?? new Date().toISOString().slice(0, 10);
-        const expiry = cred.expiry_date ?? "";
-        const dob = resident?.date_of_birth ?? "";
-        const profile = {
-          credentialId: cred.credential_id,
-          credentialNumber: cred.credential_number,
-          serialNumber: cred.serial_number,
-          woredaId,
-          idNumber: resident?.national_id_no || resident?.resident_number || "",
-          fullNameAmharic: resident?.full_name_am ?? "",
-          fullNameEnglish: resident?.full_name ?? "",
-          genderAmharic: resident?.sex === "female" ? "ሴት" : "ወንድ",
-          genderEnglish: (resident?.sex === "female" ? "Female" : "Male") as "Male" | "Female",
-          dobEthiopian: dob ? formatEthiopianDate(new Date(dob)) : "",
-          dobGregorian: dob,
-          woredaAmharic: wor?.woreda_name_am ?? "",
-          woredaEnglish: wor?.woreda_name_en ?? "",
-          kebeleAmharic: kebele?.kebele_name_am ?? "",
-          kebeleEnglish: kebele?.kebele_name_en ?? "",
-          houseNumber: household?.house_number ?? "",
-          photoUrl: photoSignedUrl ?? "",
-          issueDateEthiopian: issue ? formatEthiopianDate(new Date(issue)) : "",
-          issueDateGregorian: issue,
-          expiryDateEthiopian: expiry ? formatEthiopianDate(new Date(expiry)) : "",
-          expiryDateGregorian: expiry,
-          placeOfIssueAmharic: wor?.woreda_name_am ?? "",
-          placeOfIssueEnglish: wor?.woreda_name_en ?? "",
-        };
-        const payload = buildQRPayload(profile, compressed);
-        await signCredentialPayload(payload, cred.credential_id, woredaId);
+        const { signCredentialPayload } = await import("@/utils/harariCredentialCrypto");
+        // Only the identifiers go over the wire. The Edge Function reads every
+        // signed field from the database, so nothing sent from here can reach
+        // the signature.
+        await signCredentialPayload(cred.credential_id, woredaId);
         if (!cancelled) {
           await queryClient.invalidateQueries({
             queryKey: ["residence-credential-row", credentialRowId],

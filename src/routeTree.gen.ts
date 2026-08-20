@@ -17,6 +17,7 @@ import { Route as WoredaRouteImport } from './routes/woreda'
 import { Route as AdminAuditRouteImport } from './routes/admin.audit'
 import { Route as AdminCredentialTemplateRouteImport } from './routes/admin.credential-template'
 import { Route as AdminDashboardRouteImport } from './routes/admin.dashboard'
+import { Route as VTokenRouteImport } from './routes/v.$token'
 import { Route as WoredaApprovalsRouteImport } from './routes/woreda.approvals'
 import { Route as WoredaAuditRouteImport } from './routes/woreda.audit'
 import { Route as WoredaCivilRouteImport } from './routes/woreda.civil'
@@ -103,6 +104,11 @@ const AdminDashboardRoute = AdminDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
   getParentRoute: () => AdminRoute,
+} as any)
+const VTokenRoute = VTokenRouteImport.update({
+  id: '/v/$token',
+  path: '/v/$token',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const WoredaApprovalsRoute = WoredaApprovalsRouteImport.update({
   id: '/approvals',
@@ -358,6 +364,7 @@ export interface FileRoutesByFullPath {
   '/admin/audit': typeof AdminAuditRoute
   '/admin/credential-template': typeof AdminCredentialTemplateRoute
   '/admin/dashboard': typeof AdminDashboardRoute
+  '/v/$token': typeof VTokenRoute
   '/woreda/approvals': typeof WoredaApprovalsRoute
   '/woreda/audit': typeof WoredaAuditRoute
   '/woreda/civil': typeof WoredaCivilRouteWithChildren
@@ -414,6 +421,7 @@ export interface FileRoutesByTo {
   '/admin/audit': typeof AdminAuditRoute
   '/admin/credential-template': typeof AdminCredentialTemplateRoute
   '/admin/dashboard': typeof AdminDashboardRoute
+  '/v/$token': typeof VTokenRoute
   '/woreda/approvals': typeof WoredaApprovalsRoute
   '/woreda/audit': typeof WoredaAuditRoute
   '/woreda/complaints': typeof WoredaComplaintsRoute
@@ -466,6 +474,7 @@ export interface FileRoutesById {
   '/admin/audit': typeof AdminAuditRoute
   '/admin/credential-template': typeof AdminCredentialTemplateRoute
   '/admin/dashboard': typeof AdminDashboardRoute
+  '/v/$token': typeof VTokenRoute
   '/woreda/approvals': typeof WoredaApprovalsRoute
   '/woreda/audit': typeof WoredaAuditRoute
   '/woreda/civil': typeof WoredaCivilRouteWithChildren
@@ -524,6 +533,7 @@ export interface FileRouteTypes {
     | '/admin/audit'
     | '/admin/credential-template'
     | '/admin/dashboard'
+    | '/v/$token'
     | '/woreda/approvals'
     | '/woreda/audit'
     | '/woreda/civil'
@@ -580,6 +590,7 @@ export interface FileRouteTypes {
     | '/admin/audit'
     | '/admin/credential-template'
     | '/admin/dashboard'
+    | '/v/$token'
     | '/woreda/approvals'
     | '/woreda/audit'
     | '/woreda/complaints'
@@ -631,6 +642,7 @@ export interface FileRouteTypes {
     | '/admin/audit'
     | '/admin/credential-template'
     | '/admin/dashboard'
+    | '/v/$token'
     | '/woreda/approvals'
     | '/woreda/audit'
     | '/woreda/civil'
@@ -685,6 +697,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   SetPasswordRoute: typeof SetPasswordRoute
   WoredaRoute: typeof WoredaRouteWithChildren
+  VTokenRoute: typeof VTokenRoute
   VerifyLetterTokenRoute: typeof VerifyLetterTokenRoute
 }
 
@@ -745,6 +758,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/dashboard'
       preLoaderRoute: typeof AdminDashboardRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/v/$token': {
+      id: '/v/$token'
+      path: '/v/$token'
+      fullPath: '/v/$token'
+      preLoaderRoute: typeof VTokenRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/woreda/approvals': {
       id: '/woreda/approvals'
@@ -1239,6 +1259,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   SetPasswordRoute: SetPasswordRoute,
   WoredaRoute: WoredaRouteWithChildren,
+  VTokenRoute: VTokenRoute,
   VerifyLetterTokenRoute: VerifyLetterTokenRoute,
 }
 export const routeTree = rootRouteImport

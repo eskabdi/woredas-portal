@@ -65,6 +65,8 @@ export function HararildScanner() {
     typeof navigator !== "undefined" ? navigator.onLine : true,
   );
   const [liveStatus, setLiveStatus] = useState<string | null>(null);
+  // Fetched from storage after a live check, not carried in the QR.
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [liveStatusLoading, setLiveStatusLoading] = useState(false);
   const [liveStatusError, setLiveStatusError] = useState<string | null>(null);
 
@@ -254,16 +256,27 @@ export function HararildScanner() {
     setLiveStatusLoading(true);
     setLiveStatusError(null);
     setLiveStatus(null);
+    setPhotoUrl(null);
     try {
-      const { data, error } = await supabase.rpc(
-        "get_credential_live_status",
-        { _credential_number: result.payload.credentialNumber },
-      );
+      // The signature proves the data is genuine; only the registry knows
+      // whether the card is still valid. The same call returns the resident's
+      // photo when the caller is active staff — the card's QR no longer carries
+      // one, because an embedded photo made the printed code too dense to scan.
+      const { data, error } = await supabase.rpc("verify_credential_token", {
+        _credential_digits: result.payload.credentialNumber,
+      });
       if (error) throw error;
-      if (!data) {
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row) {
         setLiveStatusError("Credential not found in registry");
-      } else {
-        setLiveStatus(String(data));
+        return;
+      }
+      setLiveStatus(String(row.status));
+      if (row.photo_path) {
+        const { data: signed } = await supabase.storage
+          .from("resident-photos")
+          .createSignedUrl(row.photo_path, 600);
+        setPhotoUrl(signed?.signedUrl ?? null);
       }
     } catch (e) {
       setLiveStatusError((e as Error).message);
@@ -420,6 +433,7 @@ export function HararildScanner() {
                   liveStatusLoading={liveStatusLoading}
                   liveStatusError={liveStatusError}
                   onCheckLive={checkLiveStatus}
+                  photoUrl={photoUrl}
                   online={online}
                 />
               ) : (
@@ -453,6 +467,7 @@ function SuccessPanel({
   liveStatusError,
   onCheckLive,
   online,
+  photoUrl,
 }: {
   payload: HarariQRVerificationPayload;
   expiryBadge: React.ReactNode;
@@ -461,6 +476,7 @@ function SuccessPanel({
   liveStatusError: string | null;
   onCheckLive: () => void;
   online: boolean;
+  photoUrl: string | null;
 }) {
   const rows: Array<{ label: string; value: string }> = [
     { label: "ID Number", value: payload.idNumber },
@@ -517,15 +533,25 @@ function SuccessPanel({
 
       <div className="grid gap-4 md:grid-cols-[160px_1fr]">
         <div className="flex flex-col items-center">
-          {payload.photoBase64 ? (
+          {photoUrl ? (
             <img
-              src={payload.photoBase64}
+              src={photoUrl}
               alt="Resident"
               className="h-40 w-40 rounded-lg border border-slate-200 object-cover"
             />
           ) : (
-            <div className="flex h-40 w-40 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-xs text-slate-500">
-              No photo
+            <div className="flex h-40 w-40 flex-col items-center justify-center gap-1 rounded-lg border border-slate-200 bg-slate-100 px-2 text-center text-xs text-slate-500">
+              {online ? (
+                <>
+                  <span className="font-noto-ethiopic">ፎቶ ለማየት</span>
+                  <span>Check live status to load the photo</span>
+                </>
+              ) : (
+                <>
+                  <span className="font-noto-ethiopic">ከመስመር ውጭ</span>
+                  <span>Offline — photo unavailable</span>
+                </>
+              )}
             </div>
           )}
         </div>
