@@ -9,6 +9,7 @@ export const Route = createFileRoute("/")({
 function IndexRedirect() {
   const isLoading = useAuthStore((s) => s.isLoading);
   const role = useAuthStore((s) => s.role);
+  const status = useAuthStore((s) => s.appUser?.status);
 
   if (isLoading) {
     return (
@@ -19,6 +20,16 @@ function IndexRedirect() {
   }
 
   if (!role) return <Navigate to="/login" />;
+
+  // An invitation link redeems its token and lands here, because Supabase sends
+  // invites to the project's site URL. Such an account is 'pending' and has no
+  // password yet, so send it on to choose one rather than to a dashboard whose
+  // queries would all come back empty — user_has_perm() requires 'active'.
+  if (status === "pending") return <Navigate to="/set-password" />;
+
+  // Suspended or deactivated accounts get turned away at sign-in.
+  if (status !== "active") return <Navigate to="/login" />;
+
   if (role === "super_admin") return <Navigate to="/admin/dashboard" />;
   return <Navigate to="/woreda/dashboard" />;
 }

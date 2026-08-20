@@ -27,6 +27,7 @@ type LoginInput = z.infer<typeof loginSchema>;
 function LoginPage() {
   const navigate = useNavigate();
   const role = useAuthStore((s) => s.role);
+  const status = useAuthStore((s) => s.appUser?.status);
   const setAuth = useAuthStore((s) => s.setAuth);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,12 +41,18 @@ function LoginPage() {
     defaultValues: { email: "", password: "" },
   });
 
-  if (role) {
+  // Already signed in: skip the form. A pending account goes to set-password
+  // instead of a dashboard, and this guard has to agree with the status check
+  // in onSubmit or it would bounce the user straight back out of it.
+  if (role && status === "active") {
     return role === "super_admin" ? (
       <Navigate to="/admin/dashboard" />
     ) : (
       <Navigate to="/woreda/dashboard" />
     );
+  }
+  if (role && status === "pending") {
+    return <Navigate to="/set-password" />;
   }
 
   const onSubmit = async (values: LoginInput) => {
@@ -84,6 +91,24 @@ function LoginPage() {
       username: userRow.username,
       status: userRow.status,
     };
+
+    // Only an active account resolves permissions: user_has_perm() checks the
+    // status column, so anything else lands on a dashboard where every query
+    // returns empty and nothing explains why.
+    if (appUser.status !== "active") {
+      setAuth(data.user, appUser);
+      setIsSubmitting(false);
+      if (appUser.status === "pending") {
+        navigate({ to: "/set-password" });
+      } else {
+        setSubmitError(
+          "This account is not active. Contact your administrator.",
+        );
+        await supabase.auth.signOut();
+      }
+      return;
+    }
+
     setAuth(data.user, appUser);
 
     if (appUser.role === "super_admin") {
@@ -161,6 +186,10 @@ function LoginPage() {
               )}
             </Button>
           </form>
+
+          <p className="mt-4 text-center text-sm text-slate-500">
+            Forgot your password? Contact your administrator to be re-invited.
+          </p>
         </div>
       </div>
     </div>

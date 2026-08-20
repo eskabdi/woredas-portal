@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as SetPasswordRouteImport } from './routes/set-password'
 import { Route as WoredaRouteImport } from './routes/woreda'
 import { Route as AdminAuditRouteImport } from './routes/admin.audit'
 import { Route as AdminCredentialTemplateRouteImport } from './routes/admin.credential-template'
@@ -76,6 +77,11 @@ const AdminRoute = AdminRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SetPasswordRoute = SetPasswordRouteImport.update({
+  id: '/set-password',
+  path: '/set-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const WoredaRoute = WoredaRouteImport.update({
@@ -347,6 +353,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
+  '/set-password': typeof SetPasswordRoute
   '/woreda': typeof WoredaRouteWithChildren
   '/admin/audit': typeof AdminAuditRoute
   '/admin/credential-template': typeof AdminCredentialTemplateRoute
@@ -402,6 +409,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
+  '/set-password': typeof SetPasswordRoute
   '/woreda': typeof WoredaRouteWithChildren
   '/admin/audit': typeof AdminAuditRoute
   '/admin/credential-template': typeof AdminCredentialTemplateRoute
@@ -453,6 +461,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
+  '/set-password': typeof SetPasswordRoute
   '/woreda': typeof WoredaRouteWithChildren
   '/admin/audit': typeof AdminAuditRoute
   '/admin/credential-template': typeof AdminCredentialTemplateRoute
@@ -510,6 +519,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/login'
+    | '/set-password'
     | '/woreda'
     | '/admin/audit'
     | '/admin/credential-template'
@@ -565,6 +575,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/login'
+    | '/set-password'
     | '/woreda'
     | '/admin/audit'
     | '/admin/credential-template'
@@ -615,6 +626,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/login'
+    | '/set-password'
     | '/woreda'
     | '/admin/audit'
     | '/admin/credential-template'
@@ -671,6 +683,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
   LoginRoute: typeof LoginRoute
+  SetPasswordRoute: typeof SetPasswordRoute
   WoredaRoute: typeof WoredaRouteWithChildren
   VerifyLetterTokenRoute: typeof VerifyLetterTokenRoute
 }
@@ -696,6 +709,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/set-password': {
+      id: '/set-password'
+      path: '/set-password'
+      fullPath: '/set-password'
+      preLoaderRoute: typeof SetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/woreda': {
@@ -1217,6 +1237,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
   LoginRoute: LoginRoute,
+  SetPasswordRoute: SetPasswordRoute,
   WoredaRoute: WoredaRouteWithChildren,
   VerifyLetterTokenRoute: VerifyLetterTokenRoute,
 }
