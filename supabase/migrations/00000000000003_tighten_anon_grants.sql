@@ -61,6 +61,17 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
 --
 -- verify_service_letter() is deliberately left alone: it backs the public
 -- /verify/letter/$token page and must stay executable by anon.
+--
+-- Revoking from anon alone does NOT close a function. Postgres grants EXECUTE
+-- to PUBLIC on every function by default -- visible as the leading `=X/owner`
+-- entry in proacl -- and anon inherits it from there. Dropping the explicit
+-- anon grant leaves has_function_privilege('anon', ...) still true. The revoke
+-- has to name PUBLIC, after which the explicit grants below are what keeps the
+-- authenticated callers working.
 -- ============================================================================
 
 REVOKE EXECUTE ON FUNCTION public.get_credential_live_status(text) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.get_credential_live_status(text) FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION public.get_credential_live_status(text)
+  TO authenticated, service_role;
