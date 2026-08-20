@@ -1182,6 +1182,11 @@ function PrintableCard({
         // the canvas.
         width: `${CARD_WIDTH_MM}mm`,
         aspectRatio: `${canvasW} / ${canvasH}`,
+        // Field font-size below is set in cqh (container query height) so it
+        // scales with the card rather than a fixed rem value. cqh needs a
+        // sized containment context on an ancestor or it silently falls back
+        // to the viewport's height, which has nothing to do with this card.
+        containerType: "size",
         // The uploaded, super-admin-activated template artwork is what actually
         // prints. The gradient is only a placeholder for a woreda that hasn't
         // set one yet — printing that as-is would ship a blank card.
@@ -1230,21 +1235,29 @@ function PrintableCard({
             );
           }
           if (f.field_key === "qr_code") {
+            // f.width/f.height are canvas-design units, not CSS pixels — the
+            // container itself is now sized to the card's true physical width
+            // (see PrintableCard), so the QR has to be computed in the same
+            // physical units or it re-creates the same oversize-and-clip bug
+            // that "5.63in" caused for the whole card.
+            const mmPerCanvasUnit = CARD_WIDTH_MM / canvasW;
+            const fieldWidthMm = Number(f.width) * mmPerCanvasUnit;
+            const fieldHeightMm = Number(f.height) * mmPerCanvasUnit;
+            const qrSizePx = mmToPx(Math.min(fieldWidthMm, fieldHeightMm) * 0.9);
             return (
               <div
                 key={f.field_key}
                 style={{ ...common, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}
               >
                 {isSignedToken(qrPayload) ? (
-                  <QRBoundary size={Math.floor(f.width * 0.6)}>
+                  <QRBoundary size={qrSizePx}>
                     <QRCodeCanvas
                       value={credentialVerifyUrl(qrPayload)}
-                      size={Math.floor(f.width * 0.6)}
+                      size={qrSizePx}
                       level="L"
                     />
                   </QRBoundary>
                 ) : null}
-
               </div>
             );
           }
