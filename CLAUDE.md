@@ -299,6 +299,30 @@ RLS helpers, all `SECURITY DEFINER` with a pinned `search_path`:
 `user_has_perm(text)`, `user_has_any_perm(text[])`,
 `storage_path_woreda_id(text)`.
 
+### Grants are wide; RLS is the only thing narrowing them
+
+Every relation in `public` grants the full privilege set to both `anon` and
+`authenticated` — Supabase's stock default, reapplied to each new table by
+`pg_default_acl`. That is safe *only* because RLS is enabled everywhere and
+**no policy in `public` admits `anon` or `PUBLIC`**; every policy is scoped
+`TO authenticated`. Verified as role `anon`: `app_user` and `audit_log` return
+0 rows, and update/delete affect 0 rows.
+
+Two consequences worth keeping in mind:
+
+- **A policy written `TO public` (or with no `TO` clause) would immediately be
+  live for unauthenticated callers**, because the grant is already there. Always
+  write `TO authenticated`.
+- **RLS does not apply to `TRUNCATE`.** `migrations/00000000000003_tighten_anon_grants.sql`
+  revokes `TRUNCATE`, `TRIGGER` and `REFERENCES` from both roles and adjusts the
+  default privileges so new tables don't re-grant them.
+
+`SECURITY DEFINER` functions are a second path past RLS. Grant `EXECUTE` to
+`anon` only for functions that genuinely serve unauthenticated callers —
+`verify_service_letter()` backing `/verify/letter/$token` is the one legitimate
+case. `get_credential_live_status()` was anon-executable with no unauthenticated
+caller and is revoked in the same migration.
+
 ### Business logic lives in triggers
 
 Don't reimplement any of this client-side:
