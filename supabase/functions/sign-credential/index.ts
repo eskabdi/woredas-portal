@@ -148,6 +148,16 @@ Deno.serve(async (req: Request) => {
       .eq("woreda_id", cred.woreda_id)
       .maybeSingle();
 
+    // The issuing entity's branded name can differ from the woreda's official
+    // registry name — woreda_settings is where a tenant configures that. Falls
+    // back to the registry name when nothing is configured.
+    const { data: settingsRow } = await admin
+      .from("woreda_settings")
+      .select("woreda_name_display_en")
+      .eq("woreda_id", cred.woreda_id)
+      .maybeSingle();
+    const placeOfIssue = settingsRow?.woreda_name_display_en || woredaRow?.woreda_name_en || "";
+
     let houseNumber = "";
     if (resident.current_household_id) {
       const { data: hh } = await admin
@@ -169,7 +179,7 @@ Deno.serve(async (req: Request) => {
       h: houseNumber,
       s: compactDate(cred.issue_date) || compactDate(new Date().toISOString().slice(0, 10)),
       e: compactDate(cred.expiry_date),
-      p: woredaRow?.woreda_name_en ?? "",
+      p: placeOfIssue,
       t: Math.floor(Date.now() / 1000),
     };
 

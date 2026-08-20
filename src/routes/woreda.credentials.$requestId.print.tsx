@@ -220,7 +220,7 @@ function PrintPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("woreda_settings")
-        .select("logo_url, stamp_url, supervisor_signature_url, woreda_name_display")
+        .select("logo_url, stamp_url, supervisor_signature_url, woreda_name_display, woreda_name_display_en")
         .eq("woreda_id", woredaId!)
         .maybeSingle();
       if (error) throw error;
@@ -852,7 +852,7 @@ function PrintPage() {
             <PrintableCard
               side="front"
               fields={(templateQuery.data ?? []).filter((f) => f.template_type === "card_front")}
-              values={buildFieldValues(request, cred, resident, household, kebele, woreda, dobEthiopian, dobGregorian, issueEth, expiryEth)}
+              values={buildFieldValues(request, cred, resident, household, kebele, woreda, settings, dobEthiopian, dobGregorian, issueEth, expiryEth)}
               photoUrl={photoUrl}
               qrPayload={null}
               credentialNumber={cred?.credential_number ?? null}
@@ -863,7 +863,7 @@ function PrintPage() {
             <PrintableCard
               side="back"
               fields={(templateQuery.data ?? []).filter((f) => f.template_type === "card_back")}
-              values={buildFieldValues(request, cred, resident, household, kebele, woreda, dobEthiopian, dobGregorian, issueEth, expiryEth)}
+              values={buildFieldValues(request, cred, resident, household, kebele, woreda, settings, dobEthiopian, dobGregorian, issueEth, expiryEth)}
               photoUrl={photoUrl}
               qrPayload={cred.qr_payload as string | null}
               credentialNumber={cred?.credential_number ?? null}
@@ -1133,7 +1133,7 @@ function CardBack({ cred, kebele, household, signatureUrl, expiryEth, bgUrl, ori
 /* ============ Printable (template-driven, unchanged behavior) ============ */
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildFieldValues(_request: any, cred: any, resident: any, household: any, kebele: any, woreda: any, dobEth: string, dobGreg: string, issueEth: string, expiryEth: string): Record<string, string> {
+function buildFieldValues(_request: any, cred: any, resident: any, household: any, kebele: any, woreda: any, settings: any, dobEth: string, dobGreg: string, issueEth: string, expiryEth: string): Record<string, string> {
   return {
     full_name_am: resident?.full_name_am ?? "",
     full_name_en: resident?.full_name ?? "",
@@ -1146,7 +1146,9 @@ function buildFieldValues(_request: any, cred: any, resident: any, household: an
     house_number: household?.house_number ?? "",
     issue_date: issueEth ? `${issueEth} (${cred?.issue_date ?? ""})` : "",
     expiry_date: expiryEth ? `${expiryEth} (${cred?.expiry_date ?? ""})` : "",
-    place_of_issue: `${woreda?.woreda_name_am ?? ""} / ${woreda?.woreda_name_en ?? ""}`,
+    // The issuing entity is the tenant's configured display name, not
+    // necessarily the raw registry name -- see woreda_settings.
+    place_of_issue: `${settings?.woreda_name_display || woreda?.woreda_name_am || ""} / ${settings?.woreda_name_display_en || woreda?.woreda_name_en || ""}`,
     phone_number: resident?.phone_number ?? "",
     serial_number: cred?.serial_number ?? "",
   };

@@ -2429,6 +2429,7 @@ export type Database = {
           updated_by: string | null
           woreda_id: string
           woreda_name_display: string | null
+          woreda_name_display_en: string | null
         }
         Insert: {
           address_line?: string | null
@@ -2443,6 +2444,7 @@ export type Database = {
           updated_by?: string | null
           woreda_id: string
           woreda_name_display?: string | null
+          woreda_name_display_en?: string | null
         }
         Update: {
           address_line?: string | null
@@ -2457,6 +2459,7 @@ export type Database = {
           updated_by?: string | null
           woreda_id?: string
           woreda_name_display?: string | null
+          woreda_name_display_en?: string | null
         }
         Relationships: [
           {

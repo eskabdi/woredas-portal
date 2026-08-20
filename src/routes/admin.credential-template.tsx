@@ -107,6 +107,13 @@ const MIN_H = 10;
 
 type Handle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
 
+// A QR code is a square grid of modules — stretching its bounding box would
+// stretch the modules themselves, which is exactly the kind of distortion
+// that makes a QR unscannable regardless of how large it prints. Locking the
+// resize handles to 1:1 for this field is a print-correctness constraint, not
+// a UI nicety.
+const ASPECT_LOCKED_FIELD_KEYS = new Set(["qr_code"]);
+
 function CredentialTemplatePage() {
   const isSuper = useAuthStore((s) => s.role === "super_admin");
   const actorUserId = useAuthStore((s) => s.appUser?.user_id ?? null);
@@ -634,26 +641,77 @@ function EditorCanvas({
         hh = start.h - dy;
         y = start.y + dy;
       }
-      // enforce mins
-      if (w < MIN_W) {
-        if (h.includes("w")) x -= MIN_W - w;
-        w = MIN_W;
+      if (ASPECT_LOCKED_FIELD_KEYS.has(f.field_key)) {
+        // Whichever axis the handle actually drives sets the square's side —
+        // for a straight edge handle (e.g. "e") that's the one dimension the
+        // user is dragging; for a corner, it's whichever moved further, so a
+        // diagonal drag still feels proportionate rather than snapping to
+        // whichever axis happens to be listed first.
+        const drivesW = h.includes("e") || h.includes("w");
+        const drivesH = h.includes("n") || h.includes("s");
+        const size =
+          drivesW && drivesH
+            ? Math.max(w, hh)
+            : drivesW
+              ? w
+              : hh;
+        // The edge(s) NOT being dragged stay put; a pure edge handle (only one
+        // axis named) grows/shrinks the other axis symmetrically about its
+        // center, since nothing in a horizontal-only drag says which vertical
+        // edge should move.
+        const left = h.includes("w") ? start.x + start.w - size : h.includes("e") ? start.x : start.x + (start.w - size) / 2;
+        const top = h.includes("n") ? start.y + start.h - size : h.includes("s") ? start.y : start.y + (start.h - size) / 2;
+        x = left;
+        y = top;
+        w = size;
+        hh = size;
       }
-      if (hh < MIN_H) {
-        if (h.includes("n")) y -= MIN_H - hh;
-        hh = MIN_H;
+      // enforce mins
+      if (w < MIN_W || hh < MIN_H) {
+        const minSize = Math.max(MIN_W, MIN_H);
+        if (ASPECT_LOCKED_FIELD_KEYS.has(f.field_key)) {
+          if (h.includes("w")) x -= minSize - w;
+          if (h.includes("n")) y -= minSize - hh;
+          w = minSize;
+          hh = minSize;
+        } else {
+          if (w < MIN_W) {
+            if (h.includes("w")) x -= MIN_W - w;
+            w = MIN_W;
+          }
+          if (hh < MIN_H) {
+            if (h.includes("n")) y -= MIN_H - hh;
+            hh = MIN_H;
+          }
+        }
       }
       // clamp to canvas
       if (x < 0) {
-        w += x;
+        if (ASPECT_LOCKED_FIELD_KEYS.has(f.field_key)) {
+          w += x;
+          hh = w;
+        } else {
+          w += x;
+        }
         x = 0;
       }
       if (y < 0) {
-        hh += y;
+        if (ASPECT_LOCKED_FIELD_KEYS.has(f.field_key)) {
+          hh += y;
+          w = hh;
+        } else {
+          hh += y;
+        }
         y = 0;
       }
-      if (x + w > canvasW) w = canvasW - x;
-      if (y + hh > canvasH) hh = canvasH - y;
+      if (x + w > canvasW) {
+        w = canvasW - x;
+        if (ASPECT_LOCKED_FIELD_KEYS.has(f.field_key)) hh = w;
+      }
+      if (y + hh > canvasH) {
+        hh = canvasH - y;
+        if (ASPECT_LOCKED_FIELD_KEYS.has(f.field_key)) w = hh;
+      }
       onPatch(
         f.template_field_id,
         {
@@ -809,6 +867,7 @@ function PropertiesPanel({
 
   const isImage = field.field_type === "image";
   const label = FIELD_LABELS[field.field_key] ?? field.field_key;
+  const aspectLocked = ASPECT_LOCKED_FIELD_KEYS.has(field.field_key);
   const patch = (p: Partial<FieldRow>) => onPatch(field.template_field_id, p);
 
   return (
@@ -923,16 +982,27 @@ function PropertiesPanel({
           <FieldNum label="X" value={field.x} onChange={(v) => patch({ x: v })} />
           <FieldNum label="Y" value={field.y} onChange={(v) => patch({ y: v })} />
           <FieldNum
-            label="Width"
+            label={aspectLocked ? "Width (= height)" : "Width"}
             value={field.width}
-            onChange={(v) => patch({ width: Math.max(MIN_W, v) })}
+            onChange={(v) => {
+              const w = Math.max(MIN_W, v);
+              patch(aspectLocked ? { width: w, height: w } : { width: w });
+            }}
           />
           <FieldNum
-            label="Height"
+            label={aspectLocked ? "Height (= width)" : "Height"}
             value={field.height}
-            onChange={(v) => patch({ height: Math.max(MIN_H, v) })}
+            onChange={(v) => {
+              const hh = Math.max(MIN_H, v);
+              patch(aspectLocked ? { width: hh, height: hh } : { height: hh });
+            }}
           />
         </div>
+        {aspectLocked && (
+          <p className="mt-2 text-xs text-slate-500">
+            Locked to a square — a stretched QR code does not scan.
+          </p>
+        )}
       </div>
     </aside>
   );

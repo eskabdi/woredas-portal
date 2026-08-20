@@ -70,6 +70,7 @@ export const Route = createFileRoute("/woreda/settings")({
 
 const profileSchema = z.object({
   woreda_name_display: z.string().trim().max(200).optional().or(z.literal("")),
+  woreda_name_display_en: z.string().trim().max(200).optional().or(z.literal("")),
   contact_phone: z
     .string()
     .trim()
@@ -159,6 +160,7 @@ function SettingsPage() {
     resolver: zodResolver(profileSchema),
     defaultValues: {
       woreda_name_display: "",
+      woreda_name_display_en: "",
       contact_phone: "",
       contact_email: "",
       address_line: "",
@@ -174,6 +176,7 @@ function SettingsPage() {
     if (!s) return;
     form.reset({
       woreda_name_display: s.woreda_name_display ?? "",
+      woreda_name_display_en: s.woreda_name_display_en ?? "",
       contact_phone: stripPhonePrefix(s.contact_phone),
       contact_email: s.contact_email ?? "",
       address_line: s.address_line ?? "",
@@ -193,6 +196,7 @@ function SettingsPage() {
       const payload = {
         woreda_id: woredaId,
         woreda_name_display: values.woreda_name_display || null,
+        woreda_name_display_en: values.woreda_name_display_en || null,
         contact_phone: values.contact_phone ? `+251${values.contact_phone}` : null,
         contact_email: values.contact_email || null,
         address_line: values.address_line || null,
@@ -252,12 +256,23 @@ function SettingsPage() {
           <Card className="p-6">
             <SectionTitle titleAm="መሰረታዊ መረጃ" titleEn="General Info" />
             <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-              <Field labelAm="የወረዳ ስም" labelEn="Woreda Name">
+              <Field labelAm="የወረዳ ስም (አማርኛ)" labelEn="Woreda Name (Amharic)">
                 <Input
                   {...form.register("woreda_name_display")}
                   placeholder={woreda?.woreda_name_am ?? ""}
                 />
               </Field>
+              <Field labelAm="የወረዳ ስም (እንግሊዝኛ)" labelEn="Woreda Name (English)">
+                <Input
+                  {...form.register("woreda_name_display_en")}
+                  placeholder={woreda?.woreda_name_en ?? ""}
+                />
+              </Field>
+              <p className="col-span-full text-xs text-slate-500">
+                Shown as the issuing entity — including as "place of issue" on
+                residence ID cards — instead of the official registry name below.
+                Leave blank to use the registry name.
+              </p>
             </div>
           </Card>
 
