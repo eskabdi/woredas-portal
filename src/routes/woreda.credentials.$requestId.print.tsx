@@ -106,6 +106,9 @@ const mmToPx = (mm: number) => Math.round((mm / 25.4) * 96);
 const QR_PRINT_MM = 24;
 const QR_PRINT_PX = mmToPx(QR_PRINT_MM);
 
+/** Physical width of a CR80 card, used to turn template canvas px into mm. */
+const CARD_WIDTH_MM = 85.6;
+
 // If the QR encoder still throws (e.g. payload exceeds even level-L v40
 // capacity ~2953 binary chars), render a visible red error placeholder —
 // NOT a plain-text fallback QR.
@@ -852,6 +855,8 @@ function PrintPage() {
               values={buildFieldValues(request, cred, resident, household, kebele, woreda, dobEthiopian, dobGregorian, issueEth, expiryEth)}
               photoUrl={photoUrl}
               qrPayload={null}
+              credentialNumber={cred?.credential_number ?? null}
+              bgUrl={frontBgUrl}
             />
           </div>
           <div>
@@ -861,6 +866,8 @@ function PrintPage() {
               values={buildFieldValues(request, cred, resident, household, kebele, woreda, dobEthiopian, dobGregorian, issueEth, expiryEth)}
               photoUrl={photoUrl}
               qrPayload={cred.qr_payload as string | null}
+              credentialNumber={cred?.credential_number ?? null}
+              bgUrl={backBgUrl}
             />
           </div>
         </div>
@@ -1150,12 +1157,16 @@ function PrintableCard({
   values,
   photoUrl,
   qrPayload,
+  credentialNumber,
+  bgUrl,
 }: {
   side: "front" | "back";
   fields: TemplateField[];
   values: Record<string, string>;
   photoUrl: string | null;
   qrPayload: string | null;
+  credentialNumber: string | null;
+  bgUrl: string | null;
 }) {
   const canvasW = fields[0]?.canvas_width ?? 1688;
   const canvasH = fields[0]?.canvas_height ?? 1063;
@@ -1163,9 +1174,20 @@ function PrintableCard({
     <div
       style={{
         position: "relative",
-        width: "5.63in",
+        // Physical width, not a DPI guess: the template canvas is ~1688px wide
+        // for an 85.6mm CR80 card, which is ~500dpi. "5.63in" here used to
+        // assume 300dpi (1688/300), rendering the card at 1.67x its real size —
+        // on an actual 85.6mm-wide printer that clipped everything past the
+        // top-left ~60%, including any field placed in the lower portion of
+        // the canvas.
+        width: `${CARD_WIDTH_MM}mm`,
         aspectRatio: `${canvasW} / ${canvasH}`,
-        background: "linear-gradient(135deg,#eff6ff,#dbeafe 60%,#bfdbfe)",
+        // The uploaded, super-admin-activated template artwork is what actually
+        // prints. The gradient is only a placeholder for a woreda that hasn't
+        // set one yet — printing that as-is would ship a blank card.
+        background: bgUrl
+          ? `url(${bgUrl}) center/cover no-repeat`
+          : "linear-gradient(135deg,#eff6ff,#dbeafe 60%,#bfdbfe)",
         fontFamily: "'Noto Sans Ethiopic','Inter',system-ui,sans-serif",
         overflow: "hidden",
       }}
@@ -1181,6 +1203,22 @@ function PrintableCard({
             width: `${(Number(f.width) / canvasW) * 100}%`,
             height: `${(Number(f.height) / canvasH) * 100}%`,
           };
+          if (f.field_key === "barcode") {
+            // This is the surface that actually prints, so the density check
+            // has to run against the field's real millimetre width on the card,
+            // not the pixels it happens to occupy on screen.
+            const widthMm = (Number(f.width) / canvasW) * CARD_WIDTH_MM;
+            return (
+              <div key={f.field_key} style={{ ...common, background: "#fff" }}>
+                <CredentialBarcode
+                  credentialNumber={credentialNumber}
+                  widthMm={widthMm}
+                  fill
+                  showValue={false}
+                />
+              </div>
+            );
+          }
           if (f.field_key === "photo") {
             return (
               <div key={f.field_key} style={{ ...common, background: "#e2e8f0", overflow: "hidden" }}>

@@ -62,6 +62,13 @@ export function renderCredentialBarcode(
   svg: SVGSVGElement,
   value: string,
   widthMm: number = BARCODE_WIDTH_MM,
+  /**
+   * CSS width to render at, when the barcode has to fill a container rather
+   * than size itself — the template-driven card positions fields as percentages
+   * of a canvas. `widthMm` still governs the density check, because that is the
+   * size the card is physically printed at.
+   */
+  cssWidth?: string,
 ): BarcodeMetrics {
   if (!/^\d+$/.test(value)) {
     throw new Error(`Credential barcode expects digits only, got "${value}"`);
@@ -93,8 +100,8 @@ export function renderCredentialBarcode(
 
   // Scale to physical units: the viewBox keeps the module grid intact while the
   // width/height attributes fix how large it actually prints.
-  svg.setAttribute("width", `${widthMm}mm`);
-  svg.setAttribute("height", `${BARCODE_HEIGHT_MM}mm`);
+  svg.setAttribute("width", cssWidth ?? `${widthMm}mm`);
+  svg.setAttribute("height", cssWidth ? "100%" : `${BARCODE_HEIGHT_MM}mm`);
   svg.setAttribute("preserveAspectRatio", "none");
   svg.setAttribute("shape-rendering", "crispEdges");
 

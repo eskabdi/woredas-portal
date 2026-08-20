@@ -17,10 +17,13 @@ export function CredentialBarcode({
   credentialNumber,
   widthMm = BARCODE_WIDTH_MM,
   showValue = true,
+  fill = false,
 }: {
   credentialNumber: string | null | undefined;
   widthMm?: number;
   showValue?: boolean;
+  /** Fill the parent box instead of sizing in millimetres, for template cards. */
+  fill?: boolean;
 }) {
   const ref = useRef<SVGSVGElement | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -29,12 +32,12 @@ export function CredentialBarcode({
   useEffect(() => {
     if (!ref.current || !digits) return;
     try {
-      renderCredentialBarcode(ref.current, digits, widthMm);
+      renderCredentialBarcode(ref.current, digits, widthMm, fill ? "100%" : undefined);
       setError(null);
     } catch (e) {
       setError((e as Error).message);
     }
-  }, [digits, widthMm]);
+  }, [digits, widthMm, fill]);
 
   if (!digits) {
     return (
@@ -53,7 +56,7 @@ export function CredentialBarcode({
   }
 
   return (
-    <div className="flex flex-col items-center">
+    <div className={fill ? "flex h-full w-full flex-col items-center" : "flex flex-col items-center"}>
       <svg ref={ref} role="img" aria-label={`Credential number ${digits}`} />
       {showValue && (
         <div className="mt-0.5 font-mono text-[8px] tracking-[0.15em] text-slate-700">
