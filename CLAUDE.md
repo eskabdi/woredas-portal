@@ -276,14 +276,23 @@ Domain tables: `woreda`, `kebele`, `app_user`, `woreda_settings`,
 Views: `approval_queue_v` (a union of everything awaiting action across the
 workflow tables — a read model, never written to) and `household_member_roster`.
 
-> `approval_queue_v` is designed to run `security_invoker` so the underlying
-> tables' RLS applies, and `/woreda/approvals` queries it with **no**
-> `woreda_id` filter on that assumption. The baseline migration creates the view
-> without that option — `pg_get_viewdef` drops reloptions, so the dump lost it.
-> Check the deployed database and add
-> `ALTER VIEW public.approval_queue_v SET (security_invoker = on);` in a
-> migration if it is missing; without it the queue evaluates RLS as the view
-> owner and can return other tenants' rows.
+> **Views need `security_invoker` explicitly, and the schema dump does not
+> carry it.** `pg_get_viewdef()` omits reloptions, so the dump behind
+> `00000000000000_baseline.sql` silently dropped the option from both views.
+> Both are owned by `postgres`, which has `rolbypassrls` — so a view without
+> `security_invoker` runs with the owner's privileges and RLS on the underlying
+> tables never applies to anyone selecting through it.
+>
+> Confirmed on the deployed project as role `anon`: `resident` directly
+> returned 0 rows (RLS applying), `household_member_roster` returned 1 (RLS
+> bypassed). `migrations/00000000000002_view_security_invoker.sql` restores the
+> option on both.
+>
+> When adding a view: set `security_invoker = on` in the same migration, then
+> verify with
+> `SELECT relname, reloptions FROM pg_class WHERE relkind = 'v';` — and if you
+> ever regenerate a baseline with `scripts/dump-schema.sql`, re-apply the option
+> afterward or the rebuild reintroduces the hole.
 
 RLS helpers, all `SECURITY DEFINER` with a pinned `search_path`:
 `get_user_woreda_id()`, `is_super_admin()`, `is_tenant_admin()`,
