@@ -75,9 +75,7 @@ function LoginPage() {
       .maybeSingle();
 
     if (userErr || !userRow) {
-      setSubmitError(
-        "Your account is not provisioned in the system. Contact your administrator.",
-      );
+      setSubmitError("Your account is not provisioned in the system. Contact your administrator.");
       await supabase.auth.signOut();
       setIsSubmitting(false);
       return;
@@ -101,9 +99,7 @@ function LoginPage() {
       if (appUser.status === "pending") {
         navigate({ to: "/set-password" });
       } else {
-        setSubmitError(
-          "This account is not active. Contact your administrator.",
-        );
+        setSubmitError("This account is not active. Contact your administrator.");
         await supabase.auth.signOut();
       }
       return;
@@ -132,9 +128,7 @@ function LoginPage() {
             <h1 className="font-noto-ethiopic text-2xl font-bold text-slate-900">
               ወረዳ አስተዳደር ሥርዓት
             </h1>
-            <p className="mt-1 text-sm text-slate-500">
-              Woreda Administration ERP — Harari Region
-            </p>
+            <p className="mt-1 text-sm text-slate-500">Woreda Administration ERP — Harari Region</p>
           </div>
 
           <div className="my-6 border-t border-slate-200" />
@@ -149,9 +143,7 @@ function LoginPage() {
                 {...register("email")}
                 className="mt-1"
               />
-              {errors.email && (
-                <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>
-              )}
+              {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>}
             </div>
 
             <div>

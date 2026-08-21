@@ -40,7 +40,11 @@ function NewResidentPage() {
     mode: "onBlur",
   });
 
-  const { handleSubmit, formState: { errors }, trigger } = form;
+  const {
+    handleSubmit,
+    formState: { errors },
+    trigger,
+  } = form;
 
   const onInvalid = () => {
     const firstKey = Object.keys(errors)[0];

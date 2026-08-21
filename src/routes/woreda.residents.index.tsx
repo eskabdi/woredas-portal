@@ -56,8 +56,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { P } from "@/config/permissions";
 import { formatEthiopianDateShort } from "@/utils/ethiopianCalendar";
 
-
-
 type SexFilter = "all" | "male" | "female";
 type StatusFilter = "all" | "active" | "inactive" | "deceased" | "moved_out";
 
@@ -136,7 +134,9 @@ function ResidentsListPage() {
         ].join(","),
       );
     }
-    return q.order(sortColumn(sort.field), { ascending: sort.dir === "asc" }).order("resident_id", { ascending: true });
+    return q
+      .order(sortColumn(sort.field), { ascending: sort.dir === "asc" })
+      .order("resident_id", { ascending: true });
   };
 
   const residentsQuery = useQuery({
@@ -201,7 +201,9 @@ function ResidentsListPage() {
     {
       header: "ቀበሌ / Kebele",
       value: (r) => {
-        const hh = r.household as { kebele?: { kebele_name_am: string; kebele_number: string } | null } | null;
+        const hh = r.household as {
+          kebele?: { kebele_name_am: string; kebele_number: string } | null;
+        } | null;
         return hh?.kebele ? `${hh.kebele.kebele_number} — ${hh.kebele.kebele_name_am}` : "";
       },
     },
@@ -355,104 +357,132 @@ function ResidentsListPage() {
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
             <tr>
-              <SortableTh field="resident_number" sort={sort}><span className="font-noto-ethiopic">የመዝገብ ቁጥር</span> <span className="ml-1 text-slate-400 normal-case">/ Resident #</span></SortableTh>
-              <SortableTh field="full_name" sort={sort}><span className="font-noto-ethiopic">ሙሉ ስም</span> <span className="ml-1 text-slate-400 normal-case">/ Full Name</span></SortableTh>
-              <th className="px-4 py-3"><span className="font-noto-ethiopic">ጾታ</span> <span className="ml-1 text-slate-400 normal-case">/ Sex</span></th>
-              <SortableTh field="date_of_birth" sort={sort}><span className="font-noto-ethiopic">የልደት ቀን</span> <span className="ml-1 text-slate-400 normal-case">/ DOB</span></SortableTh>
-              <th className="px-4 py-3"><span className="font-noto-ethiopic">ቀበሌ</span> <span className="ml-1 text-slate-400 normal-case">/ Kebele</span></th>
-              <SortableTh field="residency_status" sort={sort}><span className="font-noto-ethiopic">ሁኔታ</span> <span className="ml-1 text-slate-400 normal-case">/ Status</span></SortableTh>
-              <SortableTh field="updated_at" sort={sort}><span className="font-noto-ethiopic">የተሻሻለበት</span> <span className="ml-1 text-slate-400 normal-case">/ Updated</span></SortableTh>
+              <SortableTh field="resident_number" sort={sort}>
+                <span className="font-noto-ethiopic">የመዝገብ ቁጥር</span>{" "}
+                <span className="ml-1 text-slate-400 normal-case">/ Resident #</span>
+              </SortableTh>
+              <SortableTh field="full_name" sort={sort}>
+                <span className="font-noto-ethiopic">ሙሉ ስም</span>{" "}
+                <span className="ml-1 text-slate-400 normal-case">/ Full Name</span>
+              </SortableTh>
+              <th className="px-4 py-3">
+                <span className="font-noto-ethiopic">ጾታ</span>{" "}
+                <span className="ml-1 text-slate-400 normal-case">/ Sex</span>
+              </th>
+              <SortableTh field="date_of_birth" sort={sort}>
+                <span className="font-noto-ethiopic">የልደት ቀን</span>{" "}
+                <span className="ml-1 text-slate-400 normal-case">/ DOB</span>
+              </SortableTh>
+              <th className="px-4 py-3">
+                <span className="font-noto-ethiopic">ቀበሌ</span>{" "}
+                <span className="ml-1 text-slate-400 normal-case">/ Kebele</span>
+              </th>
+              <SortableTh field="residency_status" sort={sort}>
+                <span className="font-noto-ethiopic">ሁኔታ</span>{" "}
+                <span className="ml-1 text-slate-400 normal-case">/ Status</span>
+              </SortableTh>
+              <SortableTh field="updated_at" sort={sort}>
+                <span className="font-noto-ethiopic">የተሻሻለበት</span>{" "}
+                <span className="ml-1 text-slate-400 normal-case">/ Updated</span>
+              </SortableTh>
               <th className="font-noto-ethiopic px-4 py-3 text-right">ድርጊቶች / Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {residentsQuery.isLoading && <TableSkeletonRows cols={8} />}
             {residentsQuery.isError && (
-              <TableErrorRow cols={8} error={residentsQuery.error} onRetry={() => residentsQuery.refetch()} />
-            )}
-            {!residentsQuery.isLoading && !residentsQuery.isError && (residentsQuery.data?.rows.length ?? 0) === 0 && (
-              <TableEmptyRow
+              <TableErrorRow
                 cols={8}
-                filtered={filtersActive}
-                onClearFilters={filtersActive ? clearFilters : undefined}
-                labelAm="እስካሁን የተመዘገበ ነዋሪ የለም"
-                labelEn="No residents registered yet"
-              >
-                {!filtersActive && (
-                  <PermissionGate permission={P.RESIDENT_CREATE}>
-                    <Link to="/woreda/residents/new" className="mt-2">
-                      <Button className="bg-blue-700 text-white hover:bg-blue-800">
-                        <UserPlus className="mr-2 h-4 w-4" />
-                        <span className="font-noto-ethiopic">አዲስ ነዋሪ መዝግብ</span>
-                      </Button>
-                    </Link>
-                  </PermissionGate>
-                )}
-              </TableEmptyRow>
+                error={residentsQuery.error}
+                onRetry={() => residentsQuery.refetch()}
+              />
             )}
-            {!residentsQuery.isLoading && !residentsQuery.isError && residentsQuery.data?.rows.map((r) => {
-              const hh = r.household as
-                | { kebele?: { kebele_name_am: string; kebele_number: string } | null }
-                | null;
-              return (
-                <tr
-                  key={r.resident_id}
-                  className="cursor-pointer transition hover:bg-blue-50/40"
-                  onClick={() =>
-                    navigate({
-                      to: "/woreda/residents/$residentId",
-                      params: { residentId: r.resident_id },
-                    })
-                  }
+            {!residentsQuery.isLoading &&
+              !residentsQuery.isError &&
+              (residentsQuery.data?.rows.length ?? 0) === 0 && (
+                <TableEmptyRow
+                  cols={8}
+                  filtered={filtersActive}
+                  onClearFilters={filtersActive ? clearFilters : undefined}
+                  labelAm="እስካሁን የተመዘገበ ነዋሪ የለም"
+                  labelEn="No residents registered yet"
                 >
-                  <td className="px-4 py-3 font-mono text-xs text-slate-700">{r.resident_number}</td>
-                  <td className="px-4 py-3">
-                    <div className="font-noto-ethiopic font-medium text-slate-900">
-                      {r.full_name_am || "—"}
-                    </div>
-                    <div className="text-xs text-slate-500">{r.full_name}</div>
-                  </td>
-                  <td className="font-noto-ethiopic px-4 py-3">
-                    {r.sex === "male" ? "ወንድ" : r.sex === "female" ? "ሴት" : r.sex}
-                  </td>
-                  <td className="font-noto-ethiopic px-4 py-3">
-                    {r.date_of_birth ? formatEthiopianDateShort(new Date(r.date_of_birth)) : "—"}
-                  </td>
-                  <td className="font-noto-ethiopic px-4 py-3">
-                    {hh?.kebele
-                      ? `${hh.kebele.kebele_number} — ${hh.kebele.kebele_name_am}`
-                      : "—"}
-                  </td>
-                  <td className="px-4 py-3">
-                    <StatusChip status={r.residency_status} />
-                  </td>
-                  <td className="px-4 py-3 text-xs text-slate-500">
-                    {new Date(r.updated_at).toLocaleDateString()}
-                  </td>
-                  <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                    <RowActions
-                      resident={{
-                        resident_id: r.resident_id,
-                        full_name: r.full_name,
-                        full_name_am: r.full_name_am,
-                        residency_status: r.residency_status,
-                        active_flag: r.active_flag,
-                        current_household_id: r.current_household_id,
-                      }}
-                      woredaId={woredaId as string}
-                      actorUserId={actorUserId}
-                      onChanged={() =>
-                        queryClient.invalidateQueries({ queryKey: ["residents"] })
-                      }
-                    />
-                  </td>
-                </tr>
-              );
-            })}
+                  {!filtersActive && (
+                    <PermissionGate permission={P.RESIDENT_CREATE}>
+                      <Link to="/woreda/residents/new" className="mt-2">
+                        <Button className="bg-blue-700 text-white hover:bg-blue-800">
+                          <UserPlus className="mr-2 h-4 w-4" />
+                          <span className="font-noto-ethiopic">አዲስ ነዋሪ መዝግብ</span>
+                        </Button>
+                      </Link>
+                    </PermissionGate>
+                  )}
+                </TableEmptyRow>
+              )}
+            {!residentsQuery.isLoading &&
+              !residentsQuery.isError &&
+              residentsQuery.data?.rows.map((r) => {
+                const hh = r.household as {
+                  kebele?: { kebele_name_am: string; kebele_number: string } | null;
+                } | null;
+                return (
+                  <tr
+                    key={r.resident_id}
+                    className="cursor-pointer transition hover:bg-blue-50/40"
+                    onClick={() =>
+                      navigate({
+                        to: "/woreda/residents/$residentId",
+                        params: { residentId: r.resident_id },
+                      })
+                    }
+                  >
+                    <td className="px-4 py-3 font-mono text-xs text-slate-700">
+                      {r.resident_number}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="font-noto-ethiopic font-medium text-slate-900">
+                        {r.full_name_am || "—"}
+                      </div>
+                      <div className="text-xs text-slate-500">{r.full_name}</div>
+                    </td>
+                    <td className="font-noto-ethiopic px-4 py-3">
+                      {r.sex === "male" ? "ወንድ" : r.sex === "female" ? "ሴት" : r.sex}
+                    </td>
+                    <td className="font-noto-ethiopic px-4 py-3">
+                      {r.date_of_birth ? formatEthiopianDateShort(new Date(r.date_of_birth)) : "—"}
+                    </td>
+                    <td className="font-noto-ethiopic px-4 py-3">
+                      {hh?.kebele
+                        ? `${hh.kebele.kebele_number} — ${hh.kebele.kebele_name_am}`
+                        : "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusChip status={r.residency_status} />
+                    </td>
+                    <td className="px-4 py-3 text-xs text-slate-500">
+                      {new Date(r.updated_at).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                      <RowActions
+                        resident={{
+                          resident_id: r.resident_id,
+                          full_name: r.full_name,
+                          full_name_am: r.full_name_am,
+                          residency_status: r.residency_status,
+                          active_flag: r.active_flag,
+                          current_household_id: r.current_household_id,
+                        }}
+                        woredaId={woredaId as string}
+                        actorUserId={actorUserId}
+                        onChanged={() => queryClient.invalidateQueries({ queryKey: ["residents"] })}
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
           </tbody>
         </table>
       </div>
-
 
       <TablePagination
         page={page}
@@ -494,7 +524,6 @@ function FilterGroup({
     </div>
   );
 }
-
 
 interface RowResident {
   resident_id: string;
@@ -700,10 +729,7 @@ function RowActions({
             </DropdownMenuItem>
           )}
           {showDeactivate && (
-            <DropdownMenuItem
-              className="text-slate-700"
-              onClick={() => setMode("deactivate")}
-            >
+            <DropdownMenuItem className="text-slate-700" onClick={() => setMode("deactivate")}>
               <span className="font-noto-ethiopic">ቀይር (ኢ-ንቁ)</span>
               <span className="ml-2 text-xs text-slate-500">/ Set Inactive</span>
             </DropdownMenuItem>
@@ -883,9 +909,7 @@ function AddToHouseholdDialog({
     queryFn: async () => {
       let q = supabase
         .from("household")
-        .select(
-          "household_id, house_number, kebele:kebele_id(kebele_name_am, kebele_number)",
-        )
+        .select("household_id, house_number, kebele:kebele_id(kebele_name_am, kebele_number)")
         .eq("woreda_id", woredaId)
         .order("house_number", { ascending: true })
         .limit(20);
@@ -905,9 +929,7 @@ function AddToHouseholdDialog({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("household")
-        .select(
-          "household_id, house_number, kebele:kebele_id(kebele_name_am, kebele_number)",
-        )
+        .select("household_id, house_number, kebele:kebele_id(kebele_name_am, kebele_number)")
         .eq("household_id", resident.current_household_id as string)
         .maybeSingle();
       if (error) throw error;
@@ -970,9 +992,7 @@ function AddToHouseholdDialog({
             autoFocus
           />
           <div className="max-h-64 overflow-y-auto rounded-md border border-slate-200">
-            {search.isLoading && (
-              <div className="p-3 text-sm text-slate-500">Loading…</div>
-            )}
+            {search.isLoading && <div className="p-3 text-sm text-slate-500">Loading…</div>}
             {!search.isLoading && (search.data?.length ?? 0) === 0 && (
               <div className="p-3 text-sm text-slate-500">
                 <span className="font-noto-ethiopic">ምንም አልተገኘም / No households found</span>
@@ -1017,4 +1037,3 @@ function AddToHouseholdDialog({
     </Dialog>
   );
 }
-

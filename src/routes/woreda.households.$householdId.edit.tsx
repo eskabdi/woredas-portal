@@ -66,7 +66,15 @@ function EditHouseholdPage() {
     mode: "onBlur",
   });
 
-  const { register, handleSubmit, formState: { errors }, control, setValue, watch, reset } = form;
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    control,
+    setValue,
+    watch,
+    reset,
+  } = form;
 
   // Populate form once data loaded
   useEffect(() => {
@@ -77,7 +85,8 @@ function EditHouseholdPage() {
       kebele_id: (h.kebele_id as string) ?? "",
       house_number: (h.house_number as string) ?? "",
       address_line: (h.address_line as string) ?? "",
-      occupancy_status: (h.occupancy_status as HouseholdFormInput["occupancy_status"]) ?? "occupied",
+      occupancy_status:
+        (h.occupancy_status as HouseholdFormInput["occupancy_status"]) ?? "occupied",
       sub_woreda: (h.sub_woreda as string) ?? "",
       household_head_resident_id: (h.household_head_resident_id as string) ?? "",
       spouse_resident_id: (h.spouse_resident_id as string) ?? "",
@@ -87,7 +96,8 @@ function EditHouseholdPage() {
       email: (h.email as string) ?? "",
       house_type: (h.house_type as HouseholdFormInput["house_type"]) ?? "private",
       house_type_other: (h.house_type_other as string) ?? "",
-      rent_amount: h.rent_amount !== null && h.rent_amount !== undefined ? String(h.rent_amount) : "",
+      rent_amount:
+        h.rent_amount !== null && h.rent_amount !== undefined ? String(h.rent_amount) : "",
       gps_lat: (h.gps_lat as number | null) ?? undefined,
       gps_lng: (h.gps_lng as number | null) ?? undefined,
     } as HouseholdFormInput);
@@ -183,7 +193,10 @@ function EditHouseholdPage() {
     <div className="mx-auto max-w-4xl pb-24">
       <PageHeader icon={Home} titleAm="ቤተሰብ አስተካክል" titleEn="Edit Household" />
 
-      <form onSubmit={handleSubmit((v) => updateMutation.mutate(v), onInvalid)} className="space-y-6">
+      <form
+        onSubmit={handleSubmit((v) => updateMutation.mutate(v), onInvalid)}
+        className="space-y-6"
+      >
         <HouseholdFormFields
           woredaId={woredaId as string}
           control={control}

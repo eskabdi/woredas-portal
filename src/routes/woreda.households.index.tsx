@@ -53,14 +53,14 @@ import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/integrations/supabase/client";
 import { P } from "@/config/permissions";
 
-
 export const Route = createFileRoute("/woreda/households/")({
   ssr: false,
   component: HouseholdsListPage,
 });
 
 type OccupancyFilter = "all" | "occupied" | "vacant" | "demolished" | "transferred";
-type HouseTypeFilter = "all" | "private" | "kebele" | "rental" | "government" | "rented_by_private" | "other";
+type HouseTypeFilter =
+  "all" | "private" | "kebele" | "rental" | "government" | "rented_by_private" | "other";
 
 function HouseholdsListPage() {
   const woredaId = useAuthStore((s) => s.woredaId);
@@ -124,18 +124,25 @@ function HouseholdsListPage() {
     if (houseType !== "all") q = q.eq("house_type", houseType);
     if (search) {
       const escaped = search.replace(/[%,]/g, "");
-      q = q.or(
-        [
-          `house_number.ilike.%${escaped}%`,
-          `address_line.ilike.%${escaped}%`,
-        ].join(","),
-      );
+      q = q.or([`house_number.ilike.%${escaped}%`, `address_line.ilike.%${escaped}%`].join(","));
     }
-    return q.order(sortColumn(sort.field), { ascending: sort.dir === "asc" }).order("household_id", { ascending: true });
+    return q
+      .order(sortColumn(sort.field), { ascending: sort.dir === "asc" })
+      .order("household_id", { ascending: true });
   };
 
   const householdsQuery = useQuery({
-    queryKey: ["households", woredaId, search, kebeleId, occupancy, houseType, page, pageSize, sort.key],
+    queryKey: [
+      "households",
+      woredaId,
+      search,
+      kebeleId,
+      occupancy,
+      houseType,
+      page,
+      pageSize,
+      sort.key,
+    ],
     enabled: !!woredaId && hasPermission(P.HOUSEHOLD_READ),
     queryFn: async () => {
       const q = buildHouseholdsQuery().range(page * pageSize, page * pageSize + pageSize - 1);
@@ -184,7 +191,10 @@ function HouseholdsListPage() {
       header: "ቀበሌ / Kebele",
       value: (h) => (h.kebele ? `${h.kebele.kebele_number} — ${h.kebele.kebele_name_am}` : ""),
     },
-    { header: "የቤተሰብ ኃላፊ / Household Head", value: (h) => h.head?.full_name_am || h.head?.full_name },
+    {
+      header: "የቤተሰብ ኃላፊ / Household Head",
+      value: (h) => h.head?.full_name_am || h.head?.full_name,
+    },
     { header: "አባላት / Members", value: (h) => h.member_count?.[0]?.count ?? 0 },
     { header: "የቤት አይነት / House Type", value: (h) => h.house_type },
     { header: "ሁኔታ / Status", value: (h) => h.occupancy_status },
@@ -341,88 +351,132 @@ function HouseholdsListPage() {
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
             <tr>
-              <SortableTh field="house_number" sort={sort}><span className="font-noto-ethiopic">የቤት ቁጥር</span> <span className="ml-1 text-slate-400 normal-case">/ House #</span></SortableTh>
-              <th className="px-4 py-3"><span className="font-noto-ethiopic">ቀበሌ</span> <span className="ml-1 text-slate-400 normal-case">/ Kebele</span></th>
-              <th className="px-4 py-3"><span className="font-noto-ethiopic">የቤተሰብ ኃላፊ</span> <span className="ml-1 text-slate-400 normal-case">/ Household Head</span></th>
-              <th className="px-4 py-3 text-center"><span className="font-noto-ethiopic">አባላት</span> <span className="ml-1 text-slate-400 normal-case">/ Members</span></th>
-              <SortableTh field="house_type" sort={sort}><span className="font-noto-ethiopic">የቤት አይነት</span> <span className="ml-1 text-slate-400 normal-case">/ House Type</span></SortableTh>
-              <SortableTh field="occupancy_status" sort={sort}><span className="font-noto-ethiopic">ሁኔታ</span> <span className="ml-1 text-slate-400 normal-case">/ Status</span></SortableTh>
-              <SortableTh field="updated_at" sort={sort}><span className="font-noto-ethiopic">የተሻሻለበት</span> <span className="ml-1 text-slate-400 normal-case">/ Updated</span></SortableTh>
+              <SortableTh field="house_number" sort={sort}>
+                <span className="font-noto-ethiopic">የቤት ቁጥር</span>{" "}
+                <span className="ml-1 text-slate-400 normal-case">/ House #</span>
+              </SortableTh>
+              <th className="px-4 py-3">
+                <span className="font-noto-ethiopic">ቀበሌ</span>{" "}
+                <span className="ml-1 text-slate-400 normal-case">/ Kebele</span>
+              </th>
+              <th className="px-4 py-3">
+                <span className="font-noto-ethiopic">የቤተሰብ ኃላፊ</span>{" "}
+                <span className="ml-1 text-slate-400 normal-case">/ Household Head</span>
+              </th>
+              <th className="px-4 py-3 text-center">
+                <span className="font-noto-ethiopic">አባላት</span>{" "}
+                <span className="ml-1 text-slate-400 normal-case">/ Members</span>
+              </th>
+              <SortableTh field="house_type" sort={sort}>
+                <span className="font-noto-ethiopic">የቤት አይነት</span>{" "}
+                <span className="ml-1 text-slate-400 normal-case">/ House Type</span>
+              </SortableTh>
+              <SortableTh field="occupancy_status" sort={sort}>
+                <span className="font-noto-ethiopic">ሁኔታ</span>{" "}
+                <span className="ml-1 text-slate-400 normal-case">/ Status</span>
+              </SortableTh>
+              <SortableTh field="updated_at" sort={sort}>
+                <span className="font-noto-ethiopic">የተሻሻለበት</span>{" "}
+                <span className="ml-1 text-slate-400 normal-case">/ Updated</span>
+              </SortableTh>
               <th className="font-noto-ethiopic px-4 py-3 text-right">ድርጊቶች / Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {householdsQuery.isLoading && <TableSkeletonRows cols={8} />}
             {householdsQuery.isError && (
-              <TableErrorRow cols={8} error={householdsQuery.error} onRetry={() => householdsQuery.refetch()} />
-            )}
-            {!householdsQuery.isLoading && !householdsQuery.isError && (householdsQuery.data?.rows.length ?? 0) === 0 && (
-              <TableEmptyRow
+              <TableErrorRow
                 cols={8}
-                filtered={filtersActive}
-                onClearFilters={filtersActive ? clearFilters : undefined}
-                labelAm="እስካሁን የተመዘገበ ቤተሰብ የለም"
-                labelEn="No households registered yet"
-              >
-                {!filtersActive && (
-                  <PermissionGate permission={P.HOUSEHOLD_CREATE}>
-                    <Link to="/woreda/households/new" className="mt-2">
-                      <Button className="bg-blue-700 text-white hover:bg-blue-800">
-                        <Plus className="mr-2 h-4 w-4" />
-                        <span className="font-noto-ethiopic">አዲስ ቤተሰብ መዝግብ</span>
-                      </Button>
-                    </Link>
-                  </PermissionGate>
-                )}
-              </TableEmptyRow>
+                error={householdsQuery.error}
+                onRetry={() => householdsQuery.refetch()}
+              />
             )}
-            {!householdsQuery.isLoading && !householdsQuery.isError && householdsQuery.data?.rows.map((h) => {
-              const kebele = h.kebele as unknown as { kebele_number: string; kebele_name_am: string } | null;
-              const head = h.head as unknown as { full_name_am: string | null } | null;
-              const memberAgg = h.member_count as unknown as { count: number }[] | null;
-              const memberCount = memberAgg?.[0]?.count ?? 0;
-              return (
-                <tr
-                  key={h.household_id}
-                  className="cursor-pointer transition hover:bg-blue-50/40"
-                  onClick={() =>
-                    navigate({
-                      to: "/woreda/households/$householdId",
-                      params: { householdId: h.household_id },
-                    })
-                  }
+            {!householdsQuery.isLoading &&
+              !householdsQuery.isError &&
+              (householdsQuery.data?.rows.length ?? 0) === 0 && (
+                <TableEmptyRow
+                  cols={8}
+                  filtered={filtersActive}
+                  onClearFilters={filtersActive ? clearFilters : undefined}
+                  labelAm="እስካሁን የተመዘገበ ቤተሰብ የለም"
+                  labelEn="No households registered yet"
                 >
-                  <td className="px-4 py-3 font-mono text-sm font-medium text-slate-900">{h.house_number}</td>
-                  <td className="font-noto-ethiopic px-4 py-3 text-sm">
-                    {kebele ? `${kebele.kebele_number} — ${kebele.kebele_name_am}` : "—"}
-                  </td>
-                  <td className="font-noto-ethiopic px-4 py-3 text-sm">{head?.full_name_am || "—"}</td>
-                  <td className="px-4 py-3 text-center text-sm font-medium text-slate-700">{memberCount}</td>
-                  <td className="px-4 py-3">
-                    {h.house_type ? <StatusChip status={h.house_type} /> : <span className="text-slate-400">—</span>}
-                  </td>
-                  <td className="px-4 py-3">
-                    <StatusChip status={h.occupancy_status} />
-                  </td>
-                  <td className="px-4 py-3 text-xs text-slate-500">
-                    {new Date(h.updated_at).toLocaleDateString()}
-                  </td>
-                  <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                    <RowActions
-                      household={{
-                        household_id: h.household_id,
-                        house_number: h.house_number,
-                        occupancy_status: h.occupancy_status,
-                      }}
-                      woredaId={woredaId as string}
-                      actorUserId={actorUserId}
-                      onViewLog={() => setLogForHouseholdId(h.household_id)}
-                      onChanged={() => queryClient.invalidateQueries({ queryKey: ["households"] })}
-                    />
-                  </td>
-                </tr>
-              );
-            })}
+                  {!filtersActive && (
+                    <PermissionGate permission={P.HOUSEHOLD_CREATE}>
+                      <Link to="/woreda/households/new" className="mt-2">
+                        <Button className="bg-blue-700 text-white hover:bg-blue-800">
+                          <Plus className="mr-2 h-4 w-4" />
+                          <span className="font-noto-ethiopic">አዲስ ቤተሰብ መዝግብ</span>
+                        </Button>
+                      </Link>
+                    </PermissionGate>
+                  )}
+                </TableEmptyRow>
+              )}
+            {!householdsQuery.isLoading &&
+              !householdsQuery.isError &&
+              householdsQuery.data?.rows.map((h) => {
+                const kebele = h.kebele as unknown as {
+                  kebele_number: string;
+                  kebele_name_am: string;
+                } | null;
+                const head = h.head as unknown as { full_name_am: string | null } | null;
+                const memberAgg = h.member_count as unknown as { count: number }[] | null;
+                const memberCount = memberAgg?.[0]?.count ?? 0;
+                return (
+                  <tr
+                    key={h.household_id}
+                    className="cursor-pointer transition hover:bg-blue-50/40"
+                    onClick={() =>
+                      navigate({
+                        to: "/woreda/households/$householdId",
+                        params: { householdId: h.household_id },
+                      })
+                    }
+                  >
+                    <td className="px-4 py-3 font-mono text-sm font-medium text-slate-900">
+                      {h.house_number}
+                    </td>
+                    <td className="font-noto-ethiopic px-4 py-3 text-sm">
+                      {kebele ? `${kebele.kebele_number} — ${kebele.kebele_name_am}` : "—"}
+                    </td>
+                    <td className="font-noto-ethiopic px-4 py-3 text-sm">
+                      {head?.full_name_am || "—"}
+                    </td>
+                    <td className="px-4 py-3 text-center text-sm font-medium text-slate-700">
+                      {memberCount}
+                    </td>
+                    <td className="px-4 py-3">
+                      {h.house_type ? (
+                        <StatusChip status={h.house_type} />
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusChip status={h.occupancy_status} />
+                    </td>
+                    <td className="px-4 py-3 text-xs text-slate-500">
+                      {new Date(h.updated_at).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                      <RowActions
+                        household={{
+                          household_id: h.household_id,
+                          house_number: h.house_number,
+                          occupancy_status: h.occupancy_status,
+                        }}
+                        woredaId={woredaId as string}
+                        actorUserId={actorUserId}
+                        onViewLog={() => setLogForHouseholdId(h.household_id)}
+                        onChanged={() =>
+                          queryClient.invalidateQueries({ queryKey: ["households"] })
+                        }
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
           </tbody>
         </table>
       </div>
@@ -436,10 +490,7 @@ function HouseholdsListPage() {
         className="rounded-lg border bg-white"
       />
 
-      <ChangeLogDrawer
-        householdId={logForHouseholdId}
-        onClose={() => setLogForHouseholdId(null)}
-      />
+      <ChangeLogDrawer householdId={logForHouseholdId} onClose={() => setLogForHouseholdId(null)} />
     </div>
   );
 }
@@ -472,7 +523,6 @@ function FilterGroup({
     </div>
   );
 }
-
 
 interface RowHousehold {
   household_id: string;
@@ -591,11 +641,14 @@ function RowActions({
         <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle className="font-noto-ethiopic">ቤተሰብ ኢ-ንቁ አድርግ / Set Household Inactive</DialogTitle>
+              <DialogTitle className="font-noto-ethiopic">
+                ቤተሰብ ኢ-ንቁ አድርግ / Set Household Inactive
+              </DialogTitle>
               <DialogDescription className="font-noto-ethiopic">
                 ቤት ቁጥር <span className="font-mono">{household.house_number}</span> በመንጠቅ ሁኔታ ይቀየራል።
                 <br />
-                House <span className="font-mono">{household.house_number}</span> will be marked vacant.
+                House <span className="font-mono">{household.house_number}</span> will be marked
+                vacant.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-2">
@@ -674,7 +727,9 @@ function ChangeLogDrawer({
                 </span>
               </div>
               {row.clerk_comment && (
-                <p className="font-noto-ethiopic mt-2 text-sm text-slate-700">{row.clerk_comment}</p>
+                <p className="font-noto-ethiopic mt-2 text-sm text-slate-700">
+                  {row.clerk_comment}
+                </p>
               )}
             </div>
           ))}

@@ -27,7 +27,6 @@ import {
 import { exportRowsToCsv, exportRowsToPdf, type TableColumn } from "@/utils/tableExport";
 import { useReportBranding } from "@/hooks/useReportBranding";
 
-
 const REQUEST_TYPES: { value: string; label: string }[] = [
   { value: "all", label: "ሁሉም / All" },
   { value: "new_issue", label: "አዲስ / New Issue" },
@@ -52,7 +51,6 @@ const STATUSES: { value: string; label: string }[] = [
   { value: "paid", label: "ተከፍሏል / Paid" },
   { value: "closed", label: "ተዘግቷል / Closed" },
   { value: "revoked", label: "ተሽሯል / Revoked" },
-
 ];
 
 const CRED_TYPES: { value: string; label: string }[] = [
@@ -144,7 +142,9 @@ function CredentialsListPage() {
       q = q.or(`request_number.ilike.%${escaped}%`);
     }
     const dbColumn = SORT_COLUMN[sort.field] ?? "created_at";
-    q = q.order(dbColumn, { ascending: sort.dir === "asc" }).order("created_at", { ascending: false });
+    q = q
+      .order(dbColumn, { ascending: sort.dir === "asc" })
+      .order("created_at", { ascending: false });
     return q;
   };
 
@@ -192,12 +192,17 @@ function CredentialsListPage() {
   };
   const clearFilters = useClearTableFilters([], resetFilters);
   const filtersActive =
-    !!search || requestType !== "all" || status !== "all" || credentialType !== "all" || !sort.isDefault;
+    !!search ||
+    requestType !== "all" ||
+    status !== "all" ||
+    credentialType !== "all" ||
+    !sort.isDefault;
 
   const filterLabel = useMemo(() => {
     const parts: string[] = [];
     if (search) parts.push(`Search: "${search}"`);
-    if (requestType !== "all") parts.push(`Type: ${REQUEST_TYPE_LABEL[requestType] ?? requestType}`);
+    if (requestType !== "all")
+      parts.push(`Type: ${REQUEST_TYPE_LABEL[requestType] ?? requestType}`);
     if (status !== "all") parts.push(`Status: ${status}`);
     if (credentialType !== "all")
       parts.push(`Credential: ${CRED_TYPE_LABEL[credentialType] ?? credentialType}`);
@@ -383,7 +388,11 @@ function CredentialsListPage() {
           <tbody className="divide-y divide-slate-100">
             {requestsQuery.isLoading && <TableSkeletonRows cols={6} />}
             {requestsQuery.isError && (
-              <TableErrorRow cols={6} error={requestsQuery.error} onRetry={() => requestsQuery.refetch()} />
+              <TableErrorRow
+                cols={6}
+                error={requestsQuery.error}
+                onRetry={() => requestsQuery.refetch()}
+              />
             )}
             {!requestsQuery.isLoading &&
               !requestsQuery.isError &&
@@ -415,9 +424,7 @@ function CredentialsListPage() {
                     })
                   }
                 >
-                  <td className="px-4 py-3 font-mono text-xs text-slate-700">
-                    {r.request_number}
-                  </td>
+                  <td className="px-4 py-3 font-mono text-xs text-slate-700">{r.request_number}</td>
                   <td className="px-4 py-3">
                     <div className="font-noto-ethiopic font-medium text-slate-900">
                       {person?.full_name_am || "—"}
@@ -434,11 +441,8 @@ function CredentialsListPage() {
                   </td>
                   <td className="px-4 py-3">
                     <StatusChip
-                      status={
-                        r.credential?.status === "revoked" ? "revoked" : r.status
-                      }
+                      status={r.credential?.status === "revoked" ? "revoked" : r.status}
                     />
-
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-500">
                     {r.submitted_at

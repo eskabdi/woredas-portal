@@ -46,12 +46,12 @@ Four subagents live in `.claude/agents/`, each holding the detailed rules for on
 surface. Dispatch by what the diff touches — several can apply to one change, and
 they are read-only, so run whichever fit in parallel:
 
-| If the diff touches | Run | It looks for |
-|---|---|---|
-| `supabase/migrations/`, `permissions.ts`, `seed.sql`, any `.upload(` call, a new table or policy | `tenant-isolation-review` | cross-tenant reads, a client gate without its seed rows, a missing storage path prefix |
-| `src/routes/`, a new page, a list or detail view | `portal-conventions-review` | a route missing `ssr: false`, table state in `useState`, Gregorian dates in the woreda portal |
-| `sign-credential/`, the print route, `barcode.ts`, `credentialCryptoConfig.ts`, the template editor | `card-print-review` | invariants whose failure is only visible after cards are physically printed |
-| deploy tooling, `.claude/`, `.env*`, anything after a migration or deploy | `secret-sweep` | a deploy token reaching a commit |
+| If the diff touches                                                                                 | Run                         | It looks for                                                                                  |
+| --------------------------------------------------------------------------------------------------- | --------------------------- | --------------------------------------------------------------------------------------------- |
+| `supabase/migrations/`, `permissions.ts`, `seed.sql`, any `.upload(` call, a new table or policy    | `tenant-isolation-review`   | cross-tenant reads, a client gate without its seed rows, a missing storage path prefix        |
+| `src/routes/`, a new page, a list or detail view                                                    | `portal-conventions-review` | a route missing `ssr: false`, table state in `useState`, Gregorian dates in the woreda portal |
+| `sign-credential/`, the print route, `barcode.ts`, `credentialCryptoConfig.ts`, the template editor | `card-print-review`         | invariants whose failure is only visible after cards are physically printed                   |
+| deploy tooling, `.claude/`, `.env*`, anything after a migration or deploy                           | `secret-sweep`              | a deploy token reaching a commit                                                              |
 
 Always run `secret-sweep` before a push that followed a deploy, whatever else
 changed — that is the finding with no upper bound on cost.
@@ -65,7 +65,7 @@ Order findings so the reader hits the expensive ones first. In this project the
 ladder is:
 
 1. **Cross-tenant data exposure.** A new table without RLS, or a `SECURITY
-   DEFINER` function that trusts a `_woreda_id` argument instead of re-deriving
+DEFINER` function that trusts a `_woreda_id` argument instead of re-deriving
    it from `get_user_woreda_id()`. This is residents' civil registration data —
    a real-world privacy breach, not a bug report.
 2. **A leaked deploy credential.** `SUPABASE_ACCESS_TOKEN` reaches every project
@@ -120,7 +120,7 @@ errors they did not create is how a review gets ignored.
 Each of these looks wrong and is correct. Flagging them is worse than missing a
 real finding, because it teaches the author to discount you:
 
-- **`CREDENTIAL_PUBLIC_KEY_PEM` in `credentialCryptoConfig.ts`** is a *public*
+- **`CREDENTIAL_PUBLIC_KEY_PEM` in `credentialCryptoConfig.ts`** is a _public_
   key and is meant to ship to every verifier. Only the private half is secret.
 - **The Supabase publishable/anon key is a JWT** and is designed to be in the
   client bundle. Before flagging a JWT, decode it and read `role`: `anon` is
@@ -146,12 +146,15 @@ thoroughness.
 **Verdict:** <ship it | fix first | needs a decision>
 
 ### Blocking
+
 - `file.ts:42` — <what breaks, and for whom> → <the fix>
 
 ### Worth fixing
+
 - `file.tsx:88` — <finding> → <fix>
 
 ### Checked and clean
+
 <the invariants you actively verified and found correct — this is signal, not filler>
 ```
 

@@ -106,8 +106,23 @@ export function serviceStatusLabel(status: string) {
 
 /** Ordered workflow stages for the stepper. */
 export function stageIndex(status: string, category: ServiceCategory) {
-  const letter = ["submitted", "under_review", "pending_approval", "approved", "awaiting_payment", "paid", "issued"];
-  const complaint = ["submitted", "under_review", "pending_approval", "approved", "in_progress", "resolved"];
+  const letter = [
+    "submitted",
+    "under_review",
+    "pending_approval",
+    "approved",
+    "awaiting_payment",
+    "paid",
+    "issued",
+  ];
+  const complaint = [
+    "submitted",
+    "under_review",
+    "pending_approval",
+    "approved",
+    "in_progress",
+    "resolved",
+  ];
   const flow = category === "complaint" ? complaint : letter;
   const normalized =
     status === "returned" || status === "approval_returned"

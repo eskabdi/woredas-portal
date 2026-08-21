@@ -5,14 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import {
-  AlertTriangle,
-  CreditCard,
-  Loader2,
-  Upload,
-  X,
-  FileText,
-} from "lucide-react";
+import { AlertTriangle, CreditCard, Loader2, Upload, X, FileText } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,9 +38,7 @@ export const Route = createFileRoute("/woreda/credentials/new")({
       permission={P.CREDENTIAL_ISSUE}
       fallback={
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-800">
-          <p className="font-noto-ethiopic font-medium">
-            ይህን ገጽ ለማየት ፈቃድ የለዎትም
-          </p>
+          <p className="font-noto-ethiopic font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
           <p className="text-sm">You do not have permission to submit credential requests.</p>
         </div>
       }
@@ -89,17 +80,14 @@ const formSchema = z
     supporting_document_name: z.string().nullable().optional(),
     notes: z.string().max(2000).optional().nullable(),
   })
-  .refine(
-    (v) => v.request_type === "new_issue" || !!v.prior_credential_id,
-    { path: ["prior_credential_id"], message: "Select the prior credential" },
-  )
-  .refine(
-    (v) => v.request_type !== "reissue_correction" || !!v.supporting_document_path,
-    {
-      path: ["supporting_document_path"],
-      message: "Supporting document is required for corrections",
-    },
-  );
+  .refine((v) => v.request_type === "new_issue" || !!v.prior_credential_id, {
+    path: ["prior_credential_id"],
+    message: "Select the prior credential",
+  })
+  .refine((v) => v.request_type !== "reissue_correction" || !!v.supporting_document_path, {
+    path: ["supporting_document_path"],
+    message: "Supporting document is required for corrections",
+  });
 
 type FormValues = z.infer<typeof formSchema>;
 
@@ -113,20 +101,16 @@ interface ResidentDetail {
   photo_url: string | null;
   active_flag: boolean;
   current_household_id: string | null;
-  household:
-    | {
-        household_id: string;
-        house_number: string | null;
-        kebele:
-          | {
-              kebele_id: string;
-              kebele_name_am: string;
-              kebele_name_en: string;
-              kebele_number: number | null;
-            }
-          | null;
-      }
-    | null;
+  household: {
+    household_id: string;
+    house_number: string | null;
+    kebele: {
+      kebele_id: string;
+      kebele_name_am: string;
+      kebele_name_en: string;
+      kebele_number: number | null;
+    } | null;
+  } | null;
 }
 
 function NewCredentialRequestPage() {
@@ -334,9 +318,7 @@ function NewCredentialRequestPage() {
         );
       }
       if (openReq) {
-        dupNotes.push(
-          `Open request ${openReq.request_number} already exists (acknowledged)`,
-        );
+        dupNotes.push(`Open request ${openReq.request_number} already exists (acknowledged)`);
       }
       const duplicateFlag = dupNotes.length > 0;
 
@@ -405,11 +387,7 @@ function NewCredentialRequestPage() {
 
   return (
     <div className="space-y-6 pb-32">
-      <PageHeader
-        icon={CreditCard}
-        titleAm="አዲስ የመታወቂያ ጥያቄ"
-        titleEn="New Credential Request"
-      />
+      <PageHeader icon={CreditCard} titleAm="አዲስ የመታወቂያ ጥያቄ" titleEn="New Credential Request" />
 
       {/* Section A — Resident selection */}
       <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -489,9 +467,7 @@ function NewCredentialRequestPage() {
 
           {notActive && (
             <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-red-800">
-              <p className="font-noto-ethiopic font-medium">
-                ይህ ነዋሪ ንቁ አይደለም
-              </p>
+              <p className="font-noto-ethiopic font-medium">ይህ ነዋሪ ንቁ አይደለም</p>
               <p className="text-sm">This resident is not active.</p>
             </div>
           )}
@@ -585,9 +561,7 @@ function NewCredentialRequestPage() {
         aria-disabled={!formEnabled}
       >
         <div className="flex items-center gap-3 rounded-t-xl bg-blue-700 px-5 py-3 text-white">
-          <span className="font-noto-ethiopic text-base font-semibold">
-            የጥያቄ ዝርዝር
-          </span>
+          <span className="font-noto-ethiopic text-base font-semibold">የጥያቄ ዝርዝር</span>
           <span className="text-sm text-blue-100">/ Request Details</span>
         </div>
         <div className="space-y-5 p-5">
@@ -683,9 +657,7 @@ function NewCredentialRequestPage() {
                 )}
               />
               {errors.prior_credential_id && (
-                <p className="mt-1 text-sm text-red-600">
-                  {errors.prior_credential_id.message}
-                </p>
+                <p className="mt-1 text-sm text-red-600">{errors.prior_credential_id.message}</p>
               )}
             </div>
           )}
@@ -693,9 +665,7 @@ function NewCredentialRequestPage() {
           <div>
             <Label className="font-noto-ethiopic">
               ደጋፊ ሰነድ / Supporting Document{" "}
-              {requestType === "reissue_correction" && (
-                <span className="text-red-600">*</span>
-              )}
+              {requestType === "reissue_correction" && <span className="text-red-600">*</span>}
             </Label>
             <p className="mt-0.5 text-xs text-slate-500">PDF, JPG, or PNG. Max 5MB.</p>
             {supportingDocPath ? (
@@ -739,9 +709,7 @@ function NewCredentialRequestPage() {
               </label>
             )}
             {errors.supporting_document_path && (
-              <p className="mt-1 text-sm text-red-600">
-                {errors.supporting_document_path.message}
-              </p>
+              <p className="mt-1 text-sm text-red-600">{errors.supporting_document_path.message}</p>
             )}
           </div>
 

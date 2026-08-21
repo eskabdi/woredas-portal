@@ -150,10 +150,24 @@ export function ServiceRequestList({ category, titleAm, titleEn, descriptionAm }
   };
 
   const listQuery = useQuery({
-    queryKey: ["service-requests", category, woredaId, term, statusFilter, typeFilter, kebeleFilter, sort.key, page, pageSize],
+    queryKey: [
+      "service-requests",
+      category,
+      woredaId,
+      term,
+      statusFilter,
+      typeFilter,
+      kebeleFilter,
+      sort.key,
+      page,
+      pageSize,
+    ],
     enabled: !!woredaId,
     queryFn: async () => {
-      const { data, error, count } = await buildQuery(page * pageSize, page * pageSize + pageSize - 1);
+      const { data, error, count } = await buildQuery(
+        page * pageSize,
+        page * pageSize + pageSize - 1,
+      );
       if (error) throw error;
       return { rows: (data ?? []) as unknown as Row[], total: count ?? 0 };
     },
@@ -178,8 +192,17 @@ export function ServiceRequestList({ category, titleAm, titleEn, descriptionAm }
       },
       { header: "ጉዳይ / Subject", value: (r) => r.subject ?? "—", width: 1.6 },
       { header: "ደረጃ / Status", value: (r) => serviceStatusLabel(r.status), width: 1.2 },
-      { header: "ቅድሚያ / Priority", value: (r) => PRIORITY_LABEL[r.priority] ?? r.priority, width: 1 },
-      { header: "ክፍያ / Fee", value: (r) => Number(r.fee_amount ?? 0).toFixed(2), width: 0.8, align: "right" },
+      {
+        header: "ቅድሚያ / Priority",
+        value: (r) => PRIORITY_LABEL[r.priority] ?? r.priority,
+        width: 1,
+      },
+      {
+        header: "ክፍያ / Fee",
+        value: (r) => Number(r.fee_amount ?? 0).toFixed(2),
+        width: 0.8,
+        align: "right",
+      },
       {
         header: "ቀን / Submitted",
         value: (r) => new Date(r.submitted_at).toLocaleDateString("en-GB"),
@@ -256,7 +279,6 @@ export function ServiceRequestList({ category, titleAm, titleEn, descriptionAm }
         actions={
           hasPermission(P.SERVICE_CREATE) ? (
             <Link to="/woreda/services/new" search={{ category } as never}>
-
               <Button>
                 <Plus className="mr-1 h-4 w-4" />
                 <span className="font-noto-ethiopic">
@@ -318,7 +340,11 @@ export function ServiceRequestList({ category, titleAm, titleEn, descriptionAm }
 
           <div className="ml-auto flex items-end gap-2">
             <ClearFiltersButton active={filtered || !sort.isDefault} onClear={clearFilters} />
-            <ExportButtons onCsv={() => doExport("csv")} onPdf={() => doExport("pdf")} busy={exporting} />
+            <ExportButtons
+              onCsv={() => doExport("csv")}
+              onPdf={() => doExport("pdf")}
+              busy={exporting}
+            />
           </div>
         </div>
       </Card>
@@ -351,7 +377,11 @@ export function ServiceRequestList({ category, titleAm, titleEn, descriptionAm }
               {listQuery.isPending ? (
                 <TableSkeletonRows cols={7} />
               ) : listQuery.isError ? (
-                <TableErrorRow cols={7} error={listQuery.error} onRetry={() => listQuery.refetch()} />
+                <TableErrorRow
+                  cols={7}
+                  error={listQuery.error}
+                  onRetry={() => listQuery.refetch()}
+                />
               ) : rows.length === 0 ? (
                 <TableEmptyRow cols={7} filtered={filtered} onClearFilters={clearFilters} />
               ) : (

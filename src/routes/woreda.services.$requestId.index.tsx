@@ -33,7 +33,14 @@ import {
 } from "@/lib/letterTemplate";
 import { P } from "@/config/permissions";
 import { PriorityBadge, StatusBadge } from "@/components/services/ServiceRequestList";
-import { DOCUMENT_TYPES, MAX_UPLOAD_BYTES, ALLOWED_UPLOAD_TYPES, stageIndex, serviceStatusLabel, type ServiceCategory } from "@/lib/serviceConstants";
+import {
+  DOCUMENT_TYPES,
+  MAX_UPLOAD_BYTES,
+  ALLOWED_UPLOAD_TYPES,
+  stageIndex,
+  serviceStatusLabel,
+  type ServiceCategory,
+} from "@/lib/serviceConstants";
 
 export const Route = createFileRoute("/woreda/services/$requestId/")({
   ssr: false,
@@ -67,7 +74,12 @@ interface Detail {
   closed_at: string | null;
   resident_id: string | null;
   kebele_id: string | null;
-  resident: { resident_id: string; resident_number: string; full_name_am: string | null; full_name: string | null } | null;
+  resident: {
+    resident_id: string;
+    resident_number: string;
+    full_name_am: string | null;
+    full_name: string | null;
+  } | null;
   kebele: { kebele_name_am: string; kebele_name_en: string } | null;
   service_type: {
     name_am: string;
@@ -78,7 +90,15 @@ interface Detail {
   } | null;
 }
 
-function Row({ labelAm, labelEn, value }: { labelAm: string; labelEn: string; value: React.ReactNode }) {
+function Row({
+  labelAm,
+  labelEn,
+  value,
+}: {
+  labelAm: string;
+  labelEn: string;
+  value: React.ReactNode;
+}) {
   return (
     <div className="border-b border-slate-100 py-2 last:border-0">
       <div className="text-xs text-slate-500">
@@ -140,7 +160,9 @@ function ServiceRequestDetailPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("service_request_attachment")
-        .select("attachment_id, document_type, file_name, storage_path, file_size_bytes, created_at")
+        .select(
+          "attachment_id, document_type, file_name, storage_path, file_size_bytes, created_at",
+        )
         .eq("service_request_id", requestId)
         .order("created_at", { ascending: true });
       if (error) throw error;
@@ -159,7 +181,12 @@ function ServiceRequestDetailPage() {
 
   const transition = async (
     next: string,
-    opts?: { extra?: Record<string, unknown>; reason?: string; action?: string; successAm?: string },
+    opts?: {
+      extra?: Record<string, unknown>;
+      reason?: string;
+      action?: string;
+      successAm?: string;
+    },
   ) => {
     if (!req || !woredaId) return;
     setBusy(true);
@@ -167,7 +194,7 @@ function ServiceRequestDetailPage() {
       const nowIso = new Date().toISOString();
       const { error } = await supabase
         .from("service_request")
-        .update({ ...(opts?.extra ?? {}) , status: next } as never)
+        .update({ ...(opts?.extra ?? {}), status: next } as never)
         .eq("service_request_id", req.service_request_id);
       if (error) throw error;
 
@@ -210,11 +237,15 @@ function ServiceRequestDetailPage() {
         .select("service_type:service_type_id(letter_body_html, letter_body_template)")
         .eq("service_request_id", req.service_request_id)
         .maybeSingle();
-      const type = (st as never as {
-        service_type: { letter_body_html: string | null; letter_body_template: string | null } | null;
-      } | null)?.service_type;
-      const template =
-        type?.letter_body_html ?? plainTextToHtml(type?.letter_body_template ?? "");
+      const type = (
+        st as never as {
+          service_type: {
+            letter_body_html: string | null;
+            letter_body_template: string | null;
+          } | null;
+        } | null
+      )?.service_type;
+      const template = type?.letter_body_html ?? plainTextToHtml(type?.letter_body_template ?? "");
       const now = new Date();
       issuedHtml = renderLetterTemplate(sanitizeLetterHtml(template), {
         APPLICANT_NAME:
@@ -385,7 +416,9 @@ function ServiceRequestDetailPage() {
       <PageHeader
         titleAm={req.subject || (category === "complaint" ? "ቅሬታ" : "የአገልግሎት ጥያቄ")}
         titleEn={req.request_number}
-        description={req.service_type ? `${req.service_type.name_am} / ${req.service_type.name_en}` : ""}
+        description={
+          req.service_type ? `${req.service_type.name_am} / ${req.service_type.name_en}` : ""
+        }
         actions={
           <div className="flex items-center gap-2">
             <Link to={category === "complaint" ? "/woreda/complaints" : "/woreda/services"}>
@@ -393,13 +426,14 @@ function ServiceRequestDetailPage() {
                 <ArrowLeft className="mr-1 h-4 w-4" /> ተመለስ / Back
               </Button>
             </Link>
-            {category === "letter" && ["approved", "paid", "issued", "closed"].includes(req.status) && (
-              <Link to="/woreda/services/$requestId/print" params={{ requestId }}>
-                <Button size="sm">
-                  <Printer className="mr-1 h-4 w-4" /> ደብዳቤ አትም / Print letter
-                </Button>
-              </Link>
-            )}
+            {category === "letter" &&
+              ["approved", "paid", "issued", "closed"].includes(req.status) && (
+                <Link to="/woreda/services/$requestId/print" params={{ requestId }}>
+                  <Button size="sm">
+                    <Printer className="mr-1 h-4 w-4" /> ደብዳቤ አትም / Print letter
+                  </Button>
+                </Link>
+              )}
           </div>
         }
       />
@@ -421,7 +455,9 @@ function ServiceRequestDetailPage() {
               >
                 {i < index && !isTerminal ? <Check className="h-4 w-4" /> : i + 1}
               </div>
-              <span className="font-noto-ethiopic text-xs text-slate-600">{serviceStatusLabel(s)}</span>
+              <span className="font-noto-ethiopic text-xs text-slate-600">
+                {serviceStatusLabel(s)}
+              </span>
               {i < flow.length - 1 && <span className="mx-1 text-slate-300">→</span>}
             </div>
           ))}
@@ -459,7 +495,8 @@ function ServiceRequestDetailPage() {
                       params={{ residentId: req.resident.resident_id }}
                       className="text-blue-700 hover:underline"
                     >
-                      {req.resident.full_name_am || req.resident.full_name} ({req.resident.resident_number})
+                      {req.resident.full_name_am || req.resident.full_name} (
+                      {req.resident.resident_number})
                     </Link>
                   ) : (
                     req.applicant_name
@@ -470,7 +507,9 @@ function ServiceRequestDetailPage() {
               <Row
                 labelAm="ቀበሌ"
                 labelEn="Kebele"
-                value={req.kebele ? `${req.kebele.kebele_name_am} / ${req.kebele.kebele_name_en}` : null}
+                value={
+                  req.kebele ? `${req.kebele.kebele_name_am} / ${req.kebele.kebele_name_en}` : null
+                }
               />
               <Row
                 labelAm="የቀረበበት ቀን"
@@ -488,14 +527,20 @@ function ServiceRequestDetailPage() {
                   <Row
                     labelAm="የተከሰተበት"
                     labelEn="Incident"
-                    value={[req.incident_date, req.incident_place].filter(Boolean).join(" — ") || null}
+                    value={
+                      [req.incident_date, req.incident_place].filter(Boolean).join(" — ") || null
+                    }
                   />
                 </>
               )}
               <Row
                 labelAm="ክፍያ"
                 labelEn="Fee"
-                value={Number(req.fee_amount) > 0 ? `${Number(req.fee_amount).toFixed(2)} ETB` : "ነጻ / Free"}
+                value={
+                  Number(req.fee_amount) > 0
+                    ? `${Number(req.fee_amount).toFixed(2)} ETB`
+                    : "ነጻ / Free"
+                }
               />
             </div>
             <div className="mt-4">
@@ -524,7 +569,9 @@ function ServiceRequestDetailPage() {
               <Paperclip className="h-4 w-4 text-blue-700" /> ማስረጃ ሰነዶች / Attachments
             </h3>
             {(attachmentsQuery.data ?? []).length === 0 ? (
-              <p className="font-noto-ethiopic text-sm text-slate-500">ሰነድ አልተያያዘም / No documents attached</p>
+              <p className="font-noto-ethiopic text-sm text-slate-500">
+                ሰነድ አልተያያዘም / No documents attached
+              </p>
             ) : (
               <div className="space-y-2">
                 {(attachmentsQuery.data ?? []).map((a) => (
@@ -535,9 +582,14 @@ function ServiceRequestDetailPage() {
                     <Paperclip className="h-4 w-4 text-slate-400" />
                     <span className="flex-1 truncate text-sm">{a.file_name}</span>
                     <span className="font-noto-ethiopic text-xs text-slate-500">
-                      {DOCUMENT_TYPES.find((d) => d.value === a.document_type)?.labelAm ?? a.document_type}
+                      {DOCUMENT_TYPES.find((d) => d.value === a.document_type)?.labelAm ??
+                        a.document_type}
                     </span>
-                    <Button variant="outline" size="sm" onClick={() => openAttachment(a.storage_path)}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openAttachment(a.storage_path)}
+                    >
                       <Download className="mr-1 h-4 w-4" /> ክፈት
                     </Button>
                   </div>
@@ -642,9 +694,14 @@ function ServiceRequestDetailPage() {
                   disabled={busy}
                   onClick={() =>
                     transition(
-                      req.service_type?.requires_approval ? "pending_approval" : nextAfterApproval(req),
+                      req.service_type?.requires_approval
+                        ? "pending_approval"
+                        : nextAfterApproval(req),
                       {
-                        extra: { verified_by_user_id: actorUserId, verified_at: new Date().toISOString() },
+                        extra: {
+                          verified_by_user_id: actorUserId,
+                          verified_at: new Date().toISOString(),
+                        },
                         reason: "Verified by clerk",
                         action: "SERVICE_REQUEST_VERIFIED",
                       },
@@ -678,67 +735,74 @@ function ServiceRequestDetailPage() {
               </div>
             )}
 
-            {!isTerminal && ["pending_approval", "approval_returned"].includes(req.status) && canApprove && (
-              <div className="space-y-3">
-                <Button
-                  className="w-full"
-                  disabled={busy}
-                  onClick={() =>
-                    transition(nextAfterApproval(req), {
-                      extra: {
-                        approved_by_user_id: actorUserId,
-                        approval_decision_at: new Date().toISOString(),
-                      },
-                      reason: "Approved by supervisor",
-                      action: "SERVICE_REQUEST_APPROVED",
-                    })
-                  }
-                >
-                  <Check className="mr-1 h-4 w-4" /> አጽድቅ / Approve
-                </Button>
-                <div>
-                  <Label className="font-noto-ethiopic text-xs">ምክንያት / Reason</Label>
-                  <Textarea
-                    className="font-noto-ethiopic mt-1"
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                  />
-                </div>
-                <div className="grid gap-2">
+            {!isTerminal &&
+              ["pending_approval", "approval_returned"].includes(req.status) &&
+              canApprove && (
+                <div className="space-y-3">
                   <Button
-                    variant="outline"
-                    disabled={busy || reason.trim().length < 5}
+                    className="w-full"
+                    disabled={busy}
                     onClick={() =>
-                      transition("approval_returned", {
-                        extra: { return_reason: reason.trim() },
-                        reason: reason.trim(),
-                        action: "SERVICE_REQUEST_APPROVAL_RETURNED",
+                      transition(nextAfterApproval(req), {
+                        extra: {
+                          approved_by_user_id: actorUserId,
+                          approval_decision_at: new Date().toISOString(),
+                        },
+                        reason: "Approved by supervisor",
+                        action: "SERVICE_REQUEST_APPROVED",
                       })
                     }
                   >
-                    <Undo2 className="mr-1 h-4 w-4" /> መልስ / Return
+                    <Check className="mr-1 h-4 w-4" /> አጽድቅ / Approve
                   </Button>
-                  <Button
-                    variant="destructive"
-                    disabled={busy || reason.trim().length < 5}
-                    onClick={() =>
-                      transition("rejected", {
-                        extra: { reject_reason: reason.trim(), closed_at: new Date().toISOString() },
-                        reason: reason.trim(),
-                        action: "SERVICE_REQUEST_REJECTED",
-                      })
-                    }
-                  >
-                    <X className="mr-1 h-4 w-4" /> ውድቅ አድርግ / Reject
-                  </Button>
+                  <div>
+                    <Label className="font-noto-ethiopic text-xs">ምክንያት / Reason</Label>
+                    <Textarea
+                      className="font-noto-ethiopic mt-1"
+                      value={reason}
+                      onChange={(e) => setReason(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Button
+                      variant="outline"
+                      disabled={busy || reason.trim().length < 5}
+                      onClick={() =>
+                        transition("approval_returned", {
+                          extra: { return_reason: reason.trim() },
+                          reason: reason.trim(),
+                          action: "SERVICE_REQUEST_APPROVAL_RETURNED",
+                        })
+                      }
+                    >
+                      <Undo2 className="mr-1 h-4 w-4" /> መልስ / Return
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      disabled={busy || reason.trim().length < 5}
+                      onClick={() =>
+                        transition("rejected", {
+                          extra: {
+                            reject_reason: reason.trim(),
+                            closed_at: new Date().toISOString(),
+                          },
+                          reason: reason.trim(),
+                          action: "SERVICE_REQUEST_REJECTED",
+                        })
+                      }
+                    >
+                      <X className="mr-1 h-4 w-4" /> ውድቅ አድርግ / Reject
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
             {!isTerminal && req.status === "awaiting_payment" && canCollect && (
               <div className="space-y-3">
                 <div className="rounded-md border border-orange-200 bg-orange-50 p-3">
-                  <div className="font-noto-ethiopic text-xs text-orange-900">የሚከፈል / Amount due</div>
+                  <div className="font-noto-ethiopic text-xs text-orange-900">
+                    የሚከፈል / Amount due
+                  </div>
                   <div className="font-mono text-lg font-semibold text-orange-900">
                     {Number(req.fee_amount).toFixed(2)} ETB
                   </div>
@@ -780,11 +844,7 @@ function ServiceRequestDetailPage() {
                         <Printer className="mr-1 h-4 w-4" /> ደብዳቤ አትም / Print letter
                       </Button>
                     </Link>
-                    <Button
-                      className="w-full"
-                      disabled={busy}
-                      onClick={() => void issueLetter()}
-                    >
+                    <Button className="w-full" disabled={busy} onClick={() => void issueLetter()}>
                       <Check className="mr-1 h-4 w-4" /> ተሰጥቷል ብለው መዝግቡ / Mark issued
                     </Button>
                   </>
@@ -808,7 +868,9 @@ function ServiceRequestDetailPage() {
             {!isTerminal && req.status === "in_progress" && canIssue && (
               <div className="space-y-3">
                 <div>
-                  <Label className="font-noto-ethiopic text-xs">የመፍትሔ ማስታወሻ / Resolution notes</Label>
+                  <Label className="font-noto-ethiopic text-xs">
+                    የመፍትሔ ማስታወሻ / Resolution notes
+                  </Label>
                   <Textarea
                     className="font-noto-ethiopic mt-1"
                     value={resolution}
@@ -848,15 +910,11 @@ function ServiceRequestDetailPage() {
               </Button>
             )}
 
-            {!isTerminal &&
-              !canVerify &&
-              !canApprove &&
-              !canIssue &&
-              !canCollect && (
-                <p className="font-noto-ethiopic text-sm text-slate-500">
-                  በዚህ ደረጃ እርምጃ ለመውሰድ ፈቃድ አልተሰጠዎትም / You do not have permission to act at this stage.
-                </p>
-              )}
+            {!isTerminal && !canVerify && !canApprove && !canIssue && !canCollect && (
+              <p className="font-noto-ethiopic text-sm text-slate-500">
+                በዚህ ደረጃ እርምጃ ለመውሰድ ፈቃድ አልተሰጠዎትም / You do not have permission to act at this stage.
+              </p>
+            )}
           </Card>
         </div>
       </div>

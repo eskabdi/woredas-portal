@@ -3,11 +3,7 @@ import { z } from "zod";
 export const householdSchema = z
   .object({
     kebele_id: z.string().uuid("ቀበሌ ይምረጡ / Select a kebele"),
-    house_number: z
-      .string()
-      .trim()
-      .min(1, "የቤት ቁጥር ያስፈልጋል / House number required")
-      .max(50),
+    house_number: z.string().trim().min(1, "የቤት ቁጥር ያስፈልጋል / House number required").max(50),
     address_line: z.string().trim().max(255).optional().default(""),
     occupancy_status: z.enum(["occupied", "vacant", "demolished", "transferred"], {
       message: "አያያዝ ሁኔታ ይምረጡ / Select occupancy status",

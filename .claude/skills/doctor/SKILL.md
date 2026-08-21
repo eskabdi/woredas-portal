@@ -16,7 +16,7 @@ perfect and scans on nothing.
 
 So the instinct that serves you well elsewhere — "no error, so that part is
 fine" — is actively wrong here. An empty screen is not the absence of a
-symptom; it *is* the symptom, and it has at least four distinct causes that look
+symptom; it _is_ the symptom, and it has at least four distinct causes that look
 identical from the browser.
 
 Your job is to turn a silent failure into a named one. Diagnose before you fix,
@@ -101,7 +101,7 @@ row but not write it, so an account cannot activate itself — activation is an
 administrator action by design.
 
 If status is `active`, check that the permission has **both halves**: an entry in
-`src/config/permissions.ts` *and* `role_permission` seed rows. The client gate
+`src/config/permissions.ts` _and_ `role_permission` seed rows. The client gate
 opening without the database gate produces exactly this.
 
 ### "A module is missing from the sidebar"
@@ -114,7 +114,7 @@ bypass module gating entirely.
 
 The Edge Functions were never deployed. `supabase db push` and seed files do not
 touch them — they are a separate artifact deployed by
-`scripts/deploy-functions.sh`. A `401` from the same URL means the function *is*
+`scripts/deploy-functions.sh`. A `401` from the same URL means the function _is_
 deployed and merely rejected an unauthenticated call; that is the healthy answer.
 
 ### "ID card issuance fails with `500 {"error":"Signing key not configured"}`"
@@ -197,15 +197,19 @@ Lead with the diagnosis, not the evidence trail:
 
 ```markdown
 ## Diagnosis
+
 <the named cause, and which layer owns it>
 
 ## Evidence
+
 <the specific check output that pins it — not everything you ran>
 
 ## Fix
+
 <the command or change>
 
 ## Also noticed
+
 <unrelated findings worth knowing, or omit>
 ```
 

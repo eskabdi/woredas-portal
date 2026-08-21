@@ -21,7 +21,7 @@ return nothing because of `app_user.status`.
 database will actually return, keyed off `app_user.role` **and**
 `app_user.status = 'active'`.
 
-A new permission needs an entry in `ROLE_PERMISSIONS` *and* `role_permission`
+A new permission needs an entry in `ROLE_PERMISSIONS` _and_ `role_permission`
 seed rows in `supabase/seed.sql`. Check for each half:
 
 - Client gate added, seed rows missing → the UI renders and every query returns

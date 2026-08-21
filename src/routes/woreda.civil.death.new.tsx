@@ -94,7 +94,13 @@ function DeathNewPage() {
     },
   });
 
-  const { register, handleSubmit, setValue, watch, formState: { errors } } = form;
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors },
+  } = form;
   const deceasedResidentId = watch("deceased_resident_id");
   const dod = watch("date_of_death");
 
@@ -172,11 +178,7 @@ function DeathNewPage() {
       <form onSubmit={onSubmit} className="space-y-6">
         <Section icon={UserX} titleAm="የሟች መረጃ" titleEn="Deceased Information">
           <Grid>
-            <FieldWrap
-              labelAm="ሟች (የተመዘገበ)"
-              labelEn="Deceased (registered resident)"
-              colSpan2
-            >
+            <FieldWrap labelAm="ሟች (የተመዘገበ)" labelEn="Deceased (registered resident)" colSpan2>
               <ResidentSearchPicker
                 value={deceasedResidentId ?? ""}
                 onChange={(id) => setValue("deceased_resident_id", id)}

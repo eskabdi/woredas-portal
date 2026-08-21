@@ -80,10 +80,7 @@ function EditRentalHousePage() {
         address_line: house.address_line ?? "",
         monthly_rent_standard: String(house.monthly_rent_standard ?? ""),
         bedrooms: house.bedrooms != null ? String(house.bedrooms) : "",
-        occupancy_status: house.occupancy_status as
-          | "vacant"
-          | "occupied"
-          | "under_maintenance",
+        occupancy_status: house.occupancy_status as "vacant" | "occupied" | "under_maintenance",
       });
     }
   }, [house, form]);
@@ -132,20 +129,12 @@ function EditRentalHousePage() {
     onError: (err: Error) => toast.error(err.message),
   });
 
-  if (!hasPermission(P.RENTAL_CREATE))
-    return <Navigate to="/woreda/rental-houses" />;
+  if (!hasPermission(P.RENTAL_CREATE)) return <Navigate to="/woreda/rental-houses" />;
 
   return (
     <div className="space-y-4">
-      <PageHeader
-        icon={Building2}
-        titleAm="የኪራይ ቤት አርትዕ"
-        titleEn="Edit Rental House"
-      />
-      <form
-        onSubmit={form.handleSubmit((v) => mutation.mutate(v))}
-        className="space-y-4"
-      >
+      <PageHeader icon={Building2} titleAm="የኪራይ ቤት አርትዕ" titleEn="Edit Rental House" />
+      <form onSubmit={form.handleSubmit((v) => mutation.mutate(v))} className="space-y-4">
         <Section icon={Building2} titleAm="የቤት መረጃ" titleEn="House Information">
           <Grid>
             <FieldWrap labelAm="ቀበሌ" labelEn="Kebele" required>
@@ -164,11 +153,7 @@ function EditRentalHousePage() {
             <FieldWrap labelAm="አድራሻ" labelEn="Address" colSpan2>
               <Input {...form.register("address_line")} />
             </FieldWrap>
-            <FieldWrap
-              labelAm="የቤት ኪራይ መጠን"
-              labelEn="Monthly Rent"
-              required
-            >
+            <FieldWrap labelAm="የቤት ኪራይ መጠን" labelEn="Monthly Rent" required>
               <Input
                 type="number"
                 min="0"
@@ -192,9 +177,7 @@ function EditRentalHousePage() {
           <Button
             type="button"
             variant="outline"
-            onClick={() =>
-              navigate({ to: "/woreda/rental-houses/$houseId", params: { houseId } })
-            }
+            onClick={() => navigate({ to: "/woreda/rental-houses/$houseId", params: { houseId } })}
           >
             Cancel
           </Button>

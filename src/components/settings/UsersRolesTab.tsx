@@ -95,7 +95,11 @@ export function UsersRolesTab() {
     const term = qTerm.toLowerCase();
     if (!term) return users;
     return users.filter((u) =>
-      [u.full_name, u.role, u.status].some((v) => String(v ?? "").toLowerCase().includes(term)),
+      [u.full_name, u.role, u.status].some((v) =>
+        String(v ?? "")
+          .toLowerCase()
+          .includes(term),
+      ),
     );
   }, [users, qTerm]);
 
@@ -109,7 +113,6 @@ export function UsersRolesTab() {
   } = useClientPagination(filteredUsers, qTerm);
 
   const stats = useMemo(() => {
-
     const total = users.length;
     const active = new Set(users.filter((u) => u.status === "active").map((u) => u.role)).size;
     const pending = users.filter((u) => u.status === "pending").length;
@@ -224,22 +227,38 @@ export function UsersRolesTab() {
               </thead>
               <tbody>
                 {isLoading ? (
-                  <tr><td colSpan={4} className="px-4 py-6 text-center text-slate-500">Loading…</td></tr>
+                  <tr>
+                    <td colSpan={4} className="px-4 py-6 text-center text-slate-500">
+                      Loading…
+                    </td>
+                  </tr>
                 ) : filteredUsers.length === 0 ? (
-                  <tr><td colSpan={4} className="px-4 py-6 text-center text-slate-500">No users</td></tr>
+                  <tr>
+                    <td colSpan={4} className="px-4 py-6 text-center text-slate-500">
+                      No users
+                    </td>
+                  </tr>
                 ) : (
                   pageRows.map((u) => (
                     <tr key={u.user_id} className="border-t border-slate-100">
                       <td className="px-4 py-3 text-slate-800">{u.full_name}</td>
                       <td className="px-4 py-3">
-                        <span className="font-noto-ethiopic">{ROLE_LABEL_MAP[u.role]?.am ?? u.role}</span>
-                        <span className="ml-1 text-xs text-slate-500">/ {ROLE_LABEL_MAP[u.role]?.en ?? u.role}</span>
+                        <span className="font-noto-ethiopic">
+                          {ROLE_LABEL_MAP[u.role]?.am ?? u.role}
+                        </span>
+                        <span className="ml-1 text-xs text-slate-500">
+                          / {ROLE_LABEL_MAP[u.role]?.en ?? u.role}
+                        </span>
                       </td>
-                      <td className="px-4 py-3"><StatusChip status={u.status} /></td>
+                      <td className="px-4 py-3">
+                        <StatusChip status={u.status} />
+                      </td>
                       <td className="px-4 py-3 text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm"><MoreHorizontal className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="sm">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
@@ -276,7 +295,10 @@ export function UsersRolesTab() {
 
         <TabsContent value="roles" className="mt-4">
           <div className="mb-3 flex justify-end">
-            <Button onClick={() => setAssignRoleOpen(true)} className="bg-blue-700 hover:bg-blue-800">
+            <Button
+              onClick={() => setAssignRoleOpen(true)}
+              className="bg-blue-700 hover:bg-blue-800"
+            >
               <UserPlus className="mr-2 h-4 w-4" />
               <span className="font-noto-ethiopic">የሚና ምድብ ስጥ</span>
               <span className="ml-1 text-xs opacity-80">/ Assign Role</span>
@@ -287,7 +309,9 @@ export function UsersRolesTab() {
               <Card key={r.key} className="p-4">
                 <div className="flex items-start justify-between">
                   <div>
-                    <div className="font-noto-ethiopic text-sm font-semibold text-slate-900">{r.am}</div>
+                    <div className="font-noto-ethiopic text-sm font-semibold text-slate-900">
+                      {r.am}
+                    </div>
                     <div className="text-xs text-slate-500">{r.en}</div>
                   </div>
                   <div className="text-2xl font-bold text-blue-700">{roleCounts[r.key] ?? 0}</div>
@@ -321,9 +345,7 @@ export function UsersRolesTab() {
               <span className="font-noto-ethiopic">ተጠቃሚን ማገድ</span>
               <span className="ml-2 text-sm text-slate-500">/ Suspend user?</span>
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              {suspendUser?.full_name}
-            </AlertDialogDescription>
+            <AlertDialogDescription>{suspendUser?.full_name}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -400,7 +422,9 @@ function InviteDialog({
       return;
     }
     toast.success("ግብዣ ተልኳል / Invitation sent");
-    setEmail(""); setFullName(""); setRole("registry_clerk");
+    setEmail("");
+    setFullName("");
+    setRole("registry_clerk");
     onOpenChange(false);
     onDone();
   }
@@ -426,7 +450,9 @@ function InviteDialog({
           <div>
             <Label>Role</Label>
             <Select value={role} onValueChange={setRole}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 {EDITABLE_ROLES.map((r) => (
                   <SelectItem key={r.key} value={r.key}>
@@ -439,7 +465,9 @@ function InviteDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
           <Button disabled={submitting} onClick={submit} className="bg-blue-700 hover:bg-blue-800">
             {submitting ? "Sending…" : "Send Invitation"}
           </Button>
@@ -468,13 +496,17 @@ function ChangeRoleDialog({
         <DialogHeader>
           <DialogTitle>
             <span className="font-noto-ethiopic">ሚና ቀይር</span>
-            <span className="ml-2 text-sm text-slate-500">/ Change Role — {current?.full_name}</span>
+            <span className="ml-2 text-sm text-slate-500">
+              / Change Role — {current?.full_name}
+            </span>
           </DialogTitle>
         </DialogHeader>
         <div>
           <Label>Role</Label>
           <Select value={role} onValueChange={setRole}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
               {EDITABLE_ROLES.map((r) => (
                 <SelectItem key={r.key} value={r.key}>
@@ -486,7 +518,9 @@ function ChangeRoleDialog({
           </Select>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
           <Button
             disabled={submitting}
             className="bg-blue-700 hover:bg-blue-800"
@@ -531,11 +565,19 @@ function AssignRoleDialog({
   }, [users, q]);
 
   function reset() {
-    setQ(""); setSelected(null); setRole("registry_clerk");
+    setQ("");
+    setSelected(null);
+    setRole("registry_clerk");
   }
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); onOpenChange(o); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) reset();
+        onOpenChange(o);
+      }}
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
@@ -572,7 +614,9 @@ function AssignRoleDialog({
             <div>
               <Label>New role</Label>
               <Select value={role} onValueChange={setRole}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {EDITABLE_ROLES.map((r) => (
                     <SelectItem key={r.key} value={r.key}>
@@ -586,7 +630,9 @@ function AssignRoleDialog({
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
           <Button
             disabled={!selected || submitting}
             className="bg-blue-700 hover:bg-blue-800"

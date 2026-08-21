@@ -151,11 +151,7 @@ function NewHouseholdPage() {
 
   return (
     <div className="mx-auto max-w-4xl pb-24">
-      <PageHeader
-        icon={Home}
-        titleAm="አዲስ ቤተሰብ ምዝገባ"
-        titleEn="New Household Registration"
-      />
+      <PageHeader icon={Home} titleAm="አዲስ ቤተሰብ ምዝገባ" titleEn="New Household Registration" />
 
       <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-6">
         <HouseholdFormFields
@@ -172,7 +168,11 @@ function NewHouseholdPage() {
 
         <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-slate-200 bg-white/95 backdrop-blur">
           <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-3">
-            <Button type="button" variant="ghost" onClick={() => navigate({ to: "/woreda/households" })}>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => navigate({ to: "/woreda/households" })}
+            >
               <span className="font-noto-ethiopic">ይቅር</span>
               <span className="ml-2 text-xs opacity-70">/ Cancel</span>
             </Button>

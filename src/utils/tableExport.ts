@@ -100,14 +100,8 @@ export async function exportRowsToPdf<T>(opts: {
     return acc;
   }, []);
 
-  const rowsPerFirst = Math.max(
-    1,
-    Math.floor((PAGE_H - headerBlock - rowH - M) / rowH),
-  );
-  const rowsPerNext = Math.max(
-    1,
-    Math.floor((PAGE_H - pageHeaderBlock - rowH - M) / rowH),
-  );
+  const rowsPerFirst = Math.max(1, Math.floor((PAGE_H - headerBlock - rowH - M) / rowH));
+  const rowsPerNext = Math.max(1, Math.floor((PAGE_H - pageHeaderBlock - rowH - M) / rowH));
 
   const chunks: T[][] = [];
   const data = opts.rows;

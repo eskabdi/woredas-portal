@@ -17,7 +17,10 @@ export function loadPresets(): ReportPreset[] {
     if (!Array.isArray(parsed)) return [];
     return parsed.filter(
       (p): p is ReportPreset =>
-        !!p && typeof p.id === "string" && typeof p.name === "string" && typeof p.start === "string",
+        !!p &&
+        typeof p.id === "string" &&
+        typeof p.name === "string" &&
+        typeof p.start === "string",
     );
   } catch {
     return [];

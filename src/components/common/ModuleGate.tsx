@@ -10,7 +10,6 @@ interface Props {
   children?: ReactNode;
 }
 
-
 /**
  * Route-level module gate. Redirects to /woreda/dashboard with a toast when
  * the given module is disabled for the current tenant.
@@ -48,4 +47,3 @@ export function ModuleGate({ moduleKey, children }: Props) {
 
   return <>{children ?? <Outlet />}</>;
 }
-

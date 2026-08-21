@@ -46,11 +46,7 @@ const schema = z
       .max(120),
     grounds: z.string().trim().max(1000).optional().default(""),
     notes: z.string().trim().max(1000).optional().default(""),
-    informant_name: z
-      .string()
-      .trim()
-      .min(1, "የመረጃ ሰጪ ስም ያስፈልጋል / Informant required")
-      .max(200),
+    informant_name: z.string().trim().min(1, "የመረጃ ሰጪ ስም ያስፈልጋል / Informant required").max(200),
     informant_phone: z
       .string()
       .trim()
@@ -104,7 +100,13 @@ function DivorceNewPage() {
     },
   });
 
-  const { register, handleSubmit, setValue, watch, formState: { errors } } = form;
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors },
+  } = form;
   const s1 = watch("spouse1");
   const s2 = watch("spouse2");
   const eventDate = watch("event_date");
@@ -228,7 +230,11 @@ function DivorceNewPage() {
 
         <Section icon={FileText} titleAm="የፍቺ ዝርዝር" titleEn="Divorce Details">
           <Grid>
-            <FieldWrap labelAm="የጋብቻ ቀን (ካለ)" labelEn="Marriage Date (if known)" error={errors.marriage_date?.message}>
+            <FieldWrap
+              labelAm="የጋብቻ ቀን (ካለ)"
+              labelEn="Marriage Date (if known)"
+              error={errors.marriage_date?.message}
+            >
               <EthiopianDateInput
                 value={marriageDate ?? ""}
                 onChange={(iso) => setValue("marriage_date", iso, { shouldValidate: true })}

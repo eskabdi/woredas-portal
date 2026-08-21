@@ -283,16 +283,28 @@ function HouseholdDetailPage() {
           <CardHeader icon={Home} titleAm="መሰረታዊ መረጃ" titleEn="Basic Information" />
           <div className="p-5">
             <dl className="grid grid-cols-3 gap-x-3 gap-y-2 text-sm">
-              <Row label="Kebele" value={kebele ? `${kebele.kebele_number} — ${kebele.kebele_name_am}` : notRecorded()} />
+              <Row
+                label="Kebele"
+                value={
+                  kebele ? `${kebele.kebele_number} — ${kebele.kebele_name_am}` : notRecorded()
+                }
+              />
               <Row label="House #" value={h.house_number as string} mono />
               <Row label="Address" value={(h.address_line as string) || notRecorded()} />
               <Row label="Occupancy" value={<StatusChip status={h.occupancy_status as string} />} />
               <Row
                 label="House Type"
-                value={h.house_type ? HOUSE_TYPE_LABEL[h.house_type as string] ?? (h.house_type as string) : notRecorded()}
+                value={
+                  h.house_type
+                    ? (HOUSE_TYPE_LABEL[h.house_type as string] ?? (h.house_type as string))
+                    : notRecorded()
+                }
               />
               {h.house_type === "other" && (
-                <Row label="Other (specify)" value={(h.house_type_other as string) || notRecorded()} />
+                <Row
+                  label="Other (specify)"
+                  value={(h.house_type_other as string) || notRecorded()}
+                />
               )}
               {(h.house_type === "rental" || h.house_type === "rented_by_private") && (
                 <Row
@@ -394,9 +406,7 @@ function HouseholdDetailPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
-                              onClick={() =>
-                                setSetHeadFor({ id: m.resident_id, name })
-                              }
+                              onClick={() => setSetHeadFor({ id: m.resident_id, name })}
                             >
                               <Crown className="mr-2 h-4 w-4 text-amber-500" />
                               <span className="font-noto-ethiopic">የቤተሰብ ኃላፊ አድርግ</span>
@@ -492,7 +502,10 @@ function notRecorded() {
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "—";
-  return parts.slice(0, 2).map((p) => p[0]).join("");
+  return parts
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join("");
 }
 
 function Row({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {

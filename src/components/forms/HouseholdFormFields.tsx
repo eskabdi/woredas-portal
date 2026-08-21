@@ -1,6 +1,13 @@
 import { lazy, Suspense, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Controller, type Control, type FieldErrors, type UseFormRegister, type UseFormSetValue, type UseFormWatch } from "react-hook-form";
+import {
+  Controller,
+  type Control,
+  type FieldErrors,
+  type UseFormRegister,
+  type UseFormSetValue,
+  type UseFormWatch,
+} from "react-hook-form";
 import { Home as HomeIcon, Users as UsersIcon, Phone, Building2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -80,7 +87,11 @@ export function HouseholdFormFields({
             labelEn="Kebele"
             required
             error={errors.kebele_id?.message}
-            helper={mode === "edit" ? "ቀበሌ ከተመዘገበ በኋላ ሊቀየር አይችልም / Kebele cannot be changed after registration" : undefined}
+            helper={
+              mode === "edit"
+                ? "ቀበሌ ከተመዘገበ በኋላ ሊቀየር አይችልም / Kebele cannot be changed after registration"
+                : undefined
+            }
           >
             {mode === "edit" ? (
               <div className="font-noto-ethiopic flex h-10 items-center rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
@@ -107,7 +118,11 @@ export function HouseholdFormFields({
             labelEn="House Number"
             required
             error={errors.house_number?.message ?? houseNumberError ?? undefined}
-            helper={mode === "edit" ? "የቤት ቁጥር ከተመዘገበ በኋላ ሊቀየር አይችልም / Cannot be changed after registration" : undefined}
+            helper={
+              mode === "edit"
+                ? "የቤት ቁጥር ከተመዘገበ በኋላ ሊቀየር አይችልም / Cannot be changed after registration"
+                : undefined
+            }
           >
             {mode === "edit" ? (
               <div className="flex h-10 items-center rounded-md border border-slate-200 bg-slate-50 px-3 font-mono text-sm text-slate-700">
@@ -122,11 +137,25 @@ export function HouseholdFormFields({
             )}
           </FieldWrap>
 
-          <FieldWrap labelAm="አድራሻ" labelEn="Address Line" error={errors.address_line?.message} colSpan2>
-            <Input {...register("address_line")} placeholder="የመንገድ ስም፣ ምልክት / Street, landmark" className="font-noto-ethiopic" />
+          <FieldWrap
+            labelAm="አድራሻ"
+            labelEn="Address Line"
+            error={errors.address_line?.message}
+            colSpan2
+          >
+            <Input
+              {...register("address_line")}
+              placeholder="የመንገድ ስም፣ ምልክት / Street, landmark"
+              className="font-noto-ethiopic"
+            />
           </FieldWrap>
 
-          <FieldWrap labelAm="አያያዝ ሁኔታ" labelEn="Occupancy Status" required error={errors.occupancy_status?.message}>
+          <FieldWrap
+            labelAm="አያያዝ ሁኔታ"
+            labelEn="Occupancy Status"
+            required
+            error={errors.occupancy_status?.message}
+          >
             <Select {...register("occupancy_status")}>
               <option value="occupied">ተይዟል / Occupied</option>
               <option value="vacant">ባዶ / Vacant</option>
@@ -182,7 +211,11 @@ export function HouseholdFormFields({
         helper="ኃላፊው ካልተመዘገበ ቀደም ብሎ ይመዝግቡ / Register the head first if not yet in the system"
       >
         <Grid>
-          <FieldWrap labelAm="የቤተሰብ ተጠሪ" labelEn="Household Head" error={errors.household_head_resident_id?.message}>
+          <FieldWrap
+            labelAm="የቤተሰብ ተጠሪ"
+            labelEn="Household Head"
+            error={errors.household_head_resident_id?.message}
+          >
             <Controller
               name="household_head_resident_id"
               control={control}
@@ -219,7 +252,12 @@ export function HouseholdFormFields({
             />
           </FieldWrap>
 
-          <FieldWrap labelAm="ሌላ የቤተሰብ ተጠሪ" labelEn="Alternate Head" error={errors.alternate_head_resident_id?.message} colSpan2>
+          <FieldWrap
+            labelAm="ሌላ የቤተሰብ ተጠሪ"
+            labelEn="Alternate Head"
+            error={errors.alternate_head_resident_id?.message}
+            colSpan2
+          >
             <Controller
               name="alternate_head_resident_id"
               control={control}
@@ -270,7 +308,12 @@ export function HouseholdFormFields({
       {/* SECTION D — Housing Type */}
       <Section icon={Building2} titleAm="የቤት ሁኔታ" titleEn="Housing Type">
         <div className="space-y-4">
-          <FieldWrap labelAm="የቤቱ ባለንብረት" labelEn="House Type" required error={errors.house_type?.message}>
+          <FieldWrap
+            labelAm="የቤቱ ባለንብረት"
+            labelEn="House Type"
+            required
+            error={errors.house_type?.message}
+          >
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {[
                 { v: "private", am: "የግል", en: "Private" },
@@ -304,13 +347,23 @@ export function HouseholdFormFields({
           </FieldWrap>
 
           {houseType === "other" && (
-            <FieldWrap labelAm="ሌላ (ይግለፁ)" labelEn="Specify Other" required error={errors.house_type_other?.message}>
+            <FieldWrap
+              labelAm="ሌላ (ይግለፁ)"
+              labelEn="Specify Other"
+              required
+              error={errors.house_type_other?.message}
+            >
               <Input {...register("house_type_other")} className="font-noto-ethiopic" />
             </FieldWrap>
           )}
 
           {(houseType === "rental" || houseType === "rented_by_private") && (
-            <FieldWrap labelAm="የኪራይ ብር መጠን" labelEn="Rent Amount (ETB)" required error={errors.rent_amount?.message}>
+            <FieldWrap
+              labelAm="የኪራይ ብር መጠን"
+              labelEn="Rent Amount (ETB)"
+              required
+              error={errors.rent_amount?.message}
+            >
               <Input
                 type="number"
                 step="0.01"

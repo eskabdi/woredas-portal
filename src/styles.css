@@ -147,7 +147,8 @@
     font-family: "Inter", sans-serif;
   }
 
-  :lang(am), .font-noto-ethiopic {
+  :lang(am),
+  .font-noto-ethiopic {
     font-family: "Noto Sans Ethiopic", sans-serif;
   }
 }

@@ -8,12 +8,12 @@ description: Deploy this project — database migrations and seed data to Supaba
 Four independent artifacts. Nothing deploys the others, and a partial deploy
 looks like a working system until someone hits the missing piece.
 
-| Artifact | Applied by | Missing looks like |
-|---|---|---|
-| Schema + storage policies | `supabase/migrations/*.sql` | relation does not exist |
-| Reference data | `supabase/seed.sql` | login works, no permissions resolve |
-| Edge Functions | `scripts/deploy-functions.sh` | `404 NOT_FOUND` from `/functions/v1/*` |
-| Frontend | `vercel deploy` | stale UI, or a project with no deployments |
+| Artifact                  | Applied by                    | Missing looks like                         |
+| ------------------------- | ----------------------------- | ------------------------------------------ |
+| Schema + storage policies | `supabase/migrations/*.sql`   | relation does not exist                    |
+| Reference data            | `supabase/seed.sql`           | login works, no permissions resolve        |
+| Edge Functions            | `scripts/deploy-functions.sh` | `404 NOT_FOUND` from `/functions/v1/*`     |
+| Frontend                  | `vercel deploy`               | stale UI, or a project with no deployments |
 
 Read `CLAUDE.md` first if you are in a sandboxed environment — Postgres ports
 are blocked there and the CLIs fail in ways whose error messages point at the

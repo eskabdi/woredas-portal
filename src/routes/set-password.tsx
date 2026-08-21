@@ -42,9 +42,7 @@ function Shell({ children }: { children: React.ReactNode }) {
             <h1 className="font-noto-ethiopic text-2xl font-bold text-slate-900">
               ወረዳ አስተዳደር ሥርዓት
             </h1>
-            <p className="mt-1 text-sm text-slate-500">
-              Woreda Administration ERP — Harari Region
-            </p>
+            <p className="mt-1 text-sm text-slate-500">Woreda Administration ERP — Harari Region</p>
           </div>
           <div className="my-6 border-t border-slate-200" />
           {children}
@@ -104,8 +102,8 @@ function SetPasswordPage() {
           This link is no longer valid
         </h2>
         <p className="mt-2 text-center text-sm text-slate-600">
-          Invitation and reset links expire after a short time and can only be used
-          once. Ask an administrator to send a new one.
+          Invitation and reset links expire after a short time and can only be used once. Ask an
+          administrator to send a new one.
         </p>
         <Button className="mt-6 w-full" onClick={() => navigate({ to: "/login" })}>
           Back to sign in
@@ -133,15 +131,12 @@ function SetPasswordPage() {
     const pending = appUser?.status !== "active";
     return (
       <Shell>
-        <h2 className="text-center text-lg font-semibold text-slate-900">
-          Password set
-        </h2>
+        <h2 className="text-center text-lg font-semibold text-slate-900">Password set</h2>
         {pending ? (
           <>
             <p className="mt-2 text-center text-sm text-slate-600">
-              Your account is not active yet. An administrator has to activate it
-              before you can use the system. You can sign in with your new password
-              once that is done.
+              Your account is not active yet. An administrator has to activate it before you can use
+              the system. You can sign in with your new password once that is done.
             </p>
             <Button
               variant="outline"
@@ -155,9 +150,7 @@ function SetPasswordPage() {
             </Button>
           </>
         ) : (
-          <p className="mt-2 text-center text-sm text-slate-600">
-            Taking you to your dashboard…
-          </p>
+          <p className="mt-2 text-center text-sm text-slate-600">Taking you to your dashboard…</p>
         )}
       </Shell>
     );
@@ -192,9 +185,7 @@ function SetPasswordPage() {
             autoComplete="new-password"
             {...register("confirm")}
           />
-          {errors.confirm && (
-            <p className="mt-1 text-sm text-red-600">{errors.confirm.message}</p>
-          )}
+          {errors.confirm && <p className="mt-1 text-sm text-red-600">{errors.confirm.message}</p>}
         </div>
 
         {submitError && <p className="text-sm text-red-600">{submitError}</p>}

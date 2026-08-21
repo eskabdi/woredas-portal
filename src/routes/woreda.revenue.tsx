@@ -38,7 +38,6 @@ import {
 import { exportRowsToCsv, exportRowsToPdf, type TableColumn } from "@/utils/tableExport";
 import { useReportBranding } from "@/hooks/useReportBranding";
 
-
 export const Route = createFileRoute("/woreda/revenue")({
   ssr: false,
   component: () => (
@@ -48,12 +47,7 @@ export const Route = createFileRoute("/woreda/revenue")({
   ),
 });
 
-type PaymentType =
-  | "service_fee"
-  | "house_rent"
-  | "penalty"
-  | "credential_fee"
-  | "rental_rent";
+type PaymentType = "service_fee" | "house_rent" | "penalty" | "credential_fee" | "rental_rent";
 
 interface PaymentRow {
   payment_id: string;
@@ -153,17 +147,12 @@ function RevenuePage() {
     return sorted;
   }, [paymentsQuery.data, qTerm, sort.field, sort.dir]);
 
-  const { page, setPage, pageSize, setPageSize, total, pageRows } =
-    useClientPagination(filteredPayments, [qTerm, typeFilter, start, end, kebeleFilter, sort.key].join("|"));
-
-  const filtersActive = !!(
-    qTerm ||
-    typeFilter ||
-    start ||
-    end ||
-    kebeleFilter ||
-    !sort.isDefault
+  const { page, setPage, pageSize, setPageSize, total, pageRows } = useClientPagination(
+    filteredPayments,
+    [qTerm, typeFilter, start, end, kebeleFilter, sort.key].join("|"),
   );
+
+  const filtersActive = !!(qTerm || typeFilter || start || end || kebeleFilter || !sort.isDefault);
   const clearFilters = useClearTableFilters([], () => {
     setTypeFilter("");
     setStart("");
@@ -174,16 +163,17 @@ function RevenuePage() {
   const branding = useReportBranding();
   const [exporting, setExporting] = useState(false);
 
-  const filterLabel = [
-    qTerm ? `Search: "${qTerm}"` : null,
-    typeFilter ? `Type: ${typeFilter}` : null,
-    start ? `From: ${start}` : null,
-    end ? `To: ${end}` : null,
-    kebeleFilter ? `Kebele: ${kebeleFilter}` : null,
-    !sort.isDefault ? `Sort: ${sort.field} ${sort.dir}` : null,
-  ]
-    .filter(Boolean)
-    .join(" • ") || "No filters applied";
+  const filterLabel =
+    [
+      qTerm ? `Search: "${qTerm}"` : null,
+      typeFilter ? `Type: ${typeFilter}` : null,
+      start ? `From: ${start}` : null,
+      end ? `To: ${end}` : null,
+      kebeleFilter ? `Kebele: ${kebeleFilter}` : null,
+      !sort.isDefault ? `Sort: ${sort.field} ${sort.dir}` : null,
+    ]
+      .filter(Boolean)
+      .join(" • ") || "No filters applied";
 
   const exportColumns: TableColumn<PaymentRow>[] = [
     { header: "ቀን / Date", value: (r) => r.payment_date },
@@ -351,19 +341,11 @@ function RevenuePage() {
           </div>
           <div>
             <Label>Start</Label>
-            <Input
-              type="date"
-              value={start}
-              onChange={(e) => setStart(e.target.value)}
-            />
+            <Input type="date" value={start} onChange={(e) => setStart(e.target.value)} />
           </div>
           <div>
             <Label>End</Label>
-            <Input
-              type="date"
-              value={end}
-              onChange={(e) => setEnd(e.target.value)}
-            />
+            <Input type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
           </div>
           <KebeleFilter
             value={kebeleFilter}
@@ -401,9 +383,7 @@ function RevenuePage() {
           </div>
         </Card>
         <Card className="p-4 md:col-span-2">
-          <div className="text-xs uppercase text-slate-500">
-            Reconciliation by type / channel
-          </div>
+          <div className="text-xs uppercase text-slate-500">Reconciliation by type / channel</div>
           <div className="mt-2 space-y-1 text-sm">
             {Object.entries(reconciliation.totals).length === 0 && (
               <div className="text-slate-500">No payments in range.</div>
@@ -426,10 +406,18 @@ function RevenuePage() {
           <table className="min-w-full text-sm">
             <thead className="bg-slate-50">
               <tr className="text-left text-slate-600">
-                <SortableTh field="payment_date" sort={sort}>Date</SortableTh>
-                <SortableTh field="payment_type" sort={sort}>Type</SortableTh>
-                <SortableTh field="amount" sort={sort}>Amount</SortableTh>
-                <SortableTh field="channel" sort={sort}>Channel</SortableTh>
+                <SortableTh field="payment_date" sort={sort}>
+                  Date
+                </SortableTh>
+                <SortableTh field="payment_type" sort={sort}>
+                  Type
+                </SortableTh>
+                <SortableTh field="amount" sort={sort}>
+                  Amount
+                </SortableTh>
+                <SortableTh field="channel" sort={sort}>
+                  Channel
+                </SortableTh>
                 <th className="px-4 py-2">Reference</th>
                 <th className="px-4 py-2">Receipt</th>
                 <th className="px-4 py-2"></th>
@@ -459,46 +447,44 @@ function RevenuePage() {
                   filteredLabelEn="No payments match your search or filters"
                 />
               )}
-              {!paymentsQuery.isLoading && !paymentsQuery.isError && pageRows.map((p) => (
-                <tr key={p.payment_id} className="border-t">
-                  <td className="px-4 py-2">{p.payment_date}</td>
-                  <td className="px-4 py-2">
-                    <Badge variant="outline">{p.payment_type}</Badge>
-                  </td>
-                  <td className="px-4 py-2 font-medium">
-                    {Number(p.amount).toLocaleString()}
-                  </td>
-                  <td className="px-4 py-2">{p.channel}</td>
-                  <td className="px-4 py-2">{p.reference_no ?? "—"}</td>
-                  <td className="px-4 py-2">
-                    {p.receipt ? (
-                      <span>
-                        {p.receipt.receipt_number}
-                        {p.receipt.printed_at && (
-                          <span className="ml-1 text-xs text-slate-500">
-                            (printed)
-                          </span>
-                        )}
-                      </span>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td className="px-4 py-2 text-right">
-                    {p.receipt && hasPermission(P.REVENUE_RECEIPT_REPRINT) && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => reprint.mutate(p)}
-                        disabled={reprint.isPending}
-                      >
-                        <Printer className="mr-1 h-4 w-4" />
-                        {p.receipt.printed_at ? "Reprint" : "Print"}
-                      </Button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+              {!paymentsQuery.isLoading &&
+                !paymentsQuery.isError &&
+                pageRows.map((p) => (
+                  <tr key={p.payment_id} className="border-t">
+                    <td className="px-4 py-2">{p.payment_date}</td>
+                    <td className="px-4 py-2">
+                      <Badge variant="outline">{p.payment_type}</Badge>
+                    </td>
+                    <td className="px-4 py-2 font-medium">{Number(p.amount).toLocaleString()}</td>
+                    <td className="px-4 py-2">{p.channel}</td>
+                    <td className="px-4 py-2">{p.reference_no ?? "—"}</td>
+                    <td className="px-4 py-2">
+                      {p.receipt ? (
+                        <span>
+                          {p.receipt.receipt_number}
+                          {p.receipt.printed_at && (
+                            <span className="ml-1 text-xs text-slate-500">(printed)</span>
+                          )}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      {p.receipt && hasPermission(P.REVENUE_RECEIPT_REPRINT) && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => reprint.mutate(p)}
+                          disabled={reprint.isPending}
+                        >
+                          <Printer className="mr-1 h-4 w-4" />
+                          {p.receipt.printed_at ? "Reprint" : "Print"}
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
             </tbody>
           </table>
         </div>
@@ -633,9 +619,7 @@ function CollectRentalDialog({
               value={requestId}
               onChange={(e) => {
                 setRequestId(e.target.value);
-                const sel = approvedRequests?.find(
-                  (r) => r.rental_request_id === e.target.value,
-                );
+                const sel = approvedRequests?.find((r) => r.rental_request_id === e.target.value);
                 if (sel?.rent_amount != null) setAmount(String(sel.rent_amount));
               }}
               className="mt-1 block h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
@@ -663,9 +647,7 @@ function CollectRentalDialog({
             <Label>Channel</Label>
             <select
               value={channel}
-              onChange={(e) =>
-                setChannel(e.target.value as "cash" | "bank" | "mobile")
-              }
+              onChange={(e) => setChannel(e.target.value as "cash" | "bank" | "mobile")}
               className="mt-1 block h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
             >
               <option value="cash">Cash</option>
@@ -676,10 +658,7 @@ function CollectRentalDialog({
           {channel !== "cash" && (
             <div>
               <Label>Reference No.</Label>
-              <Input
-                value={referenceNo}
-                onChange={(e) => setReferenceNo(e.target.value)}
-              />
+              <Input value={referenceNo} onChange={(e) => setReferenceNo(e.target.value)} />
             </div>
           )}
         </div>

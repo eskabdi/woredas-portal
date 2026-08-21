@@ -26,10 +26,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
 import { KpiCard } from "@/components/common/KpiCard";
-import {
-  ethiopianMonthLabel,
-  formatEthiopianDateTime,
-} from "@/utils/ethiopianCalendar";
+import { ethiopianMonthLabel, formatEthiopianDateTime } from "@/utils/ethiopianCalendar";
 
 export const Route = createFileRoute("/woreda/dashboard")({
   ssr: false,
@@ -328,7 +325,13 @@ function WoredaDashboard() {
                 <XAxis dataKey="day" tick={{ fontSize: 10 }} />
                 <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip />
-                <Line type="monotone" dataKey="amount" stroke="#059669" strokeWidth={2} dot={false} />
+                <Line
+                  type="monotone"
+                  dataKey="amount"
+                  stroke="#059669"
+                  strokeWidth={2}
+                  dot={false}
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -337,9 +340,7 @@ function WoredaDashboard() {
 
       {/* Recent activity */}
       <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h3 className="font-noto-ethiopic text-sm font-semibold text-slate-900">
-          የቅርብ ጊዜ እንቅስቃሴ
-        </h3>
+        <h3 className="font-noto-ethiopic text-sm font-semibold text-slate-900">የቅርብ ጊዜ እንቅስቃሴ</h3>
         <p className="text-xs text-slate-400">Recent activity</p>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-sm">
@@ -354,7 +355,9 @@ function WoredaDashboard() {
               {(recentAudit.data ?? []).length === 0 ? (
                 <tr>
                   <td colSpan={3} className="py-6 text-center text-slate-400">
-                    <span className="font-noto-ethiopic">ባለፉት 12 ሰዓታት ምንም እንቅስቃሴ የለም / No activity in the last 12 hours</span>
+                    <span className="font-noto-ethiopic">
+                      ባለፉት 12 ሰዓታት ምንም እንቅስቃሴ የለም / No activity in the last 12 hours
+                    </span>
                   </td>
                 </tr>
               ) : (

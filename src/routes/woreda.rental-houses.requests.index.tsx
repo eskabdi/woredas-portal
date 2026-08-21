@@ -30,7 +30,6 @@ import { TableEmptyRow, TableErrorRow, TableSkeletonRows } from "@/components/co
 import { exportRowsToCsv, exportRowsToPdf, type TableColumn } from "@/utils/tableExport";
 import { useReportBranding } from "@/hooks/useReportBranding";
 
-
 export const Route = createFileRoute("/woreda/rental-houses/requests/")({
   ssr: false,
   component: RentalRequestListPage,
@@ -78,9 +77,7 @@ function TabNav() {
             to={t.to}
             className={cn(
               "inline-flex items-center justify-center rounded-md px-3 py-1 text-sm font-medium transition",
-              active
-                ? "bg-white text-slate-900 shadow"
-                : "text-slate-500 hover:text-slate-700",
+              active ? "bg-white text-slate-900 shadow" : "text-slate-500 hover:text-slate-700",
             )}
           >
             <span className="font-noto-ethiopic">{t.labelAm}</span>
@@ -134,7 +131,10 @@ const EXPORT_COLUMNS: TableColumn<RequestRow>[] = [
   { header: "ጥያቄ ቁጥር / Request #", value: (r) => r.request_number },
   { header: "አይነት / Type", value: (r) => requestTypeLabel(r.request_type).en },
   { header: "ቤት / House", value: (r) => r.house?.house_number ?? "" },
-  { header: "ተከራይ / Resident", value: (r) => r.resident?.full_name_am || r.resident?.full_name || "" },
+  {
+    header: "ተከራይ / Resident",
+    value: (r) => r.resident?.full_name_am || r.resident?.full_name || "",
+  },
   { header: "ኪራይ / Rent", value: (r) => r.rent_amount ?? "", align: "right" },
   { header: "ሁኔታ / Status", value: (r) => r.status },
   { header: "የቀረበ / Submitted", value: (r) => fmtDate(r.created_at) },
@@ -152,7 +152,8 @@ function sortRows(rows: RequestRow[], field: string, dir: "asc" | "desc"): Reque
       case "house":
         return mul * (a.house?.house_number ?? "").localeCompare(b.house?.house_number ?? "");
       case "resident":
-        return mul * (
+        return (
+          mul *
           (a.resident?.full_name_am || a.resident?.full_name || "").localeCompare(
             b.resident?.full_name_am || b.resident?.full_name || "",
           )
@@ -314,9 +315,7 @@ function RentalRequestListPage() {
         description="All new registration and vacate requests across kebele rental houses"
         actions={
           <Button asChild variant="outline">
-            <Link to="/woreda/rental-houses">
-              ← Back to Houses
-            </Link>
+            <Link to="/woreda/rental-houses">← Back to Houses</Link>
           </Button>
         }
       />
@@ -369,13 +368,27 @@ function RentalRequestListPage() {
           <table className="min-w-full text-sm">
             <thead className="bg-slate-50">
               <tr className="text-left text-slate-600">
-                <SortableTh field="request_number" sort={sort}>ጥያቄ ቁጥር / Request #</SortableTh>
-                <SortableTh field="request_type" sort={sort}>አይነት / Type</SortableTh>
-                <SortableTh field="house" sort={sort}>ቤት / House</SortableTh>
-                <SortableTh field="resident" sort={sort}>ተከራይ / Resident</SortableTh>
-                <SortableTh field="rent_amount" sort={sort}>ኪራይ / Rent</SortableTh>
-                <SortableTh field="status" sort={sort}>ሁኔታ / Status</SortableTh>
-                <SortableTh field="created_at" sort={sort}>የቀረበ / Submitted</SortableTh>
+                <SortableTh field="request_number" sort={sort}>
+                  ጥያቄ ቁጥር / Request #
+                </SortableTh>
+                <SortableTh field="request_type" sort={sort}>
+                  አይነት / Type
+                </SortableTh>
+                <SortableTh field="house" sort={sort}>
+                  ቤት / House
+                </SortableTh>
+                <SortableTh field="resident" sort={sort}>
+                  ተከራይ / Resident
+                </SortableTh>
+                <SortableTh field="rent_amount" sort={sort}>
+                  ኪራይ / Rent
+                </SortableTh>
+                <SortableTh field="status" sort={sort}>
+                  ሁኔታ / Status
+                </SortableTh>
+                <SortableTh field="created_at" sort={sort}>
+                  የቀረበ / Submitted
+                </SortableTh>
                 <th className="px-4 py-2"></th>
               </tr>
             </thead>
@@ -387,63 +400,67 @@ function RentalRequestListPage() {
               {!isLoading && !isError && sortedRows.length === 0 && (
                 <TableEmptyRow cols={8} filtered={filtersActive} onClearFilters={clearFilters} />
               )}
-              {!isLoading && !isError && pageRows.map((r) => {
-                const type = requestTypeLabel(r.request_type);
-                return (
-                  <tr key={r.rental_request_id} className="border-t hover:bg-slate-50">
-                    <td className="px-4 py-2 font-medium">{r.request_number}</td>
-                    <td className="px-4 py-2">
-                      <div className="font-noto-ethiopic text-xs">{type.am}</div>
-                      <div className="text-[10px] text-slate-500">{type.en}</div>
-                    </td>
-                    <td className="px-4 py-2">
-                      {r.house ? (
+              {!isLoading &&
+                !isError &&
+                pageRows.map((r) => {
+                  const type = requestTypeLabel(r.request_type);
+                  return (
+                    <tr key={r.rental_request_id} className="border-t hover:bg-slate-50">
+                      <td className="px-4 py-2 font-medium">{r.request_number}</td>
+                      <td className="px-4 py-2">
+                        <div className="font-noto-ethiopic text-xs">{type.am}</div>
+                        <div className="text-[10px] text-slate-500">{type.en}</div>
+                      </td>
+                      <td className="px-4 py-2">
+                        {r.house ? (
+                          <Link
+                            to="/woreda/rental-houses/$houseId"
+                            params={{ houseId: r.house.rental_house_id }}
+                            className="text-blue-700 hover:underline"
+                          >
+                            {r.house.house_number}
+                          </Link>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="px-4 py-2 font-noto-ethiopic">
+                        {r.resident ? (
+                          <Link
+                            to="/woreda/residents/$residentId"
+                            params={{ residentId: r.resident.resident_id }}
+                            className="text-blue-700 hover:underline"
+                          >
+                            {r.resident.full_name_am || r.resident.full_name}
+                          </Link>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="px-4 py-2">
+                        {r.rent_amount != null ? Number(r.rent_amount).toLocaleString() : "—"}
+                        {r.rent_start_date && (
+                          <div className="text-[10px] text-slate-500">
+                            {fmtDate(r.rent_start_date)}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-2">
+                        <StatusBadge status={r.status} />
+                      </td>
+                      <td className="px-4 py-2 text-slate-500">{fmtDate(r.created_at)}</td>
+                      <td className="px-4 py-2 text-right">
                         <Link
-                          to="/woreda/rental-houses/$houseId"
-                          params={{ houseId: r.house.rental_house_id }}
+                          to="/woreda/rental-houses/requests/$requestId"
+                          params={{ requestId: r.rental_request_id }}
                           className="text-blue-700 hover:underline"
                         >
-                          {r.house.house_number}
+                          Open →
                         </Link>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td className="px-4 py-2 font-noto-ethiopic">
-                      {r.resident ? (
-                        <Link
-                          to="/woreda/residents/$residentId"
-                          params={{ residentId: r.resident.resident_id }}
-                          className="text-blue-700 hover:underline"
-                        >
-                          {r.resident.full_name_am || r.resident.full_name}
-                        </Link>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td className="px-4 py-2">
-                      {r.rent_amount != null ? Number(r.rent_amount).toLocaleString() : "—"}
-                      {r.rent_start_date && (
-                        <div className="text-[10px] text-slate-500">{fmtDate(r.rent_start_date)}</div>
-                      )}
-                    </td>
-                    <td className="px-4 py-2">
-                      <StatusBadge status={r.status} />
-                    </td>
-                    <td className="px-4 py-2 text-slate-500">{fmtDate(r.created_at)}</td>
-                    <td className="px-4 py-2 text-right">
-                      <Link
-                        to="/woreda/rental-houses/requests/$requestId"
-                        params={{ requestId: r.rental_request_id }}
-                        className="text-blue-700 hover:underline"
-                      >
-                        Open →
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })}
+                      </td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
         </div>

@@ -89,7 +89,9 @@ function AdminUsersPage() {
   const qc = useQueryClient();
   const callerId = useAuthStore((s) => s.user?.id);
   const [roleFilter, setRoleFilter] = useState<"all" | "super_admin" | "tenant_admin">("all");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "pending" | "suspended">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "pending" | "suspended">(
+    "all",
+  );
   const { input: q, setInput: setQ, term: qTerm } = useUrlSearchTerm();
   const [inviteOpen, setInviteOpen] = useState(false);
   const [suspendUser, setSuspendUser] = useState<AdminUserRow | null>(null);
@@ -98,7 +100,13 @@ function AdminUsersPage() {
   const sort = useUrlSort("full_name", "asc");
   const [exporting, setExporting] = useState(false);
 
-  const { data: users = [], isLoading, isError, error, refetch } = useQuery({
+  const {
+    data: users = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ["admin-users"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -135,7 +143,8 @@ function AdminUsersPage() {
       if (statusFilter !== "all" && u.status !== statusFilter) return false;
       if (qTerm) {
         const s = qTerm.toLowerCase();
-        if (!u.full_name.toLowerCase().includes(s) && !u.username.toLowerCase().includes(s)) return false;
+        if (!u.full_name.toLowerCase().includes(s) && !u.username.toLowerCase().includes(s))
+          return false;
       }
       return true;
     });
@@ -153,8 +162,8 @@ function AdminUsersPage() {
         case "status":
           return mul * a.status.localeCompare(b.status);
         case "tenant": {
-          const an = a.woreda_id ? woredaMap.get(a.woreda_id)?.woreda_name_en ?? "" : "Platform";
-          const bn = b.woreda_id ? woredaMap.get(b.woreda_id)?.woreda_name_en ?? "" : "Platform";
+          const an = a.woreda_id ? (woredaMap.get(a.woreda_id)?.woreda_name_en ?? "") : "Platform";
+          const bn = b.woreda_id ? (woredaMap.get(b.woreda_id)?.woreda_name_en ?? "") : "Platform";
           return mul * an.localeCompare(bn);
         }
         default:
@@ -164,10 +173,15 @@ function AdminUsersPage() {
     return arr;
   }
 
-  const sortedFiltered = useMemo(() => sortRows(filtered), [filtered, sort.field, sort.dir, woredaMap]);
+  const sortedFiltered = useMemo(
+    () => sortRows(filtered),
+    [filtered, sort.field, sort.dir, woredaMap],
+  );
 
-  const { page, setPage, pageSize, setPageSize, total, pageRows } =
-    useClientPagination(sortedFiltered, [qTerm, roleFilter, statusFilter, sort.key].join("|"));
+  const { page, setPage, pageSize, setPageSize, total, pageRows } = useClientPagination(
+    sortedFiltered,
+    [qTerm, roleFilter, statusFilter, sort.key].join("|"),
+  );
 
   const clearFilters = useClearTableFilters([], () => {
     setRoleFilter("all");
@@ -187,7 +201,10 @@ function AdminUsersPage() {
   }
 
   const EXPORT_COLUMNS: TableColumn<AdminUserRow>[] = [
-    { header: "ወረዳ / Tenant", value: (u) => (u.woreda_id ? woredaMap.get(u.woreda_id)?.woreda_name_en ?? "" : "Platform") },
+    {
+      header: "ወረዳ / Tenant",
+      value: (u) => (u.woreda_id ? (woredaMap.get(u.woreda_id)?.woreda_name_en ?? "") : "Platform"),
+    },
     { header: "ሙሉ ስም / Full Name", value: (u) => u.full_name },
     { header: "የተጠቃሚ ስም / Username", value: (u) => u.username },
     { header: "ሚና / Role", value: (u) => u.role },
@@ -331,7 +348,10 @@ function AdminUsersPage() {
               <SelectItem value="tenant_admin">Tenant Admin</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
+          <Select
+            value={statusFilter}
+            onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}
+          >
             <SelectTrigger className="w-[160px]">
               <SelectValue />
             </SelectTrigger>
@@ -385,8 +405,12 @@ function AdminUsersPage() {
                       <Badge variant="secondary">Platform</Badge>
                     ) : u.woreda_id && woredaMap.get(u.woreda_id) ? (
                       <div>
-                        <div className="font-noto-ethiopic">{woredaMap.get(u.woreda_id)!.woreda_name_am}</div>
-                        <div className="text-xs text-slate-500">{woredaMap.get(u.woreda_id)!.woreda_name_en}</div>
+                        <div className="font-noto-ethiopic">
+                          {woredaMap.get(u.woreda_id)!.woreda_name_am}
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          {woredaMap.get(u.woreda_id)!.woreda_name_en}
+                        </div>
                       </div>
                     ) : (
                       <span className="text-slate-400">—</span>
@@ -397,11 +421,19 @@ function AdminUsersPage() {
                     <div className="text-xs text-slate-500">{u.username}</div>
                   </td>
                   <td className="px-4 py-3">
-                    <Badge className={u.role === "super_admin" ? "bg-purple-100 text-purple-800 hover:bg-purple-100" : "bg-blue-100 text-blue-800 hover:bg-blue-100"}>
+                    <Badge
+                      className={
+                        u.role === "super_admin"
+                          ? "bg-purple-100 text-purple-800 hover:bg-purple-100"
+                          : "bg-blue-100 text-blue-800 hover:bg-blue-100"
+                      }
+                    >
                       {u.role === "super_admin" ? "Super Admin" : "Tenant Admin"}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3"><StatusChip status={u.status} /></td>
+                  <td className="px-4 py-3">
+                    <StatusChip status={u.status} />
+                  </td>
                   <td className="px-4 py-3 text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -505,8 +537,19 @@ function AdminUsersPage() {
   );
 }
 
-function Kpi({ am, en, value, tone }: { am: string; en: string; value: number; tone?: "amber" | "red" }) {
-  const color = tone === "amber" ? "text-amber-600" : tone === "red" ? "text-red-600" : "text-blue-700";
+function Kpi({
+  am,
+  en,
+  value,
+  tone,
+}: {
+  am: string;
+  en: string;
+  value: number;
+  tone?: "amber" | "red";
+}) {
+  const color =
+    tone === "amber" ? "text-amber-600" : tone === "red" ? "text-red-600" : "text-blue-700";
   return (
     <Card className="p-5">
       <div className={`text-3xl font-bold ${color}`}>{value}</div>
@@ -597,7 +640,9 @@ function InviteAdminDialog({
           <div>
             <Label>Assign Role</Label>
             <Select value={role} onValueChange={(v) => setRole(v as typeof role)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="tenant_admin">Tenant Admin</SelectItem>
                 <SelectItem value="super_admin">Super Admin</SelectItem>
@@ -608,7 +653,9 @@ function InviteAdminDialog({
             <div>
               <Label>Woreda</Label>
               <Select value={woredaId} onValueChange={setWoredaId}>
-                <SelectTrigger><SelectValue placeholder="Select woreda…" /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select woreda…" />
+                </SelectTrigger>
                 <SelectContent>
                   {woredas.map((w) => (
                     <SelectItem key={w.woreda_id} value={w.woreda_id}>
@@ -622,7 +669,9 @@ function InviteAdminDialog({
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
           <Button disabled={submitting} onClick={submit} className="bg-blue-700 hover:bg-blue-800">
             {submitting ? "Sending…" : "Send Invitation"}
           </Button>

@@ -19,9 +19,7 @@ function NotFoundComponent() {
       <div className="max-w-md text-center">
         <h1 className="text-7xl font-bold text-slate-900">404</h1>
         <h2 className="mt-4 text-xl font-semibold text-slate-900">Page not found</h2>
-        <p className="mt-2 text-sm text-slate-500">
-          The page you're looking for doesn't exist.
-        </p>
+        <p className="mt-2 text-sm text-slate-500">The page you're looking for doesn't exist.</p>
         <div className="mt-6">
           <Link
             to="/"
@@ -88,16 +86,27 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       {
         property: "og:description",
-        content:
-          "Multi-tenant government ERP for Harari woreda offices.",
+        content: "Multi-tenant government ERP for Harari woreda offices.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { property: "og:title", content: "Woreda Administration Por" },
       { name: "twitter:title", content: "Woreda Administration Por" },
-      { name: "description", content: "Harari Woreda Connect digitizes woreda administration for Ethiopia's Harari region." },
-      { property: "og:description", content: "Harari Woreda Connect digitizes woreda administration for Ethiopia's Harari region." },
-      { name: "twitter:description", content: "Harari Woreda Connect digitizes woreda administration for Ethiopia's Harari region." },
+      {
+        name: "description",
+        content:
+          "Harari Woreda Connect digitizes woreda administration for Ethiopia's Harari region.",
+      },
+      {
+        property: "og:description",
+        content:
+          "Harari Woreda Connect digitizes woreda administration for Ethiopia's Harari region.",
+      },
+      {
+        name: "twitter:description",
+        content:
+          "Harari Woreda Connect digitizes woreda administration for Ethiopia's Harari region.",
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

@@ -36,9 +36,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-slate-100">
-      <aside
-        className="fixed inset-y-0 left-0 flex w-60 flex-col bg-slate-800"
-      >
+      <aside className="fixed inset-y-0 left-0 flex w-60 flex-col bg-slate-800">
         <div className="border-b border-slate-700 px-5 py-5">
           <h2 className="text-base font-semibold text-white">⚙ Platform Admin</h2>
           <p className="mt-1 text-xs text-slate-400">Super Admin Console</p>
@@ -48,8 +46,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           <ul className="space-y-1">
             {ADMIN_NAV.map((item) => {
               const Icon = ICON_MAP[item.icon] ?? LayoutDashboard;
-              const active =
-                currentPath === item.href || currentPath.startsWith(item.href + "/");
+              const active = currentPath === item.href || currentPath.startsWith(item.href + "/");
               return (
                 <li key={item.href}>
                   <Link
@@ -70,9 +67,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
       <div className="ml-60 flex w-full flex-col">
         <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-6">
-          <h1 className="text-base font-semibold text-slate-900">
-            Super Admin Console
-          </h1>
+          <h1 className="text-base font-semibold text-slate-900">Super Admin Console</h1>
           <div className="relative">
             <button
               type="button"

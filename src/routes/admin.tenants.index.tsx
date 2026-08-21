@@ -77,7 +77,12 @@ function sortWoredas(rows: WoredaRow[], field: string, dir: "asc" | "desc"): Wor
       case "woreda_name":
         return mul * a.woreda_name_am.localeCompare(b.woreda_name_am);
       case "woreda_code":
-        return mul * String(a.woreda_numeric_code ?? a.woreda_code).localeCompare(String(b.woreda_numeric_code ?? b.woreda_code));
+        return (
+          mul *
+          String(a.woreda_numeric_code ?? a.woreda_code).localeCompare(
+            String(b.woreda_numeric_code ?? b.woreda_code),
+          )
+        );
       default:
         return 0;
     }
@@ -86,7 +91,13 @@ function sortWoredas(rows: WoredaRow[], field: string, dir: "asc" | "desc"): Wor
 }
 
 function TenantsListPage() {
-  const { data: woredas = [], isLoading, isError, error, refetch } = useQuery({
+  const {
+    data: woredas = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ["admin-tenants-woredas"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -273,71 +284,82 @@ function TenantsListPage() {
             {!isLoading && !isError && filteredWoredas.length === 0 && (
               <TableEmptyRow cols={5} filtered={filtersActive} onClearFilters={clearFilters} />
             )}
-            {!isLoading && !isError && pageRows.map((w) => {
-              const wAdmins = adminByWoreda.get(w.woreda_id) ?? [];
-              const activeAdmin = wAdmins.find((a) => a.status !== "suspended");
-              const enabled = modulesByWoreda.get(w.woreda_id) ?? new Set<string>();
-              return (
-                <tr key={w.woreda_id} className="border-t border-slate-100">
-                  <td className="px-4 py-3">
-                    <div className="font-noto-ethiopic font-medium text-slate-900">{w.woreda_name_am}</div>
-                    <div className="text-xs text-slate-500">{w.woreda_name_en}</div>
-                  </td>
-                  <td className="px-4 py-3 text-slate-700">
-                    <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-xs">
-                      {w.woreda_numeric_code ?? w.woreda_code}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    {activeAdmin ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-slate-800">{activeAdmin.full_name}</span>
-                        <StatusChip status={activeAdmin.status} />
+            {!isLoading &&
+              !isError &&
+              pageRows.map((w) => {
+                const wAdmins = adminByWoreda.get(w.woreda_id) ?? [];
+                const activeAdmin = wAdmins.find((a) => a.status !== "suspended");
+                const enabled = modulesByWoreda.get(w.woreda_id) ?? new Set<string>();
+                return (
+                  <tr key={w.woreda_id} className="border-t border-slate-100">
+                    <td className="px-4 py-3">
+                      <div className="font-noto-ethiopic font-medium text-slate-900">
+                        {w.woreda_name_am}
                       </div>
-                    ) : (
-                      <span className="font-noto-ethiopic text-amber-700">
-                        አስተዳዳሪ አልተመደበም
-                        <span className="ml-1 text-xs text-amber-600">/ No Admin Assigned</span>
+                      <div className="text-xs text-slate-500">{w.woreda_name_en}</div>
+                    </td>
+                    <td className="px-4 py-3 text-slate-700">
+                      <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-xs">
+                        {w.woreda_numeric_code ?? w.woreda_code}
                       </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-1">
-                      {Object.keys(MODULE_LABELS).map((key) => {
-                        const on = enabled.has(key);
-                        return (
-                          <Badge
-                            key={key}
-                            variant={on ? "default" : "outline"}
-                            className={on ? "bg-blue-100 text-blue-800 hover:bg-blue-100" : "text-slate-400"}
-                          >
-                            <span className="font-noto-ethiopic">{MODULE_LABELS[key].am}</span>
-                          </Badge>
-                        );
-                      })}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild>
-                          <Link to="/admin/tenants/$woredaId/provision" params={{ woredaId: w.woreda_id }}>
-                            <Shield className="mr-2 h-4 w-4" />
-                            <span className="font-noto-ethiopic">አስተዳዳሪ መድብ</span>
-                            <span className="ml-2 text-xs text-slate-500">/ Provision</span>
-                          </Link>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </td>
-                </tr>
-              );
-            })}
+                    </td>
+                    <td className="px-4 py-3">
+                      {activeAdmin ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-800">{activeAdmin.full_name}</span>
+                          <StatusChip status={activeAdmin.status} />
+                        </div>
+                      ) : (
+                        <span className="font-noto-ethiopic text-amber-700">
+                          አስተዳዳሪ አልተመደበም
+                          <span className="ml-1 text-xs text-amber-600">/ No Admin Assigned</span>
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {Object.keys(MODULE_LABELS).map((key) => {
+                          const on = enabled.has(key);
+                          return (
+                            <Badge
+                              key={key}
+                              variant={on ? "default" : "outline"}
+                              className={
+                                on
+                                  ? "bg-blue-100 text-blue-800 hover:bg-blue-100"
+                                  : "text-slate-400"
+                              }
+                            >
+                              <span className="font-noto-ethiopic">{MODULE_LABELS[key].am}</span>
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem asChild>
+                            <Link
+                              to="/admin/tenants/$woredaId/provision"
+                              params={{ woredaId: w.woreda_id }}
+                            >
+                              <Shield className="mr-2 h-4 w-4" />
+                              <span className="font-noto-ethiopic">አስተዳዳሪ መድብ</span>
+                              <span className="ml-2 text-xs text-slate-500">/ Provision</span>
+                            </Link>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                );
+              })}
           </tbody>
         </table>
         <TablePagination

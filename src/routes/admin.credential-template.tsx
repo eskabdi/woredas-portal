@@ -255,9 +255,7 @@ function CredentialTemplatePage() {
       const target = e.target as HTMLElement | null;
       if (
         target &&
-        (target.tagName === "INPUT" ||
-          target.tagName === "TEXTAREA" ||
-          target.isContentEditable)
+        (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)
       ) {
         return;
       }
@@ -599,11 +597,7 @@ function EditorCanvas({
       const dy = (ev.clientY - start.py) * sy;
       const nx = Math.max(0, Math.min(canvasW - f.width, start.x + dx));
       const ny = Math.max(0, Math.min(canvasH - f.height, start.y + dy));
-      onPatch(
-        f.template_field_id,
-        { x: Math.round(nx), y: Math.round(ny) },
-        { history: false },
-      );
+      onPatch(f.template_field_id, { x: Math.round(nx), y: Math.round(ny) }, { history: false });
     };
     const onUp = () => {
       window.removeEventListener("pointermove", onMove);
@@ -649,18 +643,21 @@ function EditorCanvas({
         // whichever axis happens to be listed first.
         const drivesW = h.includes("e") || h.includes("w");
         const drivesH = h.includes("n") || h.includes("s");
-        const size =
-          drivesW && drivesH
-            ? Math.max(w, hh)
-            : drivesW
-              ? w
-              : hh;
+        const size = drivesW && drivesH ? Math.max(w, hh) : drivesW ? w : hh;
         // The edge(s) NOT being dragged stay put; a pure edge handle (only one
         // axis named) grows/shrinks the other axis symmetrically about its
         // center, since nothing in a horizontal-only drag says which vertical
         // edge should move.
-        const left = h.includes("w") ? start.x + start.w - size : h.includes("e") ? start.x : start.x + (start.w - size) / 2;
-        const top = h.includes("n") ? start.y + start.h - size : h.includes("s") ? start.y : start.y + (start.h - size) / 2;
+        const left = h.includes("w")
+          ? start.x + start.w - size
+          : h.includes("e")
+            ? start.x
+            : start.x + (start.w - size) / 2;
+        const top = h.includes("n")
+          ? start.y + start.h - size
+          : h.includes("s")
+            ? start.y
+            : start.y + (start.h - size) / 2;
         x = left;
         y = top;
         w = size;
@@ -804,11 +801,7 @@ function EditorCanvas({
 
               {isSelected &&
                 (["nw", "n", "ne", "e", "se", "s", "sw", "w"] as Handle[]).map((h) => (
-                  <ResizeHandle
-                    key={h}
-                    handle={h}
-                    onPointerDown={(e) => startResize(e, f, h)}
-                  />
+                  <ResizeHandle key={h} handle={h} onPointerDown={(e) => startResize(e, f, h)} />
                 ))}
             </div>
           );
@@ -941,8 +934,7 @@ function PropertiesPanel({
                 active={field.text_decoration === "underline"}
                 onClick={() =>
                   patch({
-                    text_decoration:
-                      field.text_decoration === "underline" ? "none" : "underline",
+                    text_decoration: field.text_decoration === "underline" ? "none" : "underline",
                   })
                 }
                 title="Underline"

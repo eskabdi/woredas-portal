@@ -4,13 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
 /** Loading skeleton rows that keep the table layout stable while fetching. */
-export function TableSkeletonRows({
-  rows = 6,
-  cols,
-}: {
-  rows?: number;
-  cols: number;
-}) {
+export function TableSkeletonRows({ rows = 6, cols }: { rows?: number; cols: number }) {
   return (
     <>
       {Array.from({ length: rows }).map((_, r) => (
@@ -61,9 +55,7 @@ export function TableEmptyRow({
           <div className="font-noto-ethiopic text-sm font-medium text-slate-700">
             {filtered ? filteredLabelAm : labelAm}
           </div>
-          <div className="text-sm text-slate-500">
-            {filtered ? filteredLabelEn : labelEn}
-          </div>
+          <div className="text-sm text-slate-500">{filtered ? filteredLabelEn : labelEn}</div>
           {filtered && onClearFilters && (
             <Button variant="outline" size="sm" className="mt-2" onClick={onClearFilters}>
               <FilterX className="mr-1 h-4 w-4" /> Clear filters

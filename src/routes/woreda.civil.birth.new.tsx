@@ -163,7 +163,6 @@ function BirthNewPage() {
 
   const duplicates = duplicateQuery.data ?? [];
 
-
   const mutation = useMutation({
     mutationFn: async (v: BirthValues) => {
       if (!woredaId || !actorUserId) throw new Error("Missing session");
@@ -241,10 +240,7 @@ function BirthNewPage() {
         titleAm="አዲስ የልደት ምዝገባ"
         titleEn="New Birth Registration"
         actions={
-          <Button
-            variant="outline"
-            onClick={() => navigate({ to: "/woreda/civil" })}
-          >
+          <Button variant="outline" onClick={() => navigate({ to: "/woreda/civil" })}>
             <ArrowLeft className="mr-2 h-4 w-4" /> Back
           </Button>
         }
@@ -437,12 +433,7 @@ function BirthNewPage() {
         )}
 
         <div className="flex items-center justify-end gap-3">
-
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigate({ to: "/woreda/civil" })}
-          >
+          <Button type="button" variant="outline" onClick={() => navigate({ to: "/woreda/civil" })}>
             Cancel
           </Button>
           <Button

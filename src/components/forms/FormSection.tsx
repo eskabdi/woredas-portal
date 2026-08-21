@@ -61,9 +61,7 @@ export function FieldWrap({
         {required && <span className="ml-1 text-red-600">*</span>}
       </Label>
       {children}
-      {helper && (
-        <p className="font-noto-ethiopic mt-1 text-xs text-slate-500">{helper}</p>
-      )}
+      {helper && <p className="font-noto-ethiopic mt-1 text-xs text-slate-500">{helper}</p>}
       {error && (
         <p className="font-noto-ethiopic mt-1 flex items-center gap-1 text-xs text-red-600">
           <AlertCircle className="h-3 w-3" />

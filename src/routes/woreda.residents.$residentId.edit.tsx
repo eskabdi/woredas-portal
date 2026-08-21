@@ -42,7 +42,7 @@ export const Route = createFileRoute("/woreda/residents/$residentId/edit")({
 type JsonRec = Record<string, unknown> | null;
 
 function readJson(v: unknown): JsonRec {
-  return (v && typeof v === "object" ? (v as JsonRec) : null);
+  return v && typeof v === "object" ? (v as JsonRec) : null;
 }
 function strField(rec: JsonRec, key: string): string {
   const v = rec?.[key];
@@ -83,7 +83,12 @@ function EditResidentPage() {
     mode: "onBlur",
   });
 
-  const { handleSubmit, formState: { errors }, trigger, reset } = form;
+  const {
+    handleSubmit,
+    formState: { errors },
+    trigger,
+    reset,
+  } = form;
 
   useEffect(() => {
     const r = residentQuery.data;

@@ -52,7 +52,10 @@ function linkFor(row: QueueRow): { to: string; params: Record<string, string> } 
     case "civil":
       return { to: "/woreda/civil/$eventId", params: { eventId: row.item_id } };
     case "rental":
-      return { to: "/woreda/rental-houses/requests/$requestId", params: { requestId: row.item_id } };
+      return {
+        to: "/woreda/rental-houses/requests/$requestId",
+        params: { requestId: row.item_id },
+      };
     default:
       return null;
   }
@@ -91,8 +94,7 @@ function ApprovalQueuePage() {
 
   const rows = (queueQuery.data ?? []).filter(
     (r) =>
-      (!workType || r.work_type === workType) &&
-      (!kebeleFilter || r.kebele_id === kebeleFilter),
+      (!workType || r.work_type === workType) && (!kebeleFilter || r.kebele_id === kebeleFilter),
   );
   const filtered = !!workType || !!kebeleFilter;
   const { page, setPage, pageSize, setPageSize, total, pageRows } = useClientPagination(
@@ -165,7 +167,11 @@ function ApprovalQueuePage() {
                 {queueQuery.isPending ? (
                   <TableSkeletonRows cols={6} />
                 ) : queueQuery.isError ? (
-                  <TableErrorRow cols={6} error={queueQuery.error} onRetry={() => queueQuery.refetch()} />
+                  <TableErrorRow
+                    cols={6}
+                    error={queueQuery.error}
+                    onRetry={() => queueQuery.refetch()}
+                  />
                 ) : pageRows.length === 0 ? (
                   <TableEmptyRow
                     cols={6}
@@ -177,7 +183,10 @@ function ApprovalQueuePage() {
                   pageRows.map((r) => {
                     const link = linkFor(r);
                     return (
-                      <tr key={`${r.work_type}-${r.item_id}`} className="border-t hover:bg-slate-50">
+                      <tr
+                        key={`${r.work_type}-${r.item_id}`}
+                        className="border-t hover:bg-slate-50"
+                      >
                         <td className="px-4 py-3">
                           {link ? (
                             <Link

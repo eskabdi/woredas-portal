@@ -47,9 +47,7 @@ function RentalHouseDetailPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("kebele_rental_house")
-        .select(
-          `*, kebele:kebele_id ( kebele_name_am, kebele_number )`,
-        )
+        .select(`*, kebele:kebele_id ( kebele_name_am, kebele_number )`)
         .eq("rental_house_id", houseId)
         .eq("woreda_id", woredaId!)
         .single();
@@ -139,22 +137,16 @@ function RentalHouseDetailPage() {
                 <Pencil className="mr-1 h-4 w-4" /> Edit
               </Button>
             )}
-            {hasPermission(P.RENTAL_CREATE) &&
-              house.occupancy_status !== "occupied" && (
-                <Button onClick={() => setAssignOpen(true)}>
-                  <UserPlus className="mr-1 h-4 w-4" /> Assign occupant
-                </Button>
-              )}
-            {hasPermission(P.RENTAL_VACATE) &&
-              house.occupancy_status === "occupied" &&
-              active && (
-                <Button
-                  variant="destructive"
-                  onClick={() => setVacateOpen(true)}
-                >
-                  <UserMinus className="mr-1 h-4 w-4" /> Vacate
-                </Button>
-              )}
+            {hasPermission(P.RENTAL_CREATE) && house.occupancy_status !== "occupied" && (
+              <Button onClick={() => setAssignOpen(true)}>
+                <UserPlus className="mr-1 h-4 w-4" /> Assign occupant
+              </Button>
+            )}
+            {hasPermission(P.RENTAL_VACATE) && house.occupancy_status === "occupied" && active && (
+              <Button variant="destructive" onClick={() => setVacateOpen(true)}>
+                <UserMinus className="mr-1 h-4 w-4" /> Vacate
+              </Button>
+            )}
           </div>
         }
       />
@@ -187,9 +179,7 @@ function RentalHouseDetailPage() {
         </Card>
         <Card className="p-4">
           <div className="text-xs uppercase text-slate-500">Bedrooms</div>
-          <div className="mt-1 text-lg font-semibold">
-            {house.bedrooms ?? "—"}
-          </div>
+          <div className="mt-1 text-lg font-semibold">{house.bedrooms ?? "—"}</div>
         </Card>
       </div>
 
@@ -202,9 +192,7 @@ function RentalHouseDetailPage() {
             <div>
               <div className="text-xs text-slate-500">Name</div>
               <div className="font-noto-ethiopic">
-                {active.resident?.full_name_am ||
-                  active.resident?.full_name ||
-                  "—"}
+                {active.resident?.full_name_am || active.resident?.full_name || "—"}
               </div>
             </div>
             <div>
@@ -250,13 +238,9 @@ function RentalHouseDetailPage() {
                   </td>
                   <td className="px-4 py-2">{fmtDate(o.rent_start_date)}</td>
                   <td className="px-4 py-2">{fmtDate(o.termination_date)}</td>
+                  <td className="px-4 py-2">{Number(o.rent_amount).toLocaleString()}</td>
                   <td className="px-4 py-2">
-                    {Number(o.rent_amount).toLocaleString()}
-                  </td>
-                  <td className="px-4 py-2">
-                    <Badge
-                      variant={o.status === "active" ? "default" : "secondary"}
-                    >
+                    <Badge variant={o.status === "active" ? "default" : "secondary"}>
                       {o.status}
                     </Badge>
                   </td>
@@ -337,8 +321,7 @@ function RentalHouseDetailPage() {
           actorUserId={actorUserId}
           activeOccupancyId={active.occupancy_id}
           activeResidentId={
-            (active.resident as unknown as { resident_id: string } | null)
-              ?.resident_id ?? ""
+            (active.resident as unknown as { resident_id: string } | null)?.resident_id ?? ""
           }
           onClose={() => setVacateOpen(false)}
           onSuccess={() => {
@@ -456,30 +439,21 @@ function AssignDialog({
               <span className="font-noto-ethiopic">የትውልድ ስፍራ</span>{" "}
               <span className="text-xs text-slate-500">/ Place of Birth</span>
             </Label>
-            <Input
-              value={placeOfBirth}
-              onChange={(e) => setPlaceOfBirth(e.target.value)}
-            />
+            <Input value={placeOfBirth} onChange={(e) => setPlaceOfBirth(e.target.value)} />
           </div>
           <div>
             <Label>
               <span className="font-noto-ethiopic">ስራ</span>{" "}
               <span className="text-xs text-slate-500">/ Occupation</span>
             </Label>
-            <Input
-              value={occupation}
-              onChange={(e) => setOccupation(e.target.value)}
-            />
+            <Input value={occupation} onChange={(e) => setOccupation(e.target.value)} />
           </div>
           <div>
             <Label>
               <span className="font-noto-ethiopic">የስራ አድራሻ</span>{" "}
               <span className="text-xs text-slate-500">/ Work Address</span>
             </Label>
-            <Input
-              value={workAddress}
-              onChange={(e) => setWorkAddress(e.target.value)}
-            />
+            <Input value={workAddress} onChange={(e) => setWorkAddress(e.target.value)} />
           </div>
           <div>
             <Label>
@@ -506,10 +480,7 @@ function AssignDialog({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button
-            onClick={() => mutation.mutate()}
-            disabled={mutation.isPending}
-          >
+          <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
             Submit Request
           </Button>
         </DialogFooter>
@@ -541,8 +512,7 @@ function VacateDialog({
   const mutation = useMutation({
     mutationFn: async () => {
       if (!terminationDate) throw new Error("የመተው ቀን ያስፈልጋል / End date required");
-      if (reason.trim().length < 3)
-        throw new Error("ምክንያት ያስፈልጋል / Reason required");
+      if (reason.trim().length < 3) throw new Error("ምክንያት ያስፈልጋል / Reason required");
       const { data, error } = await supabase
         .from("rental_occupancy_request")
         .insert({
@@ -593,18 +563,11 @@ function VacateDialog({
         <div className="space-y-3">
           <div>
             <Label>Termination date (ET)</Label>
-            <EthiopianDateInput
-              value={terminationDate}
-              onChange={setTerminationDate}
-            />
+            <EthiopianDateInput value={terminationDate} onChange={setTerminationDate} />
           </div>
           <div>
             <Label>Reason</Label>
-            <Textarea
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              rows={3}
-            />
+            <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} />
           </div>
         </div>
         <DialogFooter>
