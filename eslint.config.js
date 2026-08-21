@@ -36,5 +36,28 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": "off",
     },
   },
+  {
+    // shadcn/ui primitives, per CLAUDE.md: added via the shadcn CLI, not
+    // hand-written. Every CVA-based primitive it generates co-exports a
+    // `*Variants` helper (and some export a companion hook, e.g. useFormField,
+    // useSidebar) alongside the component -- that's the shape the CLI ships,
+    // not something to "fix" by hand without diverging from what a future
+    // `shadcn add` would regenerate.
+    files: ["src/components/ui/**/*.{ts,tsx}"],
+    rules: {
+      "react-refresh/only-export-components": "off",
+    },
+  },
+  {
+    // Deliberate shared table-state infrastructure (see CLAUDE.md's "Shared UI
+    // conventions"): each file co-locates a component with the URL-state hooks
+    // that back it, imported together across most list routes. Splitting hooks
+    // into a sibling file would be a real refactor of every call site, not a
+    // lint fix.
+    files: ["src/components/common/TablePagination.tsx", "src/components/common/TableToolbar.tsx"],
+    rules: {
+      "react-refresh/only-export-components": "off",
+    },
+  },
   eslintPluginPrettier,
 );

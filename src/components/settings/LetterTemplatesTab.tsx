@@ -56,7 +56,7 @@ export function LetterTemplatesTab() {
     },
   });
 
-  const types = typesQuery.data ?? [];
+  const types = useMemo(() => typesQuery.data ?? [], [typesQuery.data]);
   const selected = useMemo(
     () => types.find((t) => t.service_type_id === selectedId) ?? null,
     [types, selectedId],

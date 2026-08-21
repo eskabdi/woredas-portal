@@ -250,7 +250,7 @@ function HouseholdsListPage() {
 
   const totalPages = useMemo(
     () => Math.max(1, Math.ceil((householdsQuery.data?.count ?? 0) / pageSize)),
-    [householdsQuery.data?.count],
+    [householdsQuery.data?.count, pageSize],
   );
 
   if (!hasPermission(P.HOUSEHOLD_READ)) {

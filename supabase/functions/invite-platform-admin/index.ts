@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
     });
 
     return json(200, { success: true, user_id: newUserId, warning });
-  } catch (e: any) {
-    return json(500, { error: e?.message ?? "Internal error" });
+  } catch (e) {
+    return json(500, { error: e instanceof Error ? e.message : "Internal error" });
   }
 });

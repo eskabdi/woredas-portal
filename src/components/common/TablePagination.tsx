@@ -194,7 +194,7 @@ export function useClientPagination<T>(rows: T[], resetKey?: string) {
 
   useEffect(() => {
     if (page > maxPage) setPage(maxPage);
-  }, [page, maxPage]);
+  }, [page, maxPage, setPage]);
 
   const pageRows = useMemo(
     () => rows.slice(page * pageSize, page * pageSize + pageSize),

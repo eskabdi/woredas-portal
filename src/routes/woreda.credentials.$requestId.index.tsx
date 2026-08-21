@@ -191,15 +191,16 @@ function CredentialRequestDetailPage() {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [docUrl, setDocUrl] = useState<string | null>(null);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const residentPhotoPath = (request?.resident as any)?.photo_url as string | null | undefined;
+
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const photoPath = (request?.resident as any)?.photo_url as string | null | undefined;
-      if (photoPath) {
+      if (residentPhotoPath) {
         const { data } = await supabase.storage
           .from("resident-photos")
-          .createSignedUrl(photoPath, 600);
+          .createSignedUrl(residentPhotoPath, 600);
         if (!cancelled) setPhotoUrl(data?.signedUrl ?? null);
       } else if (!cancelled) {
         setPhotoUrl(null);
@@ -209,8 +210,7 @@ function CredentialRequestDetailPage() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  }, [(request?.resident as any)?.photo_url]);
+  }, [residentPhotoPath]);
 
   const openDocument = async () => {
     if (!request?.supporting_document_path) return;
@@ -655,7 +655,6 @@ function CredentialRequestDetailPage() {
         <div className="flex flex-wrap items-start gap-4">
           <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-slate-100 ring-1 ring-slate-200">
             {photoUrl ? (
-              // eslint-disable-next-line jsx-a11y/alt-text
               <img src={photoUrl} className="h-full w-full object-cover" />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">
@@ -1247,9 +1246,6 @@ function ReadOnlyChecklist({
     </div>
   );
 }
-
-// Unused link kept for potential future use
-export const _Link = Link;
 
 const CHANNEL_LABELS: Record<string, { am: string; en: string }> = {
   cash: { am: "ጥሬ ገንዘብ", en: "Cash" },

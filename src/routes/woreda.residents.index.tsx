@@ -267,7 +267,7 @@ function ResidentsListPage() {
 
   const totalPages = useMemo(
     () => Math.max(1, Math.ceil((residentsQuery.data?.count ?? 0) / pageSize)),
-    [residentsQuery.data?.count],
+    [residentsQuery.data?.count, pageSize],
   );
 
   return (
