@@ -11,8 +11,10 @@ Most codebases let automated checks carry the load. This one cannot:
 
 - **There is no test suite.** No vitest, no jest, no `*.test.*` or `*.spec.*`
   anywhere. Nothing fails when behaviour regresses.
-- **`bun run lint` has a noise floor of ~3,500 problems**, ~3,459 of them
-  `prettier/prettier` formatting. Real findings drown in it, so nobody reads it.
+- **`bun run lint` is clean of formatting noise and must stay that way.** The
+  repo was prettier-formatted in one sweep; the ~49 remaining problems are real
+  code findings. A wall of `prettier/prettier` errors in a review now means the
+  diff itself introduced them — flag it, don't discount it.
 - **`tsc --noEmit` is clean and stays clean** through most of the bugs that
   matter here — a route that renders empty for every user, a query that crosses
   a tenant boundary, and a QR too dense to scan all typecheck perfectly.
@@ -104,16 +106,16 @@ for f in src/routes/*.tsx; do grep -q "ssr: false" "$f" || echo "MISSING: $f"; d
 # like a mistake in the new route. Otherwise tsc alone is enough.
 bunx tsc --noEmit
 
-# Lint only what changed — the repo-wide run is unreadable.
-# Guard the empty case: eslint with no file arguments lints the whole repo and
-# buries you in the very noise you are trying to avoid.
-CHANGED=$(git diff --name-only origin/main...HEAD -- '*.ts' '*.tsx')
+# Lint the changed files (fastest signal). --diff-filter=d drops deleted
+# paths, which would otherwise make eslint abort with "no files matching".
+# Guard the empty case: eslint with no file arguments lints the whole repo.
+CHANGED=$(git diff --name-only --diff-filter=d origin/main...HEAD -- '*.ts' '*.tsx')
 [ -n "$CHANGED" ] && bunx eslint $CHANGED || echo "no TS/TSX changed"
 ```
 
-When you lint a changed file, separate **pre-existing** `prettier/prettier`
-noise from anything the diff introduced. Telling an author to fix 200 formatting
-errors they did not create is how a review gets ignored.
+Since the repo-wide format sweep, any `prettier/prettier` error on a changed
+file was introduced by the diff — there is no pre-existing formatting noise left
+to discount. Tell the author to run `bun run format` on the files they touched.
 
 ## Known false positives — do not flag these
 

@@ -79,12 +79,20 @@ Useful queries when the schema is up but behaviour is wrong:
 select status, count(*) from app_user group by status;        -- pending users?
 select count(*) from role_permission;                          -- seed applied?
 select woreda_id, module_key, is_enabled from tenant_module_config where not is_enabled;
-select tablename from pg_tables t where schemaname='public'    -- tables without RLS
-  and not exists (select 1 from pg_policies p where p.tablename=t.tablename);
+select c.relname from pg_class c join pg_namespace n            -- RLS DISABLED:
+  on n.oid=c.relnamespace where n.nspname='public'               -- readable across
+  and c.relkind='r' and not c.relrowsecurity;                    -- every tenant
+select t.tablename from pg_tables t where t.schemaname='public'  -- RLS on, zero
+  and t.rowsecurity and not exists (select 1 from pg_policies p  -- policies:
+  where p.schemaname='public' and p.tablename=t.tablename);      -- deny-all
 ```
 
-That last one is the highest-value query in this file: a public table with no
-policy is readable across every tenant.
+Those last two are the highest-value queries in this file, and they are
+different failures: the first finds tables whose policies **do not apply at
+all** — `CREATE POLICY` without `ALTER TABLE ... ENABLE ROW LEVEL SECURITY`
+leaves the table readable across every tenant while looking policied; the
+second finds enabled-but-empty tables, which fail closed (everything returns
+empty) rather than open. Run both; only the first is a breach.
 
 ## Step 3 — Symptom index
 
@@ -183,9 +191,12 @@ framework preset was set to `vite` — it must stay "Other" (`framework: null`).
 
 ### "`bun run lint` reports thousands of errors"
 
-Expected. ~3,459 of ~3,500 are pre-existing `prettier/prettier` formatting, not
-anything you did. Lint only your changed files. `bun run format` fixes them all
-but touches nearly every file, so it belongs in its own commit.
+**Not expected anymore — this is a regression.** The repo was prettier-formatted
+in one sweep, leaving ~49 real problems and zero formatting noise. Thousands of
+`prettier/prettier` errors now mean either an unformatted commit landed (fix:
+`bun run format` on those files) or a generated file was regenerated with the
+generator's own formatting (fix: a `.prettierignore` entry, the way
+`routeTree.gen.ts` is handled — `src/integrations/supabase/*` already has one).
 
 ### "Module resolution errors in a fresh container"
 

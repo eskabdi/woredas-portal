@@ -299,7 +299,10 @@ for the two newest modules and is worth reading before touching either. In
 short: the service catalog (`service_type`) is **configurable data, not
 hardcoded** — new letter kinds are added in Settings, not in code; fees flow
 through the existing revenue/payment tables rather than a separate ledger; and
-`/woreda/approvals` is a single inbox unioning five workflow tables.
+`/woreda/approvals` is a single inbox unioning four workflow tables
+(service requests, credential requests, civil events, rental occupancy
+requests) — the design doc's "returned items" are a status filter across
+those, not a fifth table.
 
 Issued letters are the second public verification surface:
 `src/routes/verify.letter.$token.tsx` backed by the `verify_service_letter`
@@ -386,8 +389,8 @@ do not push, rewrite history or rotate credentials.
   the credential teardown that ends it.
 
 The `review` and `doctor` skills exist for the same underlying reason: this repo
-has no test suite, `bun run lint` has a ~3,500-problem noise floor, and
-`tsc --noEmit` stays clean through most of the bugs that matter here. `review`
+has no test suite and `tsc --noEmit` stays clean through most of the bugs that
+matter here. `review`
 is the gate before a change lands; `doctor` is what you run when something is
 already wrong and failing silently — which, given RLS returning empty rather
 than erroring, is the normal way this system breaks.
@@ -405,10 +408,13 @@ equivalent.
 The hook is registered in `.claude/settings.json` and runs **synchronously**:
 the session starts slightly slower, but nothing races an incomplete install.
 
-Note that `bun run lint` currently reports ~3,500 pre-existing problems, of
-which ~3,459 are `prettier/prettier` formatting. `bun run format` would fix them
-in one sweep, but it touches nearly every file — don't fold that into an
-unrelated change. `tsc --noEmit` is clean.
+The repository was prettier-formatted in one sweep (the `claude/prettier-format`
+branch), so `bun run lint` now reports ~49 real problems (`no-explicit-any`,
+`exhaustive-deps`, `no-img-element`) and zero formatting noise. Keep it that
+way: run `bun run format` on files you touch, and treat any sudden wall of
+`prettier/prettier` errors as a regression (an unformatted commit, or a
+regenerated file that needs a `.prettierignore` entry), not as background noise.
+`tsc --noEmit` is clean.
 
 ## Sandboxed agent environments (Claude Code on the web, CI containers)
 
