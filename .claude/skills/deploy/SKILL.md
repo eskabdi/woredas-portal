@@ -27,8 +27,15 @@ wrong cause.
 - `service_role` key — data-plane only: Auth admin, Storage, PostgREST.
 - `VERCEL_TOKEN` — frontend deploys.
 
+**Both `SUPABASE_ACCESS_TOKEN` and `VERCEL_TOKEN` are session environment
+variables and must never be written into a tracked file, a commit message, or
+any output.** See "Deployment credentials never enter the repository" in
+`CLAUDE.md` — that rule governs this skill, and the teardown at the bottom of
+this file is part of finishing a deploy, not an optional extra.
+
 Confirm a token before using it; a revoked one returns `401` on every endpoint,
-including ones that worked minutes earlier.
+including ones that worked minutes earlier. Check the status code, never echo
+the token.
 
 ```bash
 curl -sS -o /dev/null -w '%{http_code}\n' https://api.supabase.com/v1/projects \
@@ -65,7 +72,11 @@ python3 -c "import json;json.dump({'query':open('$FILE').read()},open('p.json','
 curl -X POST "https://api.supabase.com/v1/projects/$REF/database/query" \
   -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
   -H 'Content-Type: application/json' --data-binary @p.json
+rm -f p.json
 ```
+
+`p.json` is gitignored, but delete it anyway — ignored is not absent, and the
+next person to run `git add -f` or archive the directory picks it up.
 
 ## Edge Functions
 
@@ -113,3 +124,18 @@ curl -s https://<app>.vercel.app/assets/<entry>.js | grep -c "$REF"
 For anything auth-related, drive it in a browser with a real session rather
 than reading config back. Config that echoes correctly can still behave
 differently — see the `redirect_to` note in `CLAUDE.md`.
+
+## Teardown — part of the deploy, not optional
+
+A deploy is not finished when the artifacts are live. It is finished when the
+credentials that deployed them are gone from the session:
+
+```bash
+unset SUPABASE_ACCESS_TOKEN VERCEL_TOKEN
+rm -f p.json payload.json
+git status --porcelain --untracked-files=all   # nothing left holding a token
+```
+
+Then run the `secret-sweep` subagent before pushing anything from this session.
+If a token did reach a commit, **revoke it first and clean up second** — a
+secret in a commit object is disclosed whether or not the commit was pushed.

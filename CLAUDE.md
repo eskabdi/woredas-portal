@@ -2,6 +2,76 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Deployment credentials never enter the repository
+
+**This is a hard rule, and it has no exceptions for convenience, debugging, or
+"just temporarily".** `SUPABASE_ACCESS_TOKEN` (a Personal Access Token with
+account-level control-plane rights over every project on the account) and
+`VERCEL_TOKEN` (which can deploy, read env vars, and delete projects) are the
+two most dangerous strings in this workflow. Neither is scoped to one project,
+so a leak is not contained by the blast radius of this repo.
+
+Never do any of the following, at any point, including after a migration or
+deploy has succeeded:
+
+- Write either token into a tracked file — no `.env` committed "just this once",
+  no value pasted into `.env.example`, `supabase/config.toml`, `vercel.json`,
+  a migration, a script under `scripts/`, or a skill under `.claude/`.
+- Hard-code a token inside a command that gets committed. Read from the
+  environment (`"$SUPABASE_ACCESS_TOKEN"`), never inline the literal.
+- Echo, `cat`, `console.log` or otherwise print a token's value. Print a check
+  digit of behaviour instead — an HTTP status confirms a token works without
+  revealing it:
+  ```bash
+  curl -sS -o /dev/null -w '%{http_code}\n' https://api.supabase.com/v1/projects \
+    -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN"    # 200 = valid, 401 = revoked
+  ```
+- Paste a token into a commit message, PR body, code comment, issue, or any
+  file that will be pushed.
+- Leave one behind in a scratch artifact after the work is done: shell history,
+  a `p.json` / `payload.json` payload for the Management API, a `.pem`, a CLI
+  cache under `supabase/.temp/` or `.vercel/`, or `.claude/settings.local.json`.
+  `.gitignore` covers these paths, but ignored is not the same as absent —
+  delete them.
+
+### Where they are supposed to live
+
+Session environment variables, exported from a shell or supplied by the CI/agent
+environment, and nowhere else. `.env` (gitignored) is acceptable for the
+`VITE_*` and `SUPABASE_*` **project** keys a local build needs; the two
+**deploy** tokens above should not be in it, because a local build never needs
+them. The `service_role` key is a data-plane secret and follows the same rule as
+`.env`: gitignored, never printed, never client-side.
+
+### After every migration or deployment
+
+Finish the job by clearing the credential, not just the task:
+
+```bash
+unset SUPABASE_ACCESS_TOKEN VERCEL_TOKEN
+rm -f p.json payload.json                   # Management API SQL payloads
+git status --porcelain                      # nothing untracked that holds a token
+```
+
+Then confirm nothing is staged or committed that carries one:
+
+```bash
+git diff --cached -U0 | grep -nE 'sbp_[A-Za-z0-9]{20,}|eyJhbGciOi[A-Za-z0-9_-]{20,}'
+```
+
+The `secret-sweep` subagent (`.claude/agents/secret-sweep.md`) runs this sweep
+over the working tree, the staged diff and the branch's commits — use it before
+any push that followed a deploy.
+
+### If a token does reach a commit
+
+Treat it as disclosed the moment it exists in a commit object, whether or not
+that commit was pushed — `git reset` and an amended commit do not remove it from
+the object store or from anyone's fetched copy. **Revoke first, clean up second:**
+rotate the token in the Supabase or Vercel dashboard, then rewrite or discard the
+branch. A rotated token in a public commit is an embarrassment; an unrotated one
+is an incident.
+
 ## Commands
 
 Package manager is **bun** (`bun.lock`, `bunfig.toml`) — a `package-lock.json` also
@@ -278,6 +348,46 @@ start showing as opaque JSON, this is the file.
 Vite plugin order matters (Tailwind → TanStack Start → nitro (build only) →
 React), and `react`/`@tanstack/react-query` are deduped because two copies
 break hooks. Don't pin a nitro preset — see the Vercel section.
+
+## Repository tooling for agents
+
+### Subagents (`.claude/agents/`)
+
+Four review agents, each covering a failure mode this codebase has that a build
+or a typecheck will not catch. Invoke them by name.
+
+| Agent | Use it when | Guards against |
+|---|---|---|
+| `secret-sweep` | after any migration or deploy, before pushing | a deploy token reaching a commit — see the rule at the top of this file |
+| `tenant-isolation-review` | touching a permission, role, migration, RLS policy, or upload path | cross-tenant reads, a client gate without its seed rows, a missing storage path prefix |
+| `portal-conventions-review` | after adding a route or a list/detail page | a route missing `ssr: false`, table state in `useState` instead of the URL, non-bilingual labels, Gregorian dates in the woreda portal |
+| `card-print-review` | touching signing, the print route, the template editor, QR or barcode | invariants whose failure is only discovered after cards are physically printed |
+
+They are read-only reviewers (`Bash`, `Read`, `Grep`, `Glob`) — they report, they
+do not push, rewrite history or rotate credentials.
+
+### Skills (`.claude/skills/`)
+
+`deploy` covers the four-artifact deploy (schema, seed, Edge Functions,
+frontend), its ordering, and how to verify each artifact at its own surface.
+
+### SessionStart hook (`.claude/hooks/session-start.sh`)
+
+Installs dependencies at the start of a Claude Code on the web session, and
+no-ops locally (`CLAUDE_CODE_REMOTE`). It exists because a fresh container has
+no `node_modules`, so `bun run lint` and `tsc --noEmit` fail with
+module-resolution errors that read as code faults rather than a missing install.
+It prefers `bun` — `bunfig.toml` sets `minimumReleaseAge`, a 24h supply-chain
+guard that only `bun install` honours, so the npm fallback is a fallback, not an
+equivalent.
+
+The hook is registered in `.claude/settings.json` and runs **synchronously**:
+the session starts slightly slower, but nothing races an incomplete install.
+
+Note that `bun run lint` currently reports ~3,500 pre-existing problems, of
+which ~3,459 are `prettier/prettier` formatting. `bun run format` would fix them
+in one sweep, but it touches nearly every file — don't fold that into an
+unrelated change. `tsc --noEmit` is clean.
 
 ## Sandboxed agent environments (Claude Code on the web, CI containers)
 

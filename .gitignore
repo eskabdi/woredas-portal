@@ -21,6 +21,18 @@ dist-ssr
 .env.*
 !.env.example
 
+# Credentials and deploy scratch. See "Deployment credentials never enter the
+# repository" in CLAUDE.md — these are the paths that have actually leaked
+# tokens in projects like this one.
+.claude/settings.local.json
+supabase/.temp/
+.supabase/
+p.json
+payload.json
+*.pem
+*.key
+!public/**/*.key
+
 # Vercel
 .vercel
 
