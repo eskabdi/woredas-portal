@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Controller, type UseFormReturn } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -37,6 +37,8 @@ import {
   type ResidentFormInput,
   type ResidentFormValues,
 } from "@/lib/residentSchema";
+
+const DocumentViewerDialog = lazy(() => import("@/components/common/DocumentViewerDialog"));
 
 interface Props {
   form: UseFormReturn<ResidentFormInput, unknown, ResidentFormValues>;
@@ -206,6 +208,28 @@ export function ResidentWizardSteps({
   const [clearanceFileName, setClearanceFileName] = useState<string>("");
   const [clearancePreview, setClearancePreview] = useState<string | null>(null);
   const [uploadingClearance, setUploadingClearance] = useState(false);
+  const [clearanceViewerUrl, setClearanceViewerUrl] = useState<string | null>(null);
+  const [clearanceViewerOpen, setClearanceViewerOpen] = useState(false);
+  const [openingClearanceViewer, setOpeningClearanceViewer] = useState(false);
+  const isClearancePdf = /\.pdf$/i.test(clearanceUrl ?? "");
+
+  const openClearanceViewer = async () => {
+    if (!clearanceUrl) return;
+    setOpeningClearanceViewer(true);
+    try {
+      const { data, error } = await supabase.storage
+        .from("resident-clearance-letters")
+        .createSignedUrl(clearanceUrl, 600);
+      if (error || !data?.signedUrl) {
+        toast.error("ፋይሉን መክፈት አልተቻለም / Could not open the file");
+        return;
+      }
+      setClearanceViewerUrl(data.signedUrl);
+      setClearanceViewerOpen(true);
+    } finally {
+      setOpeningClearanceViewer(false);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -789,6 +813,23 @@ export function ResidentWizardSteps({
                       <span className="font-noto-ethiopic max-w-[200px] truncate">
                         {clearanceFileName || clearanceUrl.split("/").pop()}
                       </span>
+                      {isClearancePdf && (
+                        <button
+                          type="button"
+                          onClick={openClearanceViewer}
+                          disabled={openingClearanceViewer}
+                          className="rounded-md border border-slate-300 px-2 py-0.5 text-xs text-blue-700 hover:bg-blue-50"
+                        >
+                          {openingClearanceViewer ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <>
+                              <span className="font-noto-ethiopic">ይመልከቱ</span>
+                              <span className="ml-1 opacity-70">/ View</span>
+                            </>
+                          )}
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => {
@@ -830,6 +871,16 @@ export function ResidentWizardSteps({
           )}
         </Section>
       </div>
+      {clearanceViewerOpen && (
+        <Suspense fallback={null}>
+          <DocumentViewerDialog
+            open={clearanceViewerOpen}
+            onOpenChange={setClearanceViewerOpen}
+            signedUrl={clearanceViewerUrl}
+            title={clearanceFileName || (clearanceUrl?.split("/").pop() ?? "Document")}
+          />
+        </Suspense>
+      )}
     </>
   );
 }

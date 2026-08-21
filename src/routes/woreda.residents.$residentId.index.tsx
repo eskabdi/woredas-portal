@@ -44,6 +44,7 @@ import {
   ActivityTab,
   CivilEventsTab,
   CredentialsTab,
+  DocumentsTab,
   HouseholdTab,
 } from "@/components/residents/ResidentProfileTabs";
 
@@ -55,8 +56,15 @@ import { EDUCATION_OPTIONS, OCCUPATION_OPTIONS } from "@/lib/residentConstants";
 
 const LocationDisplayMap = lazy(() => import("@/components/gis/LocationDisplayMap"));
 
-type TabKey = "overview" | "household" | "civil" | "credentials" | "activity";
-const VALID_TABS: TabKey[] = ["overview", "household", "civil", "credentials", "activity"];
+type TabKey = "overview" | "household" | "civil" | "credentials" | "documents" | "activity";
+const VALID_TABS: TabKey[] = [
+  "overview",
+  "household",
+  "civil",
+  "credentials",
+  "documents",
+  "activity",
+];
 
 interface TabSearch {
   tab?: TabKey;
@@ -367,6 +375,7 @@ function ResidentProfilePage() {
           <TabRow value="household" am="ቤተሰብ" en="Household" />
           <TabRow value="civil" am="የኩነት ምዝገባ" en="Civil Events" />
           <TabRow value="credentials" am="ማስረጃዎች" en="Credentials" />
+          <TabRow value="documents" am="ሰነዶች" en="Documents" />
           <TabRow value="activity" am="እንቅስቃሴ" en="Activity Log" />
         </TabsList>
 
@@ -671,6 +680,15 @@ function ResidentProfilePage() {
         </TabsContent>
         <TabsContent value="credentials" className="mt-4">
           <CredentialsTab residentId={residentId} woredaId={woredaId} />
+        </TabsContent>
+        <TabsContent value="documents" className="mt-4">
+          <DocumentsTab
+            residentId={residentId}
+            woredaId={woredaId}
+            householdId={householdId}
+            actorUserId={actorUserId}
+            canUpload={hasPermission(P.RESIDENT_UPDATE)}
+          />
         </TabsContent>
         <TabsContent value="activity" className="mt-4">
           <ActivityTab residentId={residentId} woredaId={woredaId} />
