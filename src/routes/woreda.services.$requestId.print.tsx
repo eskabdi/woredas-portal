@@ -6,11 +6,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useReportBranding } from "@/hooks/useReportBranding";
 import { formatEthiopianDate } from "@/utils/ethiopianCalendar";
-import {
-  plainTextToHtml,
-  renderLetterTemplate,
-  sanitizeLetterHtml,
-} from "@/lib/letterTemplate";
+import { plainTextToHtml, renderLetterTemplate, sanitizeLetterHtml } from "@/lib/letterTemplate";
 
 export const Route = createFileRoute("/woreda/services/$requestId/print")({
   ssr: false,
@@ -131,7 +127,9 @@ function ServiceLetterPrintPage() {
         </div>
 
         {data.addressed_to && (
-          <div className="font-noto-ethiopic mt-6 text-sm font-semibold">ለ: {data.addressed_to}</div>
+          <div className="font-noto-ethiopic mt-6 text-sm font-semibold">
+            ለ: {data.addressed_to}
+          </div>
         )}
 
         <h1 className="font-noto-ethiopic mt-6 text-center text-base font-bold underline">
@@ -174,8 +172,7 @@ function ServiceLetterPrintPage() {
               <div>QR ኮዱን በስልክዎ ካሜራ ይቅሙ ወይም ይህን አድራሻ ይጎብኙ:</div>
               <div className="break-all font-mono text-[10px] text-slate-700">{verifyUrl}</div>
               <div>
-                የማረጋገጫ ኮድ / Code:{" "}
-                <span className="font-mono">{data.verification_token}</span>
+                የማረጋገጫ ኮድ / Code: <span className="font-mono">{data.verification_token}</span>
               </div>
             </div>
           </div>

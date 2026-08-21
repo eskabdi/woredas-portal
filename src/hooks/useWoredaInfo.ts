@@ -29,6 +29,5 @@ export function useWoredaInfo() {
         display_name_am: display || w.data.woreda_name_am,
       };
     },
-
   });
 }

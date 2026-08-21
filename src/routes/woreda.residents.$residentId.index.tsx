@@ -1,10 +1,5 @@
 import { lazy, Suspense, useMemo, useState } from "react";
-import {
-  createFileRoute,
-  Link,
-  useNavigate,
-  useSearch,
-} from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -56,10 +51,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/integrations/supabase/client";
 import { P } from "@/config/permissions";
 import { formatEthiopianDate } from "@/utils/ethiopianCalendar";
-import {
-  EDUCATION_OPTIONS,
-  OCCUPATION_OPTIONS,
-} from "@/lib/residentConstants";
+import { EDUCATION_OPTIONS, OCCUPATION_OPTIONS } from "@/lib/residentConstants";
 
 const LocationDisplayMap = lazy(() => import("@/components/gis/LocationDisplayMap"));
 
@@ -242,8 +234,7 @@ function ResidentProfilePage() {
 
   const name = r.full_name_am || r.full_name || "—";
   const initials = getInitials(name);
-  const statusForChip =
-    r.active_flag === false ? "inactive" : (r.residency_status as string);
+  const statusForChip = r.active_flag === false ? "inactive" : (r.residency_status as string);
 
   const kebeleLabel = kebele
     ? `ቀበሌ ${kebele.kebele_number ?? "—"}${kebele.kebele_name_am ? ` — ${kebele.kebele_name_am}` : ""}`
@@ -282,10 +273,8 @@ function ResidentProfilePage() {
     });
   };
 
-  const gpsLat =
-    typeof household?.gps_lat === "number" ? household.gps_lat : null;
-  const gpsLng =
-    typeof household?.gps_lng === "number" ? household.gps_lng : null;
+  const gpsLat = typeof household?.gps_lat === "number" ? household.gps_lat : null;
+  const gpsLng = typeof household?.gps_lng === "number" ? household.gps_lng : null;
 
   return (
     <div className="space-y-6 pb-12">
@@ -407,16 +396,14 @@ function ResidentProfilePage() {
                     labelAm="ጾታ"
                     labelEn="Gender"
                     value={
-                      r.sex === "male" ? "ወንድ / Male"
-                        : r.sex === "female" ? "ሴት / Female"
-                        : (r.sex as string) || notRecorded()
+                      r.sex === "male"
+                        ? "ወንድ / Male"
+                        : r.sex === "female"
+                          ? "ሴት / Female"
+                          : (r.sex as string) || notRecorded()
                     }
                   />
-                  <Field
-                    labelAm="ብሔር"
-                    labelEn="Ethnicity"
-                    value={r.ethnicity || notRecorded()}
-                  />
+                  <Field labelAm="ብሔር" labelEn="Ethnicity" value={r.ethnicity || notRecorded()} />
                 </dl>
               </Card>
 
@@ -437,23 +424,20 @@ function ResidentProfilePage() {
                     icon={Mail}
                     value={r.email || notRecorded()}
                   />
-                  <Field
-                    labelAm="ስራ"
-                    labelEn="Occupation"
-                    value={formatOccupation(workInfo)}
-                  />
-                  <Field
-                    labelAm="ትምህርት"
-                    labelEn="Education"
-                    value={formatEducation(workInfo)}
-                  />
+                  <Field labelAm="ስራ" labelEn="Occupation" value={formatOccupation(workInfo)} />
+                  <Field labelAm="ትምህርት" labelEn="Education" value={formatEducation(workInfo)} />
                 </dl>
               </Card>
 
               {/* Card 4 — Recent Activities */}
               <Card className="p-5">
                 <div className="mb-4 flex items-center justify-between">
-                  <CardHeading icon={Activity} am="የቅርብ ጊዜ እንቅስቃሴዎች" en="Recent Activities" inline />
+                  <CardHeading
+                    icon={Activity}
+                    am="የቅርብ ጊዜ እንቅስቃሴዎች"
+                    en="Recent Activities"
+                    inline
+                  />
                   <button
                     type="button"
                     onClick={() => setTab("activity")}
@@ -487,9 +471,7 @@ function ResidentProfilePage() {
                           <div className="font-noto-ethiopic truncate text-sm font-medium text-slate-900">
                             {actionLabelAm(row.action_type as string)}
                           </div>
-                          <div className="truncate text-xs text-slate-500">
-                            {row.action_type}
-                          </div>
+                          <div className="truncate text-xs text-slate-500">{row.action_type}</div>
                         </div>
                         <div className="text-right text-xs text-slate-500">
                           {formatRelative(row.action_at as string)}
@@ -506,8 +488,7 @@ function ResidentProfilePage() {
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4 text-blue-700" />
                     <h3 className="font-noto-ethiopic text-base font-semibold text-slate-900">
-                      የቤተሰብ አባላት{" "}
-                      <span className="text-slate-400">/ Household Members</span>
+                      የቤተሰብ አባላት <span className="text-slate-400">/ Household Members</span>
                     </h3>
                     <span className="ml-1 inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
                       {householdMembersQuery.data?.length ?? 0}
@@ -608,9 +589,7 @@ function ResidentProfilePage() {
                 ) : (
                   <div className="flex flex-col items-center rounded-md border border-dashed border-slate-200 px-4 py-8 text-center">
                     <MapPinOff className="mb-2 h-6 w-6 text-slate-400" />
-                    <p className="font-noto-ethiopic text-sm text-slate-700">
-                      የመገኛ አካባቢ አልተመዘገበም
-                    </p>
+                    <p className="font-noto-ethiopic text-sm text-slate-700">የመገኛ አካባቢ አልተመዘገበም</p>
                     <p className="text-xs text-slate-500">No GPS location recorded</p>
                   </div>
                 )}
@@ -626,8 +605,7 @@ function ResidentProfilePage() {
                     <IdCard className="h-4 w-4" />
                   </div>
                   <h3 className="font-noto-ethiopic text-base font-semibold">
-                    ፈጣን ተግባራት{" "}
-                    <span className="text-slate-400">/ Quick Actions</span>
+                    ፈጣን ተግባራት <span className="text-slate-400">/ Quick Actions</span>
                   </h3>
                 </div>
                 <div className="space-y-2">
@@ -686,11 +664,7 @@ function ResidentProfilePage() {
         </TabsContent>
 
         <TabsContent value="household" className="mt-4">
-          <HouseholdTab
-            residentId={residentId}
-            woredaId={woredaId}
-            householdId={householdId}
-          />
+          <HouseholdTab residentId={residentId} woredaId={woredaId} householdId={householdId} />
         </TabsContent>
         <TabsContent value="civil" className="mt-4">
           <CivilEventsTab residentId={residentId} woredaId={woredaId} />
@@ -701,7 +675,6 @@ function ResidentProfilePage() {
         <TabsContent value="activity" className="mt-4">
           <ActivityTab residentId={residentId} woredaId={woredaId} />
         </TabsContent>
-
       </Tabs>
 
       {/* Add to Household modal (opens from members card / empty state) */}
@@ -757,9 +730,7 @@ function SummaryCard({
             {primary}
           </div>
           {secondary && (
-            <div className="font-noto-ethiopic truncate text-xs text-slate-500">
-              {secondary}
-            </div>
+            <div className="font-noto-ethiopic truncate text-xs text-slate-500">{secondary}</div>
           )}
         </div>
       </div>
@@ -855,7 +826,10 @@ function formatEducation(wi: WorkInfo | null): React.ReactNode {
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "—";
-  return parts.slice(0, 2).map((p) => p[0]).join("");
+  return parts
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join("");
 }
 
 const AM_ACTION_LABELS: Record<string, string> = {
@@ -932,7 +906,11 @@ function MemberAddDropdown({
     <PermissionGate permission={P.RESIDENT_UPDATE}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button size="sm" variant="outline" className="border-blue-200 text-blue-700 hover:bg-blue-50">
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-blue-200 text-blue-700 hover:bg-blue-50"
+          >
             <UserPlus className="mr-1.5 h-4 w-4" />
             <span className="font-noto-ethiopic">ተጨማሪ አባል ጨምር</span>
           </Button>
@@ -956,8 +934,7 @@ function PlaceholderPanel() {
   return (
     <Card className="p-10 text-center">
       <p className="font-noto-ethiopic text-sm text-slate-700">
-        በቅርቡ ይሟላል{" "}
-        <span className="text-slate-400">/ Details coming in the next update</span>
+        በቅርቡ ይሟላል <span className="text-slate-400">/ Details coming in the next update</span>
       </p>
     </Card>
   );

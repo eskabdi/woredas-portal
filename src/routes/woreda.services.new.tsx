@@ -100,7 +100,8 @@ function NewServiceRequestPage() {
     const e: Record<string, string> = {};
     if (!serviceTypeId) e["serviceTypeId"] = "አገልግሎቱን ይምረጡ / Select a service type";
     if (!residentId && applicantName.trim().length < 3)
-      e["applicantName"] = "ነዋሪ ይምረጡ ወይም የአመልካቹን ስም ያስገቡ / Pick a resident or enter the applicant name";
+      e["applicantName"] =
+        "ነዋሪ ይምረጡ ወይም የአመልካቹን ስም ያስገቡ / Pick a resident or enter the applicant name";
     if (subject.trim().length < 3) e["subject"] = "ጉዳዩን ያስገቡ / Enter a subject";
     if (details.trim().length < 10)
       e["details"] = "ቢያንስ 10 ፊደል ያስገቡ / Provide at least 10 characters";
@@ -205,11 +206,7 @@ function NewServiceRequestPage() {
       <PageHeader
         titleAm={isComplaint ? "አዲስ ቅሬታ ማስመዝገቢያ" : "አዲስ የአገልግሎት ጥያቄ"}
         titleEn={isComplaint ? "New Complaint" : "New Service Request"}
-        description={
-          isComplaint
-            ? "የነዋሪ ቅሬታ በመዝገብ ውስጥ ያስገቡ"
-            : "የደብዳቤ/ማረጃ ጥያቄን በመዝገብ ውስጥ ያስገቡ"
-        }
+        description={isComplaint ? "የነዋሪ ቅሬታ በመዝገብ ውስጥ ያስገቡ" : "የደብዳቤ/ማረጃ ጥያቄን በመዝገብ ውስጥ ያስገቡ"}
       />
 
       <Section
@@ -373,7 +370,13 @@ function NewServiceRequestPage() {
               </FieldWrap>
             </>
           )}
-          <FieldWrap labelAm="ማብራሪያ" labelEn="Description" required error={errors["details"]} colSpan2>
+          <FieldWrap
+            labelAm="ማብራሪያ"
+            labelEn="Description"
+            required
+            error={errors["details"]}
+            colSpan2
+          >
             <Textarea
               className="font-noto-ethiopic min-h-28"
               value={details}
@@ -438,7 +441,10 @@ function NewServiceRequestPage() {
       </Section>
 
       <div className="flex justify-end gap-3">
-        <Button variant="outline" onClick={() => navigate({ to: isComplaint ? "/woreda/complaints" : "/woreda/services" })}>
+        <Button
+          variant="outline"
+          onClick={() => navigate({ to: isComplaint ? "/woreda/complaints" : "/woreda/services" })}
+        >
           ተመለስ / Cancel
         </Button>
         <Button
@@ -454,7 +460,9 @@ function NewServiceRequestPage() {
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="font-noto-ethiopic">ማስገባትን ያረጋግጡ / Confirm submission</DialogTitle>
+            <DialogTitle className="font-noto-ethiopic">
+              ማስገባትን ያረጋግጡ / Confirm submission
+            </DialogTitle>
             <DialogDescription className="font-noto-ethiopic">
               ጥያቄው ወደ ማጽደቅ ወረፋ ይላካል። መረጃው ትክክል መሆኑን ያረጋግጡ።
               <span className="mt-2 block text-xs text-slate-500">
@@ -471,7 +479,6 @@ function NewServiceRequestPage() {
             </Button>
           </DialogFooter>
         </DialogContent>
-
       </Dialog>
     </div>
   );

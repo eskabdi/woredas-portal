@@ -121,7 +121,11 @@ export async function exportSectionsToPdf(opts: {
   ctx.fillStyle = "#475569";
   ctx.font = `20px ${AM_FONT}`;
   ctx.fillText(truncate(ctx, opts.branding.nameEn, W - textX - M - 200), textX, y + 50);
-  const contact = [opts.branding.addressLine, opts.branding.contactPhone, opts.branding.contactEmail]
+  const contact = [
+    opts.branding.addressLine,
+    opts.branding.contactPhone,
+    opts.branding.contactEmail,
+  ]
     .filter(Boolean)
     .join("  •  ");
   if (contact) {
@@ -207,7 +211,11 @@ export async function exportSectionsToPdf(opts: {
         ctx.textAlign = "right";
         ctx.fillText(r.value.toLocaleString(), colValX, y + rowH / 2);
         ctx.fillStyle = "#64748b";
-        ctx.fillText(total > 0 ? `${((r.value / total) * 100).toFixed(1)}%` : "0.0%", colPctX, y + rowH / 2);
+        ctx.fillText(
+          total > 0 ? `${((r.value / total) * 100).toFixed(1)}%` : "0.0%",
+          colPctX,
+          y + rowH / 2,
+        );
         ctx.textAlign = "left";
         y += rowH;
       });

@@ -79,9 +79,21 @@ function Stepper({
   const finalLabel = isTermination ? "Vacated" : "Active";
   const steps = [
     { key: "submitted" as const, icon: Send, am: "ተልኳል", en: "Submitted", ts: undefined },
-    { key: "verified" as const, icon: ClipboardCheck, am: "ተረጋግጧል", en: "Verified", ts: verifiedAt },
+    {
+      key: "verified" as const,
+      icon: ClipboardCheck,
+      am: "ተረጋግጧል",
+      en: "Verified",
+      ts: verifiedAt,
+    },
     { key: "approved" as const, icon: ShieldCheck, am: "ፀድቋል", en: "Approved", ts: approvedAt },
-    { key: "final" as const, icon: CheckCircle2, am: isTermination ? "ተለቋል" : "ንቁ", en: finalLabel, ts: undefined },
+    {
+      key: "final" as const,
+      icon: CheckCircle2,
+      am: isTermination ? "ተለቋል" : "ንቁ",
+      en: finalLabel,
+      ts: undefined,
+    },
   ];
   const order: Stage[] = ["submitted", "verified", "approved", "final"];
   const currentIdx = order.indexOf(current);
@@ -271,10 +283,7 @@ function RentalRequestDetailPage() {
 
   const approve = useMutation({
     mutationFn: async () => {
-      if (
-        req?.request_type === "new_registration" &&
-        req?.house?.occupancy_status === "occupied"
-      ) {
+      if (req?.request_type === "new_registration" && req?.house?.occupancy_status === "occupied") {
         throw new Error(
           "ቤቱ በሌላ ተከራይ ተይዟል — መጀመሪያ የተከራይ መተውን ያፀድቁ / House is occupied — approve a vacate first",
         );
@@ -362,18 +371,22 @@ function RentalRequestDetailPage() {
             : "verified"
           : "verified"; // submitted → up next: verified
 
-  const initialStage: Stage = req.status === "submitted" || req.status === "under_review" ? "submitted" : currentStage;
+  const initialStage: Stage =
+    req.status === "submitted" || req.status === "under_review" ? "submitted" : currentStage;
 
   const bp = req.resident?.birth_place;
   const birthPlace =
     typeof bp === "string"
       ? bp
       : bp && typeof bp === "object"
-        ? String((bp as Record<string, unknown>).text ?? (bp as Record<string, unknown>).city ?? "") || "—"
+        ? String(
+            (bp as Record<string, unknown>).text ?? (bp as Record<string, unknown>).city ?? "",
+          ) || "—"
         : "—";
   const workInfo = (req.resident?.work_info ?? {}) as Record<string, unknown>;
   const occupation = String(workInfo.occupation ?? workInfo.job_title ?? "") || "—";
-  const workAddress = String(workInfo.address ?? workInfo.work_address ?? workInfo.employer ?? "") || "—";
+  const workAddress =
+    String(workInfo.address ?? workInfo.work_address ?? workInfo.employer ?? "") || "—";
   const houseOccupiedConflict =
     !isTermination && req.house?.occupancy_status === "occupied" && req.status !== "approved";
 
@@ -479,9 +492,7 @@ function RentalRequestDetailPage() {
                 {toEth(req.rent_start_date)}
               </KV>
               <KV am="የቤት ኪራይ መጠን" en="Rent Amount">
-                {req.rent_amount != null
-                  ? `${Number(req.rent_amount).toLocaleString()} ETB`
-                  : "—"}
+                {req.rent_amount != null ? `${Number(req.rent_amount).toLocaleString()} ETB` : "—"}
                 {req.house?.monthly_rent_standard != null && (
                   <span className="ml-2 text-xs text-slate-400">
                     (standard {Number(req.house.monthly_rent_standard).toLocaleString()})
@@ -524,7 +535,10 @@ function RentalRequestDetailPage() {
           <Card className="p-4">
             <div className="mb-2 flex items-center justify-between">
               <div className="text-xs uppercase tracking-wide text-slate-500">Status</div>
-              <Badge className="uppercase" variant={req.status === "approved" ? "default" : "outline"}>
+              <Badge
+                className="uppercase"
+                variant={req.status === "approved" ? "default" : "outline"}
+              >
                 {req.status}
               </Badge>
             </div>
@@ -566,9 +580,7 @@ function RentalRequestDetailPage() {
                     <Checkbox
                       className="mt-0.5"
                       checked={!!checks[c.key]}
-                      onCheckedChange={(v) =>
-                        setChecks((s) => ({ ...s, [c.key]: v === true }))
-                      }
+                      onCheckedChange={(v) => setChecks((s) => ({ ...s, [c.key]: v === true }))}
                     />
                     <span>
                       <span className="font-noto-ethiopic">{c.labelAm}</span>

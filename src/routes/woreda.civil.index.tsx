@@ -33,8 +33,6 @@ import {
 import { exportRowsToCsv, exportRowsToPdf, type TableColumn } from "@/utils/tableExport";
 import { useReportBranding } from "@/hooks/useReportBranding";
 
-
-
 const EVENT_TYPES = [
   { value: "all", label: "ሁሉም / All" },
   { value: "birth", label: "ልደት / Birth" },
@@ -93,7 +91,6 @@ interface VitalEventRow {
   resident: { resident_id: string; full_name: string | null; full_name_am: string | null } | null;
 }
 
-
 function CivilListPage() {
   const woredaId = useAuthStore((s) => s.woredaId);
   const hasPermission = useAuthStore((s) => s.hasPermission);
@@ -125,7 +122,9 @@ function CivilListPage() {
       q = q.ilike("event_number", `%${escaped}%`);
     }
     const dbColumn = SORT_COLUMN[sort.field] ?? "created_at";
-    q = q.order(dbColumn, { ascending: sort.dir === "asc" }).order("created_at", { ascending: false });
+    q = q
+      .order(dbColumn, { ascending: sort.dir === "asc" })
+      .order("created_at", { ascending: false });
     return q;
   };
 
@@ -293,7 +292,6 @@ function CivilListPage() {
         }
       />
 
-
       <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -347,24 +345,30 @@ function CivilListPage() {
           <tbody className="divide-y divide-slate-100">
             {eventsQuery.isLoading && <TableSkeletonRows cols={5} />}
             {eventsQuery.isError && (
-              <TableErrorRow cols={5} error={eventsQuery.error} onRetry={() => eventsQuery.refetch()} />
+              <TableErrorRow
+                cols={5}
+                error={eventsQuery.error}
+                onRetry={() => eventsQuery.refetch()}
+              />
             )}
-            {!eventsQuery.isLoading && !eventsQuery.isError && (eventsQuery.data?.rows.length ?? 0) === 0 && (
-              <TableEmptyRow cols={5} filtered={filtersActive} onClearFilters={clearFilters}>
-                {!filtersActive && (
-                  <PermissionGate permission={P.CIVIL_REGISTER}>
-                    <Button
-                      onClick={() => navigate({ to: "/woreda/civil/birth/new" })}
-                      className="mt-3 bg-blue-700 text-white hover:bg-blue-800"
-                    >
-                      <Baby className="mr-2 h-4 w-4" />
-                      <span className="font-noto-ethiopic">አዲስ የልደት ምዝገባ</span>
-                      <span className="ml-2 opacity-80">/ New Birth</span>
-                    </Button>
-                  </PermissionGate>
-                )}
-              </TableEmptyRow>
-            )}
+            {!eventsQuery.isLoading &&
+              !eventsQuery.isError &&
+              (eventsQuery.data?.rows.length ?? 0) === 0 && (
+                <TableEmptyRow cols={5} filtered={filtersActive} onClearFilters={clearFilters}>
+                  {!filtersActive && (
+                    <PermissionGate permission={P.CIVIL_REGISTER}>
+                      <Button
+                        onClick={() => navigate({ to: "/woreda/civil/birth/new" })}
+                        className="mt-3 bg-blue-700 text-white hover:bg-blue-800"
+                      >
+                        <Baby className="mr-2 h-4 w-4" />
+                        <span className="font-noto-ethiopic">አዲስ የልደት ምዝገባ</span>
+                        <span className="ml-2 opacity-80">/ New Birth</span>
+                      </Button>
+                    </PermissionGate>
+                  )}
+                </TableEmptyRow>
+              )}
             {eventsQuery.data?.rows.map((r) => {
               const sub = subjectName(r);
               return (
@@ -378,9 +382,7 @@ function CivilListPage() {
                     })
                   }
                 >
-                  <td className="px-4 py-3 font-mono text-xs text-slate-700">
-                    {r.event_number}
-                  </td>
+                  <td className="px-4 py-3 font-mono text-xs text-slate-700">{r.event_number}</td>
                   <td className="font-noto-ethiopic px-4 py-3">
                     {EVENT_TYPE_LABEL[r.event_type] ?? r.event_type}
                   </td>

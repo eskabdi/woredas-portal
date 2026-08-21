@@ -43,7 +43,7 @@ is 64 bytes where RSA-2048's is 256. That difference is part of what keeps the
 QR under printable module density. A change to RS256 will pass every test and
 produce a QR too dense to scan. The private half is the
 `HARARI_EC_PRIVATE_KEY` secret of the `sign-credential` function; the public
-half in `credentialCryptoConfig.ts` is *meant* to be public. The two halves move
+half in `credentialCryptoConfig.ts` is _meant_ to be public. The two halves move
 together — replacing one without the other invalidates every card already in
 circulation, because old signatures will not verify against a new key.
 
@@ -53,7 +53,7 @@ request-supplied field lets a caller mint a card with attributes they do not
 have.
 
 **A valid signature is not a valid card.** `v.$token.tsx` verifies the signature
-client-side *and* calls `verify_credential_token()` for live revocation status.
+client-side _and_ calls `verify_credential_token()` for live revocation status.
 Removing the second call makes revoked cards verify.
 
 **The credential number is 13 digits with a Luhn check digit** (migration

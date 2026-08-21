@@ -75,10 +75,7 @@ const profileSchema = z.object({
     .string()
     .trim()
     .optional()
-    .refine(
-      (v) => !v || /^\d{9}$/.test(v),
-      "Phone must be 9 digits after +251",
-    ),
+    .refine((v) => !v || /^\d{9}$/.test(v), "Phone must be 9 digits after +251"),
   contact_email: z
     .string()
     .trim()
@@ -90,10 +87,7 @@ const profileSchema = z.object({
     .trim()
     .min(1, "Required")
     .refine((v) => v.includes("{WOREDA_CODE}"), "Must include {WOREDA_CODE}")
-    .refine(
-      (v) => /\{SEQ:\d+\}/.test(v) || v.includes("{SEQ}"),
-      "Must include {SEQ:N} or {SEQ}",
-    ),
+    .refine((v) => /\{SEQ:\d+\}/.test(v) || v.includes("{SEQ}"), "Must include {SEQ:N} or {SEQ}"),
   logo_url: z.string().optional().or(z.literal("")),
   stamp_url: z.string().optional().or(z.literal("")),
   supervisor_signature_url: z.string().optional().or(z.literal("")),
@@ -269,9 +263,8 @@ function SettingsPage() {
                 />
               </Field>
               <p className="col-span-full text-xs text-slate-500">
-                Shown as the issuing entity — including as "place of issue" on
-                residence ID cards — instead of the official registry name below.
-                Leave blank to use the registry name.
+                Shown as the issuing entity — including as "place of issue" on residence ID cards —
+                instead of the official registry name below. Leave blank to use the registry name.
               </p>
             </div>
           </Card>
@@ -303,7 +296,11 @@ function SettingsPage() {
                 labelEn="Email"
                 error={form.formState.errors.contact_email?.message}
               >
-                <Input type="email" placeholder="office@example.gov.et" {...form.register("contact_email")} />
+                <Input
+                  type="email"
+                  placeholder="office@example.gov.et"
+                  {...form.register("contact_email")}
+                />
               </Field>
 
               <Field labelAm="ጽህፈት ቤት አድራሻ" labelEn="Office Address" colSpan2>
@@ -356,7 +353,10 @@ function SettingsPage() {
           <Card className="p-6">
             <SectionTitle titleAm="የነዋሪ ቁጥር ቅርጸት" titleEn="Resident Number Format" />
             <div className="mt-4 space-y-3">
-              <Input {...form.register("resident_number_format")} placeholder="{WOREDA_CODE}-{SEQ:6}" />
+              <Input
+                {...form.register("resident_number_format")}
+                placeholder="{WOREDA_CODE}-{SEQ:6}"
+              />
               {form.formState.errors.resident_number_format && (
                 <p className="text-xs text-red-600">
                   {form.formState.errors.resident_number_format.message}
@@ -366,7 +366,10 @@ function SettingsPage() {
                 Tokens: <code className="rounded bg-slate-100 px-1">{"{WOREDA_CODE}"}</code>{" "}
                 <code className="rounded bg-slate-100 px-1">{"{SEQ:N}"}</code>
               </p>
-              <PreviewLine label="Preview" value={previewResidentNumber(residentFormat, woredaCode)} />
+              <PreviewLine
+                label="Preview"
+                value={previewResidentNumber(residentFormat, woredaCode)}
+              />
             </div>
           </Card>
 
@@ -376,7 +379,8 @@ function SettingsPage() {
               <ReadOnlyBox value="{WOREDA_CODE}-{TYPE}-{YY}-{SEQ:6}" />
               <PreviewLine label="Example" value={`${woredaCode || "ABOKER"}-BR-26-000001`} />
               <p className="font-noto-ethiopic text-xs text-slate-500">
-                ይህ ቅርጸት በስርዓቱ ተስተካክሏል፤ ለውጥ አያስፈልገውም / This format is system-managed and does not need adjustment.
+                ይህ ቅርጸት በስርዓቱ ተስተካክሏል፤ ለውጥ አያስፈልገውም / This format is system-managed and does not
+                need adjustment.
               </p>
             </div>
           </Card>
@@ -429,7 +433,11 @@ function SettingsPage() {
             disabled={saving || !form.formState.isDirty}
             className="bg-blue-700 hover:bg-blue-800"
           >
-            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            {saving ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
+            )}
             <span className="font-noto-ethiopic">ለውጦችን አስቀምጥ</span>
             <span className="ml-1 text-xs opacity-80">/ Save Changes</span>
           </Button>
@@ -441,7 +449,15 @@ function SettingsPage() {
 
 /* ---------- Sub-components ---------- */
 
-function SettingsTab({ value, labelAm, labelEn }: { value: string; labelAm: string; labelEn: string }) {
+function SettingsTab({
+  value,
+  labelAm,
+  labelEn,
+}: {
+  value: string;
+  labelAm: string;
+  labelEn: string;
+}) {
   return (
     <TabsTrigger
       value={value}
@@ -604,7 +620,11 @@ function ImageUploadCard({
           </div>
         )}
         <div className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-blue-700">
-          {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+          {uploading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Upload className="h-4 w-4" />
+          )}
           <span className="font-noto-ethiopic">ምስል አዘምን</span>
           <span className="text-xs text-slate-500">/ Update Image</span>
         </div>
@@ -664,7 +684,9 @@ function FeesTab({
     <Card className="overflow-hidden">
       <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
         <div>
-          <h3 className="font-noto-ethiopic text-base font-semibold text-slate-900">የአገልግሎት ክፍያዎች</h3>
+          <h3 className="font-noto-ethiopic text-base font-semibold text-slate-900">
+            የአገልግሎት ክፍያዎች
+          </h3>
           <p className="text-xs text-slate-500">Service Fees</p>
         </div>
         <Button
@@ -716,8 +738,12 @@ function FeesTab({
               rows.map((r) => (
                 <tr key={r.fee_schedule_id} className="border-t border-slate-100">
                   <td className="px-5 py-3 font-medium text-slate-800">{r.service_type}</td>
-                  <td className="px-5 py-3 text-slate-700">ETB {Number(r.standard_fee).toFixed(2)}</td>
-                  <td className="px-5 py-3 text-slate-700">ETB {Number(r.penalty_rate).toFixed(2)}</td>
+                  <td className="px-5 py-3 text-slate-700">
+                    ETB {Number(r.standard_fee).toFixed(2)}
+                  </td>
+                  <td className="px-5 py-3 text-slate-700">
+                    ETB {Number(r.penalty_rate).toFixed(2)}
+                  </td>
                   <td className="px-5 py-3">
                     <StatusChip status={r.status} />
                   </td>
@@ -857,14 +883,26 @@ function FeeDialog({
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <Field labelAm="የአገልግሎት ዓይነት" labelEn="Service Type" error={form.formState.errors.service_type?.message}>
+          <Field
+            labelAm="የአገልግሎት ዓይነት"
+            labelEn="Service Type"
+            error={form.formState.errors.service_type?.message}
+          >
             <Input {...form.register("service_type")} disabled={isEdit} />
           </Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field labelAm="መደበኛ ክፍያ (ETB)" labelEn="Standard Fee" error={form.formState.errors.standard_fee?.message}>
+            <Field
+              labelAm="መደበኛ ክፍያ (ETB)"
+              labelEn="Standard Fee"
+              error={form.formState.errors.standard_fee?.message}
+            >
               <Input type="number" step="0.01" min="0" {...form.register("standard_fee")} />
             </Field>
-            <Field labelAm="የቅጣት መጠን (ETB)" labelEn="Penalty" error={form.formState.errors.penalty_rate?.message}>
+            <Field
+              labelAm="የቅጣት መጠን (ETB)"
+              labelEn="Penalty"
+              error={form.formState.errors.penalty_rate?.message}
+            >
               <Input type="number" step="0.01" min="0" {...form.register("penalty_rate")} />
             </Field>
           </div>
@@ -894,7 +932,11 @@ function FeeDialog({
             Cancel
           </Button>
           <Button onClick={onSubmit} disabled={saving} className="bg-blue-700 hover:bg-blue-800">
-            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            {saving ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
+            )}
             Save
           </Button>
         </DialogFooter>

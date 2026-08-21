@@ -14,7 +14,6 @@ import {
   ShieldCheck,
   ShieldOff,
   XCircle,
-
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -333,7 +332,9 @@ function CredentialRequestDetailPage() {
       });
 
       toast.success("ጥያቄው ተረጋግጦ ወደ ማጽደቅ ተልኳል / Request verified and sent for approval");
-      queryClient.invalidateQueries({ queryKey: ["credential-request", request.credential_request_id] });
+      queryClient.invalidateQueries({
+        queryKey: ["credential-request", request.credential_request_id],
+      });
       queryClient.invalidateQueries({ queryKey: ["credential-requests"] });
     } catch (e) {
       toast.error(`Update failed: ${(e as Error).message}`);
@@ -379,7 +380,9 @@ function CredentialRequestDetailPage() {
       toast.success("ጥያቄው ተመልሷል / Request returned");
       setReturnDialogOpen(false);
       setReturnReason("");
-      queryClient.invalidateQueries({ queryKey: ["credential-request", request.credential_request_id] });
+      queryClient.invalidateQueries({
+        queryKey: ["credential-request", request.credential_request_id],
+      });
       queryClient.invalidateQueries({ queryKey: ["credential-requests"] });
     } catch (e) {
       toast.error(`Return failed: ${(e as Error).message}`);
@@ -418,7 +421,9 @@ function CredentialRequestDetailPage() {
       });
 
       toast.success("ጥያቄው እንደገና ለክለሳ ተልኳል / Resubmitted for review");
-      queryClient.invalidateQueries({ queryKey: ["credential-request", request.credential_request_id] });
+      queryClient.invalidateQueries({
+        queryKey: ["credential-request", request.credential_request_id],
+      });
       queryClient.invalidateQueries({ queryKey: ["credential-requests"] });
     } catch (e) {
       toast.error(`Resubmit failed: ${(e as Error).message}`);
@@ -429,7 +434,9 @@ function CredentialRequestDetailPage() {
 
   const invalidateAll = () => {
     if (!request) return;
-    queryClient.invalidateQueries({ queryKey: ["credential-request", request.credential_request_id] });
+    queryClient.invalidateQueries({
+      queryKey: ["credential-request", request.credential_request_id],
+    });
     queryClient.invalidateQueries({ queryKey: ["credential-requests"] });
   };
 
@@ -599,8 +606,6 @@ function CredentialRequestDetailPage() {
     }
   };
 
-
-
   if (requestQuery.isLoading) {
     return (
       <div className="space-y-4">
@@ -733,9 +738,6 @@ function CredentialRequestDetailPage() {
               </>
             )}
           </dl>
-
-
-
 
           {request.supporting_document_path && (
             <div>
@@ -911,7 +913,9 @@ function CredentialRequestDetailPage() {
                   ) : (residentCredsQuery.data?.length ?? 0) === 0 ? (
                     <p className="font-noto-ethiopic text-sm text-slate-500">
                       ይህ ነዋሪ ቀደም ሲል ምስክርነት የለውም
-                      <span className="ml-2 text-slate-400">/ This resident has no prior credentials</span>
+                      <span className="ml-2 text-slate-400">
+                        / This resident has no prior credentials
+                      </span>
                     </p>
                   ) : (
                     <ul className="divide-y divide-slate-100 text-sm">
@@ -938,14 +942,10 @@ function CredentialRequestDetailPage() {
               </div>
             )}
 
-            {status === "pending_approval" && (
-              canApprove ? (
+            {status === "pending_approval" &&
+              (canApprove ? (
                 <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-4">
-                  <Button
-                    variant="destructive"
-                    onClick={() => setRejectOpen(true)}
-                    disabled={busy}
-                  >
+                  <Button variant="destructive" onClick={() => setRejectOpen(true)} disabled={busy}>
                     <XCircle className="mr-2 h-4 w-4" />
                     <span className="font-noto-ethiopic">አትቀበል</span>
                     <span className="ml-1 text-xs opacity-80">/ Reject</span>
@@ -977,8 +977,7 @@ function CredentialRequestDetailPage() {
                 <p className="text-xs text-slate-500">
                   You don&apos;t have permission to approve this request.
                 </p>
-              )
-            )}
+              ))}
 
             {status === "approval_returned" && (
               <>
@@ -987,9 +986,7 @@ function CredentialRequestDetailPage() {
                     <div className="font-noto-ethiopic text-sm font-semibold">
                       በማጽደቅ ደረጃ የተመለሰበት ምክንያት
                     </div>
-                    <div className="text-xs opacity-80">
-                      / Returned at Approval Stage — Reason
-                    </div>
+                    <div className="text-xs opacity-80">/ Returned at Approval Stage — Reason</div>
                     <p className="mt-2 whitespace-pre-wrap text-sm">{request.return_reason}</p>
                   </div>
                 )}
@@ -1011,9 +1008,7 @@ function CredentialRequestDetailPage() {
 
             {status === "rejected" && (
               <div className="rounded-lg border-2 border-red-300 bg-red-50 p-4 text-red-900">
-                <div className="font-noto-ethiopic text-sm font-semibold">
-                  ጥያቄው ውድቅ ተደርጓል
-                </div>
+                <div className="font-noto-ethiopic text-sm font-semibold">ጥያቄው ውድቅ ተደርጓል</div>
                 <div className="text-xs opacity-80">/ Request rejected</div>
                 {request.reject_reason && (
                   <p className="mt-2 whitespace-pre-wrap text-sm">
@@ -1051,11 +1046,7 @@ function CredentialRequestDetailPage() {
       )}
 
       {(status === "awaiting_payment" || status === "paid") && (
-        <PaymentCard
-          request={request}
-          status={status}
-          onDone={invalidateAll}
-        />
+        <PaymentCard request={request} status={status} onDone={invalidateAll} />
       )}
 
       {status === "paid" && request.credential_id && (
@@ -1081,17 +1072,8 @@ function CredentialRequestDetailPage() {
       )}
 
       {request.credential_id && (
-        <RevocationCard
-          credentialRowId={request.credential_id}
-          onDone={invalidateAll}
-        />
+        <RevocationCard credentialRowId={request.credential_id} onDone={invalidateAll} />
       )}
-
-
-
-
-
-
 
       <AlertDialog open={returnDialogOpen} onOpenChange={setReturnDialogOpen}>
         <AlertDialogContent>
@@ -1344,7 +1326,8 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
     if (busy) return false;
     if (waived) return waiverReason.trim().length >= 5;
     if (!channel) return false;
-    if ((channel === "bank" || channel === "mobile") && referenceNo.trim().length === 0) return false;
+    if ((channel === "bank" || channel === "mobile") && referenceNo.trim().length === 0)
+      return false;
     return true;
   }, [canCollect, busy, waived, waiverReason, channel, referenceNo]);
 
@@ -1355,9 +1338,7 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
       const today = new Date().toISOString().slice(0, 10);
       const paymentChannel = waived ? "cash" : channel;
       const refNo =
-        waived || paymentChannel === "cash"
-          ? referenceNo.trim() || null
-          : referenceNo.trim();
+        waived || paymentChannel === "cash" ? referenceNo.trim() || null : referenceNo.trim();
 
       const { data: pay, error: payErr } = await supabase
         .from("payment")
@@ -1458,7 +1439,8 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
                     <span className="ml-2 normal-case">/ Applicable Fee</span>
                   </div>
                   <div className="mt-1 text-lg font-semibold text-slate-900">
-                    {fee.toLocaleString()} <span className="font-noto-ethiopic text-sm text-slate-600">ብር</span>
+                    {fee.toLocaleString()}{" "}
+                    <span className="font-noto-ethiopic text-sm text-slate-600">ብር</span>
                     <span className="ml-1 text-sm text-slate-500">/ ETB</span>
                   </div>
                 </div>
@@ -1608,7 +1590,11 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
                         <span className="ml-2 normal-case">/ Amount</span>
                       </div>
                       <div className="text-base font-semibold text-emerald-900">
-                        {Number(paidQuery.data.receipt?.total_amount ?? paidQuery.data.payment?.amount ?? 0).toLocaleString()}{" "}
+                        {Number(
+                          paidQuery.data.receipt?.total_amount ??
+                            paidQuery.data.payment?.amount ??
+                            0,
+                        ).toLocaleString()}{" "}
                         <span className="font-noto-ethiopic text-sm">ብር</span>
                         <span className="ml-1 text-sm">/ ETB</span>
                       </div>
@@ -1640,11 +1626,19 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
                       ) : (
                         <>
                           <span className="font-noto-ethiopic">
-                            {CHANNEL_LABELS[paidQuery.data.receipt?.cash_bank_channel ?? paidQuery.data.payment?.channel ?? "cash"]?.am ??
-                              paidQuery.data.receipt?.cash_bank_channel}
+                            {CHANNEL_LABELS[
+                              paidQuery.data.receipt?.cash_bank_channel ??
+                                paidQuery.data.payment?.channel ??
+                                "cash"
+                            ]?.am ?? paidQuery.data.receipt?.cash_bank_channel}
                           </span>
                           <span className="ml-2 text-slate-500">
-                            / {CHANNEL_LABELS[paidQuery.data.receipt?.cash_bank_channel ?? paidQuery.data.payment?.channel ?? "cash"]?.en ?? ""}
+                            /{" "}
+                            {CHANNEL_LABELS[
+                              paidQuery.data.receipt?.cash_bank_channel ??
+                                paidQuery.data.payment?.channel ??
+                                "cash"
+                            ]?.en ?? ""}
                           </span>
                         </>
                       )}
@@ -1652,7 +1646,9 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
                     {paidQuery.data.payment?.reference_no && (
                       <>
                         <dt className="font-noto-ethiopic text-slate-500">ማጣቀሻ / Reference</dt>
-                        <dd className="font-mono text-slate-800">{paidQuery.data.payment.reference_no}</dd>
+                        <dd className="font-mono text-slate-800">
+                          {paidQuery.data.payment.reference_no}
+                        </dd>
                       </>
                     )}
                   </dl>
@@ -1675,7 +1671,6 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
     </>
   );
 }
-
 
 interface CredentialReadinessCardProps {
   credentialRowId: string;
@@ -1784,9 +1779,7 @@ function CredentialReadinessCard({
             <div className="flex items-start gap-3">
               <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
               <div className="flex-1">
-                <div className="font-noto-ethiopic font-semibold text-emerald-900">
-                  ማስረጃ ዝግጁ ነው
-                </div>
+                <div className="font-noto-ethiopic font-semibold text-emerald-900">ማስረጃ ዝግጁ ነው</div>
                 <div className="text-xs text-emerald-800">
                   / Credential ready — <span className="font-mono">{cred.credential_number}</span>
                 </div>
@@ -1806,10 +1799,7 @@ function CredentialReadinessCard({
                 </dl>
                 <div className="mt-4">
                   <Button asChild size="sm" className="bg-blue-700 hover:bg-blue-800">
-                    <Link
-                      to="/woreda/credentials/$requestId/print"
-                      params={{ requestId }}
-                    >
+                    <Link to="/woreda/credentials/$requestId/print" params={{ requestId }}>
                       <Printer className="mr-2 h-4 w-4" />
                       <span className="font-noto-ethiopic">ቅድመ ዕይታ እና ህትመት</span>
                       <span className="ml-2 text-xs text-white/80">/ Preview &amp; Print</span>
@@ -1829,7 +1819,13 @@ function CredentialReadinessCard({
                 </div>
                 <div className="text-xs text-red-800">/ Credential preparation failed</div>
                 <p className="mt-1 whitespace-pre-wrap text-xs text-red-700">{signError}</p>
-                <Button size="sm" variant="outline" className="mt-3" onClick={retry} disabled={signing}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-3"
+                  onClick={retry}
+                  disabled={signing}
+                >
                   <RotateCcw className="mr-2 h-3.5 w-3.5" />
                   Retry
                 </Button>
@@ -1889,9 +1885,7 @@ function IssuanceCard({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("residence_credential")
-        .select(
-          "credential_id, credential_number, status, activated_at, issued_recipient_name",
-        )
+        .select("credential_id, credential_number, status, activated_at, issued_recipient_name")
         .eq("credential_id", credentialRowId)
         .maybeSingle();
       if (error) throw error;
@@ -2040,9 +2034,7 @@ function IssuanceCard({
   };
 
   const printerName = printLog?.printer_name ?? printLog?.printed_by_user_id ?? "—";
-  const printedAt = printLog?.printed_at
-    ? formatEthiopianDate(new Date(printLog.printed_at))
-    : "—";
+  const printedAt = printLog?.printed_at ? formatEthiopianDate(new Date(printLog.printed_at)) : "—";
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -2072,9 +2064,7 @@ function IssuanceCard({
                   <dd className="text-slate-900">{cred.issued_recipient_name ?? "—"}</dd>
                   <dt className="font-noto-ethiopic text-slate-600">ቀን / Date</dt>
                   <dd className="text-slate-900">
-                    {cred.activated_at
-                      ? formatEthiopianDate(new Date(cred.activated_at))
-                      : "—"}
+                    {cred.activated_at ? formatEthiopianDate(new Date(cred.activated_at)) : "—"}
                   </dd>
                 </dl>
                 {priorCredQuery.data && (
@@ -2105,9 +2095,7 @@ function IssuanceCard({
                 placeholder={residentFullNameAm}
               />
               <p className="text-xs text-slate-500">
-                <span className="font-noto-ethiopic">
-                  የነዋሪውን ወይም የወኪሉን ስም ያስገቡ
-                </span>
+                <span className="font-noto-ethiopic">የነዋሪውን ወይም የወኪሉን ስም ያስገቡ</span>
                 <span className="ml-1">
                   / Enter the resident's or authorized representative's name
                 </span>
@@ -2122,9 +2110,7 @@ function IssuanceCard({
                 className="mt-0.5"
               />
               <span>
-                <span className="font-noto-ethiopic">
-                  ማስረጃው ለተረካቢው በአካል ተላልፏል ብዬ አረጋግጣለሁ
-                </span>
+                <span className="font-noto-ethiopic">ማስረጃው ለተረካቢው በአካል ተላልፏል ብዬ አረጋግጣለሁ</span>
                 <span className="ml-2 text-slate-600">
                   / I confirm the credential has been physically handed over to the recipient
                 </span>
@@ -2262,9 +2248,7 @@ function RevocationCard({ credentialRowId, onDone }: RevocationCardProps) {
         <span className="font-noto-ethiopic text-base font-semibold">
           {isRevoked ? "ተሽሯል" : "መሻር"}
         </span>
-        <span className="ml-1 text-sm text-white/80">
-          / {isRevoked ? "Revoked" : "Revocation"}
-        </span>
+        <span className="ml-1 text-sm text-white/80">/ {isRevoked ? "Revoked" : "Revocation"}</span>
       </div>
       <div className="space-y-4 p-5">
         {isRevoked ? (
@@ -2280,29 +2264,19 @@ function RevocationCard({ credentialRowId, onDone }: RevocationCardProps) {
               </dd>
               <dt className="font-noto-ethiopic text-slate-600">ቀን / Date</dt>
               <dd className="text-slate-900">
-                {cred.revoked_at
-                  ? formatEthiopianDate(new Date(cred.revoked_at))
-                  : "—"}
+                {cred.revoked_at ? formatEthiopianDate(new Date(cred.revoked_at)) : "—"}
               </dd>
             </dl>
           </div>
         ) : (
           <>
             <p className="text-sm">
-              <span className="font-noto-ethiopic text-slate-700">
-                ንቁ ማስረጃ:
-              </span>
+              <span className="font-noto-ethiopic text-slate-700">ንቁ ማስረጃ:</span>
               <span className="ml-2 text-slate-500">/ Active Credential:</span>
-              <span className="ml-2 font-mono text-slate-900">
-                {cred.credential_number}
-              </span>
+              <span className="ml-2 font-mono text-slate-900">{cred.credential_number}</span>
             </p>
             <div className="flex justify-end">
-              <Button
-                variant="destructive"
-                disabled={!canRevoke}
-                onClick={() => setOpen(true)}
-              >
+              <Button variant="destructive" disabled={!canRevoke} onClick={() => setOpen(true)}>
                 <ShieldOff className="mr-2 h-4 w-4" />
                 <span className="font-noto-ethiopic">መሻር</span>
                 <span className="ml-2 text-xs text-white/80">/ Revoke</span>
@@ -2322,9 +2296,7 @@ function RevocationCard({ credentialRowId, onDone }: RevocationCardProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>
               <span className="font-noto-ethiopic">ማስረጃ መሻር ማረጋገጫ</span>
-              <span className="ml-2 text-sm text-slate-500">
-                / Confirm Credential Revocation
-              </span>
+              <span className="ml-2 text-sm text-slate-500">/ Confirm Credential Revocation</span>
             </AlertDialogTitle>
             <AlertDialogDescription>
               <span className="font-noto-ethiopic">

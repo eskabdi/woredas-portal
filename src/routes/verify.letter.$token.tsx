@@ -116,21 +116,11 @@ function LetterVerificationPage() {
                       : "—"
                   }
                 />
-                <Row
-                  labelAm="የደብዳቤ ቁጥር"
-                  labelEn="Letter no."
-                  value={data.request_number}
-                  mono
-                />
+                <Row labelAm="የደብዳቤ ቁጥር" labelEn="Letter no." value={data.request_number} mono />
                 <Row
                   labelAm="ጉዳይ"
                   labelEn="Subject of the letter"
-                  value={
-                    data.subject ??
-                    data.service_type_am ??
-                    data.service_type_en ??
-                    "—"
-                  }
+                  value={data.subject ?? data.service_type_am ?? data.service_type_en ?? "—"}
                 />
                 <Row
                   labelAm="የነዋሪ ሙሉ ስም"

@@ -34,8 +34,8 @@ export default function LocationDisplayMap({ latitude, longitude, label }: Props
         </MapContainer>
       </div>
       <div className="font-noto-ethiopic text-xs text-slate-600">
-        ኬክሮስ: <span className="font-mono">{latitude.toFixed(6)}</span>,{" "}
-        ኬንትሮስ: <span className="font-mono">{longitude.toFixed(6)}</span>
+        ኬክሮስ: <span className="font-mono">{latitude.toFixed(6)}</span>, ኬንትሮስ:{" "}
+        <span className="font-mono">{longitude.toFixed(6)}</span>
       </div>
     </div>
   );

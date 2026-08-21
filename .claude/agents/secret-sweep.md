@@ -11,12 +11,12 @@ else can fetch.
 
 ## What you are hunting
 
-| Secret | Shape | Why it matters |
-|---|---|---|
-| `SUPABASE_ACCESS_TOKEN` | `sbp_` + 40 hex | Account-level control plane over **every** project on the account |
-| `VERCEL_TOKEN` | 24 alphanumerics, no prefix | Deploy, read env vars, delete projects |
-| `service_role` key | JWT, `eyJhbGciOi…`, `"role":"service_role"` | Bypasses all RLS on this project |
-| `HARARI_EC_PRIVATE_KEY` | `-----BEGIN EC PRIVATE KEY-----` / `BEGIN PRIVATE KEY` | Forges residence ID credentials |
+| Secret                  | Shape                                                  | Why it matters                                                    |
+| ----------------------- | ------------------------------------------------------ | ----------------------------------------------------------------- |
+| `SUPABASE_ACCESS_TOKEN` | `sbp_` + 40 hex                                        | Account-level control plane over **every** project on the account |
+| `VERCEL_TOKEN`          | 24 alphanumerics, no prefix                            | Deploy, read env vars, delete projects                            |
+| `service_role` key      | JWT, `eyJhbGciOi…`, `"role":"service_role"`            | Bypasses all RLS on this project                                  |
+| `HARARI_EC_PRIVATE_KEY` | `-----BEGIN EC PRIVATE KEY-----` / `BEGIN PRIVATE KEY` | Forges residence ID credentials                                   |
 
 The Vercel token has no prefix and looks like any other 24-character string, so
 you cannot find it by shape alone. Find it by **context**: look at assignments
@@ -58,11 +58,11 @@ Distinguish three cases, and never collapse them:
    finding. Do not pad your report with these.
 3. **A public key.** `src/config/credentialCryptoConfig.ts` contains
    `CREDENTIAL_PUBLIC_KEY_PEM` and that is **correct and intentional** — the
-   public half is meant to ship to every verifier. Only the *private* half is a
+   public half is meant to ship to every verifier. Only the _private_ half is a
    secret. Flagging the public key is a false positive that trains people to
    ignore you.
 
-The publishable/anon Supabase key is also a JWT and is *designed* to be in the
+The publishable/anon Supabase key is also a JWT and is _designed_ to be in the
 client bundle. Before flagging a JWT, decode its payload and look at `role`:
 `anon` is fine, `service_role` is an incident.
 

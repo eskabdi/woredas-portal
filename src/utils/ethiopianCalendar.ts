@@ -60,17 +60,11 @@ function gregorianToJDN(y: number, m: number, d: number): number {
 const ETHIOPIC_EPOCH = 1724220;
 
 export function gregorianToEthiopian(date: Date): EthiopianDate {
-  const jdn = gregorianToJDN(
-    date.getFullYear(),
-    date.getMonth() + 1,
-    date.getDate(),
-  );
+  const jdn = gregorianToJDN(date.getFullYear(), date.getMonth() + 1, date.getDate());
   const r = (jdn - ETHIOPIC_EPOCH) % 1461;
   const n = (r % 365) + 365 * Math.floor(r / 1460);
   const year =
-    4 * Math.floor((jdn - ETHIOPIC_EPOCH) / 1461) +
-    Math.floor(r / 365) -
-    Math.floor(r / 1460);
+    4 * Math.floor((jdn - ETHIOPIC_EPOCH) / 1461) + Math.floor(r / 365) - Math.floor(r / 1460);
   const month = Math.floor(n / 30) + 1;
   const day = (n % 30) + 1;
   return { year, month, day };
@@ -91,9 +85,7 @@ export function formatEthiopianDateShort(date: Date): string {
 }
 
 export function formatEthiopianDateTime(date: Date): string {
-  return `${formatEthiopianDate(date)} ${pad2(date.getHours())}:${pad2(
-    date.getMinutes(),
-  )}`;
+  return `${formatEthiopianDate(date)} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
 }
 
 export function getCurrentEthiopianDate(): string {
@@ -121,11 +113,7 @@ function jdnToGregorian(jdn: number): Date {
 
 export function ethiopianToGregorian(e: EthiopianDate): Date {
   const jdn =
-    ETHIOPIC_EPOCH +
-    365 * (e.year - 1) +
-    Math.floor(e.year / 4) +
-    30 * (e.month - 1) +
-    (e.day - 1);
+    ETHIOPIC_EPOCH + 365 * (e.year - 1) + Math.floor(e.year / 4) + 30 * (e.month - 1) + (e.day - 1);
   return jdnToGregorian(jdn);
 }
 
@@ -138,4 +126,3 @@ export function isValidEthiopianDate(e: EthiopianDate): boolean {
   }
   return e.day <= 30;
 }
-

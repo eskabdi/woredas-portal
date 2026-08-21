@@ -1,10 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import {
-  BARCODE_WIDTH_MM,
-  credentialDigits,
-  renderCredentialBarcode,
-} from "@/utils/barcode";
+import { BARCODE_WIDTH_MM, credentialDigits, renderCredentialBarcode } from "@/utils/barcode";
 
 /**
  * Code 128 barcode of the credential number, for the front of the ID card.
@@ -56,12 +52,12 @@ export function CredentialBarcode({
   }
 
   return (
-    <div className={fill ? "flex h-full w-full flex-col items-center" : "flex flex-col items-center"}>
+    <div
+      className={fill ? "flex h-full w-full flex-col items-center" : "flex flex-col items-center"}
+    >
       <svg ref={ref} role="img" aria-label={`Credential number ${digits}`} />
       {showValue && (
-        <div className="mt-0.5 font-mono text-[8px] tracking-[0.15em] text-slate-700">
-          {digits}
-        </div>
+        <div className="mt-0.5 font-mono text-[8px] tracking-[0.15em] text-slate-700">{digits}</div>
       )}
     </div>
   );

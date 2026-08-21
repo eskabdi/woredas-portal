@@ -26,12 +26,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
 import { P } from "@/config/permissions";
@@ -55,7 +50,6 @@ export const Route = createFileRoute("/woreda/audit")({
     </ModuleGate>
   ),
 });
-
 
 const ENTITIES = [
   "resident",
@@ -86,9 +80,12 @@ interface AuditRow {
 
 function actionTone(action: string) {
   const a = action.toUpperCase();
-  if (a.includes("DELETE") || a.includes("REVOK") || a.includes("REJECT")) return "bg-red-50 text-red-700 border-red-200";
-  if (a.includes("CREATE") || a.includes("APPROV") || a.includes("PAID")) return "bg-emerald-50 text-emerald-700 border-emerald-200";
-  if (a.includes("UPDATE") || a.includes("EDIT") || a.includes("VERIF")) return "bg-blue-50 text-blue-700 border-blue-200";
+  if (a.includes("DELETE") || a.includes("REVOK") || a.includes("REJECT"))
+    return "bg-red-50 text-red-700 border-red-200";
+  if (a.includes("CREATE") || a.includes("APPROV") || a.includes("PAID"))
+    return "bg-emerald-50 text-emerald-700 border-emerald-200";
+  if (a.includes("UPDATE") || a.includes("EDIT") || a.includes("VERIF"))
+    return "bg-blue-50 text-blue-700 border-blue-200";
   return "bg-slate-50 text-slate-700 border-slate-200";
 }
 
@@ -100,16 +97,28 @@ function deepLinkFor(row: { entity_name: string; entity_id: string | null }): De
   switch (row.entity_name) {
     case "resident":
       return id
-        ? { to: "/woreda/residents/$residentId", params: { residentId: id }, labelEn: "Open resident" }
+        ? {
+            to: "/woreda/residents/$residentId",
+            params: { residentId: id },
+            labelEn: "Open resident",
+          }
         : { to: "/woreda/residents", labelEn: "Open residents" };
     case "household":
     case "household_change_log":
       return id
-        ? { to: "/woreda/households/$householdId", params: { householdId: id }, labelEn: "Open household" }
+        ? {
+            to: "/woreda/households/$householdId",
+            params: { householdId: id },
+            labelEn: "Open household",
+          }
         : { to: "/woreda/households", labelEn: "Open households" };
     case "credential_request":
       return id
-        ? { to: "/woreda/credentials/$requestId", params: { requestId: id }, labelEn: "Open request" }
+        ? {
+            to: "/woreda/credentials/$requestId",
+            params: { requestId: id },
+            labelEn: "Open request",
+          }
         : { to: "/woreda/credentials", labelEn: "Open credentials" };
     case "residence_credential":
       return { to: "/woreda/credentials", labelEn: "Open credentials" };
@@ -127,7 +136,11 @@ function deepLinkFor(row: { entity_name: string; entity_id: string | null }): De
         : { to: "/woreda/rental-houses/requests", labelEn: "Open requests" };
     case "kebele_rental_house":
       return id
-        ? { to: "/woreda/rental-houses/$houseId", params: { houseId: id }, labelEn: "Open rental house" }
+        ? {
+            to: "/woreda/rental-houses/$houseId",
+            params: { houseId: id },
+            labelEn: "Open rental house",
+          }
         : { to: "/woreda/rental-houses", labelEn: "Open rental houses" };
     case "payment":
     case "receipt":
@@ -230,7 +243,11 @@ function AuditTrailPage() {
     if (filters.q) {
       const esc = filters.q.replace(/[%,]/g, "");
       query = query.or(
-        [`action_type.ilike.%${esc}%`, `entity_name.ilike.%${esc}%`, `entity_id.ilike.%${esc}%`].join(","),
+        [
+          `action_type.ilike.%${esc}%`,
+          `entity_name.ilike.%${esc}%`,
+          `entity_id.ilike.%${esc}%`,
+        ].join(","),
       );
     }
     return query;
@@ -251,16 +268,17 @@ function AuditTrailPage() {
   const total = data?.count ?? 0;
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
-  const filterLabel = [
-    filters.q ? `Search: "${filters.q}"` : null,
-    filters.entity ? `Entity: ${filters.entity}` : null,
-    filters.start ? `From: ${filters.start}` : null,
-    filters.end ? `To: ${filters.end}` : null,
-    filters.kebeleId ? `Kebele: ${filters.kebeleId}` : null,
-    !sort.isDefault ? `Sort: ${sort.field} ${sort.dir}` : null,
-  ]
-    .filter(Boolean)
-    .join(" • ") || "No filters applied";
+  const filterLabel =
+    [
+      filters.q ? `Search: "${filters.q}"` : null,
+      filters.entity ? `Entity: ${filters.entity}` : null,
+      filters.start ? `From: ${filters.start}` : null,
+      filters.end ? `To: ${filters.end}` : null,
+      filters.kebeleId ? `Kebele: ${filters.kebeleId}` : null,
+      !sort.isDefault ? `Sort: ${sort.field} ${sort.dir}` : null,
+    ]
+      .filter(Boolean)
+      .join(" • ") || "No filters applied";
 
   const exportColumns: TableColumn<AuditRow>[] = [
     { header: "ቀን / Timestamp", value: (r) => new Date(r.action_at).toISOString() },
@@ -419,10 +437,16 @@ function AuditTrailPage() {
           <table className="min-w-full text-sm">
             <thead className="bg-slate-50 text-left text-slate-600">
               <tr>
-                <SortableTh field="action_at" sort={sort}>ቀን / Timestamp</SortableTh>
+                <SortableTh field="action_at" sort={sort}>
+                  ቀን / Timestamp
+                </SortableTh>
                 <th className="px-4 py-2">ተጠቃሚ / Actor</th>
-                <SortableTh field="entity_name" sort={sort}>ክፍል / Entity</SortableTh>
-                <SortableTh field="action_type" sort={sort}>ተግባር / Action</SortableTh>
+                <SortableTh field="entity_name" sort={sort}>
+                  ክፍል / Entity
+                </SortableTh>
+                <SortableTh field="action_type" sort={sort}>
+                  ተግባር / Action
+                </SortableTh>
                 <th className="px-4 py-2">Record</th>
                 <th className="px-4 py-2"></th>
               </tr>
@@ -447,44 +471,48 @@ function AuditTrailPage() {
                   filteredLabelEn="No audit entries match these filters"
                 />
               )}
-              {!isLoading && !isError && rows.map((r) => {
-                const at = new Date(r.action_at);
-                return (
-                  <tr key={r.audit_log_id} className="border-t hover:bg-slate-50">
-                    <td className="whitespace-nowrap px-4 py-2">
-                      <div className="font-noto-ethiopic">{formatEthiopianDateShort(at)}</div>
-                      <div className="text-xs text-slate-500">
-                        {at.toLocaleString("en-GB", { hour12: false })}
-                      </div>
-                    </td>
-                    <td className="px-4 py-2">
-                      <div className="font-noto-ethiopic">
-                        {r.actor?.full_name ?? r.actor?.username ?? "System"}
-                      </div>
-                      {r.actor?.role && <div className="text-xs text-slate-500">{r.actor.role}</div>}
-                    </td>
-                    <td className="px-4 py-2 text-slate-700">{r.entity_name}</td>
-                    <td className="px-4 py-2">
-                      <span
-                        className={`inline-flex rounded-md border px-2 py-0.5 text-xs font-medium ${actionTone(r.action_type)}`}
-                      >
-                        {r.action_type}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 font-mono text-xs text-slate-500">
-                      {r.entity_id ? `${r.entity_id.slice(0, 8)}…` : "—"}
-                    </td>
-                    <td className="px-4 py-2 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <AuditDeepLink row={r} compact />
-                        <Button size="sm" variant="ghost" onClick={() => setDetail(r)}>
-                          <Eye className="mr-1 h-4 w-4" /> View
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+              {!isLoading &&
+                !isError &&
+                rows.map((r) => {
+                  const at = new Date(r.action_at);
+                  return (
+                    <tr key={r.audit_log_id} className="border-t hover:bg-slate-50">
+                      <td className="whitespace-nowrap px-4 py-2">
+                        <div className="font-noto-ethiopic">{formatEthiopianDateShort(at)}</div>
+                        <div className="text-xs text-slate-500">
+                          {at.toLocaleString("en-GB", { hour12: false })}
+                        </div>
+                      </td>
+                      <td className="px-4 py-2">
+                        <div className="font-noto-ethiopic">
+                          {r.actor?.full_name ?? r.actor?.username ?? "System"}
+                        </div>
+                        {r.actor?.role && (
+                          <div className="text-xs text-slate-500">{r.actor.role}</div>
+                        )}
+                      </td>
+                      <td className="px-4 py-2 text-slate-700">{r.entity_name}</td>
+                      <td className="px-4 py-2">
+                        <span
+                          className={`inline-flex rounded-md border px-2 py-0.5 text-xs font-medium ${actionTone(r.action_type)}`}
+                        >
+                          {r.action_type}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 font-mono text-xs text-slate-500">
+                        {r.entity_id ? `${r.entity_id.slice(0, 8)}…` : "—"}
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <AuditDeepLink row={r} compact />
+                          <Button size="sm" variant="ghost" onClick={() => setDetail(r)}>
+                            <Eye className="mr-1 h-4 w-4" /> View
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
         </div>

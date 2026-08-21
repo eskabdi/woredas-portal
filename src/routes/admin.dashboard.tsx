@@ -2,15 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Building2, Users, IdCard, CreditCard, LayoutDashboard } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-} from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
 import { supabase } from "@/integrations/supabase/client";
 import { KpiCard } from "@/components/common/KpiCard";
@@ -80,14 +72,8 @@ function AdminDashboard() {
 
       const ids = (woredas ?? []).map((w) => w.woreda_id);
       const [{ data: residents }, { data: users }] = await Promise.all([
-        supabase
-          .from("resident")
-          .select("woreda_id")
-          .in("woreda_id", ids),
-        supabase
-          .from("app_user")
-          .select("woreda_id")
-          .in("woreda_id", ids),
+        supabase.from("resident").select("woreda_id").in("woreda_id", ids),
+        supabase.from("app_user").select("woreda_id").in("woreda_id", ids),
       ]);
       const residentCount = new Map<string, number>();
       (residents ?? []).forEach((r) => {
@@ -121,7 +107,6 @@ function AdminDashboard() {
         titleEn="Platform Overview"
         description="Harari Region — all woredas"
       />
-
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
@@ -190,9 +175,7 @@ function AdminDashboard() {
             <tbody>
               {(woredaList.data ?? []).map((w) => (
                 <tr key={w.woreda_id} className="border-b border-slate-100">
-                  <td className="py-2 pr-4 font-mono text-xs text-slate-600">
-                    {w.woreda_code}
-                  </td>
+                  <td className="py-2 pr-4 font-mono text-xs text-slate-600">{w.woreda_code}</td>
                   <td className="py-2 pr-4 text-slate-900">{w.woreda_name_en}</td>
                   <td className="font-noto-ethiopic py-2 pr-4 text-slate-700">
                     {w.woreda_name_am}

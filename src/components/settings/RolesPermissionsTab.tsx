@@ -157,7 +157,9 @@ export function RolesPermissionsTab() {
               <tr className="bg-blue-700 text-white">
                 <th className="sticky left-0 z-10 bg-blue-700 px-4 py-3 text-left font-noto-ethiopic font-medium">
                   <div>ፍቃድ</div>
-                  <div className="text-[10px] uppercase tracking-wide text-blue-100">Permission</div>
+                  <div className="text-[10px] uppercase tracking-wide text-blue-100">
+                    Permission
+                  </div>
                 </th>
                 {EDITABLE_ROLES.map((r) => (
                   <th key={r.key} className="px-3 py-3 text-center font-noto-ethiopic font-medium">
@@ -167,7 +169,9 @@ export function RolesPermissionsTab() {
                 ))}
                 <th className="bg-slate-500 px-3 py-3 text-center font-noto-ethiopic font-medium">
                   <div className="text-xs">ወረዳ አስተዳዳሪ</div>
-                  <div className="text-[10px] uppercase tracking-wide text-slate-200">Tenant Admin (Read-Only)</div>
+                  <div className="text-[10px] uppercase tracking-wide text-slate-200">
+                    Tenant Admin (Read-Only)
+                  </div>
                 </th>
               </tr>
             </thead>
@@ -175,9 +179,16 @@ export function RolesPermissionsTab() {
               {grouped.map(([prefix, keys]) => (
                 <>
                   <tr key={`h-${prefix}`} className="bg-slate-100">
-                    <td colSpan={EDITABLE_ROLES.length + 2} className="px-4 py-2 text-xs font-semibold text-slate-700">
-                      <span className="font-noto-ethiopic">{GROUP_LABELS[prefix]?.am ?? prefix}</span>
-                      <span className="ml-2 text-slate-500">/ {GROUP_LABELS[prefix]?.en ?? prefix}</span>
+                    <td
+                      colSpan={EDITABLE_ROLES.length + 2}
+                      className="px-4 py-2 text-xs font-semibold text-slate-700"
+                    >
+                      <span className="font-noto-ethiopic">
+                        {GROUP_LABELS[prefix]?.am ?? prefix}
+                      </span>
+                      <span className="ml-2 text-slate-500">
+                        / {GROUP_LABELS[prefix]?.en ?? prefix}
+                      </span>
                     </td>
                   </tr>
                   {keys.map((key, idx) => {
@@ -211,8 +222,12 @@ export function RolesPermissionsTab() {
                                 <Tooltip>
                                   <TooltipTrigger asChild>{cell}</TooltipTrigger>
                                   <TooltipContent>
-                                    <span className="font-noto-ethiopic">የስርዓት ገደብ — ሊቀየር አይችልም</span>
-                                    <span className="ml-1 text-xs text-slate-300">/ System-locked</span>
+                                    <span className="font-noto-ethiopic">
+                                      የስርዓት ገደብ — ሊቀየር አይችልም
+                                    </span>
+                                    <span className="ml-1 text-xs text-slate-300">
+                                      / System-locked
+                                    </span>
                                   </TooltipContent>
                                 </Tooltip>
                               ) : (

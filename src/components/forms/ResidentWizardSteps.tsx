@@ -60,7 +60,13 @@ export function ResidentWizardSteps({
   residentNumber,
 }: Props) {
   const woredaInfo = useWoredaInfo();
-  const { register, formState: { errors }, control, setValue, watch } = form;
+  const {
+    register,
+    formState: { errors },
+    control,
+    setValue,
+    watch,
+  } = form;
 
   const [duplicateIdWarning, setDuplicateIdWarning] = useState<string | null>(null);
   const [householdSearch, setHouseholdSearch] = useState("");
@@ -302,32 +308,74 @@ export function ResidentWizardSteps({
           )}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_240px]">
             <Grid>
-              <FieldWrap labelAm="የመጀመሪያ ስም" labelEn="First Name" required error={errors.first_name?.message}>
+              <FieldWrap
+                labelAm="የመጀመሪያ ስም"
+                labelEn="First Name"
+                required
+                error={errors.first_name?.message}
+              >
                 <Input className="font-noto-ethiopic" {...register("first_name")} />
               </FieldWrap>
-              <FieldWrap labelAm="ሙሉ ስም (እንግሊዘኛ)" labelEn="Full Name (English)" required error={errors.full_name?.message}>
+              <FieldWrap
+                labelAm="ሙሉ ስም (እንግሊዘኛ)"
+                labelEn="Full Name (English)"
+                required
+                error={errors.full_name?.message}
+              >
                 <Input {...register("full_name")} />
               </FieldWrap>
-              <FieldWrap labelAm="የአባት ስም" labelEn="Father's Name" required error={errors.father_name?.message}>
+              <FieldWrap
+                labelAm="የአባት ስም"
+                labelEn="Father's Name"
+                required
+                error={errors.father_name?.message}
+              >
                 <Input className="font-noto-ethiopic" {...register("father_name")} />
               </FieldWrap>
-              <FieldWrap labelAm="የወንድ አያት ስም" labelEn="Grandfather's Name" required error={errors.grandfather_name?.message}>
+              <FieldWrap
+                labelAm="የወንድ አያት ስም"
+                labelEn="Grandfather's Name"
+                required
+                error={errors.grandfather_name?.message}
+              >
                 <Input className="font-noto-ethiopic" {...register("grandfather_name")} />
               </FieldWrap>
-              <FieldWrap labelAm="የእናት ስም" labelEn="Mother's Full Name" required error={errors.mother_full_name?.message}>
+              <FieldWrap
+                labelAm="የእናት ስም"
+                labelEn="Mother's Full Name"
+                required
+                error={errors.mother_full_name?.message}
+              >
                 <Input className="font-noto-ethiopic" {...register("mother_full_name")} />
               </FieldWrap>
               <FieldWrap labelAm="ፆታ" labelEn="Gender" required error={errors.sex?.message}>
                 <div className="flex gap-4 pt-2">
                   <label className="font-noto-ethiopic flex items-center gap-2 text-sm">
-                    <input type="radio" value="male" {...register("sex")} className="accent-blue-700" /> ወንድ / Male
+                    <input
+                      type="radio"
+                      value="male"
+                      {...register("sex")}
+                      className="accent-blue-700"
+                    />{" "}
+                    ወንድ / Male
                   </label>
                   <label className="font-noto-ethiopic flex items-center gap-2 text-sm">
-                    <input type="radio" value="female" {...register("sex")} className="accent-blue-700" /> ሴት / Female
+                    <input
+                      type="radio"
+                      value="female"
+                      {...register("sex")}
+                      className="accent-blue-700"
+                    />{" "}
+                    ሴት / Female
                   </label>
                 </div>
               </FieldWrap>
-              <FieldWrap labelAm="የትውልድ ቀን" labelEn="Date of Birth (Ethiopian)" required error={errors.date_of_birth?.message}>
+              <FieldWrap
+                labelAm="የትውልድ ቀን"
+                labelEn="Date of Birth (Ethiopian)"
+                required
+                error={errors.date_of_birth?.message}
+              >
                 <Controller
                   control={control}
                   name="date_of_birth"
@@ -336,7 +384,12 @@ export function ResidentWizardSteps({
                   )}
                 />
               </FieldWrap>
-              <FieldWrap labelAm="ኃይማኖት" labelEn="Religion" required error={errors.religion?.message}>
+              <FieldWrap
+                labelAm="ኃይማኖት"
+                labelEn="Religion"
+                required
+                error={errors.religion?.message}
+              >
                 <Select {...register("religion")}>
                   <option value="">— ይምረጡ / Select —</option>
                   {RELIGION_OPTIONS.map((o) => (
@@ -346,7 +399,11 @@ export function ResidentWizardSteps({
                   ))}
                 </Select>
               </FieldWrap>
-              <FieldWrap labelAm="ስልክ ቁጥር" labelEn="Phone Number" error={errors.phone_digits?.message}>
+              <FieldWrap
+                labelAm="ስልክ ቁጥር"
+                labelEn="Phone Number"
+                error={errors.phone_digits?.message}
+              >
                 <div className="flex">
                   <span className="inline-flex items-center rounded-l-md border border-r-0 border-input bg-slate-100 px-3 text-sm text-slate-700">
                     +251
@@ -362,7 +419,12 @@ export function ResidentWizardSteps({
                   />
                 </div>
               </FieldWrap>
-              <FieldWrap labelAm="ብሔር" labelEn="Ethnicity" required error={errors.ethnicity?.message}>
+              <FieldWrap
+                labelAm="ብሔር"
+                labelEn="Ethnicity"
+                required
+                error={errors.ethnicity?.message}
+              >
                 <Select {...register("ethnicity")}>
                   <option value="">— ይምረጡ / Select —</option>
                   {ETHNICITY_OPTIONS.map((o) => (
@@ -465,33 +527,40 @@ export function ResidentWizardSteps({
                     </button>
                   </div>
                 )}
-                {!selectedHouseholdId && householdSearch && (householdQuery.data?.length ?? 0) > 0 && (
-                  <div className="max-h-48 overflow-y-auto rounded-md border border-slate-200 bg-white">
-                    {householdQuery.data?.map((h) => {
-                      const k = h.kebele as { kebele_name_am: string; kebele_number: string } | null;
-                      const label = `#${h.house_number}${k ? ` — ${k.kebele_number} ${k.kebele_name_am}` : ""}`;
-                      return (
-                        <button
-                          key={h.household_id}
-                          type="button"
-                          className="font-noto-ethiopic block w-full px-3 py-2 text-left text-sm hover:bg-blue-50"
-                          onClick={() => {
-                            setValue("current_household_id", h.household_id, { shouldDirty: true });
-                            setSelectedHouseholdLabel(label);
-                            setSelectedHouseholdData({
-                              house_number: h.house_number,
-                              kebele_name_am: k?.kebele_name_am,
-                              kebele_number: k?.kebele_number,
-                            });
-                            setHouseholdSearch("");
-                          }}
-                        >
-                          {label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+                {!selectedHouseholdId &&
+                  householdSearch &&
+                  (householdQuery.data?.length ?? 0) > 0 && (
+                    <div className="max-h-48 overflow-y-auto rounded-md border border-slate-200 bg-white">
+                      {householdQuery.data?.map((h) => {
+                        const k = h.kebele as {
+                          kebele_name_am: string;
+                          kebele_number: string;
+                        } | null;
+                        const label = `#${h.house_number}${k ? ` — ${k.kebele_number} ${k.kebele_name_am}` : ""}`;
+                        return (
+                          <button
+                            key={h.household_id}
+                            type="button"
+                            className="font-noto-ethiopic block w-full px-3 py-2 text-left text-sm hover:bg-blue-50"
+                            onClick={() => {
+                              setValue("current_household_id", h.household_id, {
+                                shouldDirty: true,
+                              });
+                              setSelectedHouseholdLabel(label);
+                              setSelectedHouseholdData({
+                                house_number: h.house_number,
+                                kebele_name_am: k?.kebele_name_am,
+                                kebele_number: k?.kebele_number,
+                              });
+                              setHouseholdSearch("");
+                            }}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
               </div>
             </FieldWrap>
             <FieldWrap labelAm="ዝምድና ከቤተሰብ ኃላፊ ጋር" labelEn="Relation to Household Head">
@@ -528,7 +597,11 @@ export function ResidentWizardSteps({
           </div>
           <Grid>
             <FieldWrap labelAm="የትውልድ ሥፍራ ስም" labelEn="Place Name">
-              <Input className="font-noto-ethiopic" disabled={bpReadonly} {...register("bp_place_name")} />
+              <Input
+                className="font-noto-ethiopic"
+                disabled={bpReadonly}
+                {...register("bp_place_name")}
+              />
             </FieldWrap>
             <FieldWrap labelAm="ክልል" labelEn="Region">
               <Select disabled={bpReadonly} {...register("bp_region")}>
@@ -541,19 +614,35 @@ export function ResidentWizardSteps({
               </Select>
             </FieldWrap>
             <FieldWrap labelAm="ዞን" labelEn="Zone">
-              <Input className="font-noto-ethiopic" disabled={bpReadonly} {...register("bp_zone")} />
+              <Input
+                className="font-noto-ethiopic"
+                disabled={bpReadonly}
+                {...register("bp_zone")}
+              />
             </FieldWrap>
             <FieldWrap labelAm="ወረዳ" labelEn="Woreda">
-              <Input className="font-noto-ethiopic" disabled={bpReadonly} {...register("bp_woreda")} />
+              <Input
+                className="font-noto-ethiopic"
+                disabled={bpReadonly}
+                {...register("bp_woreda")}
+              />
             </FieldWrap>
             <FieldWrap labelAm="ቀበሌ" labelEn="Kebele">
-              <Input className="font-noto-ethiopic" disabled={bpReadonly} {...register("bp_kebele")} />
+              <Input
+                className="font-noto-ethiopic"
+                disabled={bpReadonly}
+                {...register("bp_kebele")}
+              />
             </FieldWrap>
             <FieldWrap labelAm="የቤት ቁጥር" labelEn="House Number">
               <Input disabled={bpReadonly} {...register("bp_house_number")} />
             </FieldWrap>
             <FieldWrap labelAm="ልዩ ቦታ" labelEn="Area Name">
-              <Input className="font-noto-ethiopic" disabled={bpReadonly} {...register("bp_area_name")} />
+              <Input
+                className="font-noto-ethiopic"
+                disabled={bpReadonly}
+                {...register("bp_area_name")}
+              />
             </FieldWrap>
           </Grid>
         </Section>
@@ -689,7 +778,11 @@ export function ResidentWizardSteps({
                   {clearanceUrl ? (
                     <div className="relative flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
                       {clearancePreview ? (
-                        <img src={clearancePreview} alt="" className="h-10 w-10 rounded object-cover" />
+                        <img
+                          src={clearancePreview}
+                          alt=""
+                          className="h-10 w-10 rounded object-cover"
+                        />
                       ) : (
                         <FileText className="h-6 w-6 text-blue-700" />
                       )}
@@ -757,7 +850,8 @@ function StepIndicator({
           ደረጃ {step} ከ 4 <span className="font-normal opacity-60">/ Step {step} of 4</span>
         </p>
         <p className="font-noto-ethiopic text-sm font-medium text-blue-700">
-          {RESIDENT_STEPS[step - 1].am} <span className="opacity-70">/ {RESIDENT_STEPS[step - 1].en}</span>
+          {RESIDENT_STEPS[step - 1].am}{" "}
+          <span className="opacity-70">/ {RESIDENT_STEPS[step - 1].en}</span>
         </p>
       </div>
       <div className="flex items-center gap-2">

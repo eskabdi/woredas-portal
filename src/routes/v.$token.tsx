@@ -166,8 +166,8 @@ function CredentialVerificationPage() {
           </h2>
           <p className="mt-1 text-sm font-medium text-red-700">Not a valid card</p>
           <p className="mt-3 text-sm text-slate-600">
-            This code was not issued by the Harari Regional Government, or it has been
-            altered since it was issued.
+            This code was not issued by the Harari Regional Government, or it has been altered since
+            it was issued.
           </p>
         </div>
       </Shell>
@@ -214,9 +214,7 @@ function CredentialVerificationPage() {
           <div className="flex items-center gap-3 bg-amber-50 px-5 py-4">
             <Clock className="h-6 w-6 shrink-0 text-amber-600" />
             <div>
-              <div className="font-noto-ethiopic font-bold text-amber-800">
-                የአገልግሎት ጊዜው አብቅቷል
-              </div>
+              <div className="font-noto-ethiopic font-bold text-amber-800">የአገልግሎት ጊዜው አብቅቷል</div>
               <div className="text-sm text-amber-700">Genuine card, but it has expired.</div>
             </div>
           </div>

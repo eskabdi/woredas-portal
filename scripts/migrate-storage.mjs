@@ -28,9 +28,7 @@ import { createClient } from "@supabase/supabase-js";
 
 const args = process.argv.slice(2);
 const DRY_RUN = args.includes("--dry-run");
-const ONLY_BUCKET = args.includes("--bucket")
-  ? args[args.indexOf("--bucket") + 1]
-  : null;
+const ONLY_BUCKET = args.includes("--bucket") ? args[args.indexOf("--bucket") + 1] : null;
 
 const { SRC_URL, SRC_SERVICE_KEY, DST_URL, DST_SERVICE_KEY } = process.env;
 
@@ -85,7 +83,10 @@ async function main() {
   console.log(`source buckets: ${buckets.join(", ") || "(none)"}`);
   if (DRY_RUN) console.log("DRY RUN — nothing will be written\n");
 
-  let copied = 0, skipped = 0, failed = 0, bytes = 0;
+  let copied = 0,
+    skipped = 0,
+    failed = 0,
+    bytes = 0;
 
   for (const bucket of buckets) {
     if (!dstNames.has(bucket)) {
@@ -97,9 +98,7 @@ async function main() {
     const objects = await listAll(src, bucket);
     console.log(`\n## ${bucket} — ${objects.length} object(s)`);
 
-    const existing = new Map(
-      (await listAll(dst, bucket)).map((o) => [o.path, o.size]),
-    );
+    const existing = new Map((await listAll(dst, bucket)).map((o) => [o.path, o.size]));
 
     for (const obj of objects) {
       if (existing.has(obj.path) && existing.get(obj.path) === obj.size) {

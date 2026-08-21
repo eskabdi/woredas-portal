@@ -1,15 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import {
-  Activity,
-  CreditCard,
-  ExternalLink,
-  FileText,
-  Home,
-  MapPin,
-  Users,
-} from "lucide-react";
+import { Activity, CreditCard, ExternalLink, FileText, Home, MapPin, Users } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -207,14 +199,17 @@ export function HouseholdTab({
 
   const [memberFilter, setMemberFilter] = useState("all");
 
-  const headId = (q.data?.household as { household_head_resident_id?: string | null } | null)
-    ?.household_head_resident_id ?? null;
+  const headId =
+    (q.data?.household as { household_head_resident_id?: string | null } | null)
+      ?.household_head_resident_id ?? null;
   const members = useMemo(() => {
     const all = q.data?.members ?? [];
     if (memberFilter === "all") return all;
     if (memberFilter === "head") return all.filter((m) => m.resident_id === headId);
     if (memberFilter === "resident")
-      return all.filter((m) => m.residency_status === "resident" || m.residency_status === "permanent");
+      return all.filter(
+        (m) => m.residency_status === "resident" || m.residency_status === "permanent",
+      );
     return all.filter(
       (m) =>
         m.resident_id !== headId &&
@@ -272,23 +267,14 @@ export function HouseholdTab({
             }
           />
           <Row am="የቤት አይነት" en="House Type" value={(hh?.house_type as string) || "—"} />
-          <Row
-            am="የመኖሪያ ሁኔታ"
-            en="Occupancy"
-            value={(hh?.occupancy_status as string) || "—"}
-          />
+          <Row am="የመኖሪያ ሁኔታ" en="Occupancy" value={(hh?.occupancy_status as string) || "—"} />
           <Row am="አድራሻ" en="Address" value={(hh?.address_line as string) || "—"} />
           <Row am="ስልክ" en="Phone" value={(hh?.phone_number as string) || "—"} />
         </dl>
       </Card>
 
       <Card className="p-5">
-        <PanelHeading
-          icon={Users}
-          am="የቤተሰብ አባላት"
-          en="Members"
-          count={members.length}
-        />
+        <PanelHeading icon={Users} am="የቤተሰብ አባላት" en="Members" count={members.length} />
         <div className="mb-4 rounded-md border border-slate-200 bg-slate-50/70 p-3">
           <ChipRow
             labelAm="የአባል አይነት"
@@ -369,8 +355,7 @@ export function CivilEventsTab({
   const rows = useMemo(
     () =>
       (q.data ?? []).filter(
-        (e) =>
-          (type === "all" || e.event_type === type) && inRange(e.event_date, range),
+        (e) => (type === "all" || e.event_type === type) && inRange(e.event_date, range),
       ),
     [q.data, range, type],
   );
@@ -379,12 +364,7 @@ export function CivilEventsTab({
 
   return (
     <Card className="p-5">
-      <PanelHeading
-        icon={FileText}
-        am="የኩነት ምዝገባ"
-        en="Civil Events"
-        count={rows.length}
-      />
+      <PanelHeading icon={FileText} am="የኩነት ምዝገባ" en="Civil Events" count={rows.length} />
       <FilterBar
         range={range}
         onRangeChange={setRange}
@@ -419,9 +399,7 @@ export function CivilEventsTab({
                   <div className="text-sm font-medium capitalize text-slate-900">
                     {e.event_type}
                   </div>
-                  <div className="truncate font-mono text-xs text-slate-500">
-                    {e.event_number}
-                  </div>
+                  <div className="truncate font-mono text-xs text-slate-500">{e.event_number}</div>
                 </div>
                 <div className="hidden text-xs text-slate-500 sm:block">
                   {dateLabel(e.event_date)}
@@ -638,7 +616,8 @@ export function ActivityTab({
           action === "all" ||
           (action === "create" && (a.includes("insert") || a.includes("create"))) ||
           (action === "update" && (a.includes("update") || a.includes("edit"))) ||
-          (action === "status" && (a.includes("status") || a.includes("suspend") || a.includes("activat")));
+          (action === "status" &&
+            (a.includes("status") || a.includes("suspend") || a.includes("activat")));
         return matchesAction && inRange(row.action_at as string, range);
       }),
     [q.data, range, action],
@@ -648,12 +627,7 @@ export function ActivityTab({
 
   return (
     <Card className="p-5">
-      <PanelHeading
-        icon={Activity}
-        am="እንቅስቃሴ"
-        en="Activity Log"
-        count={rows.length}
-      />
+      <PanelHeading icon={Activity} am="እንቅስቃሴ" en="Activity Log" count={rows.length} />
       <FilterBar
         range={range}
         onRangeChange={setRange}

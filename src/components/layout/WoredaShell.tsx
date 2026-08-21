@@ -29,7 +29,6 @@ import { useWoredaInfo } from "@/hooks/useWoredaInfo";
 import { useWoredaLogo } from "@/hooks/useWoredaLogo";
 import { useTenantModules } from "@/hooks/useTenantModules";
 
-
 const ICON_MAP: Record<string, LucideIcon> = {
   LayoutDashboard,
   Users,
@@ -74,7 +73,6 @@ export function WoredaShell({ children }: { children: React.ReactNode }) {
     return true;
   });
 
-
   const currentItem = visibleNav.find((n) => currentPath.startsWith(n.href));
 
   const handleSignOut = async () => {
@@ -109,7 +107,6 @@ export function WoredaShell({ children }: { children: React.ReactNode }) {
               <p className="font-noto-ethiopic mt-1 text-sm text-slate-300">አስተዳደር ፖርታል</p>
               <p className="mt-0.5 text-xs text-slate-400">{woreda?.woreda_name_en ?? ""}</p>
             </div>
-
           </div>
         </Link>
 
@@ -130,9 +127,7 @@ export function WoredaShell({ children }: { children: React.ReactNode }) {
                   >
                     <Icon className="h-4 w-4 shrink-0" />
                     <span className="flex-1">
-                      <span className="font-noto-ethiopic block leading-tight">
-                        {item.labelAm}
-                      </span>
+                      <span className="font-noto-ethiopic block leading-tight">{item.labelAm}</span>
                       <span className="block text-[10px] uppercase tracking-wide text-slate-400">
                         {item.labelEn}
                       </span>

@@ -178,9 +178,7 @@ function OccupantRegistrationPage() {
       return;
     }
     if (!tile.types.includes(file.type)) {
-      toast.error(
-        `${tile.en}: unsupported file type — allowed ${tile.hint}`,
-      );
+      toast.error(`${tile.en}: unsupported file type — allowed ${tile.hint}`);
       return;
     }
     if (file.size > tile.maxMB * 1024 * 1024) {
@@ -219,7 +217,11 @@ function OccupantRegistrationPage() {
 
   // Resident search — sanitized term, min 2 usable characters
   const term = useMemo(
-    () => residentSearch.replace(/[%,()*]/g, "").trim().slice(0, 60),
+    () =>
+      residentSearch
+        .replace(/[%,()*]/g, "")
+        .trim()
+        .slice(0, 60),
     [residentSearch],
   );
   const termTooShort = term.length > 0 && term.length < 2;
@@ -251,7 +253,10 @@ function OccupantRegistrationPage() {
   function pickResident(r: ResidentMatch) {
     setResident(r);
     setSex(r.sex ?? "");
-    if (r.phone_number) setPhone(r.phone_number.startsWith("+") ? r.phone_number : `+251${r.phone_number.replace(/^0/, "")}`);
+    if (r.phone_number)
+      setPhone(
+        r.phone_number.startsWith("+") ? r.phone_number : `+251${r.phone_number.replace(/^0/, "")}`,
+      );
     setSearchOpen(false);
     setResidentSearch("");
   }
@@ -444,7 +449,10 @@ function OccupantRegistrationPage() {
         </div>
       </div>
 
-      <AlertDialog open={confirmOpen} onOpenChange={(o) => !mutation.isPending && setConfirmOpen(o)}>
+      <AlertDialog
+        open={confirmOpen}
+        onOpenChange={(o) => !mutation.isPending && setConfirmOpen(o)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="font-noto-ethiopic">
@@ -452,9 +460,7 @@ function OccupantRegistrationPage() {
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-2 text-sm">
-                <p className="font-noto-ethiopic">
-                  የተከራይ ምዝገባ ጥያቄ ይፈጠራል። መረጃውን ያረጋግጡ።
-                </p>
+                <p className="font-noto-ethiopic">የተከራይ ምዝገባ ጥያቄ ይፈጠራል። መረጃውን ያረጋግጡ።</p>
                 <ul className="space-y-1 text-slate-600">
                   <li>
                     <span className="font-medium">Occupant:</span>{" "}
@@ -464,8 +470,7 @@ function OccupantRegistrationPage() {
                     ({resident?.resident_number})
                   </li>
                   <li>
-                    <span className="font-medium">House:</span>{" "}
-                    {selectedHouse?.house_number ?? "—"}
+                    <span className="font-medium">House:</span> {selectedHouse?.house_number ?? "—"}
                   </li>
                   <li>
                     <span className="font-medium">Rent:</span>{" "}
@@ -475,8 +480,8 @@ function OccupantRegistrationPage() {
                     <span className="font-medium">Start:</span> {rentStart || "—"}
                   </li>
                   <li>
-                    <span className="font-medium">Documents:</span>{" "}
-                    {Object.keys(uploads).length} attached
+                    <span className="font-medium">Documents:</span> {Object.keys(uploads).length}{" "}
+                    attached
                   </li>
                 </ul>
               </div>
@@ -765,7 +770,10 @@ function OccupantRegistrationPage() {
             <tbody>
               {members.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-3 py-8 text-center text-slate-400 font-noto-ethiopic">
+                  <td
+                    colSpan={6}
+                    className="px-3 py-8 text-center text-slate-400 font-noto-ethiopic"
+                  >
                     ምንም አባል አልተጨመረም — "አባል ጨምር" የሚለውን ይጫኑ
                   </td>
                 </tr>
@@ -832,7 +840,6 @@ function OccupantRegistrationPage() {
                 disabled={mutation.isPending}
                 onChange={(f) => setUpload(tile.key, f)}
               />
-
             ))}
           </div>
         </Card>
@@ -860,8 +867,7 @@ function OccupantRegistrationPage() {
 
             <div>
               <div className="font-noto-ethiopic text-sm text-slate-700">
-                የምዝገባ ሁኔታ{" "}
-                <span className="text-slate-500">(Approval Status)</span>
+                የምዝገባ ሁኔታ <span className="text-slate-500">(Approval Status)</span>
               </div>
               <div className="mt-2 space-y-2">
                 {(
@@ -887,8 +893,7 @@ function OccupantRegistrationPage() {
                       className="h-4 w-4 accent-[#0b2a63]"
                     />
                     <span className={cn("font-noto-ethiopic text-sm font-medium", opt.color)}>
-                      {opt.am}{" "}
-                      <span className="text-slate-500 font-normal">({opt.en})</span>
+                      {opt.am} <span className="text-slate-500 font-normal">({opt.en})</span>
                     </span>
                   </label>
                 ))}
@@ -967,9 +972,7 @@ function UploadTile({
         disabled && "pointer-events-none opacity-60",
       )}
     >
-      <Icon
-        className={cn("h-6 w-6", file ? "text-emerald-600" : "text-slate-400")}
-      />
+      <Icon className={cn("h-6 w-6", file ? "text-emerald-600" : "text-slate-400")} />
       <div className="font-noto-ethiopic text-sm font-medium text-slate-800">{tile.am}</div>
       <div className="text-xs text-slate-400">{tile.hint}</div>
       {file && (

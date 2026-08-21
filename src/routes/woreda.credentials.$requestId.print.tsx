@@ -130,7 +130,11 @@ class QRBoundary extends React.Component<
           className="flex items-center justify-center border border-red-300 bg-red-50 text-center text-[8px] font-semibold text-red-700"
           style={{ width: this.props.size, height: this.props.size }}
         >
-          QR<br />encode<br />failed
+          QR
+          <br />
+          encode
+          <br />
+          failed
         </div>
       );
     }
@@ -138,14 +142,8 @@ class QRBoundary extends React.Component<
   }
 }
 
-const PRINTERS = [
-  "PVC Card Printer-XP80",
-  "Zebra ZC300",
-  "Evolis Primacy 2",
-  "Fargo DTC1250e",
-];
+const PRINTERS = ["PVC Card Printer-XP80", "Zebra ZC300", "Evolis Primacy 2", "Fargo DTC1250e"];
 const QUALITIES = ["Standard", "High", "Ultra"];
-
 
 function PrintPage() {
   const { requestId } = Route.useParams();
@@ -220,7 +218,9 @@ function PrintPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("woreda_settings")
-        .select("logo_url, stamp_url, supervisor_signature_url, woreda_name_display, woreda_name_display_en")
+        .select(
+          "logo_url, stamp_url, supervisor_signature_url, woreda_name_display, woreda_name_display_en",
+        )
         .eq("woreda_id", woredaId!)
         .maybeSingle();
       if (error) throw error;
@@ -276,9 +276,7 @@ function PrintPage() {
         if (!cancelled) setPhotoUrl(null);
         return;
       }
-      const { data } = await supabase.storage
-        .from("resident-photos")
-        .createSignedUrl(path, 900);
+      const { data } = await supabase.storage.from("resident-photos").createSignedUrl(path, 900);
       if (!cancelled) setPhotoUrl(data?.signedUrl ?? null);
     }
     load();
@@ -365,18 +363,14 @@ function PrintPage() {
         key: "ready",
         labelAm: "ማስረጃው ተፈርሟል እና ዝግጁ ነው",
         labelEn: "Credential signed and ready to print",
-        ok:
-          !!cred?.qr_payload &&
-          (cred?.status === "ready_to_print" || cred?.status === "active"),
+        ok: !!cred?.qr_payload && (cred?.status === "ready_to_print" || cred?.status === "active"),
       },
       {
         key: "resident_ok",
         labelAm: "ነዋሪው ንቁ እና አልታገደም",
         labelEn: "Resident is active and not suspended",
         ok:
-          !!resident &&
-          resident.residency_status !== "suspended" &&
-          resident.active_flag !== false,
+          !!resident && resident.residency_status !== "suspended" && resident.active_flag !== false,
       },
     ],
     [request, cred, resident],
@@ -396,9 +390,7 @@ function PrintPage() {
   const cardsRef = useRef<HTMLDivElement>(null);
   const doPrint = useReactToPrint({
     contentRef: cardsRef,
-    documentTitle: cred?.credential_number
-      ? `credential-${cred.credential_number}`
-      : "credential",
+    documentTitle: cred?.credential_number ? `credential-${cred.credential_number}` : "credential",
     pageStyle: `@page { size: ${orientation === "portrait" ? "54mm 85.6mm" : "85.6mm 54mm"}; margin: 0; } @media print { html, body { margin: 0 !important; padding: 0 !important; width: ${orientation === "portrait" ? "54mm" : "85.6mm"}; height: ${orientation === "portrait" ? "85.6mm" : "54mm"}; } }`,
   });
 
@@ -476,14 +468,15 @@ function PrintPage() {
         action_at: nowIso,
       });
 
-
       doPrint?.();
       toast.success(`ህትመት ተጀምሯል / Printing job sent to ${printerName}`);
       setConfirmOpen(false);
       setReprintReason("");
       queryClient.invalidateQueries({ queryKey: ["credential-print-log", cred.credential_id] });
       queryClient.invalidateQueries({ queryKey: ["credential-for-print", cred.credential_id] });
-      queryClient.invalidateQueries({ queryKey: ["credential-request", request.credential_request_id] });
+      queryClient.invalidateQueries({
+        queryKey: ["credential-request", request.credential_request_id],
+      });
     } catch (e) {
       toast.error(`Print failed: ${(e as Error).message}`);
     } finally {
@@ -491,8 +484,7 @@ function PrintPage() {
     }
   };
 
-  const queryError =
-    reqQuery.error || credQuery.error || templateQuery.error || woredaQuery.error;
+  const queryError = reqQuery.error || credQuery.error || templateQuery.error || woredaQuery.error;
   if (queryError) {
     return (
       <ErrorPanel
@@ -531,9 +523,7 @@ function PrintPage() {
         titleAm="ማስረጃው ገና አልተፈጠረም"
         titleEn="Credential not yet generated"
         message="The credential row has not been created for this request. Complete payment and QR signing before opening the print preview."
-        onBack={() =>
-          navigate({ to: "/woreda/credentials/$requestId", params: { requestId } })
-        }
+        onBack={() => navigate({ to: "/woreda/credentials/$requestId", params: { requestId } })}
       />
     );
   }
@@ -552,9 +542,7 @@ function PrintPage() {
         titleEn="Data shape mismatch"
         message={`The following expected fields are missing or empty: ${missing.join(", ")}`}
         hint="A database column may have been renamed. Update the print page query or restore the field."
-        onBack={() =>
-          navigate({ to: "/woreda/credentials/$requestId", params: { requestId } })
-        }
+        onBack={() => navigate({ to: "/woreda/credentials/$requestId", params: { requestId } })}
       />
     );
   }
@@ -572,9 +560,8 @@ function PrintPage() {
             / Credential is not yet signed — please wait or retry
           </div>
           <p className="mt-3 text-sm text-amber-900/90">
-            እባክዎ ይጠብቁ ወይም ዳግም ይሞክሩ። The signed QR token has not been generated
-            for this credential yet, so printing is blocked to prevent an
-            unsigned card from being issued.
+            እባክዎ ይጠብቁ ወይም ዳግም ይሞክሩ። The signed QR token has not been generated for this credential
+            yet, so printing is blocked to prevent an unsigned card from being issued.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Button
@@ -610,8 +597,6 @@ function PrintPage() {
     );
   }
 
-
-
   const dobEthiopian = resident?.date_of_birth
     ? formatEthiopianDate(new Date(resident.date_of_birth))
     : "";
@@ -619,7 +604,8 @@ function PrintPage() {
   const issueEth = cred.issue_date ? formatEthiopianDate(new Date(cred.issue_date)) : "";
   const expiryEth = cred.expiry_date ? formatEthiopianDate(new Date(cred.expiry_date)) : "";
 
-  const canPrint = allAuthorized && verified && !busy && (!isReprint || reprintReason.trim().length >= 5);
+  const canPrint =
+    allAuthorized && verified && !busy && (!isReprint || reprintReason.trim().length >= 5);
 
   return (
     <div className="space-y-6">
@@ -654,10 +640,14 @@ function PrintPage() {
                   <span className="ml-1 text-slate-500">/ Printer</span>
                 </Label>
                 <Select value={printerName} onValueChange={setPrinterName}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     {PRINTERS.map((p) => (
-                      <SelectItem key={p} value={p}>{p}</SelectItem>
+                      <SelectItem key={p} value={p}>
+                        {p}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -702,10 +692,14 @@ function PrintPage() {
                   <span className="ml-1 text-slate-500">/ Quality</span>
                 </Label>
                 <Select value={quality} onValueChange={setQuality}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     {QUALITIES.map((q) => (
-                      <SelectItem key={q} value={q}>{q}</SelectItem>
+                      <SelectItem key={q} value={q}>
+                        {q}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -852,7 +846,19 @@ function PrintPage() {
             <PrintableCard
               side="front"
               fields={(templateQuery.data ?? []).filter((f) => f.template_type === "card_front")}
-              values={buildFieldValues(request, cred, resident, household, kebele, woreda, settings, dobEthiopian, dobGregorian, issueEth, expiryEth)}
+              values={buildFieldValues(
+                request,
+                cred,
+                resident,
+                household,
+                kebele,
+                woreda,
+                settings,
+                dobEthiopian,
+                dobGregorian,
+                issueEth,
+                expiryEth,
+              )}
               photoUrl={photoUrl}
               qrPayload={null}
               credentialNumber={cred?.credential_number ?? null}
@@ -863,7 +869,19 @@ function PrintPage() {
             <PrintableCard
               side="back"
               fields={(templateQuery.data ?? []).filter((f) => f.template_type === "card_back")}
-              values={buildFieldValues(request, cred, resident, household, kebele, woreda, settings, dobEthiopian, dobGregorian, issueEth, expiryEth)}
+              values={buildFieldValues(
+                request,
+                cred,
+                resident,
+                household,
+                kebele,
+                woreda,
+                settings,
+                dobEthiopian,
+                dobGregorian,
+                issueEth,
+                expiryEth,
+              )}
               photoUrl={photoUrl}
               qrPayload={cred.qr_payload as string | null}
               credentialNumber={cred?.credential_number ?? null}
@@ -927,7 +945,19 @@ function PrintPage() {
 /* ============ Preview visuals ============ */
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function CardFront({ resident, cred, woreda, settings, photoUrl, logoUrl, dobEthiopian, dobGregorian, issueEth, bgUrl, orientation }: any) {
+function CardFront({
+  resident,
+  cred,
+  woreda,
+  settings,
+  photoUrl,
+  logoUrl,
+  dobEthiopian,
+  dobGregorian,
+  issueEth,
+  bgUrl,
+  orientation,
+}: any) {
   const isPortrait = orientation === "portrait";
   return (
     <div
@@ -935,9 +965,9 @@ function CardFront({ resident, cred, woreda, settings, photoUrl, logoUrl, dobEth
       style={{
         width: "min(100%, 640px)",
         aspectRatio: isPortrait ? "54 / 85.6" : "85.6 / 54",
-        background:
-          bgUrl ? `url(${bgUrl}) center/cover no-repeat`
-                : "linear-gradient(135deg,#1d4ed8 0%,#1e3a8a 100%)",
+        background: bgUrl
+          ? `url(${bgUrl}) center/cover no-repeat`
+          : "linear-gradient(135deg,#1d4ed8 0%,#1e3a8a 100%)",
         fontFamily: "'Noto Sans Ethiopic','Inter',system-ui,sans-serif",
       }}
     >
@@ -985,11 +1015,14 @@ function CardFront({ resident, cred, woreda, settings, photoUrl, logoUrl, dobEth
                   <BadgeCheck className="h-4 w-4 shrink-0 text-emerald-600" />
                 </div>
                 {resident?.full_name_am && resident?.full_name && (
-                  <div className="truncate text-[11px] text-slate-500">
-                    {resident.full_name}
-                  </div>
+                  <div className="truncate text-[11px] text-slate-500">{resident.full_name}</div>
                 )}
-                <FrontRow labelAm="መ.ቁ" labelEn="ID No." value={cred?.credential_number ?? "—"} mono />
+                <FrontRow
+                  labelAm="መ.ቁ"
+                  labelEn="ID No."
+                  value={cred?.credential_number ?? "—"}
+                  mono
+                />
                 <FrontRow
                   labelAm="ጾታ"
                   labelEn="Gender"
@@ -998,7 +1031,11 @@ function CardFront({ resident, cred, woreda, settings, photoUrl, logoUrl, dobEth
                 <FrontRow
                   labelAm="የልደት ቀን"
                   labelEn="Date of Birth"
-                  value={dobEthiopian || dobGregorian ? `${dobEthiopian}${dobGregorian ? ` (${dobGregorian})` : ""}` : "—"}
+                  value={
+                    dobEthiopian || dobGregorian
+                      ? `${dobEthiopian}${dobGregorian ? ` (${dobGregorian})` : ""}`
+                      : "—"
+                  }
                 />
                 <FrontRow labelAm="የተሰጠበት" labelEn="Issue Date" value={issueEth || "—"} />
               </div>
@@ -1017,13 +1054,25 @@ function CardFront({ resident, cred, woreda, settings, photoUrl, logoUrl, dobEth
   );
 }
 
-function FrontRow({ labelAm, labelEn, value, mono }: { labelAm: string; labelEn: string; value: string; mono?: boolean }) {
+function FrontRow({
+  labelAm,
+  labelEn,
+  value,
+  mono,
+}: {
+  labelAm: string;
+  labelEn: string;
+  value: string;
+  mono?: boolean;
+}) {
   return (
     <div className="flex items-baseline gap-2 text-[11px]">
       <span className="font-noto-ethiopic w-24 shrink-0 text-slate-500">
         {labelAm} <span className="text-slate-400">/ {labelEn}</span>
       </span>
-      <span className={`truncate font-medium text-slate-900 ${mono ? "font-mono" : ""}`}>{value}</span>
+      <span className={`truncate font-medium text-slate-900 ${mono ? "font-mono" : ""}`}>
+        {value}
+      </span>
     </div>
   );
 }
@@ -1044,9 +1093,7 @@ function CardBack({ cred, kebele, household, signatureUrl, expiryEth, bgUrl, ori
       {!bgUrl && (
         <div className="flex h-full flex-col p-4 text-slate-900">
           <div className="mb-3 border-b border-slate-200 pb-2">
-            <div className="font-noto-ethiopic text-xs font-bold text-blue-800">
-              የነዋሪው አድራሻ
-            </div>
+            <div className="font-noto-ethiopic text-xs font-bold text-blue-800">የነዋሪው አድራሻ</div>
             <div className="text-[10px] text-slate-500">/ Residential Address</div>
           </div>
 
@@ -1101,7 +1148,6 @@ function CardBack({ cred, kebele, household, signatureUrl, expiryEth, bgUrl, ori
                     Not signed
                   </div>
                 )}
-
               </div>
               <div className="mt-1 text-center font-noto-ethiopic text-[9px] font-medium text-slate-600">
                 የማረጋገጫ ኮድ
@@ -1119,9 +1165,7 @@ function CardBack({ cred, kebele, household, signatureUrl, expiryEth, bgUrl, ori
               <div className="mt-1 text-right font-noto-ethiopic text-[9px] font-medium text-slate-700">
                 የወረዳ አስተዳዳሪ
               </div>
-              <div className="text-right text-[8px] text-slate-500">
-                / Woreda Administrator
-              </div>
+              <div className="text-right text-[8px] text-slate-500">/ Woreda Administrator</div>
             </div>
           </div>
         </div>
@@ -1133,11 +1177,24 @@ function CardBack({ cred, kebele, household, signatureUrl, expiryEth, bgUrl, ori
 /* ============ Printable (template-driven, unchanged behavior) ============ */
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildFieldValues(_request: any, cred: any, resident: any, household: any, kebele: any, woreda: any, settings: any, dobEth: string, dobGreg: string, issueEth: string, expiryEth: string): Record<string, string> {
+function buildFieldValues(
+  _request: any,
+  cred: any,
+  resident: any,
+  household: any,
+  kebele: any,
+  woreda: any,
+  settings: any,
+  dobEth: string,
+  dobGreg: string,
+  issueEth: string,
+  expiryEth: string,
+): Record<string, string> {
   return {
     full_name_am: resident?.full_name_am ?? "",
     full_name_en: resident?.full_name ?? "",
-    id_number: cred?.credential_number || resident?.national_id_no || resident?.resident_number || "",
+    id_number:
+      cred?.credential_number || resident?.national_id_no || resident?.resident_number || "",
     gender: resident?.sex === "female" ? "ሴት / Female" : "ወንድ / Male",
     dob_ethiopian: dobEth,
     dob_gregorian: dobGreg,
@@ -1228,10 +1285,17 @@ function PrintableCard({
           }
           if (f.field_key === "photo") {
             return (
-              <div key={f.field_key} style={{ ...common, background: "#e2e8f0", overflow: "hidden" }}>
+              <div
+                key={f.field_key}
+                style={{ ...common, background: "#e2e8f0", overflow: "hidden" }}
+              >
                 {photoUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={photoUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  <img
+                    src={photoUrl}
+                    alt=""
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
                 )}
               </div>
             );
@@ -1249,7 +1313,13 @@ function PrintableCard({
             return (
               <div
                 key={f.field_key}
-                style={{ ...common, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}
+                style={{
+                  ...common,
+                  background: "#fff",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
               >
                 {isSignedToken(qrPayload) ? (
                   <QRBoundary size={qrSizePx}>

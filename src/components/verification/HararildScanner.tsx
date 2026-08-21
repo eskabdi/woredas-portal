@@ -44,12 +44,9 @@ function daysUntil(dateStr: string): number | null {
 
 function humanizeError(err: string | null): { am: string; en: string } {
   if (!err) return { am: "ያልታወቀ ስህተት", en: "Unknown error" };
-  if (/malformed/i.test(err))
-    return { am: "የተበላሸ ቶከን", en: "Malformed token" };
-  if (/signature/i.test(err))
-    return { am: "ልክ ያልሆነ ፊርማ", en: "Invalid signature" };
-  if (/json/i.test(err))
-    return { am: "ልክ ያልሆነ ይዘት", en: "Invalid payload contents" };
+  if (/malformed/i.test(err)) return { am: "የተበላሸ ቶከን", en: "Malformed token" };
+  if (/signature/i.test(err)) return { am: "ልክ ያልሆነ ፊርማ", en: "Invalid signature" };
+  if (/json/i.test(err)) return { am: "ልክ ያልሆነ ይዘት", en: "Invalid payload contents" };
   return { am: err, en: err };
 }
 
@@ -61,9 +58,7 @@ export function HararildScanner() {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<VerifyResult | null>(null);
   const [dragOver, setDragOver] = useState(false);
-  const [online, setOnline] = useState(
-    typeof navigator !== "undefined" ? navigator.onLine : true,
-  );
+  const [online, setOnline] = useState(typeof navigator !== "undefined" ? navigator.onLine : true);
   const [liveStatus, setLiveStatus] = useState<string | null>(null);
   // Fetched from storage after a live check, not carried in the QR.
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -289,12 +284,7 @@ export function HararildScanner() {
     if (!result?.payload?.expiryDate) return null;
     const d = daysUntil(result.payload.expiryDate);
     if (d === null) return null;
-    if (d < 0)
-      return (
-        <Badge variant="destructive">
-          የአገልግሎት ጊዜው ያበቃ / Expired
-        </Badge>
-      );
+    if (d < 0) return <Badge variant="destructive">የአገልግሎት ጊዜው ያበቃ / Expired</Badge>;
     if (d <= 30)
       return (
         <Badge className="bg-amber-500 text-white hover:bg-amber-500">
@@ -348,14 +338,12 @@ export function HararildScanner() {
                   <Alert variant="destructive">
                     <AlertTriangle className="h-4 w-4" />
                     <AlertDescription>
-                      {cameraError}. እባክዎ ወደ <b>ምስል ስቀል / Upload Image</b>{" "}
-                      ትር ይሂዱ።
+                      {cameraError}. እባክዎ ወደ <b>ምስል ስቀል / Upload Image</b> ትር ይሂዱ።
                     </AlertDescription>
                   </Alert>
                 )}
                 <p className="text-center text-xs text-slate-500">
-                  የQR ኮዱን በአረንጓዴ ማዕቀፍ ውስጥ ያድርጉ / Align the QR code inside
-                  the green frame
+                  የQR ኮዱን በአረንጓዴ ማዕቀፍ ውስጥ ያድርጉ / Align the QR code inside the green frame
                 </p>
               </div>
             )}
@@ -437,11 +425,7 @@ export function HararildScanner() {
                   online={online}
                 />
               ) : (
-                <FailurePanel
-                  expired={!!result.expired}
-                  amMsg={humanErr.am}
-                  enMsg={humanErr.en}
-                />
+                <FailurePanel expired={!!result.expired} amMsg={humanErr.am} enMsg={humanErr.en} />
               )}
 
               <div className="flex justify-center">
@@ -492,8 +476,7 @@ function SuccessPanel({
     { label: "Credential #", value: payload.credentialNumber },
   ];
 
-  const liveNotActive =
-    liveStatus !== null && liveStatus !== "active";
+  const liveNotActive = liveStatus !== null && liveStatus !== "active";
 
   return (
     <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4">
@@ -560,12 +543,8 @@ function SuccessPanel({
           <div className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
             {rows.map((r) => (
               <div key={r.label} className="text-sm">
-                <div className="text-xs uppercase tracking-wide text-slate-500">
-                  {r.label}
-                </div>
-                <div className="font-medium text-slate-900 break-words">
-                  {r.value || "—"}
-                </div>
+                <div className="text-xs uppercase tracking-wide text-slate-500">{r.label}</div>
+                <div className="font-medium text-slate-900 break-words">{r.value || "—"}</div>
               </div>
             ))}
           </div>
@@ -593,11 +572,7 @@ function SuccessPanel({
           </Button>
         </div>
       )}
-      {liveStatusError && (
-        <p className="mt-2 text-right text-xs text-red-600">
-          {liveStatusError}
-        </p>
-      )}
+      {liveStatusError && <p className="mt-2 text-right text-xs text-red-600">{liveStatusError}</p>}
     </div>
   );
 }
@@ -625,10 +600,8 @@ function FailurePanel({
         <AlertDescription>
           {expired ? (
             <>
-              <span className="font-noto-ethiopic">
-                የአገልግሎት ጊዜው ያበቃ
-              </span>{" "}
-              / The credential has expired.
+              <span className="font-noto-ethiopic">የአገልግሎት ጊዜው ያበቃ</span> / The credential has
+              expired.
             </>
           ) : (
             <>

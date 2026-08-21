@@ -197,11 +197,7 @@ export function ResidentActions({
           <Button
             variant="ghost"
             size="icon"
-            className={
-              variant === "header"
-                ? "h-9 w-9 text-white hover:bg-white/15"
-                : "h-8 w-8"
-            }
+            className={variant === "header" ? "h-9 w-9 text-white hover:bg-white/15" : "h-8 w-8"}
             onClick={(e) => e.stopPropagation()}
             aria-label="Resident actions"
           >

@@ -31,7 +31,6 @@ import { TableEmptyRow, TableErrorRow, TableSkeletonRows } from "@/components/co
 import { exportRowsToCsv, exportRowsToPdf, type TableColumn } from "@/utils/tableExport";
 import { useReportBranding } from "@/hooks/useReportBranding";
 
-
 export const Route = createFileRoute("/woreda/rental-houses/")({
   ssr: false,
   component: RentalHouseListPage,
@@ -44,11 +43,13 @@ interface HouseRow {
   monthly_rent_standard: number | null;
   occupancy_status: "vacant" | "occupied" | "under_maintenance";
   kebele: { kebele_name_am: string | null; kebele_number: number | null } | null;
-  active_occupancy: {
-    occupancy_id: string;
-    rent_amount: number;
-    resident: { full_name_am: string | null; full_name: string | null } | null;
-  }[] | null;
+  active_occupancy:
+    | {
+        occupancy_id: string;
+        rent_amount: number;
+        resident: { full_name_am: string | null; full_name: string | null } | null;
+      }[]
+    | null;
 }
 
 interface HouseViewRow extends HouseRow {
@@ -79,9 +80,7 @@ function TabNav() {
             to={t.to}
             className={cn(
               "inline-flex items-center justify-center rounded-md px-3 py-1 text-sm font-medium transition",
-              active
-                ? "bg-white text-slate-900 shadow"
-                : "text-slate-500 hover:text-slate-700",
+              active ? "bg-white text-slate-900 shadow" : "text-slate-500 hover:text-slate-700",
             )}
           >
             <span className="font-noto-ethiopic">{t.labelAm}</span>
@@ -168,7 +167,10 @@ function RentalHouseListPage() {
   });
 
   const rows = useMemo(() => (data ?? []).map(toViewRow), [data]);
-  const sortedRows = useMemo(() => sortRows(rows, sort.field, sort.dir), [rows, sort.field, sort.dir]);
+  const sortedRows = useMemo(
+    () => sortRows(rows, sort.field, sort.dir),
+    [rows, sort.field, sort.dir],
+  );
 
   const { page, setPage, pageSize, setPageSize, total, pageRows } = useClientPagination(
     sortedRows,
@@ -180,8 +182,7 @@ function RentalHouseListPage() {
     setKebeleFilter("");
   });
 
-  const filtersActive =
-    !!qTerm || !!statusFilter || !!kebeleFilter || !sort.isDefault;
+  const filtersActive = !!qTerm || !!statusFilter || !!kebeleFilter || !sort.isDefault;
 
   function buildFilterLabel() {
     const parts: string[] = [];
@@ -210,7 +211,11 @@ function RentalHouseListPage() {
       if (kebeleFilter) query = query.eq("kebele_id", kebeleFilter);
       const { data: allData, error } = await query.range(0, 4999);
       if (error) throw error;
-      const allRows = sortRows((allData as unknown as HouseRow[]).map(toViewRow), sort.field, sort.dir);
+      const allRows = sortRows(
+        (allData as unknown as HouseRow[]).map(toViewRow),
+        sort.field,
+        sort.dir,
+      );
       const filterLabel = buildFilterLabel();
       const dateStr = new Date().toISOString().slice(0, 10);
       if (kind === "csv") {
@@ -311,11 +316,21 @@ function RentalHouseListPage() {
           <table className="min-w-full text-sm">
             <thead className="bg-slate-50">
               <tr className="text-left text-slate-600">
-                <SortableTh field="house_number" sort={sort}>የቤት ቁጥር / House</SortableTh>
-                <SortableTh field="kebele" sort={sort}>ቀበሌ / Kebele</SortableTh>
-                <SortableTh field="occupancy_status" sort={sort}>ተያዥ / Occupancy</SortableTh>
-                <SortableTh field="occupant_name" sort={sort}>ተከራይ / Occupant</SortableTh>
-                <SortableTh field="current_rent" sort={sort}>የቤት ኪራይ / Rent</SortableTh>
+                <SortableTh field="house_number" sort={sort}>
+                  የቤት ቁጥር / House
+                </SortableTh>
+                <SortableTh field="kebele" sort={sort}>
+                  ቀበሌ / Kebele
+                </SortableTh>
+                <SortableTh field="occupancy_status" sort={sort}>
+                  ተያዥ / Occupancy
+                </SortableTh>
+                <SortableTh field="occupant_name" sort={sort}>
+                  ተከራይ / Occupant
+                </SortableTh>
+                <SortableTh field="current_rent" sort={sort}>
+                  የቤት ኪራይ / Rent
+                </SortableTh>
                 <th className="px-4 py-2"></th>
               </tr>
             </thead>
@@ -327,43 +342,47 @@ function RentalHouseListPage() {
               {!isLoading && !isError && rows.length === 0 && (
                 <TableEmptyRow cols={6} filtered={filtersActive} onClearFilters={clearFilters} />
               )}
-              {!isLoading && !isError && pageRows.map((r) => (
-                <tr key={r.rental_house_id} className="border-t hover:bg-slate-50">
-                  <td className="px-4 py-2 font-medium">{r.house_number}</td>
-                  <td className="px-4 py-2 font-noto-ethiopic">
-                    {r.kebele?.kebele_name_am ?? "—"}
-                    {r.kebele?.kebele_number != null && (
-                      <span className="ml-1 text-xs text-slate-500">#{r.kebele.kebele_number}</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-2">
-                    <Badge
-                      variant={
-                        r.occupancy_status === "occupied"
-                          ? "default"
-                          : r.occupancy_status === "vacant"
-                            ? "secondary"
-                            : "outline"
-                      }
-                    >
-                      {r.occupancy_status}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-2 font-noto-ethiopic">{r.occupant_name}</td>
-                  <td className="px-4 py-2">
-                    {r.current_rent != null ? Number(r.current_rent).toLocaleString() : "—"}
-                  </td>
-                  <td className="px-4 py-2 text-right">
-                    <Link
-                      to="/woreda/rental-houses/$houseId"
-                      params={{ houseId: r.rental_house_id }}
-                      className="text-blue-700 hover:underline"
-                    >
-                      Open →
-                    </Link>
-                  </td>
-                </tr>
-              ))}
+              {!isLoading &&
+                !isError &&
+                pageRows.map((r) => (
+                  <tr key={r.rental_house_id} className="border-t hover:bg-slate-50">
+                    <td className="px-4 py-2 font-medium">{r.house_number}</td>
+                    <td className="px-4 py-2 font-noto-ethiopic">
+                      {r.kebele?.kebele_name_am ?? "—"}
+                      {r.kebele?.kebele_number != null && (
+                        <span className="ml-1 text-xs text-slate-500">
+                          #{r.kebele.kebele_number}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2">
+                      <Badge
+                        variant={
+                          r.occupancy_status === "occupied"
+                            ? "default"
+                            : r.occupancy_status === "vacant"
+                              ? "secondary"
+                              : "outline"
+                        }
+                      >
+                        {r.occupancy_status}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-2 font-noto-ethiopic">{r.occupant_name}</td>
+                    <td className="px-4 py-2">
+                      {r.current_rent != null ? Number(r.current_rent).toLocaleString() : "—"}
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      <Link
+                        to="/woreda/rental-houses/$houseId"
+                        params={{ houseId: r.rental_house_id }}
+                        className="text-blue-700 hover:underline"
+                      >
+                        Open →
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
             </tbody>
           </table>
         </div>

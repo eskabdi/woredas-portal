@@ -42,11 +42,7 @@ const schema = z.object({
   witness2_name: z.string().trim().max(200).optional().default(""),
   certificate_reference: z.string().trim().max(120).optional().default(""),
   notes: z.string().trim().max(1000).optional().default(""),
-  informant_name: z
-    .string()
-    .trim()
-    .min(1, "የመረጃ ሰጪ ስም ያስፈልጋል / Informant required")
-    .max(200),
+  informant_name: z.string().trim().min(1, "የመረጃ ሰጪ ስም ያስፈልጋል / Informant required").max(200),
   informant_phone: z
     .string()
     .trim()
@@ -97,7 +93,13 @@ function MarriageNewPage() {
     },
   });
 
-  const { register, handleSubmit, setValue, watch, formState: { errors } } = form;
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors },
+  } = form;
   const s1 = watch("spouse1");
   const s2 = watch("spouse2");
   const eventDate = watch("event_date");

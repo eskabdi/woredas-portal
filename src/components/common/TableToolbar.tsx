@@ -28,8 +28,10 @@ export function useUrlSort(
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as Record<string, unknown>;
 
-  const field = typeof search["sort"] === "string" && search["sort"] ? search["sort"] : defaultField;
-  const dir: SortDir = search["dir"] === "asc" ? "asc" : search["dir"] === "desc" ? "desc" : defaultDir;
+  const field =
+    typeof search["sort"] === "string" && search["sort"] ? search["sort"] : defaultField;
+  const dir: SortDir =
+    search["dir"] === "asc" ? "asc" : search["dir"] === "desc" ? "desc" : defaultDir;
 
   const toggle = useCallback(
     (next: string) => {

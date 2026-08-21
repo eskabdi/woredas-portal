@@ -86,7 +86,11 @@ export default function LocationPickerMap({
   return (
     <div className="space-y-2">
       <div className="overflow-hidden rounded-md border border-slate-200">
-        <MapContainer center={center} zoom={hasCoord ? 16 : 14} style={{ height: 320, width: "100%" }}>
+        <MapContainer
+          center={center}
+          zoom={hasCoord ? 16 : 14}
+          style={{ height: 320, width: "100%" }}
+        >
           <TileLayer url={OSM_URL} attribution={OSM_ATTR} />
           <ClickHandler onChange={onChange} />
           <Recenter lat={latitude} lng={longitude} />

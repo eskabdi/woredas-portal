@@ -126,9 +126,7 @@ export function LetterTemplatesTab() {
           <div className="text-[11px] uppercase tracking-wide text-slate-400">Letter types</div>
         </div>
         <div className="max-h-[560px] overflow-y-auto">
-          {typesQuery.isPending && (
-            <div className="p-4 text-sm text-slate-500">Loading…</div>
-          )}
+          {typesQuery.isPending && <div className="p-4 text-sm text-slate-500">Loading…</div>}
           {!typesQuery.isPending && types.length === 0 && (
             <div className="font-noto-ethiopic p-4 text-sm text-slate-500">
               የደብዳቤ ዓይነት አልተገኘም / No letter services in the catalog
@@ -157,7 +155,10 @@ export function LetterTemplatesTab() {
                   <div className="truncate text-[11px] text-slate-500">{t.name_en}</div>
                 </div>
                 {hasTemplate ? (
-                  <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-[10px] text-emerald-700">
+                  <Badge
+                    variant="outline"
+                    className="border-emerald-200 bg-emerald-50 text-[10px] text-emerald-700"
+                  >
                     Set
                   </Badge>
                 ) : (
@@ -181,7 +182,9 @@ export function LetterTemplatesTab() {
             <Card className="p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <div className="font-noto-ethiopic text-base font-semibold">{selected.name_am}</div>
+                  <div className="font-noto-ethiopic text-base font-semibold">
+                    {selected.name_am}
+                  </div>
                   <div className="text-xs text-slate-500">
                     {selected.name_en} · <span className="font-mono">{selected.code}</span>
                   </div>
@@ -251,8 +254,8 @@ export function LetterTemplatesTab() {
             )}
 
             <p className="font-noto-ethiopic text-xs text-slate-500">
-              እያንዳንዱ በዚህ አብነት የሚወጣ ደብዳቤ በሕዝብ ማረጋገጫ ዩአርኤል የሚሠራ QR ኮድ ይይዛል። / Every letter issued
-              from this template carries a QR code that resolves to the public verification page.
+              እያንዳንዱ በዚህ አብነት የሚወጣ ደብዳቤ በሕዝብ ማረጋገጫ ዩአርኤል የሚሠራ QR ኮድ ይይዛል። / Every letter issued from
+              this template carries a QR code that resolves to the public verification page.
             </p>
           </>
         )}

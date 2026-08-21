@@ -197,7 +197,9 @@ function ReportsPage() {
           .limit(5000),
         supabase
           .from("payment")
-          .select("payment_type, amount, channel, payment_date, status, household:household_id ( kebele_id ), rental_request:rental_request_id ( rental_house:rental_house_id ( kebele_id ) )")
+          .select(
+            "payment_type, amount, channel, payment_date, status, household:household_id ( kebele_id ), rental_request:rental_request_id ( rental_house:rental_house_id ( kebele_id ) )",
+          )
           .eq("woreda_id", woredaId!)
           .gte("payment_date", start)
           .lte("payment_date", end)
@@ -209,73 +211,88 @@ function ReportsPage() {
           .limit(5000),
       ]);
 
-      const firstError =
-        res.error || hh.error || cred.error || ev.error || pay.error || rent.error;
+      const firstError = res.error || hh.error || cred.error || ev.error || pay.error || rent.error;
       if (firstError) throw firstError;
 
-      const kebeleLabel = (k: { kebele_name_am?: string | null; kebele_number?: number | null } | null) =>
-        k ? `${k.kebele_name_am ?? "—"}${k.kebele_number != null ? ` (#${k.kebele_number})` : ""}` : "ያልተመደበ / Unassigned";
+      const kebeleLabel = (
+        k: { kebele_name_am?: string | null; kebele_number?: number | null } | null,
+      ) =>
+        k
+          ? `${k.kebele_name_am ?? "—"}${k.kebele_number != null ? ` (#${k.kebele_number})` : ""}`
+          : "ያልተመደበ / Unassigned";
 
       return {
-        residents: byKebele((res.data ?? []).map((r) => {
-          const row = r as unknown as {
-            sex: string;
-            residency_status: string;
-            active_flag: boolean;
-            created_at: string;
-            household: {
+        residents: byKebele(
+          (res.data ?? []).map((r) => {
+            const row = r as unknown as {
+              sex: string;
+              residency_status: string;
+              active_flag: boolean;
+              created_at: string;
+              household: {
+                kebele_id: string | null;
+                kebele: { kebele_name_am: string | null; kebele_number: number | null } | null;
+              } | null;
+            };
+            return {
+              _kebeleId: row.household?.kebele_id ?? null,
+              kebele: kebeleLabel(row.household?.kebele ?? null),
+              sex: row.sex ?? "—",
+              status: row.active_flag ? row.residency_status : "inactive",
+              created_at: row.created_at,
+            };
+          }),
+          kebeleId,
+        ),
+        households: byKebele(
+          (hh.data ?? []).map((h) => {
+            const row = h as unknown as {
+              occupancy_status: string;
               kebele_id: string | null;
               kebele: { kebele_name_am: string | null; kebele_number: number | null } | null;
-            } | null;
-          };
-          return {
-            _kebeleId: row.household?.kebele_id ?? null,
-            kebele: kebeleLabel(row.household?.kebele ?? null),
-            sex: row.sex ?? "—",
-            status: row.active_flag ? row.residency_status : "inactive",
-            created_at: row.created_at,
-          };
-        }), kebeleId),
-        households: byKebele((hh.data ?? []).map((h) => {
-          const row = h as unknown as {
-            occupancy_status: string;
-            kebele_id: string | null;
-            kebele: { kebele_name_am: string | null; kebele_number: number | null } | null;
-          };
-          return {
-            _kebeleId: row.kebele_id ?? null,
-            kebele: kebeleLabel(row.kebele),
-            occupancy: row.occupancy_status,
-          };
-        }), kebeleId),
-        credentials: byKebele((cred.data ?? []).map((c) => {
-          const row = c as unknown as {
-            status: string;
-            credential_type: string;
-            created_at: string;
-            issuing_kebele_id: string | null;
-          };
-          return {
-            _kebeleId: row.issuing_kebele_id ?? null,
-            status: row.status,
-            type: row.credential_type,
-            created_at: row.created_at,
-          };
-        }), kebeleId),
-        events: byKebele((ev.data ?? []).map((e) => {
-          const row = e as unknown as {
-            event_type: string;
-            status: string;
-            event_date: string;
-            household: { kebele_id: string | null } | null;
-          };
-          return {
-            _kebeleId: row.household?.kebele_id ?? null,
-            type: row.event_type,
-            status: row.status,
-            event_date: row.event_date,
-          };
-        }), kebeleId),
+            };
+            return {
+              _kebeleId: row.kebele_id ?? null,
+              kebele: kebeleLabel(row.kebele),
+              occupancy: row.occupancy_status,
+            };
+          }),
+          kebeleId,
+        ),
+        credentials: byKebele(
+          (cred.data ?? []).map((c) => {
+            const row = c as unknown as {
+              status: string;
+              credential_type: string;
+              created_at: string;
+              issuing_kebele_id: string | null;
+            };
+            return {
+              _kebeleId: row.issuing_kebele_id ?? null,
+              status: row.status,
+              type: row.credential_type,
+              created_at: row.created_at,
+            };
+          }),
+          kebeleId,
+        ),
+        events: byKebele(
+          (ev.data ?? []).map((e) => {
+            const row = e as unknown as {
+              event_type: string;
+              status: string;
+              event_date: string;
+              household: { kebele_id: string | null } | null;
+            };
+            return {
+              _kebeleId: row.household?.kebele_id ?? null,
+              type: row.event_type,
+              status: row.status,
+              event_date: row.event_date,
+            };
+          }),
+          kebeleId,
+        ),
         payments: byKebele(
           (pay.data ?? [])
             .map(
@@ -343,7 +360,9 @@ function ReportsPage() {
     const sumBy = (key: (p: ReportData["payments"][number]) => string) => {
       const m = new Map<string, number>();
       d.payments.forEach((p) => m.set(key(p), (m.get(key(p)) ?? 0) + p.amount));
-      return [...m.entries()].map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+      return [...m.entries()]
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => b.value - a.value);
     };
     return {
       residentsByKebele: count(d.residents, (r) => r.kebele),
@@ -361,7 +380,9 @@ function ReportsPage() {
     };
   }, [data, start]);
 
-  const tabSections = useMemo<Record<string, { titleAm: string; titleEn: string; sections: ReportSection[] }>>(
+  const tabSections = useMemo<
+    Record<string, { titleAm: string; titleEn: string; sections: ReportSection[] }>
+  >(
     () => ({
       population: {
         titleAm: "የሕዝብ ሪፖርት",
@@ -369,7 +390,11 @@ function ReportsPage() {
         sections: [
           { titleAm: "ነዋሪዎች በቀበሌ", titleEn: "Residents by kebele", rows: agg.residentsByKebele },
           { titleAm: "ነዋሪዎች በጾታ", titleEn: "Residents by sex", rows: agg.residentsBySex },
-          { titleAm: "ነዋሪዎች በሁኔታ", titleEn: "Residents by residency status", rows: agg.residentsByStatus },
+          {
+            titleAm: "ነዋሪዎች በሁኔታ",
+            titleEn: "Residents by residency status",
+            rows: agg.residentsByStatus,
+          },
           { titleAm: "ቤተሰቦች በቀበሌ", titleEn: "Households by kebele", rows: agg.householdsByKebele },
         ],
       },
@@ -377,27 +402,49 @@ function ReportsPage() {
         titleAm: "የመታወቂያ ሪፖርት",
         titleEn: "Credentials report",
         sections: [
-          { titleAm: "መታወቂያዎች በሁኔታ", titleEn: "Credentials by status", rows: agg.credentialsByStatus },
+          {
+            titleAm: "መታወቂያዎች በሁኔታ",
+            titleEn: "Credentials by status",
+            rows: agg.credentialsByStatus,
+          },
           { titleAm: "መታወቂያዎች በዓይነት", titleEn: "Credentials by type", rows: agg.credentialsByType },
         ],
       },
       civil: {
         titleAm: "የኩነት ምዝገባ ሪፖርት",
         titleEn: "Civil registration report",
-        sections: [{ titleAm: "የኩነት ምዝገባዎች በዓይነት", titleEn: "Vital events by type", rows: agg.eventsByType }],
+        sections: [
+          { titleAm: "የኩነት ምዝገባዎች በዓይነት", titleEn: "Vital events by type", rows: agg.eventsByType },
+        ],
       },
       revenue: {
         titleAm: "የገቢ ሪፖርት",
         titleEn: "Revenue report",
         sections: [
-          { titleAm: "ገቢ በዓይነት", titleEn: "Revenue by payment type", rows: agg.paymentsByType, valueLabel: "ETB" },
-          { titleAm: "ገቢ በመክፈያ መንገድ", titleEn: "Revenue by channel", rows: agg.paymentsByChannel, valueLabel: "ETB" },
+          {
+            titleAm: "ገቢ በዓይነት",
+            titleEn: "Revenue by payment type",
+            rows: agg.paymentsByType,
+            valueLabel: "ETB",
+          },
+          {
+            titleAm: "ገቢ በመክፈያ መንገድ",
+            titleEn: "Revenue by channel",
+            rows: agg.paymentsByChannel,
+            valueLabel: "ETB",
+          },
         ],
       },
       rental: {
         titleAm: "የኪራይ ቤቶች ሪፖርት",
         titleEn: "Rental houses report",
-        sections: [{ titleAm: "የኪራይ ቤቶች ሁኔታ", titleEn: "Rental houses by occupancy", rows: agg.rentalByStatus }],
+        sections: [
+          {
+            titleAm: "የኪራይ ቤቶች ሁኔታ",
+            titleEn: "Rental houses by occupancy",
+            rows: agg.rentalByStatus,
+          },
+        ],
       },
     }),
     [agg],
@@ -420,8 +467,11 @@ function ReportsPage() {
     try {
       await exportSectionsToPdf({
         fileName: `${tab}-report-${start}_${end}.pdf`,
-        branding:
-          branding ?? { nameAm: "ወረዳ አስተዳደር", nameEn: "Woreda Administration", logoDataUrl: null },
+        branding: branding ?? {
+          nameAm: "ወረዳ አስተዳደር",
+          nameEn: "Woreda Administration",
+          logoDataUrl: null,
+        },
         reportTitleAm: t.titleAm,
         reportTitleEn: t.titleEn,
         periodLabel,
@@ -458,7 +508,13 @@ function ReportsPage() {
           </div>
           <div>
             <Label className="font-noto-ethiopic text-xs">እስከ / To</Label>
-            <Input type="date" value={end} min={start} max={TODAY} onChange={(e) => setEnd(e.target.value)} />
+            <Input
+              type="date"
+              value={end}
+              min={start}
+              max={TODAY}
+              onChange={(e) => setEnd(e.target.value)}
+            />
           </div>
           <KebeleFilter value={kebeleId} onChange={setKebeleId} />
           <div className="flex gap-2">
@@ -798,10 +854,24 @@ function ChartCard({
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={rows.slice(0, 12)}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-20} height={50} textAnchor="end" />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fontSize: 11 }}
+                  interval={0}
+                  angle={-20}
+                  height={50}
+                  textAnchor="end"
+                />
                 <YAxis tick={{ fontSize: 11 }} />
                 <RTooltip formatter={(v: number) => v.toLocaleString()} />
-                <Bar dataKey="value" name={valueLabel} fill="#1d4ed8" radius={[4, 4, 0, 0]} isAnimationActive={false} maxBarSize={56} />
+                <Bar
+                  dataKey="value"
+                  name={valueLabel}
+                  fill="#1d4ed8"
+                  radius={[4, 4, 0, 0]}
+                  isAnimationActive={false}
+                  maxBarSize={56}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>

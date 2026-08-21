@@ -1,6 +1,7 @@
 # Harari Woreda Connect
 
 # ወረዳ አስተዳደር ሥርዓት — Woreda Administration ERP
+
 ## Foundation Build — Phase 1: Project Scaffold, Auth, Dual Portal, RBAC, Navigation
 
 ---
@@ -35,6 +36,7 @@
 ## PORTAL ARCHITECTURE — TWO FULLY SEPARATE PORTALS
 
 ### Portal 1: Super Admin Console
+
 - Route prefix: `/admin`
 - Language: English
 - Users: `super_admin` role only
@@ -42,6 +44,7 @@
 - Branding: dark sidebar (#1e293b slate-800), white content area
 
 ### Portal 2: Woreda Administration Operating System (Woreda OS)
+
 - Route prefix: `/woreda`
 - Language: Amharic (primary) — all labels, navigation, form fields, status chips must be in Amharic
 - Users: All roles except `super_admin`
@@ -55,14 +58,14 @@
 
 Six woreda tenants. Seed these into the database:
 
-| Woreda ID | Woreda Code | Woreda Name (EN) | Woreda Name (AM) | Kebeles |
-|---|---|---|---|---|
-| 1 | AMIR_NUR | Amir Nur | አሚር ኑር | 01, 02, 07 |
-| 2 | ABADIR | Abadir | አባዲር | 03, 04, 05, 06 |
-| 3 | SHENKOR | Shenkor | ሸንኮር | 08, 09, 10 |
-| 4 | ABOKER | Aboker | አቦከር | 11, 12, 13 |
-| 5 | JINEALA | Jineala | ጂናኤላ | 14, 15, 16 |
-| 6 | HAKIM | Hakim | ሃኪም | 17, 18, 19 |
+| Woreda ID | Woreda Code | Woreda Name (EN) | Woreda Name (AM) | Kebeles        |
+| --------- | ----------- | ---------------- | ---------------- | -------------- |
+| 1         | AMIR_NUR    | Amir Nur         | አሚር ኑር           | 01, 02, 07     |
+| 2         | ABADIR      | Abadir           | አባዲር             | 03, 04, 05, 06 |
+| 3         | SHENKOR     | Shenkor          | ሸንኮር             | 08, 09, 10     |
+| 4         | ABOKER      | Aboker           | አቦከር             | 11, 12, 13     |
+| 5         | JINEALA     | Jineala          | ጂናኤላ             | 14, 15, 16     |
+| 6         | HAKIM       | Hakim            | ሃኪም              | 17, 18, 19     |
 
 ---
 
@@ -72,14 +75,14 @@ Roles are stored as lowercase snake_case strings. Define a TypeScript `Role` uni
 
 ```typescript
 export type Role =
-  | 'super_admin'
-  | 'tenant_admin'
-  | 'civil_registrar'
-  | 'registry_clerk'
-  | 'finance_clerk'
-  | 'supervisor'
-  | 'auditor'
-  | 'viewer';
+  | "super_admin"
+  | "tenant_admin"
+  | "civil_registrar"
+  | "registry_clerk"
+  | "finance_clerk"
+  | "supervisor"
+  | "auditor"
+  | "viewer";
 ```
 
 Permissions use `resource.action` dot-notation. Define a typed `P` constants object as the sole source of permission values:
@@ -87,56 +90,138 @@ Permissions use `resource.action` dot-notation. Define a typed `P` constants obj
 ```typescript
 export const P = {
   // Residents
-  RESIDENT_CREATE: 'resident.create',
-  RESIDENT_READ: 'resident.read',
-  RESIDENT_UPDATE: 'resident.update',
-  RESIDENT_DELETE: 'resident.delete',
+  RESIDENT_CREATE: "resident.create",
+  RESIDENT_READ: "resident.read",
+  RESIDENT_UPDATE: "resident.update",
+  RESIDENT_DELETE: "resident.delete",
   // Households
-  HOUSEHOLD_CREATE: 'household.create',
-  HOUSEHOLD_READ: 'household.read',
-  HOUSEHOLD_UPDATE: 'household.update',
+  HOUSEHOLD_CREATE: "household.create",
+  HOUSEHOLD_READ: "household.read",
+  HOUSEHOLD_UPDATE: "household.update",
   // Credentials
-  CREDENTIAL_ISSUE: 'credential.issue',
-  CREDENTIAL_READ: 'credential.read',
-  CREDENTIAL_PRINT: 'credential.print',
-  CREDENTIAL_VERIFY: 'credential.verify',
-  CREDENTIAL_REVOKE: 'credential.revoke',
-  CREDENTIAL_RENEW: 'credential.renew',
+  CREDENTIAL_ISSUE: "credential.issue",
+  CREDENTIAL_READ: "credential.read",
+  CREDENTIAL_PRINT: "credential.print",
+  CREDENTIAL_VERIFY: "credential.verify",
+  CREDENTIAL_REVOKE: "credential.revoke",
+  CREDENTIAL_RENEW: "credential.renew",
   // Civil Events
-  CIVIL_REGISTER: 'civil.register',
-  CIVIL_APPROVE: 'civil.approve',
-  CIVIL_READ: 'civil.read',
+  CIVIL_REGISTER: "civil.register",
+  CIVIL_APPROVE: "civil.approve",
+  CIVIL_READ: "civil.read",
   // Revenue
-  PAYMENT_COLLECT: 'payment.collect',
-  PAYMENT_READ: 'payment.read',
-  RECEIPT_PRINT: 'receipt.print',
+  PAYMENT_COLLECT: "payment.collect",
+  PAYMENT_READ: "payment.read",
+  RECEIPT_PRINT: "receipt.print",
   // Reports
-  REPORT_VIEW: 'report.view',
-  REPORT_EXPORT: 'report.export',
+  REPORT_VIEW: "report.view",
+  REPORT_EXPORT: "report.export",
   // Audit
-  AUDIT_VIEW: 'audit.view',
+  AUDIT_VIEW: "audit.view",
   // Tenant Admin
-  TENANT_MANAGE: 'tenant.manage',
-  USER_MANAGE: 'user.manage',
+  TENANT_MANAGE: "tenant.manage",
+  USER_MANAGE: "user.manage",
   // Super Admin
-  PLATFORM_MANAGE: 'platform.manage',
-  TENANT_CREATE: 'tenant.create',
+  PLATFORM_MANAGE: "platform.manage",
+  TENANT_CREATE: "tenant.create",
 } as const;
 
-export type Permission = typeof P[keyof typeof P];
+export type Permission = (typeof P)[keyof typeof P];
 ```
 
 Role-to-permission mapping (store in a `ROLE_PERMISSIONS` map):
 
 ```typescript
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
-  super_admin: [P.PLATFORM_MANAGE, P.TENANT_CREATE, P.TENANT_MANAGE, P.USER_MANAGE, P.AUDIT_VIEW, P.REPORT_VIEW],
-  tenant_admin: [P.RESIDENT_CREATE, P.RESIDENT_READ, P.RESIDENT_UPDATE, P.RESIDENT_DELETE, P.HOUSEHOLD_CREATE, P.HOUSEHOLD_READ, P.HOUSEHOLD_UPDATE, P.CREDENTIAL_ISSUE, P.CREDENTIAL_READ, P.CREDENTIAL_PRINT, P.CREDENTIAL_VERIFY, P.CREDENTIAL_REVOKE, P.CREDENTIAL_RENEW, P.CIVIL_REGISTER, P.CIVIL_APPROVE, P.CIVIL_READ, P.PAYMENT_COLLECT, P.PAYMENT_READ, P.RECEIPT_PRINT, P.REPORT_VIEW, P.REPORT_EXPORT, P.AUDIT_VIEW, P.TENANT_MANAGE, P.USER_MANAGE],
-  supervisor: [P.RESIDENT_READ, P.HOUSEHOLD_READ, P.CREDENTIAL_READ, P.CREDENTIAL_VERIFY, P.CREDENTIAL_REVOKE, P.CIVIL_APPROVE, P.CIVIL_READ, P.PAYMENT_READ, P.RECEIPT_PRINT, P.REPORT_VIEW, P.REPORT_EXPORT, P.AUDIT_VIEW],
-  civil_registrar: [P.RESIDENT_CREATE, P.RESIDENT_READ, P.RESIDENT_UPDATE, P.HOUSEHOLD_READ, P.CREDENTIAL_ISSUE, P.CREDENTIAL_READ, P.CREDENTIAL_PRINT, P.CREDENTIAL_VERIFY, P.CIVIL_REGISTER, P.CIVIL_READ],
-  registry_clerk: [P.RESIDENT_CREATE, P.RESIDENT_READ, P.RESIDENT_UPDATE, P.HOUSEHOLD_CREATE, P.HOUSEHOLD_READ, P.HOUSEHOLD_UPDATE, P.CREDENTIAL_ISSUE, P.CREDENTIAL_READ, P.CREDENTIAL_PRINT, P.CREDENTIAL_VERIFY, P.CIVIL_READ],
-  finance_clerk: [P.PAYMENT_COLLECT, P.PAYMENT_READ, P.RECEIPT_PRINT, P.RESIDENT_READ, P.HOUSEHOLD_READ],
-  auditor: [P.RESIDENT_READ, P.HOUSEHOLD_READ, P.CREDENTIAL_READ, P.CIVIL_READ, P.PAYMENT_READ, P.REPORT_VIEW, P.AUDIT_VIEW],
+  super_admin: [
+    P.PLATFORM_MANAGE,
+    P.TENANT_CREATE,
+    P.TENANT_MANAGE,
+    P.USER_MANAGE,
+    P.AUDIT_VIEW,
+    P.REPORT_VIEW,
+  ],
+  tenant_admin: [
+    P.RESIDENT_CREATE,
+    P.RESIDENT_READ,
+    P.RESIDENT_UPDATE,
+    P.RESIDENT_DELETE,
+    P.HOUSEHOLD_CREATE,
+    P.HOUSEHOLD_READ,
+    P.HOUSEHOLD_UPDATE,
+    P.CREDENTIAL_ISSUE,
+    P.CREDENTIAL_READ,
+    P.CREDENTIAL_PRINT,
+    P.CREDENTIAL_VERIFY,
+    P.CREDENTIAL_REVOKE,
+    P.CREDENTIAL_RENEW,
+    P.CIVIL_REGISTER,
+    P.CIVIL_APPROVE,
+    P.CIVIL_READ,
+    P.PAYMENT_COLLECT,
+    P.PAYMENT_READ,
+    P.RECEIPT_PRINT,
+    P.REPORT_VIEW,
+    P.REPORT_EXPORT,
+    P.AUDIT_VIEW,
+    P.TENANT_MANAGE,
+    P.USER_MANAGE,
+  ],
+  supervisor: [
+    P.RESIDENT_READ,
+    P.HOUSEHOLD_READ,
+    P.CREDENTIAL_READ,
+    P.CREDENTIAL_VERIFY,
+    P.CREDENTIAL_REVOKE,
+    P.CIVIL_APPROVE,
+    P.CIVIL_READ,
+    P.PAYMENT_READ,
+    P.RECEIPT_PRINT,
+    P.REPORT_VIEW,
+    P.REPORT_EXPORT,
+    P.AUDIT_VIEW,
+  ],
+  civil_registrar: [
+    P.RESIDENT_CREATE,
+    P.RESIDENT_READ,
+    P.RESIDENT_UPDATE,
+    P.HOUSEHOLD_READ,
+    P.CREDENTIAL_ISSUE,
+    P.CREDENTIAL_READ,
+    P.CREDENTIAL_PRINT,
+    P.CREDENTIAL_VERIFY,
+    P.CIVIL_REGISTER,
+    P.CIVIL_READ,
+  ],
+  registry_clerk: [
+    P.RESIDENT_CREATE,
+    P.RESIDENT_READ,
+    P.RESIDENT_UPDATE,
+    P.HOUSEHOLD_CREATE,
+    P.HOUSEHOLD_READ,
+    P.HOUSEHOLD_UPDATE,
+    P.CREDENTIAL_ISSUE,
+    P.CREDENTIAL_READ,
+    P.CREDENTIAL_PRINT,
+    P.CREDENTIAL_VERIFY,
+    P.CIVIL_READ,
+  ],
+  finance_clerk: [
+    P.PAYMENT_COLLECT,
+    P.PAYMENT_READ,
+    P.RECEIPT_PRINT,
+    P.RESIDENT_READ,
+    P.HOUSEHOLD_READ,
+  ],
+  auditor: [
+    P.RESIDENT_READ,
+    P.HOUSEHOLD_READ,
+    P.CREDENTIAL_READ,
+    P.CIVIL_READ,
+    P.PAYMENT_READ,
+    P.REPORT_VIEW,
+    P.AUDIT_VIEW,
+  ],
   viewer: [P.RESIDENT_READ, P.HOUSEHOLD_READ, P.CREDENTIAL_READ, P.CIVIL_READ, P.PAYMENT_READ],
 };
 ```
@@ -317,27 +402,27 @@ Enable Row Level Security on all tables. Create RLS policies scoped by `woreda_i
 ```typescript
 // Woreda OS Portal
 const woredaTokens = {
-  sidebarBg: '#1e3a5f',       // deep navy blue
-  sidebarText: '#e2e8f0',     // slate-200
-  sidebarActive: '#3b82f6',   // blue-500
-  primaryAction: '#1d4ed8',   // blue-700
-  background: '#f8fafc',      // slate-50
-  cardBg: '#ffffff',
-  border: '#e2e8f0',          // slate-200
-  textPrimary: '#0f172a',     // slate-900
-  textSecondary: '#64748b',   // slate-500
+  sidebarBg: "#1e3a5f", // deep navy blue
+  sidebarText: "#e2e8f0", // slate-200
+  sidebarActive: "#3b82f6", // blue-500
+  primaryAction: "#1d4ed8", // blue-700
+  background: "#f8fafc", // slate-50
+  cardBg: "#ffffff",
+  border: "#e2e8f0", // slate-200
+  textPrimary: "#0f172a", // slate-900
+  textSecondary: "#64748b", // slate-500
 };
 
 // Status chips
 const statusColors = {
-  active: 'bg-green-100 text-green-800',
-  pending: 'bg-amber-100 text-amber-800',
-  approved: 'bg-blue-100 text-blue-800',
-  rejected: 'bg-red-100 text-red-800',
-  expired: 'bg-gray-100 text-gray-600',
-  revoked: 'bg-red-200 text-red-900',
-  draft: 'bg-slate-100 text-slate-600',
-  printed: 'bg-purple-100 text-purple-800',
+  active: "bg-green-100 text-green-800",
+  pending: "bg-amber-100 text-amber-800",
+  approved: "bg-blue-100 text-blue-800",
+  rejected: "bg-red-100 text-red-800",
+  expired: "bg-gray-100 text-gray-600",
+  revoked: "bg-red-200 text-red-900",
+  draft: "bg-slate-100 text-slate-600",
+  printed: "bg-purple-100 text-purple-800",
 };
 ```
 
@@ -389,6 +474,7 @@ const statusColors = {
 ### 1. Login Page (`/login`)
 
 A clean, government-grade login screen:
+
 - White centered card on a slate-50 background
 - Header: "ወረዳ አስተዳደር ሥርዓት" (large, Amharic, Noto Sans Ethiopic font)
 - Subtitle: "Woreda Administration ERP — Harari Region" (English, smaller)
@@ -402,10 +488,11 @@ A clean, government-grade login screen:
 ### 2. Auth State (Zustand)
 
 Create `src/stores/authStore.ts`:
+
 ```typescript
 interface AuthState {
   user: SupabaseUser | null;
-  appUser: AppUser | null;  // from app_user table
+  appUser: AppUser | null; // from app_user table
   role: Role | null;
   woredaId: string | null;
   permissions: Permission[];
@@ -441,15 +528,69 @@ interface AuthState {
 
 ```typescript
 export const NAV_PERMISSION_MAP = [
-  { labelAm: 'ዳሽቦርድ', labelEn: 'Dashboard', icon: 'LayoutDashboard', href: '/woreda/dashboard', permission: null }, // always visible
-  { labelAm: 'ነዋሪዎች', labelEn: 'Residents', icon: 'Users', href: '/woreda/residents', permission: P.RESIDENT_READ },
-  { labelAm: 'ቤተሰቦች', labelEn: 'Households', icon: 'Home', href: '/woreda/households', permission: P.HOUSEHOLD_READ },
-  { labelAm: 'የነዋሪ መታወቂያ', labelEn: 'Credentials', icon: 'CreditCard', href: '/woreda/credentials', permission: P.CREDENTIAL_READ },
-  { labelAm: 'የፍትሐ ብሔር ምዝገባ', labelEn: 'Civil Registration', icon: 'FileText', href: '/woreda/civil', permission: P.CIVIL_READ },
-  { labelAm: 'ገቢ', labelEn: 'Revenue', icon: 'Banknote', href: '/woreda/revenue', permission: P.PAYMENT_READ },
-  { labelAm: 'ሪፖርቶች', labelEn: 'Reports', icon: 'BarChart3', href: '/woreda/reports', permission: P.REPORT_VIEW },
-  { labelAm: 'ኦዲት', labelEn: 'Audit Trail', icon: 'ScrollText', href: '/woreda/audit', permission: P.AUDIT_VIEW },
-  { labelAm: 'ቅንብሮች', labelEn: 'Settings', icon: 'Settings', href: '/woreda/settings', permission: P.TENANT_MANAGE },
+  {
+    labelAm: "ዳሽቦርድ",
+    labelEn: "Dashboard",
+    icon: "LayoutDashboard",
+    href: "/woreda/dashboard",
+    permission: null,
+  }, // always visible
+  {
+    labelAm: "ነዋሪዎች",
+    labelEn: "Residents",
+    icon: "Users",
+    href: "/woreda/residents",
+    permission: P.RESIDENT_READ,
+  },
+  {
+    labelAm: "ቤተሰቦች",
+    labelEn: "Households",
+    icon: "Home",
+    href: "/woreda/households",
+    permission: P.HOUSEHOLD_READ,
+  },
+  {
+    labelAm: "የነዋሪ መታወቂያ",
+    labelEn: "Credentials",
+    icon: "CreditCard",
+    href: "/woreda/credentials",
+    permission: P.CREDENTIAL_READ,
+  },
+  {
+    labelAm: "የፍትሐ ብሔር ምዝገባ",
+    labelEn: "Civil Registration",
+    icon: "FileText",
+    href: "/woreda/civil",
+    permission: P.CIVIL_READ,
+  },
+  {
+    labelAm: "ገቢ",
+    labelEn: "Revenue",
+    icon: "Banknote",
+    href: "/woreda/revenue",
+    permission: P.PAYMENT_READ,
+  },
+  {
+    labelAm: "ሪፖርቶች",
+    labelEn: "Reports",
+    icon: "BarChart3",
+    href: "/woreda/reports",
+    permission: P.REPORT_VIEW,
+  },
+  {
+    labelAm: "ኦዲት",
+    labelEn: "Audit Trail",
+    icon: "ScrollText",
+    href: "/woreda/audit",
+    permission: P.AUDIT_VIEW,
+  },
+  {
+    labelAm: "ቅንብሮች",
+    labelEn: "Settings",
+    icon: "Settings",
+    href: "/woreda/settings",
+    permission: P.TENANT_MANAGE,
+  },
 ];
 ```
 
@@ -465,21 +606,25 @@ export const NAV_PERMISSION_MAP = [
 Operational summary dashboard with Amharic labels:
 
 **KPI row** (4 cards):
+
 - ጠቅላላ ነዋሪዎች | Total Residents (count from `resident` where `woreda_id = current`)
 - ንቁ ቤተሰቦች | Active Households
 - የዛሬ አዲስ ምዝገባዎች | New Registrations Today
 - በጥበቃ ላይ ያሉ | Pending Approvals
 
 **Second row** (3 cards):
+
 - የተሰጡ ምስክር ወረቀቶች | Credentials Issued (this month)
 - ዕለታዊ ገቢ | Revenue Today (sum of payments today)
 - ወቅቱ ያለፋቸው ምስክር ወረቀቶች | Expired Credentials (count)
 
 **Charts row** (2 charts):
+
 - Recharts BarChart: Monthly resident registrations (last 6 months) — label: "ወርሃዊ ምዝገባ"
 - Recharts LineChart: Daily revenue last 30 days — label: "ዕለታዊ ገቢ"
 
 **Recent Activity table**:
+
 - Last 10 audit log entries for this woreda
 - Columns: ጊዜ (Time), ተጠቃሚ (User), ድርጊት (Action), አካል (Entity)
 
@@ -488,6 +633,7 @@ All data via TanStack Query with proper `woreda_id` scoping. Show skeleton loadi
 ### 6. Super Admin Dashboard (`/admin/dashboard`)
 
 Platform-level KPIs:
+
 - Total Tenants (woreda count)
 - Total Users across all tenants
 - Total Residents across all tenants
@@ -505,14 +651,25 @@ Create `src/utils/ethiopianCalendar.ts`:
 // Months: መስከረም, ጥቅምት, ኅዳር, ታኅሣሥ, ጥር, የካቲት, መጋቢት, ሚያዝያ, ግንቦት, ሰኔ, ሐምሌ, ነሐሴ, ጳጉሜ
 
 export const ETHIOPIAN_MONTHS_AM = [
-  'መስከረም', 'ጥቅምት', 'ኅዳር', 'ታኅሣሥ', 'ጥር', 'የካቲት',
-  'መጋቢት', 'ሚያዝያ', 'ግንቦት', 'ሰኔ', 'ሐምሌ', 'ነሐሴ', 'ጳጉሜ'
+  "መስከረም",
+  "ጥቅምት",
+  "ኅዳር",
+  "ታኅሣሥ",
+  "ጥር",
+  "የካቲት",
+  "መጋቢት",
+  "ሚያዝያ",
+  "ግንቦት",
+  "ሰኔ",
+  "ሐምሌ",
+  "ነሐሴ",
+  "ጳጉሜ",
 ];
 
 // Conversion functions:
-export function gregorianToEthiopian(date: Date): { year: number; month: number; day: number }
-export function ethiopianToGregorian(year: number, month: number, day: number): Date
-export function formatEthiopianDate(date: Date, includeMonth?: boolean): string
+export function gregorianToEthiopian(date: Date): { year: number; month: number; day: number };
+export function ethiopianToGregorian(year: number, month: number, day: number): Date;
+export function formatEthiopianDate(date: Date, includeMonth?: boolean): string;
 // Returns e.g.: "12 ሕዳር 2016"
 ```
 
@@ -597,6 +754,7 @@ src/
 ## SEED DATA
 
 On first run, seed the database with:
+
 1. Six woreda records (from the table above)
 2. 19 kebele records (mapped to correct woredas)
 3. One `super_admin` user: email `admin@harari-erp.gov.et`, linked to no woreda
@@ -607,6 +765,7 @@ On first run, seed the database with:
 ## COMPONENT REQUIREMENTS
 
 ### `PermissionGate.tsx`
+
 ```typescript
 interface PermissionGateProps {
   permission: Permission;
@@ -618,17 +777,19 @@ interface PermissionGateProps {
 ```
 
 ### `StatusChip.tsx`
+
 ```typescript
 interface StatusChipProps {
   status: string;
-  labelAm?: string;  // Amharic label override
-  labelEn?: string;  // English label override
+  labelAm?: string; // Amharic label override
+  labelEn?: string; // English label override
 }
 // Uses statusColors mapping above
 // Shows "AM / EN" dual label if both provided
 ```
 
 ### `EthiopianDateDisplay.tsx`
+
 ```typescript
 interface EthiopianDateDisplayProps {
   gregorianDate: Date | string;
@@ -640,13 +801,14 @@ interface EthiopianDateDisplayProps {
 ```
 
 ### `KpiCard.tsx`
+
 ```typescript
 interface KpiCardProps {
-  titleAm: string;   // Amharic title
-  titleEn: string;   // English subtitle
+  titleAm: string; // Amharic title
+  titleEn: string; // English subtitle
   value: number | string;
   icon: LucideIcon;
-  trend?: { value: number; direction: 'up' | 'down' };
+  trend?: { value: number; direction: "up" | "down" };
   isLoading?: boolean;
 }
 ```

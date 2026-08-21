@@ -188,12 +188,16 @@ function ProvisionPage() {
                 {done ? <Check className="h-4 w-4" /> : s.n}
               </div>
               <div className="min-w-0">
-                <div className={`font-noto-ethiopic text-xs ${active ? "text-blue-700 font-semibold" : "text-slate-600"}`}>
+                <div
+                  className={`font-noto-ethiopic text-xs ${active ? "text-blue-700 font-semibold" : "text-slate-600"}`}
+                >
                   {s.am}
                 </div>
                 <div className="text-[10px] text-slate-400">{s.en}</div>
               </div>
-              {i < STEPS.length - 1 && <div className={`h-0.5 flex-1 ${done ? "bg-green-600" : "bg-slate-200"}`} />}
+              {i < STEPS.length - 1 && (
+                <div className={`h-0.5 flex-1 ${done ? "bg-green-600" : "bg-slate-200"}`} />
+              )}
             </div>
           );
         })}
@@ -206,8 +210,16 @@ function ProvisionPage() {
               ወረዳ ማረጋገጫ <span className="text-sm text-slate-500">/ Confirm Woreda</span>
             </h2>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <ReadRow am="የወረዳ ስም" en="Woreda Name" value={`${woreda.woreda_name_am} / ${woreda.woreda_name_en}`} />
-              <ReadRow am="ኮድ" en="Numeric Code" value={String(woreda.woreda_numeric_code ?? woreda.woreda_code)} />
+              <ReadRow
+                am="የወረዳ ስም"
+                en="Woreda Name"
+                value={`${woreda.woreda_name_am} / ${woreda.woreda_name_en}`}
+              />
+              <ReadRow
+                am="ኮድ"
+                en="Numeric Code"
+                value={String(woreda.woreda_numeric_code ?? woreda.woreda_code)}
+              />
               <ReadRow am="ክልል" en="Region" value="ሐረሪ / Harari" />
               <ReadRow am="ሰዓት ዞን" en="Time Zone" value="East Africa Time (EAT)" />
             </div>
@@ -233,9 +245,7 @@ function ProvisionPage() {
               የሞጁል ውቅር <span className="text-sm text-slate-500">/ Module Configuration</span>
             </h2>
             <div className="rounded-md bg-blue-50 p-3 text-xs text-blue-900">
-              <span className="font-noto-ethiopic">
-                ነዋሪዎች፣ ቤተሰቦች፣ ዳሽቦርድ እና ቅንብሮች ሁልጊዜ ንቁ ናቸው
-              </span>
+              <span className="font-noto-ethiopic">ነዋሪዎች፣ ቤተሰቦች፣ ዳሽቦርድ እና ቅንብሮች ሁልጊዜ ንቁ ናቸው</span>
               <span className="ml-1 text-blue-700">
                 / Residents, Households, Dashboard, and Settings are always enabled.
               </span>
@@ -291,7 +301,8 @@ function ProvisionPage() {
                 ወደዚህ አድራሻ የግብዣ ኢሜይል ይላካል። መለያው 'ወረዳ አስተዳዳሪ' ፈቃድ ይኖረዋል።
               </span>
               <div className="mt-1 text-blue-700">
-                An invitation email will be sent to this address. The account will have 'Tenant Admin' privileges.
+                An invitation email will be sent to this address. The account will have 'Tenant
+                Admin' privileges.
               </div>
             </div>
           </div>
@@ -306,10 +317,14 @@ function ProvisionPage() {
               <Card className="p-4">
                 <div className="mb-2 text-xs font-semibold uppercase text-slate-500">Woreda</div>
                 <div className="font-noto-ethiopic text-slate-900">{woreda.woreda_name_am}</div>
-                <div className="text-sm text-slate-600">{woreda.woreda_name_en} · {woreda.woreda_numeric_code ?? woreda.woreda_code}</div>
+                <div className="text-sm text-slate-600">
+                  {woreda.woreda_name_en} · {woreda.woreda_numeric_code ?? woreda.woreda_code}
+                </div>
               </Card>
               <Card className="p-4">
-                <div className="mb-2 text-xs font-semibold uppercase text-slate-500">Administrator</div>
+                <div className="mb-2 text-xs font-semibold uppercase text-slate-500">
+                  Administrator
+                </div>
                 <div className="text-slate-900">{fullName}</div>
                 <div className="text-sm text-slate-600">{email}</div>
                 {phone && <div className="text-sm text-slate-600">+251{phone}</div>}

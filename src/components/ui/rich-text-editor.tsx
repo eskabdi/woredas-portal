@@ -70,8 +70,12 @@ export function RichTextEditor({
       )}
     >
       <div className="flex flex-wrap items-center gap-0.5 border-b bg-slate-50 p-1">
-        <ToolBtn label="Bold" onClick={() => exec("bold")}><Bold className="h-4 w-4" /></ToolBtn>
-        <ToolBtn label="Italic" onClick={() => exec("italic")}><Italic className="h-4 w-4" /></ToolBtn>
+        <ToolBtn label="Bold" onClick={() => exec("bold")}>
+          <Bold className="h-4 w-4" />
+        </ToolBtn>
+        <ToolBtn label="Italic" onClick={() => exec("italic")}>
+          <Italic className="h-4 w-4" />
+        </ToolBtn>
         <ToolBtn label="Underline" onClick={() => exec("underline")}>
           <UnderlineIcon className="h-4 w-4" />
         </ToolBtn>
@@ -106,13 +110,19 @@ export function RichTextEditor({
           <AlignJustify className="h-4 w-4" />
         </ToolBtn>
         <Sep />
-        <ToolBtn label="Insert link" onClick={insertLink}><Link2 className="h-4 w-4" /></ToolBtn>
+        <ToolBtn label="Insert link" onClick={insertLink}>
+          <Link2 className="h-4 w-4" />
+        </ToolBtn>
         <ToolBtn label="Clear formatting" onClick={() => exec("removeFormat")}>
           <Eraser className="h-4 w-4" />
         </ToolBtn>
         <Sep />
-        <ToolBtn label="Undo" onClick={() => exec("undo")}><Undo2 className="h-4 w-4" /></ToolBtn>
-        <ToolBtn label="Redo" onClick={() => exec("redo")}><Redo2 className="h-4 w-4" /></ToolBtn>
+        <ToolBtn label="Undo" onClick={() => exec("undo")}>
+          <Undo2 className="h-4 w-4" />
+        </ToolBtn>
+        <ToolBtn label="Redo" onClick={() => exec("redo")}>
+          <Redo2 className="h-4 w-4" />
+        </ToolBtn>
       </div>
 
       <div className="relative">

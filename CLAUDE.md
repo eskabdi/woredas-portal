@@ -182,7 +182,7 @@ checked in two places that both have to be kept correct:
 2. Database-side: `user_has_perm()` (in the baseline migration) gates what a
    query can actually return, keyed off `app_user.role` and `app_user.status`.
 
-Adding a permission means editing `ROLE_PERMISSIONS` *and* the `role_permission`
+Adding a permission means editing `ROLE_PERMISSIONS` _and_ the `role_permission`
 seed rows — the client gate opening without the database gate produces a UI
 that renders and then returns nothing.
 
@@ -207,7 +207,7 @@ than a broken gate.
 Permission, module and RLS are independent — a page can be permitted, enabled,
 and still return nothing because of `status`.
 
-### Storage: private buckets, and the path prefix *is* the tenant check
+### Storage: private buckets, and the path prefix _is_ the tenant check
 
 Seven buckets, all private; reads go through signed URLs
 (`createSignedUrl`), never public URLs. Tenant isolation for objects comes from
@@ -356,12 +356,12 @@ break hooks. Don't pin a nitro preset — see the Vercel section.
 Four review agents, each covering a failure mode this codebase has that a build
 or a typecheck will not catch. Invoke them by name.
 
-| Agent | Use it when | Guards against |
-|---|---|---|
-| `secret-sweep` | after any migration or deploy, before pushing | a deploy token reaching a commit — see the rule at the top of this file |
-| `tenant-isolation-review` | touching a permission, role, migration, RLS policy, or upload path | cross-tenant reads, a client gate without its seed rows, a missing storage path prefix |
-| `portal-conventions-review` | after adding a route or a list/detail page | a route missing `ssr: false`, table state in `useState` instead of the URL, non-bilingual labels, Gregorian dates in the woreda portal |
-| `card-print-review` | touching signing, the print route, the template editor, QR or barcode | invariants whose failure is only discovered after cards are physically printed |
+| Agent                       | Use it when                                                           | Guards against                                                                                                                         |
+| --------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `secret-sweep`              | after any migration or deploy, before pushing                         | a deploy token reaching a commit — see the rule at the top of this file                                                                |
+| `tenant-isolation-review`   | touching a permission, role, migration, RLS policy, or upload path    | cross-tenant reads, a client gate without its seed rows, a missing storage path prefix                                                 |
+| `portal-conventions-review` | after adding a route or a list/detail page                            | a route missing `ssr: false`, table state in `useState` instead of the URL, non-bilingual labels, Gregorian dates in the woreda portal |
+| `card-print-review`         | touching signing, the print route, the template editor, QR or barcode | invariants whose failure is only discovered after cards are physically printed                                                         |
 
 They are read-only reviewers (`Bash`, `Read`, `Grep`, `Glob`) — they report, they
 do not push, rewrite history or rotate credentials.
@@ -377,7 +377,7 @@ do not push, rewrite history or rotate credentials.
   before opening or merging a PR.
 - **`doctor`** — diagnose why something is broken or set up wrong. Runs
   `scripts/check-workspace.sh` (no credentials, no network: toolchain, deps,
-  route registration, `ssr: false`, env var *names*, secret hygiene), then
+  route registration, `ssr: false`, env var _names_, secret hygiene), then
   backend checks per artifact, then a symptom index that maps what you observe
   to which of the several identical-looking causes it actually is. Use it before
   a deploy and whenever a screen is unexpectedly empty.
@@ -436,7 +436,7 @@ const ctx = await browser.newContext({ ignoreHTTPSErrors: true });
 calls, so read it from the environment at launch. Never hard-code it, and never
 disable TLS verification globally to work around it.
 
-Testing against a *local* service (`127.0.0.1`) needs none of this — but in
+Testing against a _local_ service (`127.0.0.1`) needs none of this — but in
 practice Chromium has still intermittently failed to reach an external host
 (e.g. the real Supabase project) even with the flags above; setting
 `NO_PROXY=* no_proxy=*` on the launching shell (forcing a direct connection
@@ -488,7 +488,7 @@ A URL that is not in `uri_allow_list` is also replaced by `site_url` with no
 error. Both failure modes look identical, so when a redirect does not stick,
 check the parameter position before assuming the allow-list is wrong.
 
-Allow-list entries need the origin *and* a wildcard to cover both the bare
+Allow-list entries need the origin _and_ a wildcard to cover both the bare
 origin and sub-paths:
 
 ```

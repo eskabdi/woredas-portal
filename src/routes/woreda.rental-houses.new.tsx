@@ -67,7 +67,9 @@ function NewRentalHousePage() {
         .eq("house_number", v.house_number.trim())
         .maybeSingle();
       if (dup) {
-        throw new Error("ይህ የቤት ቁጥር በዚህ ቀበሌ ውስጥ ተመዝግቧል / House number already exists in this kebele");
+        throw new Error(
+          "ይህ የቤት ቁጥር በዚህ ቀበሌ ውስጥ ተመዝግቧል / House number already exists in this kebele",
+        );
       }
       const { data, error } = await supabase
         .from("kebele_rental_house")
@@ -109,21 +111,10 @@ function NewRentalHousePage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader
-        icon={Building2}
-        titleAm="አዲስ የኪራይ ቤት ምዝገባ"
-        titleEn="Register New Rental House"
-      />
+      <PageHeader icon={Building2} titleAm="አዲስ የኪራይ ቤት ምዝገባ" titleEn="Register New Rental House" />
 
-      <form
-        onSubmit={form.handleSubmit((v) => mutation.mutate(v))}
-        className="space-y-4"
-      >
-        <Section
-          icon={Building2}
-          titleAm="የቤት መረጃ"
-          titleEn="House Information"
-        >
+      <form onSubmit={form.handleSubmit((v) => mutation.mutate(v))} className="space-y-4">
+        <Section icon={Building2} titleAm="የቤት መረጃ" titleEn="House Information">
           <Grid>
             <FieldWrap
               labelAm="ቀበሌ"

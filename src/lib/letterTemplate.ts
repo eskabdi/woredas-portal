@@ -15,9 +15,34 @@ export const LETTER_TOKENS: { token: string; labelAm: string; labelEn: string }[
 ];
 
 const ALLOWED_TAGS = new Set([
-  "P", "BR", "DIV", "SPAN", "STRONG", "B", "EM", "I", "U", "S", "SUB", "SUP",
-  "H1", "H2", "H3", "H4", "UL", "OL", "LI", "BLOCKQUOTE", "A", "TABLE",
-  "THEAD", "TBODY", "TR", "TD", "TH", "HR",
+  "P",
+  "BR",
+  "DIV",
+  "SPAN",
+  "STRONG",
+  "B",
+  "EM",
+  "I",
+  "U",
+  "S",
+  "SUB",
+  "SUP",
+  "H1",
+  "H2",
+  "H3",
+  "H4",
+  "UL",
+  "OL",
+  "LI",
+  "BLOCKQUOTE",
+  "A",
+  "TABLE",
+  "THEAD",
+  "TBODY",
+  "TR",
+  "TD",
+  "TH",
+  "HR",
 ]);
 
 const ALLOWED_ATTRS = new Set(["href", "target", "rel", "colspan", "rowspan"]);
@@ -75,14 +100,15 @@ export function sanitizeLetterHtml(html: string): string {
 /** Plain text of an HTML letter body (used for summaries and CSV/PDF export). */
 export function letterHtmlToText(html: string): string {
   if (!html) return "";
-  const withBreaks = html
-    .replace(/<\/(p|div|h[1-4]|li|tr)>/gi, "\n")
-    .replace(/<br\s*\/?>/gi, "\n");
+  const withBreaks = html.replace(/<\/(p|div|h[1-4]|li|tr)>/gi, "\n").replace(/<br\s*\/?>/gi, "\n");
   const text =
     typeof window !== "undefined" && typeof window.DOMParser !== "undefined"
       ? (new DOMParser().parseFromString(withBreaks, "text/html").body.textContent ?? "")
       : withBreaks.replace(/<[^>]*>/g, "");
-  return text.replace(/\n{3,}/g, "\n\n").replace(/[ \t]+/g, " ").trim();
+  return text
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/[ \t]+/g, " ")
+    .trim();
 }
 
 /** Short one-paragraph summary shown on the public verification page. */

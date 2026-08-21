@@ -32,7 +32,6 @@ export function TablePagination({
     if (total > 0 && page > totalPages - 1) onPageChange(totalPages - 1);
   }, [total, page, totalPages, onPageChange]);
 
-
   return (
     <div
       className={
