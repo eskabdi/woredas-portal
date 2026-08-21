@@ -375,13 +375,22 @@ do not push, rewrite history or rotate credentials.
   `credential-templates` bare path, the English-only admin portal) because a
   reviewer who flags those gets discounted on the findings that matter. Use it
   before opening or merging a PR.
+- **`doctor`** — diagnose why something is broken or set up wrong. Runs
+  `scripts/check-workspace.sh` (no credentials, no network: toolchain, deps,
+  route registration, `ssr: false`, env var *names*, secret hygiene), then
+  backend checks per artifact, then a symptom index that maps what you observe
+  to which of the several identical-looking causes it actually is. Use it before
+  a deploy and whenever a screen is unexpectedly empty.
 - **`deploy`** — the four-artifact deploy (schema, seed, Edge Functions,
   frontend), its ordering, how to verify each artifact at its own surface, and
   the credential teardown that ends it.
 
-The review skill exists because this repo has no test suite, `bun run lint` has
-a ~3,500-problem noise floor, and `tsc --noEmit` stays clean through most of the
-bugs that matter here — so review is the only gate, not a second opinion.
+The `review` and `doctor` skills exist for the same underlying reason: this repo
+has no test suite, `bun run lint` has a ~3,500-problem noise floor, and
+`tsc --noEmit` stays clean through most of the bugs that matter here. `review`
+is the gate before a change lands; `doctor` is what you run when something is
+already wrong and failing silently — which, given RLS returning empty rather
+than erroring, is the normal way this system breaks.
 
 ### SessionStart hook (`.claude/hooks/session-start.sh`)
 
