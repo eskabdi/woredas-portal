@@ -368,8 +368,20 @@ do not push, rewrite history or rotate credentials.
 
 ### Skills (`.claude/skills/`)
 
-`deploy` covers the four-artifact deploy (schema, seed, Edge Functions,
-frontend), its ordering, and how to verify each artifact at its own surface.
+- **`review`** — the review workflow for this repo: scope the diff against its
+  merge base, dispatch to the subagents above by what changed, rank findings by
+  blast radius, and verify each claim before asserting it. It carries the list
+  of known false positives (the public key, the anon JWT, the deliberate
+  `credential-templates` bare path, the English-only admin portal) because a
+  reviewer who flags those gets discounted on the findings that matter. Use it
+  before opening or merging a PR.
+- **`deploy`** — the four-artifact deploy (schema, seed, Edge Functions,
+  frontend), its ordering, how to verify each artifact at its own surface, and
+  the credential teardown that ends it.
+
+The review skill exists because this repo has no test suite, `bun run lint` has
+a ~3,500-problem noise floor, and `tsc --noEmit` stays clean through most of the
+bugs that matter here — so review is the only gate, not a second opinion.
 
 ### SessionStart hook (`.claude/hooks/session-start.sh`)
 
