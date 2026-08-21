@@ -2,6 +2,76 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Deployment credentials never enter the repository
+
+**This is a hard rule, and it has no exceptions for convenience, debugging, or
+"just temporarily".** `SUPABASE_ACCESS_TOKEN` (a Personal Access Token with
+account-level control-plane rights over every project on the account) and
+`VERCEL_TOKEN` (which can deploy, read env vars, and delete projects) are the
+two most dangerous strings in this workflow. Neither is scoped to one project,
+so a leak is not contained by the blast radius of this repo.
+
+Never do any of the following, at any point, including after a migration or
+deploy has succeeded:
+
+- Write either token into a tracked file — no `.env` committed "just this once",
+  no value pasted into `.env.example`, `supabase/config.toml`, `vercel.json`,
+  a migration, a script under `scripts/`, or a skill under `.claude/`.
+- Hard-code a token inside a command that gets committed. Read from the
+  environment (`"$SUPABASE_ACCESS_TOKEN"`), never inline the literal.
+- Echo, `cat`, `console.log` or otherwise print a token's value. Print a check
+  digit of behaviour instead — an HTTP status confirms a token works without
+  revealing it:
+  ```bash
+  curl -sS -o /dev/null -w '%{http_code}\n' https://api.supabase.com/v1/projects \
+    -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN"    # 200 = valid, 401 = revoked
+  ```
+- Paste a token into a commit message, PR body, code comment, issue, or any
+  file that will be pushed.
+- Leave one behind in a scratch artifact after the work is done: shell history,
+  a `p.json` / `payload.json` payload for the Management API, a `.pem`, a CLI
+  cache under `supabase/.temp/` or `.vercel/`, or `.claude/settings.local.json`.
+  `.gitignore` covers these paths, but ignored is not the same as absent —
+  delete them.
+
+### Where they are supposed to live
+
+Session environment variables, exported from a shell or supplied by the CI/agent
+environment, and nowhere else. `.env` (gitignored) is acceptable for the
+`VITE_*` and `SUPABASE_*` **project** keys a local build needs; the two
+**deploy** tokens above should not be in it, because a local build never needs
+them. The `service_role` key is a data-plane secret and follows the same rule as
+`.env`: gitignored, never printed, never client-side.
+
+### After every migration or deployment
+
+Finish the job by clearing the credential, not just the task:
+
+```bash
+unset SUPABASE_ACCESS_TOKEN VERCEL_TOKEN
+rm -f p.json payload.json                   # Management API SQL payloads
+git status --porcelain                      # nothing untracked that holds a token
+```
+
+Then confirm nothing is staged or committed that carries one:
+
+```bash
+git diff --cached -U0 | grep -nE 'sbp_[A-Za-z0-9]{20,}|eyJhbGciOi[A-Za-z0-9_-]{20,}'
+```
+
+The `secret-sweep` subagent (`.claude/agents/secret-sweep.md`) runs this sweep
+over the working tree, the staged diff and the branch's commits — use it before
+any push that followed a deploy.
+
+### If a token does reach a commit
+
+Treat it as disclosed the moment it exists in a commit object, whether or not
+that commit was pushed — `git reset` and an amended commit do not remove it from
+the object store or from anyone's fetched copy. **Revoke first, clean up second:**
+rotate the token in the Supabase or Vercel dashboard, then rewrite or discard the
+branch. A rotated token in a public commit is an embarrassment; an unrotated one
+is an incident.
+
 ## Commands
 
 Package manager is **bun** (`bun.lock`, `bunfig.toml`) — a `package-lock.json` also
@@ -35,11 +105,12 @@ Each woreda (a Harari regional administrative district) is an isolated tenant.
 `src/routes/admin.*` is the super-admin console (English, platform-level:
 tenant provisioning, user management, credential template design). `src/routes/woreda.*`
 is the per-tenant operating system (Amharic-primary, Ethiopian-calendar dates:
-residents, households, credentials, civil registration, revenue). Tenant
-isolation is enforced by **RLS** (`get_user_woreda_id()` in migrations), not by
-application-level filtering — a query missing a `woreda_id` filter still can't
-cross tenants, but conversely, don't assume an app-level filter is sufficient
-on its own. See `README.md` for the full domain/role/permission model.
+residents, households, credentials, civil registration, service requests,
+rental houses, revenue). Tenant isolation is enforced by **RLS**
+(`get_user_woreda_id()` in migrations), not by application-level filtering — a
+query missing a `woreda_id` filter still can't cross tenants, but conversely,
+don't assume an app-level filter is sufficient on its own. See `README.md` for
+the full domain/role/permission model, and `docs/` for per-module design notes.
 
 ### Routing
 
@@ -48,30 +119,72 @@ before adding routes — it documents the naming convention (`$id`, `{-$optional
 `$` splat, `_layout`, `__root`) and the Next.js/Remix conventions that do
 **not** apply here.
 
+**Every route sets `ssr: false`.** All 55 route files do; only `__root.tsx`
+doesn't, because it is the shell. This is load-bearing, not incidental: auth
+state is bootstrapped in the browser from `supabase.auth.getSession()`
+(`useAuthBootstrap`), so a server-rendered pass has no session, no `app_user`
+row and no permissions — the page renders its signed-out or empty state into
+the HTML and then flips once hydrated. A new route that omits `ssr: false`
+looks fine in isolation and misbehaves only against a real login. TanStack
+Start is here for the router, the build and the server entry, not for SSR of
+application pages.
+
+### Data layer: client-side queries, no route loaders
+
+There are no `loader`s, no `beforeLoad` guards and no server functions
+(`createServerFn`) anywhere in `src/routes`. Every page fetches in the
+component with `useQuery`/`useMutation` from TanStack Query, calling
+`supabase` (the anon client) directly, and writes go back through
+`queryClient.invalidateQueries`. Privileged operations that need to bypass RLS
+are **Edge Functions** invoked with `supabase.functions.invoke(...)`, not
+server code in this app.
+
+Two RPCs are called from the client for public, unauthenticated verification:
+`verify_credential_token` (ID cards) and `verify_service_letter` (issued
+letters).
+
+Auth lives in a zustand store, not in React Query: `src/stores/authStore.ts`
+holds `user`, `appUser`, `role`, `woredaId` and the derived `permissions`
+array, and `useAuthBootstrap` (mounted once in `__root.tsx`) keeps it in sync
+with Supabase's session events. `isLoading` starts `true` — gate on it rather
+than treating a null `role` as signed out, or every guard flashes its denied
+state on first paint.
+
 ### Two Supabase clients, and why the split is enforced by lint
 
 - `src/integrations/supabase/client.ts` — anon/publishable key, RLS applies.
-  Safe to import anywhere, including client components.
+  Safe to import anywhere, including client components. This is the one
+  essentially everything uses.
 - `src/integrations/supabase/client.server.ts` — service role key, **bypasses
-  RLS**. Only ever import this from another `*.server.ts` module or inside a
-  server function body (`await import(...)`), never as a top-level import in a
-  route file — route files and `*.functions.ts` ship to the client bundle.
-  `eslint.config.js` blocks the Next.js `server-only` package specifically to
-  push toward the `*.server.ts` naming convention instead, since that's what
-  TanStack Start actually respects.
+  RLS**. Currently imported by nothing; it exists for server-side code that
+  doesn't exist yet. If you add such code: only ever import it from another
+  `*.server.ts` module or inside a server function body (`await import(...)`),
+  never as a top-level import in a route file, since route files ship to the
+  client bundle. `eslint.config.js` blocks the Next.js `server-only` package
+  specifically to push toward the `*.server.ts` naming convention instead,
+  since that's what TanStack Start actually respects; `vite.config.ts` also
+  sets `importProtection` to error on it.
 
 Both `client.ts`, `client.server.ts`, `auth-middleware.ts`, and `types.ts` are
 marked "automatically generated" — they come from the Supabase integration
-tooling, not hand-maintained.
+tooling, not hand-maintained. `types.ts` in particular is the generated
+database types; regenerate it rather than editing it when the schema changes.
 
 ### Authorization is enforced twice, independently
 
 `src/config/permissions.ts` defines `ROLE_PERMISSIONS`, a `Role -> Permission[]`
-map. This is checked in two places that both have to be kept correct:
+map over eight roles (`super_admin`, `tenant_admin`, `civil_registrar`,
+`registry_clerk`, `finance_clerk`, `supervisor`, `auditor`, `viewer`). This is
+checked in two places that both have to be kept correct:
 
-1. Client-side: `<PermissionGate permission={P.X}>` gates UI and route access.
+1. Client-side: `<PermissionGate permission={P.X}>` gates UI and route access,
+   reading `hasPermission` off the auth store.
 2. Database-side: `user_has_perm()` (in the baseline migration) gates what a
    query can actually return, keyed off `app_user.role` and `app_user.status`.
+
+Adding a permission means editing `ROLE_PERMISSIONS` *and* the `role_permission`
+seed rows — the client gate opening without the database gate produces a UI
+that renders and then returns nothing.
 
 A `pending` app_user authenticates fine but `user_has_perm()` requires
 `status = 'active'`, so every query comes back empty with nothing in the UI
@@ -79,19 +192,61 @@ explaining why — check status before assuming a permission is misconfigured.
 RLS also lets a user read their own `app_user` row but not write it, so an
 account can't activate itself; activation is an administrator action by design.
 
+### Module gating is a third, separate axis
+
+`tenant_module_config` enables/disables whole modules per tenant
+(`credentials`, `civil_registration`, `revenue`, `reports`, `audit`,
+`services`, `approvals`). `useTenantModules` reads it and `<ModuleGate
+moduleKey="...">` redirects to the woreda dashboard with a toast when the
+module is off. Two behaviours to know: **a missing config row means enabled**
+(absence is not a disable), and super admins always see every module. So a
+module that should be off needs an explicit `is_enabled = false` row, and a
+page that appears for a tenant it shouldn't is usually a missing row rather
+than a broken gate.
+
+Permission, module and RLS are independent — a page can be permitted, enabled,
+and still return nothing because of `status`.
+
+### Storage: private buckets, and the path prefix *is* the tenant check
+
+Seven buckets, all private; reads go through signed URLs
+(`createSignedUrl`), never public URLs. Tenant isolation for objects comes from
+`storage_path_woreda_id(name)`, which derives the owning woreda **from the
+object's path prefix**. So every upload must write
+`` `${woredaId}/...` `` — an object stored at a bare filename is invisible to
+its own tenant, and no error says so. Existing call sites all follow
+`` `${woredaId}/${crypto.randomUUID()}.${ext}` `` (or a stable field name for
+settings assets).
+
+The one exception is `credential-templates`: it is platform-level, readable by
+any authenticated user and writable only by `is_super_admin()`, so
+`admin.credential-template.tsx` correctly uploads to a bare `${side}.png`.
+
+Presentation images (resident photos, tenant logos/signatures, template
+backgrounds) are converted to WebP **in the browser** before upload via
+`src/utils/imageCompression.ts` — a 4 MB phone photo goes up as ~200 KB, which
+is the whole point of doing it client-side. Scanned legal documents keep their
+original bytes; check `convertForUpload`'s callers before routing a new upload
+through it.
+
 ### Database migrations and Edge Functions
 
 `supabase/migrations/00000000000000_baseline.sql` is a single reconstructed
 baseline (the original schema was built incrementally via a dashboard, not
 through migration files), followed by small numbered migrations for anything
-since. `supabase/seed.sql` seeds reference data — when a template or
-config table (e.g. `id_card_template_field`) is edited live in the DB, sync
-the same values into `seed.sql` or a fresh deploy silently regresses.
+since (`_storage`, `_credential`, `_tenant_name_en`). `supabase/seed.sql`
+seeds reference data and `supabase/seed-app-users.sql` resolves users against
+the target project's `auth.users` — when a template or config table (e.g.
+`id_card_template_field`) is edited live in the DB, sync the same values into
+`seed.sql` or a fresh deploy silently regresses.
 
-The four `supabase/functions/*` Edge Functions are a separate deploy artifact
-from the schema — `supabase db push` and seed files don't touch them.
-`scripts/deploy-functions.sh` deploys all four via the Management API (the CLI's
-`functions deploy` doesn't work from a proxied/sandboxed shell — see below).
+The four `supabase/functions/*` Edge Functions (`sign-credential`,
+`invite-tenant-user`, `invite-platform-admin`, `resend-platform-invite`) are a
+separate deploy artifact from the schema — `supabase db push` and seed files
+don't touch them. `scripts/deploy-functions.sh` deploys all four via the
+Management API (the CLI's `functions deploy` doesn't work from a
+proxied/sandboxed shell — see below). The `/deploy` skill in
+`.claude/skills/deploy/` covers the full four-artifact deploy and its ordering.
 
 ### Residence credential (ID card) signing and printing
 
@@ -102,7 +257,9 @@ The multi-file path from "issue a credential" to "printed, scannable card":
    single-letter keys, `YYYYMMDD` dates, no JWT header — with ES256
    (`HARARI_EC_PRIVATE_KEY`). The public half lives in
    `src/config/credentialCryptoConfig.ts`, alongside the shared WebCrypto
-   params both the signer and every verifier use.
+   params both the signer and every verifier use. ES256 rather than RS256 is a
+   physical constraint: a 64-byte signature where RSA-2048 needs 256 is part of
+   what keeps the QR under printable module density.
 2. The signed token is a compact `payload.signature` string stored in
    `residence_credential.qr_payload`, and is also the credential's identity for
    public verification: `src/routes/v.$token.tsx` checks the signature
@@ -121,9 +278,137 @@ The multi-file path from "issue a credential" to "printed, scannable card":
    design note is that 173 modules at 19mm is ~1.3 printer dots per module at
    300dpi — below what any printer resolves, regardless of camera quality — so
    both symbols throw rather than render undersized instead of failing silently.
-5. Admin template editing (`src/routes/admin.credential-template.tsx`) locks
+   `MIN_X_DIMENSION_UM = 250` does the same job for the barcode.
+5. The credential number is 13 digits with a **Luhn** check digit (migration
+   `00000000000002_credential.sql`; it replaced a bespoke mod-11 scheme). Both
+   the length and the check-digit position are enforced invariants the barcode
+   depends on.
+6. Admin template editing (`src/routes/admin.credential-template.tsx`) locks
    the `qr_code` field to a fixed aspect ratio across every resize handle —
    a QR's modules are square, and a stretched bounding box stretches them.
+
+`VITE_PUBLIC_SITE_URL` is deliberately used instead of
+`window.location.origin` for the QR target: a card printed from a laptop on
+localhost would otherwise carry a QR nobody can open, and the mistake only
+surfaces after the cards are physically printed.
+
+### Service requests and issued letters
+
+`docs/general-service-requests-unified-approval-queue.md` is the design note
+for the two newest modules and is worth reading before touching either. In
+short: the service catalog (`service_type`) is **configurable data, not
+hardcoded** — new letter kinds are added in Settings, not in code; fees flow
+through the existing revenue/payment tables rather than a separate ledger; and
+`/woreda/approvals` is a single inbox unioning five workflow tables.
+
+Issued letters are the second public verification surface:
+`src/routes/verify.letter.$token.tsx` backed by the `verify_service_letter`
+RPC. Letter bodies are authored as HTML from templates in Settings, so
+`src/lib/letterTemplate.ts` owns both the `{TOKEN}` substitution list and an
+allow-list sanitiser (tags, attributes and even inline style properties) —
+template HTML is operator-authored but still untrusted, and it renders into the
+print surface.
+
+### Shared UI conventions
+
+Follow the existing list pages (`woreda.residents.index.tsx` is the canonical
+one) rather than inventing per-page state:
+
+- **Table state lives in the URL**, via helpers in `TableToolbar.tsx`
+  (`useUrlSort`, `useClearTableFilters`, `ExportButtons`) and
+  `TablePagination.tsx` (`useUrlPagination`, `useUrlSearchTerm`,
+  `DEFAULT_PAGE_SIZE`). Sorting, paging, search and filters survive reload and
+  are shareable.
+- **Loading/empty/error are components**, not ad-hoc conditionals:
+  `TableSkeletonRows`, `TableEmptyRow`, `TableErrorRow`.
+- **CSV/PDF export** goes through `src/utils/tableExport.ts` (per-table) and
+  `src/utils/reportExport.ts` (report sections), both taking woreda branding
+  from `useReportBranding`.
+- **Dates are Ethiopian-first** in the woreda portal: `src/utils/ethiopianCalendar.ts`
+  does exact JDN-based conversion and holds the Amharic/English month names;
+  input goes through `<EthiopianDateInput>`. Gregorian is stored, Ethiopian is
+  displayed.
+- **Labels are bilingual** in woreda-facing UI, Amharic first, in the form
+  `"ስም / Name"` — including table headers and toast messages.
+- UI primitives in `src/components/ui/` are **shadcn/ui** components (Radix +
+  Tailwind v4, `components.json`); add new ones through the shadcn CLI rather
+  than hand-writing them, and keep app-specific composition in
+  `src/components/common/` and the feature folders.
+
+### Build and server entry
+
+`src/server.ts` is a wrapper around TanStack Start's server entry, pointed at
+by `tanstackStart({ server: { entry: "server" } })`. It exists because **h3
+swallows in-handler throws** into a normal `500` JSON body
+(`{"unhandled":true,"message":"HTTPError"}`), so a plain try/catch never fires
+for those; the wrapper inspects 5xx JSON responses, recovers the real error via
+`src/lib/error-capture.ts` and renders a readable error page. If SSR errors
+start showing as opaque JSON, this is the file.
+
+Vite plugin order matters (Tailwind → TanStack Start → nitro (build only) →
+React), and `react`/`@tanstack/react-query` are deduped because two copies
+break hooks. Don't pin a nitro preset — see the Vercel section.
+
+## Repository tooling for agents
+
+### Subagents (`.claude/agents/`)
+
+Four review agents, each covering a failure mode this codebase has that a build
+or a typecheck will not catch. Invoke them by name.
+
+| Agent | Use it when | Guards against |
+|---|---|---|
+| `secret-sweep` | after any migration or deploy, before pushing | a deploy token reaching a commit — see the rule at the top of this file |
+| `tenant-isolation-review` | touching a permission, role, migration, RLS policy, or upload path | cross-tenant reads, a client gate without its seed rows, a missing storage path prefix |
+| `portal-conventions-review` | after adding a route or a list/detail page | a route missing `ssr: false`, table state in `useState` instead of the URL, non-bilingual labels, Gregorian dates in the woreda portal |
+| `card-print-review` | touching signing, the print route, the template editor, QR or barcode | invariants whose failure is only discovered after cards are physically printed |
+
+They are read-only reviewers (`Bash`, `Read`, `Grep`, `Glob`) — they report, they
+do not push, rewrite history or rotate credentials.
+
+### Skills (`.claude/skills/`)
+
+- **`review`** — the review workflow for this repo: scope the diff against its
+  merge base, dispatch to the subagents above by what changed, rank findings by
+  blast radius, and verify each claim before asserting it. It carries the list
+  of known false positives (the public key, the anon JWT, the deliberate
+  `credential-templates` bare path, the English-only admin portal) because a
+  reviewer who flags those gets discounted on the findings that matter. Use it
+  before opening or merging a PR.
+- **`doctor`** — diagnose why something is broken or set up wrong. Runs
+  `scripts/check-workspace.sh` (no credentials, no network: toolchain, deps,
+  route registration, `ssr: false`, env var *names*, secret hygiene), then
+  backend checks per artifact, then a symptom index that maps what you observe
+  to which of the several identical-looking causes it actually is. Use it before
+  a deploy and whenever a screen is unexpectedly empty.
+- **`deploy`** — the four-artifact deploy (schema, seed, Edge Functions,
+  frontend), its ordering, how to verify each artifact at its own surface, and
+  the credential teardown that ends it.
+
+The `review` and `doctor` skills exist for the same underlying reason: this repo
+has no test suite, `bun run lint` has a ~3,500-problem noise floor, and
+`tsc --noEmit` stays clean through most of the bugs that matter here. `review`
+is the gate before a change lands; `doctor` is what you run when something is
+already wrong and failing silently — which, given RLS returning empty rather
+than erroring, is the normal way this system breaks.
+
+### SessionStart hook (`.claude/hooks/session-start.sh`)
+
+Installs dependencies at the start of a Claude Code on the web session, and
+no-ops locally (`CLAUDE_CODE_REMOTE`). It exists because a fresh container has
+no `node_modules`, so `bun run lint` and `tsc --noEmit` fail with
+module-resolution errors that read as code faults rather than a missing install.
+It prefers `bun` — `bunfig.toml` sets `minimumReleaseAge`, a 24h supply-chain
+guard that only `bun install` honours, so the npm fallback is a fallback, not an
+equivalent.
+
+The hook is registered in `.claude/settings.json` and runs **synchronously**:
+the session starts slightly slower, but nothing races an incomplete install.
+
+Note that `bun run lint` currently reports ~3,500 pre-existing problems, of
+which ~3,459 are `prettier/prettier` formatting. `bun run format` would fix them
+in one sweep, but it touches nearly every file — don't fold that into an
+unrelated change. `tsc --noEmit` is clean.
 
 ## Sandboxed agent environments (Claude Code on the web, CI containers)
 
@@ -212,6 +497,11 @@ https://app.example.com/**,http://localhost:5173,http://localhost:5173/**
 
 Keep these narrow. A pattern like `https://*.vercel.app/**` would let any site
 on that domain receive users' auth tokens.
+
+Invited accounts land on `/set-password`; the three invite Edge Functions
+(`invite-tenant-user`, `invite-platform-admin`, `resend-platform-invite`) are
+what generate those links, so a redirect problem is usually in the function's
+request body rather than in the client.
 
 ### Edge Functions are a separate deploy artifact
 
