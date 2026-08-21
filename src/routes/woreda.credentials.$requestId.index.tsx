@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -63,6 +63,8 @@ export const Route = createFileRoute("/woreda/credentials/$requestId/")({
     </PermissionGate>
   ),
 });
+
+const DocumentViewerDialog = lazy(() => import("@/components/common/DocumentViewerDialog"));
 
 const REQUEST_TYPE_LABEL: Record<string, string> = {
   new_issue: "አዲስ / New Issue",
@@ -171,6 +173,28 @@ function CredentialRequestDetailPage() {
 
   const request = requestQuery.data;
 
+  // supporting_document_content_type isn't in the generated Supabase types
+  // yet (regenerated only after the migration adding it is applied to the
+  // live project -- see CLAUDE.md), so it's fetched separately with an
+  // explicit cast rather than widening requestQuery's select string, which
+  // would collapse that whole query's inference to SelectQueryError.
+  const docContentTypeQuery = useQuery({
+    queryKey: ["credential-request-doc-content-type", request?.credential_request_id],
+    enabled: !!request?.credential_request_id && !!request?.supporting_document_path,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("credential_request")
+        .select("supporting_document_content_type")
+        .eq("credential_request_id", request!.credential_request_id)
+        .maybeSingle();
+      if (error) throw error;
+      return (
+        (data as unknown as { supporting_document_content_type: string | null } | null)
+          ?.supporting_document_content_type ?? null
+      );
+    },
+  });
+
   // Full credential history for this resident (approval-stage review)
   const residentCredsQuery = useQuery({
     queryKey: ["credential-history", request?.resident_id, woredaId],
@@ -212,6 +236,8 @@ function CredentialRequestDetailPage() {
     };
   }, [residentPhotoPath]);
 
+  const [viewerOpen, setViewerOpen] = useState(false);
+
   const openDocument = async () => {
     if (!request?.supporting_document_path) return;
     const { data, error } = await supabase.storage
@@ -222,7 +248,11 @@ function CredentialRequestDetailPage() {
       return;
     }
     setDocUrl(data.signedUrl);
-    window.open(data.signedUrl, "_blank", "noopener");
+    if (docContentTypeQuery.data === "application/pdf") {
+      setViewerOpen(true);
+    } else {
+      window.open(data.signedUrl, "_blank", "noopener");
+    }
   };
 
   const status = request?.status ?? "";
@@ -639,562 +669,588 @@ function CredentialRequestDetailPage() {
   const prior = request.prior as any;
 
   return (
-    <div className="space-y-6 pb-24">
-      <div>
-        <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/woreda/credentials" })}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          <span className="font-noto-ethiopic">ወደ ዝርዝር</span>
-          <span className="ml-1 text-xs opacity-70">/ Back to list</span>
-        </Button>
-      </div>
-
-      <PageHeader icon={CreditCard} titleAm="የመታወቂያ ጥያቄ ዝርዝር" titleEn="Credential Request Detail" />
-
-      {/* Header summary */}
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-wrap items-start gap-4">
-          <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-slate-100 ring-1 ring-slate-200">
-            {photoUrl ? (
-              <img src={photoUrl} className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">
-                No photo
-              </div>
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="font-mono text-sm text-slate-500">{request.request_number}</div>
-            <div className="font-noto-ethiopic text-lg font-semibold text-slate-900">
-              {resident?.full_name_am || "—"}
-            </div>
-            <div className="text-sm text-slate-600">{resident?.full_name || ""}</div>
-            <div className="mt-1 font-mono text-xs text-slate-500">{resident?.resident_number}</div>
-          </div>
-          <div className="flex flex-col items-end gap-2">
-            <StatusChip status={status} />
-            <div className="text-right text-xs text-slate-500">
-              <div className="font-noto-ethiopic">ገባ / Submitted</div>
-              <div>{submittedDisplay}</div>
-            </div>
-          </div>
+    <>
+      <div className="space-y-6 pb-24">
+        <div>
+          <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/woreda/credentials" })}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            <span className="font-noto-ethiopic">ወደ ዝርዝር</span>
+            <span className="ml-1 text-xs opacity-70">/ Back to list</span>
+          </Button>
         </div>
-      </section>
 
-      {/* Card 1 — Original Submission */}
-      <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="rounded-t-xl bg-slate-800 px-5 py-3 text-white">
-          <span className="font-noto-ethiopic text-base font-semibold">የመጀመሪያ ማመልከቻ</span>
-          <span className="ml-2 text-sm text-slate-300">/ Original Submission</span>
-        </div>
-        <div className="space-y-4 p-5">
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-            <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
-              <dt className="font-noto-ethiopic text-slate-500">ጾታ / Sex</dt>
-              <dd className="font-noto-ethiopic text-slate-800">
-                {resident?.sex === "male"
-                  ? "ወንድ / Male"
-                  : resident?.sex === "female"
-                    ? "ሴት / Female"
-                    : "—"}
-              </dd>
-              <dt className="font-noto-ethiopic text-slate-500">የልደት ቀን / DOB</dt>
-              <dd className="font-noto-ethiopic text-slate-800">{dobDisplay}</dd>
-              <dt className="font-noto-ethiopic text-slate-500">ቤተሰብ / Household</dt>
-              <dd className="font-noto-ethiopic text-slate-800">
-                {household
-                  ? `${household.house_number ?? "—"} · ${
-                      household.kebele
-                        ? `${household.kebele.kebele_number ?? ""} ${household.kebele.kebele_name_am}`
-                        : "—"
-                    }`
-                  : "—"}
-              </dd>
-            </dl>
-          </div>
+        <PageHeader
+          icon={CreditCard}
+          titleAm="የመታወቂያ ጥያቄ ዝርዝር"
+          titleEn="Credential Request Detail"
+        />
 
-          <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
-            <dt className="font-noto-ethiopic text-slate-500">የጥያቄ ዓይነት / Request Type</dt>
-            <dd className="font-noto-ethiopic text-slate-800">
-              {REQUEST_TYPE_LABEL[request.request_type] ?? request.request_type}
-            </dd>
-            <dt className="font-noto-ethiopic text-slate-500">የመታወቂያ ዓይነት / Credential Type</dt>
-            <dd className="font-noto-ethiopic text-slate-800">
-              {CRED_TYPE_LABEL[request.credential_type] ?? request.credential_type}
-            </dd>
-            {prior && (
-              <>
-                <dt className="font-noto-ethiopic text-slate-500">የቀድሞ መታወቂያ / Prior Credential</dt>
-                <dd className="text-slate-800">
-                  <span className="font-mono">{prior.credential_number}</span>
-                  {" · "}
-                  <StatusChip status={prior.status} />
-                  {prior.issue_date && (
-                    <span className="ml-2 text-xs text-slate-500">
-                      {formatEthiopianDate(new Date(prior.issue_date))}
-                    </span>
-                  )}
-                </dd>
-              </>
-            )}
-          </dl>
-
-          {request.supporting_document_path && (
-            <div>
-              <Button variant="outline" size="sm" onClick={openDocument}>
-                <FileText className="mr-2 h-4 w-4" />
-                <span className="font-noto-ethiopic">ሰነድ ይመልከቱ</span>
-                <span className="ml-1 text-xs opacity-70">/ View Document</span>
-                {request.supporting_document_name && (
-                  <span className="ml-2 text-xs text-slate-500">
-                    ({request.supporting_document_name})
-                  </span>
-                )}
-              </Button>
-              {docUrl && (
-                <a
-                  href={docUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="ml-2 text-xs text-blue-600 underline"
-                >
-                  reopen
-                </a>
-              )}
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Card 2 — Verification Checklist */}
-      <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="rounded-t-xl bg-blue-700 px-5 py-3 text-white">
-          <span className="font-noto-ethiopic text-base font-semibold">የማረጋገጫ ዝርዝር</span>
-          <span className="ml-2 text-sm text-blue-100">/ Verification Checklist</span>
-        </div>
-        <div className="space-y-4 p-5">
-          {isReturned && request.return_reason && (
-            <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900">
-              <div className="font-noto-ethiopic text-sm font-semibold">
-                የተመለሰበት ምክንያት / Return Reason
-              </div>
-              <p className="mt-1 whitespace-pre-wrap text-sm">{request.return_reason}</p>
-            </div>
-          )}
-
-          {isEditable ? (
-            <>
-              <ul className="space-y-3">
-                {CHECKLIST_ITEMS.map((item) => (
-                  <li key={item.key} className="flex items-start gap-3">
-                    <Checkbox
-                      id={item.key}
-                      checked={checklist[item.key]}
-                      onCheckedChange={(v) =>
-                        setChecklist((c) => ({ ...c, [item.key]: v === true }))
-                      }
-                      disabled={!canAct}
-                    />
-                    <Label htmlFor={item.key} className="cursor-pointer text-sm leading-tight">
-                      <span className="font-noto-ethiopic">{item.labelAm}</span>
-                      <span className="ml-2 text-slate-500">/ {item.labelEn}</span>
-                    </Label>
-                  </li>
-                ))}
-              </ul>
-
-              {missingCorrectionDoc && (
-                <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800">
-                  <span className="font-noto-ethiopic">ሰነድ ያስፈልጋል</span> / Document required for
-                  corrections
-                </div>
-              )}
-
-              {canAct ? (
-                <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-4">
-                  <Button
-                    variant="outline"
-                    onClick={() => setReturnDialogOpen(true)}
-                    disabled={busy}
-                  >
-                    <RotateCcw className="mr-2 h-4 w-4" />
-                    <span className="font-noto-ethiopic">መልስ</span>
-                    <span className="ml-1 text-xs opacity-70">/ Return</span>
-                  </Button>
-                  <Button
-                    onClick={handlePass}
-                    disabled={!allChecked || missingCorrectionDoc || busy}
-                    className="bg-blue-700 text-white hover:bg-blue-800"
-                  >
-                    {busy ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <CheckCircle2 className="mr-2 h-4 w-4" />
-                    )}
-                    <span className="font-noto-ethiopic">አልፏል</span>
-                    <span className="ml-1 text-xs opacity-80">/ Pass</span>
-                  </Button>
-                </div>
+        {/* Header summary */}
+        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-wrap items-start gap-4">
+            <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-slate-100 ring-1 ring-slate-200">
+              {photoUrl ? (
+                <img src={photoUrl} className="h-full w-full object-cover" />
               ) : (
-                <p className="text-xs text-slate-500">
-                  You don&apos;t have permission to verify this request.
-                </p>
+                <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">
+                  No photo
+                </div>
               )}
-            </>
-          ) : isReturned ? (
-            canAct ? (
-              <div className="flex justify-end border-t border-slate-200 pt-4">
-                <Button
-                  onClick={handleResubmit}
-                  disabled={busy}
-                  className="bg-blue-700 text-white hover:bg-blue-800"
-                >
-                  {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  <span className="font-noto-ethiopic">ዳግም ለክለሳ አስገባ</span>
-                  <span className="ml-1 text-xs opacity-80">/ Resubmit for Review</span>
-                </Button>
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="font-mono text-sm text-slate-500">{request.request_number}</div>
+              <div className="font-noto-ethiopic text-lg font-semibold text-slate-900">
+                {resident?.full_name_am || "—"}
               </div>
-            ) : null
-          ) : (
-            <ReadOnlyChecklist
-              checklist={savedChecklist}
-              verifiedByUserId={request.verified_by_user_id}
-              verifiedAt={request.verified_at}
-            />
-          )}
-        </div>
-      </section>
+              <div className="text-sm text-slate-600">{resident?.full_name || ""}</div>
+              <div className="mt-1 font-mono text-xs text-slate-500">
+                {resident?.resident_number}
+              </div>
+            </div>
+            <div className="flex flex-col items-end gap-2">
+              <StatusChip status={status} />
+              <div className="text-right text-xs text-slate-500">
+                <div className="font-noto-ethiopic">ገባ / Submitted</div>
+                <div>{submittedDisplay}</div>
+              </div>
+            </div>
+          </div>
+        </section>
 
-      {/* Card 3 — Approval */}
-      {(status === "pending_approval" ||
-        status === "approval_returned" ||
-        status === "rejected" ||
-        status === "awaiting_payment" ||
-        status === "paid") && (
+        {/* Card 1 — Original Submission */}
         <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
-          <div
-            className={`rounded-t-xl px-5 py-3 text-white ${
-              status === "rejected" ? "bg-red-700" : "bg-emerald-700"
-            }`}
-          >
-            <span className="font-noto-ethiopic text-base font-semibold">ማጽደቅ</span>
-            <span className="ml-2 text-sm text-white/80">/ Approval</span>
+          <div className="rounded-t-xl bg-slate-800 px-5 py-3 text-white">
+            <span className="font-noto-ethiopic text-base font-semibold">የመጀመሪያ ማመልከቻ</span>
+            <span className="ml-2 text-sm text-slate-300">/ Original Submission</span>
           </div>
           <div className="space-y-4 p-5">
-            {/* Review-scope summary */}
-            {(status === "pending_approval" || status === "approval_returned") && (
-              <div className="space-y-3">
-                <div
-                  className={`rounded-md border p-3 text-sm ${
-                    request.duplicate_flag
-                      ? "border-amber-300 bg-amber-50 text-amber-900"
-                      : "border-slate-200 bg-slate-50 text-slate-700"
-                  }`}
-                >
-                  <div className="font-noto-ethiopic font-medium">
-                    {request.duplicate_flag
-                      ? `የድግግሞሽ ውጤት: ${request.duplicate_notes ?? ""}`
-                      : "ምንም ድግግሞሽ አልተገኘም"}
-                  </div>
-                  <div className="text-xs opacity-80">
-                    {request.duplicate_flag
-                      ? `Duplicate check: ${request.duplicate_notes ?? ""}`
-                      : "No duplicates found"}
-                  </div>
-                </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+                <dt className="font-noto-ethiopic text-slate-500">ጾታ / Sex</dt>
+                <dd className="font-noto-ethiopic text-slate-800">
+                  {resident?.sex === "male"
+                    ? "ወንድ / Male"
+                    : resident?.sex === "female"
+                      ? "ሴት / Female"
+                      : "—"}
+                </dd>
+                <dt className="font-noto-ethiopic text-slate-500">የልደት ቀን / DOB</dt>
+                <dd className="font-noto-ethiopic text-slate-800">{dobDisplay}</dd>
+                <dt className="font-noto-ethiopic text-slate-500">ቤተሰብ / Household</dt>
+                <dd className="font-noto-ethiopic text-slate-800">
+                  {household
+                    ? `${household.house_number ?? "—"} · ${
+                        household.kebele
+                          ? `${household.kebele.kebele_number ?? ""} ${household.kebele.kebele_name_am}`
+                          : "—"
+                      }`
+                    : "—"}
+                </dd>
+              </dl>
+            </div>
 
-                <div className="rounded-md border border-slate-200 bg-white p-3">
-                  <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    <span className="font-noto-ethiopic">የዚህ ነዋሪ ቀደም ያሉ መታወቂያዎች</span>
-                    <span className="ml-2 normal-case">/ Credential history</span>
-                  </div>
-                  {residentCredsQuery.isLoading ? (
-                    <Skeleton className="h-8 w-full" />
-                  ) : (residentCredsQuery.data?.length ?? 0) === 0 ? (
-                    <p className="font-noto-ethiopic text-sm text-slate-500">
-                      ይህ ነዋሪ ቀደም ሲል ምስክርነት የለውም
-                      <span className="ml-2 text-slate-400">
-                        / This resident has no prior credentials
+            <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+              <dt className="font-noto-ethiopic text-slate-500">የጥያቄ ዓይነት / Request Type</dt>
+              <dd className="font-noto-ethiopic text-slate-800">
+                {REQUEST_TYPE_LABEL[request.request_type] ?? request.request_type}
+              </dd>
+              <dt className="font-noto-ethiopic text-slate-500">የመታወቂያ ዓይነት / Credential Type</dt>
+              <dd className="font-noto-ethiopic text-slate-800">
+                {CRED_TYPE_LABEL[request.credential_type] ?? request.credential_type}
+              </dd>
+              {prior && (
+                <>
+                  <dt className="font-noto-ethiopic text-slate-500">
+                    የቀድሞ መታወቂያ / Prior Credential
+                  </dt>
+                  <dd className="text-slate-800">
+                    <span className="font-mono">{prior.credential_number}</span>
+                    {" · "}
+                    <StatusChip status={prior.status} />
+                    {prior.issue_date && (
+                      <span className="ml-2 text-xs text-slate-500">
+                        {formatEthiopianDate(new Date(prior.issue_date))}
                       </span>
-                    </p>
-                  ) : (
-                    <ul className="divide-y divide-slate-100 text-sm">
-                      {residentCredsQuery.data!.map((c) => (
-                        <li
-                          key={c.credential_id}
-                          className="flex flex-wrap items-center gap-3 py-2"
-                        >
-                          <span className="font-mono text-xs">{c.credential_number}</span>
-                          <span className="font-noto-ethiopic text-slate-600">
-                            {CRED_TYPE_LABEL[c.credential_type] ?? c.credential_type}
-                          </span>
-                          <StatusChip status={c.status} />
-                          {c.issue_date && (
-                            <span className="text-xs text-slate-500">
-                              {formatEthiopianDate(new Date(c.issue_date))}
-                            </span>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {status === "pending_approval" &&
-              (canApprove ? (
-                <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-4">
-                  <Button variant="destructive" onClick={() => setRejectOpen(true)} disabled={busy}>
-                    <XCircle className="mr-2 h-4 w-4" />
-                    <span className="font-noto-ethiopic">አትቀበል</span>
-                    <span className="ml-1 text-xs opacity-80">/ Reject</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setApprovalReturnOpen(true)}
-                    disabled={busy}
-                  >
-                    <RotateCcw className="mr-2 h-4 w-4" />
-                    <span className="font-noto-ethiopic">መልስ</span>
-                    <span className="ml-1 text-xs opacity-70">/ Return</span>
-                  </Button>
-                  <Button
-                    onClick={handleApprove}
-                    disabled={busy}
-                    className="bg-emerald-700 text-white hover:bg-emerald-800"
-                  >
-                    {busy ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <CheckCircle2 className="mr-2 h-4 w-4" />
                     )}
-                    <span className="font-noto-ethiopic">አጽድቅ</span>
-                    <span className="ml-1 text-xs opacity-80">/ Approve</span>
-                  </Button>
-                </div>
-              ) : (
-                <p className="text-xs text-slate-500">
-                  You don&apos;t have permission to approve this request.
-                </p>
-              ))}
+                  </dd>
+                </>
+              )}
+            </dl>
 
-            {status === "approval_returned" && (
-              <>
-                {request.return_reason && (
-                  <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900">
-                    <div className="font-noto-ethiopic text-sm font-semibold">
-                      በማጽደቅ ደረጃ የተመለሰበት ምክንያት
-                    </div>
-                    <div className="text-xs opacity-80">/ Returned at Approval Stage — Reason</div>
-                    <p className="mt-2 whitespace-pre-wrap text-sm">{request.return_reason}</p>
-                  </div>
-                )}
-                {canAct && (
-                  <div className="flex justify-end border-t border-slate-200 pt-4">
-                    <Button
-                      onClick={handleResubmitForApproval}
-                      disabled={busy}
-                      className="bg-blue-700 text-white hover:bg-blue-800"
-                    >
-                      {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      <span className="font-noto-ethiopic">ለማጽደቅ ዳግም አስገባ</span>
-                      <span className="ml-1 text-xs opacity-80">/ Resubmit for Approval</span>
-                    </Button>
-                  </div>
-                )}
-              </>
-            )}
-
-            {status === "rejected" && (
-              <div className="rounded-lg border-2 border-red-300 bg-red-50 p-4 text-red-900">
-                <div className="font-noto-ethiopic text-sm font-semibold">ጥያቄው ውድቅ ተደርጓል</div>
-                <div className="text-xs opacity-80">/ Request rejected</div>
-                {request.reject_reason && (
-                  <p className="mt-2 whitespace-pre-wrap text-sm">
-                    <span className="font-noto-ethiopic font-medium">ምክንያት: </span>
-                    {request.reject_reason}
-                  </p>
-                )}
-                {request.approval_decision_at && (
-                  <p className="mt-2 text-xs text-red-700/80">
-                    Decided on {formatEthiopianDate(new Date(request.approval_decision_at))}
-                    {request.approved_by_user_id
-                      ? ` by user ${request.approved_by_user_id.slice(0, 8)}…`
-                      : ""}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {(status === "awaiting_payment" || status === "paid") && (
-              <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
-                <div className="font-noto-ethiopic font-semibold">ጥያቄው ጸድቋል</div>
-                <div className="text-xs opacity-80">/ Request approved</div>
-                {request.approval_decision_at && (
-                  <p className="mt-1 text-xs">
-                    Approved on {formatEthiopianDate(new Date(request.approval_decision_at))}
-                    {request.approved_by_user_id
-                      ? ` by user ${request.approved_by_user_id.slice(0, 8)}…`
-                      : ""}
-                  </p>
+            {request.supporting_document_path && (
+              <div>
+                <Button variant="outline" size="sm" onClick={openDocument}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  <span className="font-noto-ethiopic">ሰነድ ይመልከቱ</span>
+                  <span className="ml-1 text-xs opacity-70">/ View Document</span>
+                  {request.supporting_document_name && (
+                    <span className="ml-2 text-xs text-slate-500">
+                      ({request.supporting_document_name})
+                    </span>
+                  )}
+                </Button>
+                {docUrl && (
+                  <a
+                    href={docUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ml-2 text-xs text-blue-600 underline"
+                  >
+                    reopen
+                  </a>
                 )}
               </div>
             )}
           </div>
         </section>
-      )}
 
-      {(status === "awaiting_payment" || status === "paid") && (
-        <PaymentCard request={request} status={status} onDone={invalidateAll} />
-      )}
-
-      {status === "paid" && request.credential_id && (
-        <CredentialReadinessCard
-          credentialRowId={request.credential_id}
-          requestId={request.credential_request_id}
-          resident={resident}
-          household={household}
-          photoSignedUrl={photoUrl}
-          woredaId={woredaId!}
-        />
-      )}
-
-      {request.credential_id && (
-        <IssuanceCard
-          credentialRowId={request.credential_id}
-          requestId={request.credential_request_id}
-          requestType={request.request_type}
-          priorCredentialId={request.prior_credential_id}
-          residentFullNameAm={resident?.full_name_am ?? ""}
-          onDone={invalidateAll}
-        />
-      )}
-
-      {request.credential_id && (
-        <RevocationCard credentialRowId={request.credential_id} onDone={invalidateAll} />
-      )}
-
-      <AlertDialog open={returnDialogOpen} onOpenChange={setReturnDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              <span className="font-noto-ethiopic">ጥያቄውን ይመልሱ</span>
-              <span className="ml-2 text-sm text-slate-500">/ Return Request</span>
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Provide a reason. It will be visible to the intake officer.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="return-reason">
-              <span className="font-noto-ethiopic">የመመለሻ ምክንያት</span>
-              <span className="ml-2 text-slate-500">/ Return Reason</span>
-            </Label>
-            <Textarea
-              id="return-reason"
-              rows={4}
-              value={returnReason}
-              onChange={(e) => setReturnReason(e.target.value)}
-              placeholder="Min 5 characters"
-            />
+        {/* Card 2 — Verification Checklist */}
+        <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="rounded-t-xl bg-blue-700 px-5 py-3 text-white">
+            <span className="font-noto-ethiopic text-base font-semibold">የማረጋገጫ ዝርዝር</span>
+            <span className="ml-2 text-sm text-blue-100">/ Verification Checklist</span>
           </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault();
-                handleReturn();
-              }}
-              disabled={busy || returnReason.trim().length < 5}
-            >
-              {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Confirm Return
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          <div className="space-y-4 p-5">
+            {isReturned && request.return_reason && (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900">
+                <div className="font-noto-ethiopic text-sm font-semibold">
+                  የተመለሰበት ምክንያት / Return Reason
+                </div>
+                <p className="mt-1 whitespace-pre-wrap text-sm">{request.return_reason}</p>
+              </div>
+            )}
 
-      <AlertDialog open={approvalReturnOpen} onOpenChange={setApprovalReturnOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              <span className="font-noto-ethiopic">በማጽደቅ ደረጃ ይመልሱ</span>
-              <span className="ml-2 text-sm text-slate-500">/ Return at Approval Stage</span>
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Provide a reason. It will be visible to the clerk.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="approval-return-reason">
-              <span className="font-noto-ethiopic">የማጽደቅ ደረጃ የመመለሻ ምክንያት</span>
-              <span className="ml-2 text-slate-500">/ Approval-Stage Return Reason</span>
-            </Label>
-            <Textarea
-              id="approval-return-reason"
-              rows={4}
-              value={approvalReturnReason}
-              onChange={(e) => setApprovalReturnReason(e.target.value)}
-              placeholder="Min 5 characters"
-            />
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault();
-                handleApprovalReturn();
-              }}
-              disabled={busy || approvalReturnReason.trim().length < 5}
-            >
-              {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Confirm Return
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            {isEditable ? (
+              <>
+                <ul className="space-y-3">
+                  {CHECKLIST_ITEMS.map((item) => (
+                    <li key={item.key} className="flex items-start gap-3">
+                      <Checkbox
+                        id={item.key}
+                        checked={checklist[item.key]}
+                        onCheckedChange={(v) =>
+                          setChecklist((c) => ({ ...c, [item.key]: v === true }))
+                        }
+                        disabled={!canAct}
+                      />
+                      <Label htmlFor={item.key} className="cursor-pointer text-sm leading-tight">
+                        <span className="font-noto-ethiopic">{item.labelAm}</span>
+                        <span className="ml-2 text-slate-500">/ {item.labelEn}</span>
+                      </Label>
+                    </li>
+                  ))}
+                </ul>
 
-      <AlertDialog open={rejectOpen} onOpenChange={setRejectOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              <span className="font-noto-ethiopic">ጥያቄውን ውድቅ ያድርጉ</span>
-              <span className="ml-2 text-sm text-slate-500">/ Reject Request</span>
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              This is final. The request cannot be reopened.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="reject-reason">
-              <span className="font-noto-ethiopic">የመቀበል ምክንያት</span>
-              <span className="ml-2 text-slate-500">/ Rejection Reason</span>
-            </Label>
-            <Textarea
-              id="reject-reason"
-              rows={4}
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="Min 5 characters"
-            />
+                {missingCorrectionDoc && (
+                  <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800">
+                    <span className="font-noto-ethiopic">ሰነድ ያስፈልጋል</span> / Document required for
+                    corrections
+                  </div>
+                )}
+
+                {canAct ? (
+                  <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => setReturnDialogOpen(true)}
+                      disabled={busy}
+                    >
+                      <RotateCcw className="mr-2 h-4 w-4" />
+                      <span className="font-noto-ethiopic">መልስ</span>
+                      <span className="ml-1 text-xs opacity-70">/ Return</span>
+                    </Button>
+                    <Button
+                      onClick={handlePass}
+                      disabled={!allChecked || missingCorrectionDoc || busy}
+                      className="bg-blue-700 text-white hover:bg-blue-800"
+                    >
+                      {busy ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="mr-2 h-4 w-4" />
+                      )}
+                      <span className="font-noto-ethiopic">አልፏል</span>
+                      <span className="ml-1 text-xs opacity-80">/ Pass</span>
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500">
+                    You don&apos;t have permission to verify this request.
+                  </p>
+                )}
+              </>
+            ) : isReturned ? (
+              canAct ? (
+                <div className="flex justify-end border-t border-slate-200 pt-4">
+                  <Button
+                    onClick={handleResubmit}
+                    disabled={busy}
+                    className="bg-blue-700 text-white hover:bg-blue-800"
+                  >
+                    {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    <span className="font-noto-ethiopic">ዳግም ለክለሳ አስገባ</span>
+                    <span className="ml-1 text-xs opacity-80">/ Resubmit for Review</span>
+                  </Button>
+                </div>
+              ) : null
+            ) : (
+              <ReadOnlyChecklist
+                checklist={savedChecklist}
+                verifiedByUserId={request.verified_by_user_id}
+                verifiedAt={request.verified_at}
+              />
+            )}
           </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault();
-                handleReject();
-              }}
-              disabled={busy || rejectReason.trim().length < 5}
-              className="bg-red-600 hover:bg-red-700"
+        </section>
+
+        {/* Card 3 — Approval */}
+        {(status === "pending_approval" ||
+          status === "approval_returned" ||
+          status === "rejected" ||
+          status === "awaiting_payment" ||
+          status === "paid") && (
+          <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div
+              className={`rounded-t-xl px-5 py-3 text-white ${
+                status === "rejected" ? "bg-red-700" : "bg-emerald-700"
+              }`}
             >
-              {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Confirm Reject
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+              <span className="font-noto-ethiopic text-base font-semibold">ማጽደቅ</span>
+              <span className="ml-2 text-sm text-white/80">/ Approval</span>
+            </div>
+            <div className="space-y-4 p-5">
+              {/* Review-scope summary */}
+              {(status === "pending_approval" || status === "approval_returned") && (
+                <div className="space-y-3">
+                  <div
+                    className={`rounded-md border p-3 text-sm ${
+                      request.duplicate_flag
+                        ? "border-amber-300 bg-amber-50 text-amber-900"
+                        : "border-slate-200 bg-slate-50 text-slate-700"
+                    }`}
+                  >
+                    <div className="font-noto-ethiopic font-medium">
+                      {request.duplicate_flag
+                        ? `የድግግሞሽ ውጤት: ${request.duplicate_notes ?? ""}`
+                        : "ምንም ድግግሞሽ አልተገኘም"}
+                    </div>
+                    <div className="text-xs opacity-80">
+                      {request.duplicate_flag
+                        ? `Duplicate check: ${request.duplicate_notes ?? ""}`
+                        : "No duplicates found"}
+                    </div>
+                  </div>
+
+                  <div className="rounded-md border border-slate-200 bg-white p-3">
+                    <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      <span className="font-noto-ethiopic">የዚህ ነዋሪ ቀደም ያሉ መታወቂያዎች</span>
+                      <span className="ml-2 normal-case">/ Credential history</span>
+                    </div>
+                    {residentCredsQuery.isLoading ? (
+                      <Skeleton className="h-8 w-full" />
+                    ) : (residentCredsQuery.data?.length ?? 0) === 0 ? (
+                      <p className="font-noto-ethiopic text-sm text-slate-500">
+                        ይህ ነዋሪ ቀደም ሲል ምስክርነት የለውም
+                        <span className="ml-2 text-slate-400">
+                          / This resident has no prior credentials
+                        </span>
+                      </p>
+                    ) : (
+                      <ul className="divide-y divide-slate-100 text-sm">
+                        {residentCredsQuery.data!.map((c) => (
+                          <li
+                            key={c.credential_id}
+                            className="flex flex-wrap items-center gap-3 py-2"
+                          >
+                            <span className="font-mono text-xs">{c.credential_number}</span>
+                            <span className="font-noto-ethiopic text-slate-600">
+                              {CRED_TYPE_LABEL[c.credential_type] ?? c.credential_type}
+                            </span>
+                            <StatusChip status={c.status} />
+                            {c.issue_date && (
+                              <span className="text-xs text-slate-500">
+                                {formatEthiopianDate(new Date(c.issue_date))}
+                              </span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {status === "pending_approval" &&
+                (canApprove ? (
+                  <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-4">
+                    <Button
+                      variant="destructive"
+                      onClick={() => setRejectOpen(true)}
+                      disabled={busy}
+                    >
+                      <XCircle className="mr-2 h-4 w-4" />
+                      <span className="font-noto-ethiopic">አትቀበል</span>
+                      <span className="ml-1 text-xs opacity-80">/ Reject</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setApprovalReturnOpen(true)}
+                      disabled={busy}
+                    >
+                      <RotateCcw className="mr-2 h-4 w-4" />
+                      <span className="font-noto-ethiopic">መልስ</span>
+                      <span className="ml-1 text-xs opacity-70">/ Return</span>
+                    </Button>
+                    <Button
+                      onClick={handleApprove}
+                      disabled={busy}
+                      className="bg-emerald-700 text-white hover:bg-emerald-800"
+                    >
+                      {busy ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="mr-2 h-4 w-4" />
+                      )}
+                      <span className="font-noto-ethiopic">አጽድቅ</span>
+                      <span className="ml-1 text-xs opacity-80">/ Approve</span>
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500">
+                    You don&apos;t have permission to approve this request.
+                  </p>
+                ))}
+
+              {status === "approval_returned" && (
+                <>
+                  {request.return_reason && (
+                    <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900">
+                      <div className="font-noto-ethiopic text-sm font-semibold">
+                        በማጽደቅ ደረጃ የተመለሰበት ምክንያት
+                      </div>
+                      <div className="text-xs opacity-80">
+                        / Returned at Approval Stage — Reason
+                      </div>
+                      <p className="mt-2 whitespace-pre-wrap text-sm">{request.return_reason}</p>
+                    </div>
+                  )}
+                  {canAct && (
+                    <div className="flex justify-end border-t border-slate-200 pt-4">
+                      <Button
+                        onClick={handleResubmitForApproval}
+                        disabled={busy}
+                        className="bg-blue-700 text-white hover:bg-blue-800"
+                      >
+                        {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        <span className="font-noto-ethiopic">ለማጽደቅ ዳግም አስገባ</span>
+                        <span className="ml-1 text-xs opacity-80">/ Resubmit for Approval</span>
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {status === "rejected" && (
+                <div className="rounded-lg border-2 border-red-300 bg-red-50 p-4 text-red-900">
+                  <div className="font-noto-ethiopic text-sm font-semibold">ጥያቄው ውድቅ ተደርጓል</div>
+                  <div className="text-xs opacity-80">/ Request rejected</div>
+                  {request.reject_reason && (
+                    <p className="mt-2 whitespace-pre-wrap text-sm">
+                      <span className="font-noto-ethiopic font-medium">ምክንያት: </span>
+                      {request.reject_reason}
+                    </p>
+                  )}
+                  {request.approval_decision_at && (
+                    <p className="mt-2 text-xs text-red-700/80">
+                      Decided on {formatEthiopianDate(new Date(request.approval_decision_at))}
+                      {request.approved_by_user_id
+                        ? ` by user ${request.approved_by_user_id.slice(0, 8)}…`
+                        : ""}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {(status === "awaiting_payment" || status === "paid") && (
+                <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+                  <div className="font-noto-ethiopic font-semibold">ጥያቄው ጸድቋል</div>
+                  <div className="text-xs opacity-80">/ Request approved</div>
+                  {request.approval_decision_at && (
+                    <p className="mt-1 text-xs">
+                      Approved on {formatEthiopianDate(new Date(request.approval_decision_at))}
+                      {request.approved_by_user_id
+                        ? ` by user ${request.approved_by_user_id.slice(0, 8)}…`
+                        : ""}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {(status === "awaiting_payment" || status === "paid") && (
+          <PaymentCard request={request} status={status} onDone={invalidateAll} />
+        )}
+
+        {status === "paid" && request.credential_id && (
+          <CredentialReadinessCard
+            credentialRowId={request.credential_id}
+            requestId={request.credential_request_id}
+            resident={resident}
+            household={household}
+            photoSignedUrl={photoUrl}
+            woredaId={woredaId!}
+          />
+        )}
+
+        {request.credential_id && (
+          <IssuanceCard
+            credentialRowId={request.credential_id}
+            requestId={request.credential_request_id}
+            requestType={request.request_type}
+            priorCredentialId={request.prior_credential_id}
+            residentFullNameAm={resident?.full_name_am ?? ""}
+            onDone={invalidateAll}
+          />
+        )}
+
+        {request.credential_id && (
+          <RevocationCard credentialRowId={request.credential_id} onDone={invalidateAll} />
+        )}
+
+        <AlertDialog open={returnDialogOpen} onOpenChange={setReturnDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                <span className="font-noto-ethiopic">ጥያቄውን ይመልሱ</span>
+                <span className="ml-2 text-sm text-slate-500">/ Return Request</span>
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Provide a reason. It will be visible to the intake officer.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="space-y-2">
+              <Label htmlFor="return-reason">
+                <span className="font-noto-ethiopic">የመመለሻ ምክንያት</span>
+                <span className="ml-2 text-slate-500">/ Return Reason</span>
+              </Label>
+              <Textarea
+                id="return-reason"
+                rows={4}
+                value={returnReason}
+                onChange={(e) => setReturnReason(e.target.value)}
+                placeholder="Min 5 characters"
+              />
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleReturn();
+                }}
+                disabled={busy || returnReason.trim().length < 5}
+              >
+                {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Confirm Return
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={approvalReturnOpen} onOpenChange={setApprovalReturnOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                <span className="font-noto-ethiopic">በማጽደቅ ደረጃ ይመልሱ</span>
+                <span className="ml-2 text-sm text-slate-500">/ Return at Approval Stage</span>
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Provide a reason. It will be visible to the clerk.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="space-y-2">
+              <Label htmlFor="approval-return-reason">
+                <span className="font-noto-ethiopic">የማጽደቅ ደረጃ የመመለሻ ምክንያት</span>
+                <span className="ml-2 text-slate-500">/ Approval-Stage Return Reason</span>
+              </Label>
+              <Textarea
+                id="approval-return-reason"
+                rows={4}
+                value={approvalReturnReason}
+                onChange={(e) => setApprovalReturnReason(e.target.value)}
+                placeholder="Min 5 characters"
+              />
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleApprovalReturn();
+                }}
+                disabled={busy || approvalReturnReason.trim().length < 5}
+              >
+                {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Confirm Return
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={rejectOpen} onOpenChange={setRejectOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                <span className="font-noto-ethiopic">ጥያቄውን ውድቅ ያድርጉ</span>
+                <span className="ml-2 text-sm text-slate-500">/ Reject Request</span>
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                This is final. The request cannot be reopened.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="space-y-2">
+              <Label htmlFor="reject-reason">
+                <span className="font-noto-ethiopic">የመቀበል ምክንያት</span>
+                <span className="ml-2 text-slate-500">/ Rejection Reason</span>
+              </Label>
+              <Textarea
+                id="reject-reason"
+                rows={4}
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Min 5 characters"
+              />
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleReject();
+                }}
+                disabled={busy || rejectReason.trim().length < 5}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Confirm Reject
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+      {viewerOpen && (
+        <Suspense fallback={null}>
+          <DocumentViewerDialog
+            open={viewerOpen}
+            onOpenChange={setViewerOpen}
+            signedUrl={docUrl}
+            title={request?.supporting_document_name ?? "Document"}
+          />
+        </Suspense>
+      )}
+    </>
   );
 }
 

@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import {
   ArrowLeft,
   Banknote,
@@ -46,6 +46,8 @@ export const Route = createFileRoute("/woreda/services/$requestId/")({
   ssr: false,
   component: ServiceRequestDetailPage,
 });
+
+const DocumentViewerDialog = lazy(() => import("@/components/common/DocumentViewerDialog"));
 
 interface Detail {
   service_request_id: string;
@@ -161,7 +163,7 @@ function ServiceRequestDetailPage() {
       const { data, error } = await supabase
         .from("service_request_attachment")
         .select(
-          "attachment_id, document_type, file_name, storage_path, file_size_bytes, created_at",
+          "attachment_id, document_type, file_name, storage_path, file_size_bytes, content_type, created_at",
         )
         .eq("service_request_id", requestId)
         .order("created_at", { ascending: true });
@@ -378,7 +380,11 @@ function ServiceRequestDetailPage() {
     }
   };
 
-  const openAttachment = async (path: string) => {
+  const [viewerUrl, setViewerUrl] = useState<string | null>(null);
+  const [viewerTitle, setViewerTitle] = useState("");
+  const [viewerOpen, setViewerOpen] = useState(false);
+
+  const openAttachment = async (path: string, fileName: string, contentType: string | null) => {
     const { data, error } = await supabase.storage
       .from("service-request-documents")
       .createSignedUrl(path, 300);
@@ -386,7 +392,13 @@ function ServiceRequestDetailPage() {
       toast.error("ፋይሉን መክፈት አልተቻለም / Could not open the file");
       return;
     }
-    window.open(data.signedUrl, "_blank", "noopener");
+    if (contentType === "application/pdf") {
+      setViewerUrl(data.signedUrl);
+      setViewerTitle(fileName);
+      setViewerOpen(true);
+    } else {
+      window.open(data.signedUrl, "_blank", "noopener");
+    }
   };
 
   if (detailQuery.isPending) {
@@ -412,512 +424,528 @@ function ServiceRequestDetailPage() {
   const canCollect = hasPermission(P.PAYMENT_COLLECT);
 
   return (
-    <div className="space-y-6 pb-16">
-      <PageHeader
-        titleAm={req.subject || (category === "complaint" ? "ቅሬታ" : "የአገልግሎት ጥያቄ")}
-        titleEn={req.request_number}
-        description={
-          req.service_type ? `${req.service_type.name_am} / ${req.service_type.name_en}` : ""
-        }
-        actions={
-          <div className="flex items-center gap-2">
-            <Link to={category === "complaint" ? "/woreda/complaints" : "/woreda/services"}>
-              <Button variant="outline" size="sm">
-                <ArrowLeft className="mr-1 h-4 w-4" /> ተመለስ / Back
-              </Button>
-            </Link>
-            {category === "letter" &&
-              ["approved", "paid", "issued", "closed"].includes(req.status) && (
-                <Link to="/woreda/services/$requestId/print" params={{ requestId }}>
-                  <Button size="sm">
-                    <Printer className="mr-1 h-4 w-4" /> ደብዳቤ አትም / Print letter
-                  </Button>
-                </Link>
-              )}
-          </div>
-        }
-      />
+    <>
+      <div className="space-y-6 pb-16">
+        <PageHeader
+          titleAm={req.subject || (category === "complaint" ? "ቅሬታ" : "የአገልግሎት ጥያቄ")}
+          titleEn={req.request_number}
+          description={
+            req.service_type ? `${req.service_type.name_am} / ${req.service_type.name_en}` : ""
+          }
+          actions={
+            <div className="flex items-center gap-2">
+              <Link to={category === "complaint" ? "/woreda/complaints" : "/woreda/services"}>
+                <Button variant="outline" size="sm">
+                  <ArrowLeft className="mr-1 h-4 w-4" /> ተመለስ / Back
+                </Button>
+              </Link>
+              {category === "letter" &&
+                ["approved", "paid", "issued", "closed"].includes(req.status) && (
+                  <Link to="/woreda/services/$requestId/print" params={{ requestId }}>
+                    <Button size="sm">
+                      <Printer className="mr-1 h-4 w-4" /> ደብዳቤ አትም / Print letter
+                    </Button>
+                  </Link>
+                )}
+            </div>
+          }
+        />
 
-      {/* Stepper */}
-      <Card className="p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          {flow.map((s, i) => (
-            <div key={s} className="flex items-center gap-2">
-              <div
-                className={
-                  "flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold " +
-                  (isTerminal
-                    ? "bg-slate-200 text-slate-500"
-                    : i <= index
-                      ? "bg-blue-700 text-white"
-                      : "bg-slate-100 text-slate-500")
-                }
-              >
-                {i < index && !isTerminal ? <Check className="h-4 w-4" /> : i + 1}
-              </div>
-              <span className="font-noto-ethiopic text-xs text-slate-600">
-                {serviceStatusLabel(s)}
-              </span>
-              {i < flow.length - 1 && <span className="mx-1 text-slate-300">→</span>}
-            </div>
-          ))}
-        </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <StatusBadge status={req.status} />
-          <PriorityBadge priority={req.priority} />
-          {req.return_reason && (
-            <span className="font-noto-ethiopic text-xs text-amber-700">
-              የመመለስ ምክንያት: {req.return_reason}
-            </span>
-          )}
-          {req.reject_reason && (
-            <span className="font-noto-ethiopic text-xs text-red-700">
-              የውድቅ ምክንያት: {req.reject_reason}
-            </span>
-          )}
-        </div>
-      </Card>
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
-          <Card className="p-5">
-            <h3 className="font-noto-ethiopic mb-3 flex items-center gap-2 text-base font-semibold">
-              <FileText className="h-4 w-4 text-blue-700" /> የጥያቄ መረጃ / Request information
-            </h3>
-            <div className="grid gap-x-8 md:grid-cols-2">
-              <Row
-                labelAm="አመልካች"
-                labelEn="Applicant"
-                value={
-                  req.resident ? (
-                    <Link
-                      to="/woreda/residents/$residentId"
-                      params={{ residentId: req.resident.resident_id }}
-                      className="text-blue-700 hover:underline"
-                    >
-                      {req.resident.full_name_am || req.resident.full_name} (
-                      {req.resident.resident_number})
-                    </Link>
-                  ) : (
-                    req.applicant_name
-                  )
-                }
-              />
-              <Row labelAm="ስልክ" labelEn="Phone" value={req.applicant_phone} />
-              <Row
-                labelAm="ቀበሌ"
-                labelEn="Kebele"
-                value={
-                  req.kebele ? `${req.kebele.kebele_name_am} / ${req.kebele.kebele_name_en}` : null
-                }
-              />
-              <Row
-                labelAm="የቀረበበት ቀን"
-                labelEn="Submitted"
-                value={new Date(req.submitted_at).toLocaleString("en-GB", { hour12: false })}
-              />
-              {category === "letter" ? (
-                <>
-                  <Row labelAm="ዓላማ" labelEn="Purpose" value={req.purpose} />
-                  <Row labelAm="ለማን" labelEn="Addressed to" value={req.addressed_to} />
-                </>
-              ) : (
-                <>
-                  <Row labelAm="ተከሳሽ" labelEn="Respondent" value={req.respondent_name} />
-                  <Row
-                    labelAm="የተከሰተበት"
-                    labelEn="Incident"
-                    value={
-                      [req.incident_date, req.incident_place].filter(Boolean).join(" — ") || null
-                    }
-                  />
-                </>
-              )}
-              <Row
-                labelAm="ክፍያ"
-                labelEn="Fee"
-                value={
-                  Number(req.fee_amount) > 0
-                    ? `${Number(req.fee_amount).toFixed(2)} ETB`
-                    : "ነጻ / Free"
-                }
-              />
-            </div>
-            <div className="mt-4">
-              <div className="text-xs text-slate-500">
-                <span className="font-noto-ethiopic">ማብራሪያ</span> / Description
-              </div>
-              <p className="font-noto-ethiopic mt-1 whitespace-pre-wrap text-sm text-slate-800">
-                {req.details || "—"}
-              </p>
-            </div>
-            {req.resolution_notes && (
-              <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 p-3">
-                <div className="font-noto-ethiopic text-xs font-medium text-emerald-900">
-                  የመፍትሔ ማስታወሻ / Resolution notes
+        {/* Stepper */}
+        <Card className="p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            {flow.map((s, i) => (
+              <div key={s} className="flex items-center gap-2">
+                <div
+                  className={
+                    "flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold " +
+                    (isTerminal
+                      ? "bg-slate-200 text-slate-500"
+                      : i <= index
+                        ? "bg-blue-700 text-white"
+                        : "bg-slate-100 text-slate-500")
+                  }
+                >
+                  {i < index && !isTerminal ? <Check className="h-4 w-4" /> : i + 1}
                 </div>
-                <p className="font-noto-ethiopic mt-1 whitespace-pre-wrap text-sm text-emerald-900">
-                  {req.resolution_notes}
+                <span className="font-noto-ethiopic text-xs text-slate-600">
+                  {serviceStatusLabel(s)}
+                </span>
+                {i < flow.length - 1 && <span className="mx-1 text-slate-300">→</span>}
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <StatusBadge status={req.status} />
+            <PriorityBadge priority={req.priority} />
+            {req.return_reason && (
+              <span className="font-noto-ethiopic text-xs text-amber-700">
+                የመመለስ ምክንያት: {req.return_reason}
+              </span>
+            )}
+            {req.reject_reason && (
+              <span className="font-noto-ethiopic text-xs text-red-700">
+                የውድቅ ምክንያት: {req.reject_reason}
+              </span>
+            )}
+          </div>
+        </Card>
+
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="space-y-6 lg:col-span-2">
+            <Card className="p-5">
+              <h3 className="font-noto-ethiopic mb-3 flex items-center gap-2 text-base font-semibold">
+                <FileText className="h-4 w-4 text-blue-700" /> የጥያቄ መረጃ / Request information
+              </h3>
+              <div className="grid gap-x-8 md:grid-cols-2">
+                <Row
+                  labelAm="አመልካች"
+                  labelEn="Applicant"
+                  value={
+                    req.resident ? (
+                      <Link
+                        to="/woreda/residents/$residentId"
+                        params={{ residentId: req.resident.resident_id }}
+                        className="text-blue-700 hover:underline"
+                      >
+                        {req.resident.full_name_am || req.resident.full_name} (
+                        {req.resident.resident_number})
+                      </Link>
+                    ) : (
+                      req.applicant_name
+                    )
+                  }
+                />
+                <Row labelAm="ስልክ" labelEn="Phone" value={req.applicant_phone} />
+                <Row
+                  labelAm="ቀበሌ"
+                  labelEn="Kebele"
+                  value={
+                    req.kebele
+                      ? `${req.kebele.kebele_name_am} / ${req.kebele.kebele_name_en}`
+                      : null
+                  }
+                />
+                <Row
+                  labelAm="የቀረበበት ቀን"
+                  labelEn="Submitted"
+                  value={new Date(req.submitted_at).toLocaleString("en-GB", { hour12: false })}
+                />
+                {category === "letter" ? (
+                  <>
+                    <Row labelAm="ዓላማ" labelEn="Purpose" value={req.purpose} />
+                    <Row labelAm="ለማን" labelEn="Addressed to" value={req.addressed_to} />
+                  </>
+                ) : (
+                  <>
+                    <Row labelAm="ተከሳሽ" labelEn="Respondent" value={req.respondent_name} />
+                    <Row
+                      labelAm="የተከሰተበት"
+                      labelEn="Incident"
+                      value={
+                        [req.incident_date, req.incident_place].filter(Boolean).join(" — ") || null
+                      }
+                    />
+                  </>
+                )}
+                <Row
+                  labelAm="ክፍያ"
+                  labelEn="Fee"
+                  value={
+                    Number(req.fee_amount) > 0
+                      ? `${Number(req.fee_amount).toFixed(2)} ETB`
+                      : "ነጻ / Free"
+                  }
+                />
+              </div>
+              <div className="mt-4">
+                <div className="text-xs text-slate-500">
+                  <span className="font-noto-ethiopic">ማብራሪያ</span> / Description
+                </div>
+                <p className="font-noto-ethiopic mt-1 whitespace-pre-wrap text-sm text-slate-800">
+                  {req.details || "—"}
                 </p>
               </div>
-            )}
-          </Card>
-
-          {/* Attachments */}
-          <Card className="p-5">
-            <h3 className="font-noto-ethiopic mb-3 flex items-center gap-2 text-base font-semibold">
-              <Paperclip className="h-4 w-4 text-blue-700" /> ማስረጃ ሰነዶች / Attachments
-            </h3>
-            {(attachmentsQuery.data ?? []).length === 0 ? (
-              <p className="font-noto-ethiopic text-sm text-slate-500">
-                ሰነድ አልተያያዘም / No documents attached
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {(attachmentsQuery.data ?? []).map((a) => (
-                  <div
-                    key={a.attachment_id}
-                    className="flex items-center gap-3 rounded-md border bg-slate-50 px-3 py-2"
-                  >
-                    <Paperclip className="h-4 w-4 text-slate-400" />
-                    <span className="flex-1 truncate text-sm">{a.file_name}</span>
-                    <span className="font-noto-ethiopic text-xs text-slate-500">
-                      {DOCUMENT_TYPES.find((d) => d.value === a.document_type)?.labelAm ??
-                        a.document_type}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openAttachment(a.storage_path)}
-                    >
-                      <Download className="mr-1 h-4 w-4" /> ክፈት
-                    </Button>
+              {req.resolution_notes && (
+                <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 p-3">
+                  <div className="font-noto-ethiopic text-xs font-medium text-emerald-900">
+                    የመፍትሔ ማስታወሻ / Resolution notes
                   </div>
-                ))}
-              </div>
-            )}
-            {!isTerminal && canVerify && (
-              <div className="mt-4 flex flex-wrap items-end gap-3 border-t pt-4">
-                <div>
-                  <Label className="font-noto-ethiopic text-xs">የሰነድ ዓይነት / Document type</Label>
-                  <Select
-                    className="mt-1 w-[200px]"
-                    value={docType}
-                    onChange={(e) => setDocType(e.target.value)}
-                  >
-                    {DOCUMENT_TYPES.map((d) => (
-                      <option key={d.value} value={d.value}>
-                        {d.labelAm} / {d.labelEn}
-                      </option>
-                    ))}
-                  </Select>
+                  <p className="font-noto-ethiopic mt-1 whitespace-pre-wrap text-sm text-emerald-900">
+                    {req.resolution_notes}
+                  </p>
                 </div>
-                <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md border border-input px-3 text-sm hover:bg-slate-50">
-                  <Upload className="h-4 w-4" />
-                  <span className="font-noto-ethiopic">ሰነድ ጨምር / Add document</span>
-                  <input
-                    type="file"
-                    className="hidden"
-                    accept=".jpg,.jpeg,.png,.webp,.pdf"
-                    disabled={busy}
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) uploadAttachment(f);
-                      e.target.value = "";
-                    }}
-                  />
-                </label>
-              </div>
-            )}
-          </Card>
-
-          {/* History */}
-          <Card className="p-5">
-            <h3 className="font-noto-ethiopic mb-3 text-base font-semibold">
-              የሂደት ታሪክ / Status history
-            </h3>
-            <ol className="space-y-3">
-              {(historyQuery.data ?? []).map((h) => (
-                <li key={h.id} className="flex gap-3">
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
-                  <div>
-                    <div className="font-noto-ethiopic text-sm">
-                      {h.old_status ? `${serviceStatusLabel(h.old_status)} → ` : ""}
-                      {serviceStatusLabel(h.new_status)}
-                    </div>
-                    <div className="text-xs text-slate-500">
-                      {new Date(h.changed_at).toLocaleString("en-GB", { hour12: false })}
-                      {h.change_reason ? ` — ${h.change_reason}` : ""}
-                    </div>
-                  </div>
-                </li>
-              ))}
-              {(historyQuery.data ?? []).length === 0 && (
-                <li className="text-sm text-slate-500">—</li>
               )}
-            </ol>
-          </Card>
-        </div>
+            </Card>
 
-        {/* Workflow actions */}
-        <div className="space-y-6">
-          <Card className="p-5">
-            <h3 className="font-noto-ethiopic mb-3 text-base font-semibold">
-              የስራ ሂደት / Workflow actions
-            </h3>
+            {/* Attachments */}
+            <Card className="p-5">
+              <h3 className="font-noto-ethiopic mb-3 flex items-center gap-2 text-base font-semibold">
+                <Paperclip className="h-4 w-4 text-blue-700" /> ማስረጃ ሰነዶች / Attachments
+              </h3>
+              {(attachmentsQuery.data ?? []).length === 0 ? (
+                <p className="font-noto-ethiopic text-sm text-slate-500">
+                  ሰነድ አልተያያዘም / No documents attached
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {(attachmentsQuery.data ?? []).map((a) => (
+                    <div
+                      key={a.attachment_id}
+                      className="flex items-center gap-3 rounded-md border bg-slate-50 px-3 py-2"
+                    >
+                      <Paperclip className="h-4 w-4 text-slate-400" />
+                      <span className="flex-1 truncate text-sm">{a.file_name}</span>
+                      <span className="font-noto-ethiopic text-xs text-slate-500">
+                        {DOCUMENT_TYPES.find((d) => d.value === a.document_type)?.labelAm ??
+                          a.document_type}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openAttachment(a.storage_path, a.file_name, a.content_type)}
+                      >
+                        <Download className="mr-1 h-4 w-4" /> ክፈት
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {!isTerminal && canVerify && (
+                <div className="mt-4 flex flex-wrap items-end gap-3 border-t pt-4">
+                  <div>
+                    <Label className="font-noto-ethiopic text-xs">የሰነድ ዓይነት / Document type</Label>
+                    <Select
+                      className="mt-1 w-[200px]"
+                      value={docType}
+                      onChange={(e) => setDocType(e.target.value)}
+                    >
+                      {DOCUMENT_TYPES.map((d) => (
+                        <option key={d.value} value={d.value}>
+                          {d.labelAm} / {d.labelEn}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                  <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md border border-input px-3 text-sm hover:bg-slate-50">
+                    <Upload className="h-4 w-4" />
+                    <span className="font-noto-ethiopic">ሰነድ ጨምር / Add document</span>
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept=".jpg,.jpeg,.png,.webp,.pdf"
+                      disabled={busy}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) uploadAttachment(f);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                </div>
+              )}
+            </Card>
 
-            {isTerminal && (
-              <p className="font-noto-ethiopic text-sm text-slate-500">
-                ይህ ጥያቄ ተዘግቷል / This request is closed.
-              </p>
-            )}
+            {/* History */}
+            <Card className="p-5">
+              <h3 className="font-noto-ethiopic mb-3 text-base font-semibold">
+                የሂደት ታሪክ / Status history
+              </h3>
+              <ol className="space-y-3">
+                {(historyQuery.data ?? []).map((h) => (
+                  <li key={h.id} className="flex gap-3">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+                    <div>
+                      <div className="font-noto-ethiopic text-sm">
+                        {h.old_status ? `${serviceStatusLabel(h.old_status)} → ` : ""}
+                        {serviceStatusLabel(h.new_status)}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {new Date(h.changed_at).toLocaleString("en-GB", { hour12: false })}
+                        {h.change_reason ? ` — ${h.change_reason}` : ""}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+                {(historyQuery.data ?? []).length === 0 && (
+                  <li className="text-sm text-slate-500">—</li>
+                )}
+              </ol>
+            </Card>
+          </div>
 
-            {!isTerminal && req.status === "submitted" && canVerify && (
-              <Button
-                className="w-full"
-                disabled={busy}
-                onClick={() =>
-                  transition("under_review", {
-                    reason: "Review started",
-                    action: "SERVICE_REQUEST_REVIEW_STARTED",
-                  })
-                }
-              >
-                ክለሳ ጀምር / Start review
-              </Button>
-            )}
+          {/* Workflow actions */}
+          <div className="space-y-6">
+            <Card className="p-5">
+              <h3 className="font-noto-ethiopic mb-3 text-base font-semibold">
+                የስራ ሂደት / Workflow actions
+              </h3>
 
-            {!isTerminal && ["under_review", "returned"].includes(req.status) && canVerify && (
-              <div className="space-y-3">
+              {isTerminal && (
+                <p className="font-noto-ethiopic text-sm text-slate-500">
+                  ይህ ጥያቄ ተዘግቷል / This request is closed.
+                </p>
+              )}
+
+              {!isTerminal && req.status === "submitted" && canVerify && (
                 <Button
                   className="w-full"
                   disabled={busy}
                   onClick={() =>
-                    transition(
-                      req.service_type?.requires_approval
-                        ? "pending_approval"
-                        : nextAfterApproval(req),
-                      {
-                        extra: {
-                          verified_by_user_id: actorUserId,
-                          verified_at: new Date().toISOString(),
-                        },
-                        reason: "Verified by clerk",
-                        action: "SERVICE_REQUEST_VERIFIED",
-                      },
-                    )
-                  }
-                >
-                  <Check className="mr-1 h-4 w-4" /> አረጋግጥ / Verify
-                </Button>
-                <div>
-                  <Label className="font-noto-ethiopic text-xs">የመመለስ ምክንያት / Return reason</Label>
-                  <Textarea
-                    className="font-noto-ethiopic mt-1"
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                  />
-                </div>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  disabled={busy || reason.trim().length < 5}
-                  onClick={() =>
-                    transition("returned", {
-                      extra: { return_reason: reason.trim() },
-                      reason: reason.trim(),
-                      action: "SERVICE_REQUEST_RETURNED",
+                    transition("under_review", {
+                      reason: "Review started",
+                      action: "SERVICE_REQUEST_REVIEW_STARTED",
                     })
                   }
                 >
-                  <Undo2 className="mr-1 h-4 w-4" /> መልስ / Return
+                  ክለሳ ጀምር / Start review
                 </Button>
-              </div>
-            )}
+              )}
 
-            {!isTerminal &&
-              ["pending_approval", "approval_returned"].includes(req.status) &&
-              canApprove && (
+              {!isTerminal && ["under_review", "returned"].includes(req.status) && canVerify && (
                 <div className="space-y-3">
                   <Button
                     className="w-full"
                     disabled={busy}
                     onClick={() =>
-                      transition(nextAfterApproval(req), {
-                        extra: {
-                          approved_by_user_id: actorUserId,
-                          approval_decision_at: new Date().toISOString(),
+                      transition(
+                        req.service_type?.requires_approval
+                          ? "pending_approval"
+                          : nextAfterApproval(req),
+                        {
+                          extra: {
+                            verified_by_user_id: actorUserId,
+                            verified_at: new Date().toISOString(),
+                          },
+                          reason: "Verified by clerk",
+                          action: "SERVICE_REQUEST_VERIFIED",
                         },
-                        reason: "Approved by supervisor",
-                        action: "SERVICE_REQUEST_APPROVED",
-                      })
+                      )
                     }
                   >
-                    <Check className="mr-1 h-4 w-4" /> አጽድቅ / Approve
+                    <Check className="mr-1 h-4 w-4" /> አረጋግጥ / Verify
                   </Button>
                   <div>
-                    <Label className="font-noto-ethiopic text-xs">ምክንያት / Reason</Label>
+                    <Label className="font-noto-ethiopic text-xs">
+                      የመመለስ ምክንያት / Return reason
+                    </Label>
                     <Textarea
                       className="font-noto-ethiopic mt-1"
                       value={reason}
                       onChange={(e) => setReason(e.target.value)}
                     />
                   </div>
-                  <div className="grid gap-2">
-                    <Button
-                      variant="outline"
-                      disabled={busy || reason.trim().length < 5}
-                      onClick={() =>
-                        transition("approval_returned", {
-                          extra: { return_reason: reason.trim() },
-                          reason: reason.trim(),
-                          action: "SERVICE_REQUEST_APPROVAL_RETURNED",
-                        })
-                      }
-                    >
-                      <Undo2 className="mr-1 h-4 w-4" /> መልስ / Return
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      disabled={busy || reason.trim().length < 5}
-                      onClick={() =>
-                        transition("rejected", {
-                          extra: {
-                            reject_reason: reason.trim(),
-                            closed_at: new Date().toISOString(),
-                          },
-                          reason: reason.trim(),
-                          action: "SERVICE_REQUEST_REJECTED",
-                        })
-                      }
-                    >
-                      <X className="mr-1 h-4 w-4" /> ውድቅ አድርግ / Reject
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-            {!isTerminal && req.status === "awaiting_payment" && canCollect && (
-              <div className="space-y-3">
-                <div className="rounded-md border border-orange-200 bg-orange-50 p-3">
-                  <div className="font-noto-ethiopic text-xs text-orange-900">
-                    የሚከፈል / Amount due
-                  </div>
-                  <div className="font-mono text-lg font-semibold text-orange-900">
-                    {Number(req.fee_amount).toFixed(2)} ETB
-                  </div>
-                </div>
-                <div>
-                  <Label className="font-noto-ethiopic text-xs">የክፍያ መንገድ / Channel</Label>
-                  <Select
-                    className="mt-1"
-                    value={channel}
-                    onChange={(e) => setChannel(e.target.value as "cash" | "bank" | "mobile")}
-                  >
-                    <option value="cash">ጥሬ ገንዘብ / Cash</option>
-                    <option value="bank">ባንክ / Bank</option>
-                    <option value="mobile">ሞባይል / Mobile</option>
-                  </Select>
-                </div>
-                {channel !== "cash" && (
-                  <div>
-                    <Label className="font-noto-ethiopic text-xs">ማጣቀሻ / Reference</Label>
-                    <Input
-                      className="mt-1"
-                      value={referenceNo}
-                      onChange={(e) => setReferenceNo(e.target.value)}
-                    />
-                  </div>
-                )}
-                <Button className="w-full" disabled={busy} onClick={collectPayment}>
-                  <Banknote className="mr-1 h-4 w-4" /> ክፍያ ተቀበል / Collect payment
-                </Button>
-              </div>
-            )}
-
-            {!isTerminal && ["approved", "paid"].includes(req.status) && canIssue && (
-              <div className="space-y-3">
-                {category === "letter" ? (
-                  <>
-                    <Link to="/woreda/services/$requestId/print" params={{ requestId }}>
-                      <Button variant="outline" className="w-full">
-                        <Printer className="mr-1 h-4 w-4" /> ደብዳቤ አትም / Print letter
-                      </Button>
-                    </Link>
-                    <Button className="w-full" disabled={busy} onClick={() => void issueLetter()}>
-                      <Check className="mr-1 h-4 w-4" /> ተሰጥቷል ብለው መዝግቡ / Mark issued
-                    </Button>
-                  </>
-                ) : (
                   <Button
+                    variant="outline"
                     className="w-full"
-                    disabled={busy}
+                    disabled={busy || reason.trim().length < 5}
                     onClick={() =>
-                      transition("in_progress", {
-                        reason: "Case handling started",
-                        action: "SERVICE_REQUEST_IN_PROGRESS",
+                      transition("returned", {
+                        extra: { return_reason: reason.trim() },
+                        reason: reason.trim(),
+                        action: "SERVICE_REQUEST_RETURNED",
                       })
                     }
                   >
-                    ሂደት ጀምር / Start handling
+                    <Undo2 className="mr-1 h-4 w-4" /> መልስ / Return
                   </Button>
-                )}
-              </div>
-            )}
-
-            {!isTerminal && req.status === "in_progress" && canIssue && (
-              <div className="space-y-3">
-                <div>
-                  <Label className="font-noto-ethiopic text-xs">
-                    የመፍትሔ ማስታወሻ / Resolution notes
-                  </Label>
-                  <Textarea
-                    className="font-noto-ethiopic mt-1"
-                    value={resolution}
-                    onChange={(e) => setResolution(e.target.value)}
-                  />
                 </div>
+              )}
+
+              {!isTerminal &&
+                ["pending_approval", "approval_returned"].includes(req.status) &&
+                canApprove && (
+                  <div className="space-y-3">
+                    <Button
+                      className="w-full"
+                      disabled={busy}
+                      onClick={() =>
+                        transition(nextAfterApproval(req), {
+                          extra: {
+                            approved_by_user_id: actorUserId,
+                            approval_decision_at: new Date().toISOString(),
+                          },
+                          reason: "Approved by supervisor",
+                          action: "SERVICE_REQUEST_APPROVED",
+                        })
+                      }
+                    >
+                      <Check className="mr-1 h-4 w-4" /> አጽድቅ / Approve
+                    </Button>
+                    <div>
+                      <Label className="font-noto-ethiopic text-xs">ምክንያት / Reason</Label>
+                      <Textarea
+                        className="font-noto-ethiopic mt-1"
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Button
+                        variant="outline"
+                        disabled={busy || reason.trim().length < 5}
+                        onClick={() =>
+                          transition("approval_returned", {
+                            extra: { return_reason: reason.trim() },
+                            reason: reason.trim(),
+                            action: "SERVICE_REQUEST_APPROVAL_RETURNED",
+                          })
+                        }
+                      >
+                        <Undo2 className="mr-1 h-4 w-4" /> መልስ / Return
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        disabled={busy || reason.trim().length < 5}
+                        onClick={() =>
+                          transition("rejected", {
+                            extra: {
+                              reject_reason: reason.trim(),
+                              closed_at: new Date().toISOString(),
+                            },
+                            reason: reason.trim(),
+                            action: "SERVICE_REQUEST_REJECTED",
+                          })
+                        }
+                      >
+                        <X className="mr-1 h-4 w-4" /> ውድቅ አድርግ / Reject
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+              {!isTerminal && req.status === "awaiting_payment" && canCollect && (
+                <div className="space-y-3">
+                  <div className="rounded-md border border-orange-200 bg-orange-50 p-3">
+                    <div className="font-noto-ethiopic text-xs text-orange-900">
+                      የሚከፈል / Amount due
+                    </div>
+                    <div className="font-mono text-lg font-semibold text-orange-900">
+                      {Number(req.fee_amount).toFixed(2)} ETB
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="font-noto-ethiopic text-xs">የክፍያ መንገድ / Channel</Label>
+                    <Select
+                      className="mt-1"
+                      value={channel}
+                      onChange={(e) => setChannel(e.target.value as "cash" | "bank" | "mobile")}
+                    >
+                      <option value="cash">ጥሬ ገንዘብ / Cash</option>
+                      <option value="bank">ባንክ / Bank</option>
+                      <option value="mobile">ሞባይል / Mobile</option>
+                    </Select>
+                  </div>
+                  {channel !== "cash" && (
+                    <div>
+                      <Label className="font-noto-ethiopic text-xs">ማጣቀሻ / Reference</Label>
+                      <Input
+                        className="mt-1"
+                        value={referenceNo}
+                        onChange={(e) => setReferenceNo(e.target.value)}
+                      />
+                    </div>
+                  )}
+                  <Button className="w-full" disabled={busy} onClick={collectPayment}>
+                    <Banknote className="mr-1 h-4 w-4" /> ክፍያ ተቀበል / Collect payment
+                  </Button>
+                </div>
+              )}
+
+              {!isTerminal && ["approved", "paid"].includes(req.status) && canIssue && (
+                <div className="space-y-3">
+                  {category === "letter" ? (
+                    <>
+                      <Link to="/woreda/services/$requestId/print" params={{ requestId }}>
+                        <Button variant="outline" className="w-full">
+                          <Printer className="mr-1 h-4 w-4" /> ደብዳቤ አትም / Print letter
+                        </Button>
+                      </Link>
+                      <Button className="w-full" disabled={busy} onClick={() => void issueLetter()}>
+                        <Check className="mr-1 h-4 w-4" /> ተሰጥቷል ብለው መዝግቡ / Mark issued
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      className="w-full"
+                      disabled={busy}
+                      onClick={() =>
+                        transition("in_progress", {
+                          reason: "Case handling started",
+                          action: "SERVICE_REQUEST_IN_PROGRESS",
+                        })
+                      }
+                    >
+                      ሂደት ጀምር / Start handling
+                    </Button>
+                  )}
+                </div>
+              )}
+
+              {!isTerminal && req.status === "in_progress" && canIssue && (
+                <div className="space-y-3">
+                  <div>
+                    <Label className="font-noto-ethiopic text-xs">
+                      የመፍትሔ ማስታወሻ / Resolution notes
+                    </Label>
+                    <Textarea
+                      className="font-noto-ethiopic mt-1"
+                      value={resolution}
+                      onChange={(e) => setResolution(e.target.value)}
+                    />
+                  </div>
+                  <Button
+                    className="w-full"
+                    disabled={busy || resolution.trim().length < 5}
+                    onClick={() =>
+                      transition("resolved", {
+                        extra: { resolution_notes: resolution.trim() },
+                        reason: "Complaint resolved",
+                        action: "SERVICE_REQUEST_RESOLVED",
+                      })
+                    }
+                  >
+                    <Check className="mr-1 h-4 w-4" /> ተፈትቷል / Mark resolved
+                  </Button>
+                </div>
+              )}
+
+              {!isTerminal && ["issued", "resolved"].includes(req.status) && canIssue && (
                 <Button
-                  className="w-full"
-                  disabled={busy || resolution.trim().length < 5}
+                  variant="outline"
+                  className="mt-3 w-full"
+                  disabled={busy}
                   onClick={() =>
-                    transition("resolved", {
-                      extra: { resolution_notes: resolution.trim() },
-                      reason: "Complaint resolved",
-                      action: "SERVICE_REQUEST_RESOLVED",
+                    transition("closed", {
+                      extra: { closed_at: new Date().toISOString() },
+                      reason: "File closed",
+                      action: "SERVICE_REQUEST_CLOSED",
                     })
                   }
                 >
-                  <Check className="mr-1 h-4 w-4" /> ተፈትቷል / Mark resolved
+                  መዝገቡን ዘጋ / Close file
                 </Button>
-              </div>
-            )}
+              )}
 
-            {!isTerminal && ["issued", "resolved"].includes(req.status) && canIssue && (
-              <Button
-                variant="outline"
-                className="mt-3 w-full"
-                disabled={busy}
-                onClick={() =>
-                  transition("closed", {
-                    extra: { closed_at: new Date().toISOString() },
-                    reason: "File closed",
-                    action: "SERVICE_REQUEST_CLOSED",
-                  })
-                }
-              >
-                መዝገቡን ዘጋ / Close file
-              </Button>
-            )}
-
-            {!isTerminal && !canVerify && !canApprove && !canIssue && !canCollect && (
-              <p className="font-noto-ethiopic text-sm text-slate-500">
-                በዚህ ደረጃ እርምጃ ለመውሰድ ፈቃድ አልተሰጠዎትም / You do not have permission to act at this stage.
-              </p>
-            )}
-          </Card>
+              {!isTerminal && !canVerify && !canApprove && !canIssue && !canCollect && (
+                <p className="font-noto-ethiopic text-sm text-slate-500">
+                  በዚህ ደረጃ እርምጃ ለመውሰድ ፈቃድ አልተሰጠዎትም / You do not have permission to act at this stage.
+                </p>
+              )}
+            </Card>
+          </div>
         </div>
       </div>
-    </div>
+      {viewerOpen && (
+        <Suspense fallback={null}>
+          <DocumentViewerDialog
+            open={viewerOpen}
+            onOpenChange={setViewerOpen}
+            signedUrl={viewerUrl}
+            title={viewerTitle}
+          />
+        </Suspense>
+      )}
+    </>
   );
 }

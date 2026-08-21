@@ -1,18 +1,61 @@
 import { Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Activity, CreditCard, ExternalLink, FileText, Home, MapPin, Users } from "lucide-react";
+import { lazy, Suspense, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  Activity,
+  CreditCard,
+  ExternalLink,
+  FileText,
+  Home,
+  Loader2,
+  MapPin,
+  Trash2,
+  Upload,
+  Users,
+} from "lucide-react";
+import { toast } from "sonner";
 
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { StatusChip } from "@/components/common/StatusChip";
 import { supabase } from "@/integrations/supabase/client";
 import { formatEthiopianDate } from "@/utils/ethiopianCalendar";
+
+const DocumentViewerDialog = lazy(() => import("@/components/common/DocumentViewerDialog"));
+
+const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
+
+interface ResidentDocumentRow {
+  document_id: string;
+  document_label: string;
+  file_name: string;
+  storage_path: string;
+  file_size_bytes: number | null;
+  created_at: string;
+}
 
 function EmptyState({ am, en }: { am: string; en: string }) {
   return (
     <p className="font-noto-ethiopic rounded-md border border-dashed border-slate-200 px-4 py-10 text-center text-sm text-slate-500">
       {am} <span className="text-xs text-slate-400">/ {en}</span>
+    </p>
+  );
+}
+
+/**
+ * An empty list and a failed query render identically without this: a
+ * pending app_user, a revoked resident.read/household.read, a missing
+ * table on a fresh deploy, and a network error are all indistinguishable
+ * from "no documents" otherwise -- see the doctor skill's symptom index.
+ */
+export function ErrorState({ message }: { message?: string }) {
+  return (
+    <p className="rounded-md border border-dashed border-red-200 bg-red-50 px-4 py-10 text-center text-sm text-red-700">
+      <span className="font-noto-ethiopic">መጫን አልተቻለም</span>
+      <span className="text-red-500"> / Couldn&apos;t load this</span>
+      {message && <span className="mt-1 block text-xs text-red-400">{message}</span>}
     </p>
   );
 }
@@ -675,6 +718,256 @@ function Row({ am, en, value }: { am: string; en: string; value: string }) {
         {am} <span className="text-slate-400">/ {en}</span>
       </dt>
       <dd className="font-noto-ethiopic text-sm font-medium text-slate-900">{value}</dd>
+    </div>
+  );
+}
+
+/**
+ * resident_document isn't in the generated Supabase types yet -- it's
+ * regenerated only after this feature's migration is applied to the live
+ * project (see CLAUDE.md: "regenerate rather than edit"). `.from(x as
+ * never)` is the deliberate, temporary escape hatch until then; every
+ * query below is written against the real column list from the migration.
+ */
+const RESIDENT_DOCUMENT_TABLE = "resident_document" as never;
+
+export function DocumentsTab({
+  residentId,
+  woredaId,
+  householdId,
+  actorUserId,
+  canUpload,
+}: {
+  residentId: string;
+  woredaId: string | null;
+  householdId: string | null;
+  actorUserId: string | null;
+  canUpload: boolean;
+}) {
+  const queryClient = useQueryClient();
+
+  const q = useQuery({
+    queryKey: ["resident-tab-documents", residentId, woredaId],
+    enabled: !!woredaId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from(RESIDENT_DOCUMENT_TABLE)
+        .select("document_id, document_label, file_name, storage_path, file_size_bytes, created_at")
+        .eq("resident_id", residentId)
+        .eq("woreda_id", woredaId as string)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as ResidentDocumentRow[];
+    },
+  });
+
+  const [label, setLabel] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [openingId, setOpeningId] = useState<string | null>(null);
+  const [viewerUrl, setViewerUrl] = useState<string | null>(null);
+  const [viewerTitle, setViewerTitle] = useState("");
+  const [viewerOpen, setViewerOpen] = useState(false);
+
+  const uploadDocument = async (file: File) => {
+    if (!woredaId) return;
+    if (!label.trim()) {
+      toast.error("የሰነድ ስም ያስፈልጋል / A document label is required");
+      return;
+    }
+    if (file.type !== "application/pdf") {
+      toast.error("PDF ብቻ / PDF only");
+      return;
+    }
+    if (file.size > MAX_DOCUMENT_BYTES) {
+      toast.error("ፋይል ከ10MB መብለጥ የለበትም / File must be under 10MB");
+      return;
+    }
+    setUploading(true);
+    try {
+      const path = `${woredaId}/${residentId}/${crypto.randomUUID()}.pdf`;
+      const up = await supabase.storage
+        .from("resident-documents")
+        .upload(path, file, { upsert: false, contentType: "application/pdf" });
+      if (up.error) throw up.error;
+      const { error } = await supabase.from(RESIDENT_DOCUMENT_TABLE).insert({
+        woreda_id: woredaId,
+        resident_id: residentId,
+        household_id: householdId,
+        document_label: label.trim(),
+        file_name: file.name,
+        storage_path: path,
+        file_size_bytes: file.size,
+        content_type: "application/pdf",
+        uploaded_by_user_id: actorUserId,
+      } as never);
+      if (error) {
+        // The object already landed (the storage policy only checks the
+        // woreda prefix, not resident.update) -- without this, a rejected
+        // insert leaves an orphaned PDF that nothing can list or remove.
+        await supabase.storage.from("resident-documents").remove([path]);
+        throw error;
+      }
+      toast.success("ሰነዱ ተጭኗል / Document uploaded");
+      setLabel("");
+      queryClient.invalidateQueries({ queryKey: ["resident-tab-documents", residentId, woredaId] });
+      queryClient.invalidateQueries({ queryKey: ["household-tab-documents", householdId] });
+    } catch (e) {
+      toast.error(`ስቀላ አልተሳካም / Upload failed: ${(e as Error).message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const openDocument = async (doc: ResidentDocumentRow) => {
+    setOpeningId(doc.document_id);
+    try {
+      const { data, error } = await supabase.storage
+        .from("resident-documents")
+        .createSignedUrl(doc.storage_path, 300);
+      if (error || !data?.signedUrl) {
+        toast.error("ፋይሉን መክፈት አልተቻለም / Could not open the file");
+        return;
+      }
+      setViewerUrl(data.signedUrl);
+      setViewerTitle(doc.document_label);
+      setViewerOpen(true);
+    } finally {
+      setOpeningId(null);
+    }
+  };
+
+  const deleteDocument = async (doc: ResidentDocumentRow) => {
+    setDeletingId(doc.document_id);
+    try {
+      // Row first: if the DB refuses the delete (e.g. a revoked permission
+      // between render and click), the object stays intact rather than the
+      // row surviving with nothing left to open.
+      const { error } = await supabase
+        .from(RESIDENT_DOCUMENT_TABLE)
+        .delete()
+        .eq("document_id", doc.document_id);
+      if (error) throw error;
+      await supabase.storage.from("resident-documents").remove([doc.storage_path]);
+      toast.success("ሰነዱ ተሰርዟል / Document deleted");
+      queryClient.invalidateQueries({ queryKey: ["resident-tab-documents", residentId, woredaId] });
+      queryClient.invalidateQueries({ queryKey: ["household-tab-documents", householdId] });
+    } catch (e) {
+      toast.error(`መሰረዝ አልተሳካም / Delete failed: ${(e as Error).message}`);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  if (q.isLoading) return <Skeleton className="h-56 w-full" />;
+  if (q.isError) return <ErrorState message={(q.error as Error)?.message} />;
+
+  const docs = q.data ?? [];
+
+  return (
+    <div className="space-y-4">
+      {canUpload && (
+        <Card className="p-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="min-w-[200px] flex-1">
+              <label className="font-noto-ethiopic mb-1 block text-xs text-slate-500">
+                የሰነድ ስም <span className="text-slate-400">/ Document label</span>
+              </label>
+              <Input
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                placeholder="ለምሳሌ፦ የልደት ሰርተፍኬት / e.g. Birth Certificate"
+                className="font-noto-ethiopic"
+              />
+            </div>
+            <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md border border-input px-3 text-sm hover:bg-slate-50">
+              {uploading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Upload className="h-4 w-4" />
+              )}
+              <span className="font-noto-ethiopic">ሰነድ ጫን / Upload PDF</span>
+              <input
+                type="file"
+                className="hidden"
+                accept="application/pdf"
+                disabled={uploading}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) uploadDocument(f);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+          </div>
+        </Card>
+      )}
+
+      <Card className="p-5">
+        <PanelHeading icon={FileText} am="ሰነዶች" en="Documents" count={docs.length} />
+        {docs.length === 0 ? (
+          <EmptyState am="ሰነድ አልተጫነም" en="No documents uploaded" />
+        ) : (
+          <ul className="divide-y divide-slate-100">
+            {docs.map((doc) => (
+              <li key={doc.document_id} className="flex items-center gap-3 px-2 py-3">
+                <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-blue-50 text-blue-700">
+                  <FileText className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-noto-ethiopic truncate text-sm font-medium text-slate-900">
+                    {doc.document_label}
+                  </div>
+                  <div className="truncate text-xs text-slate-500">
+                    {doc.file_name} · {dateLabel(doc.created_at)}
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={openingId === doc.document_id}
+                  onClick={() => openDocument(doc)}
+                >
+                  {openingId === doc.document_id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <span className="font-noto-ethiopic">ይመልከቱ</span>
+                      <span className="ml-1 opacity-70">/ View</span>
+                    </>
+                  )}
+                </Button>
+                {canUpload && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-red-600 hover:bg-red-50"
+                    disabled={deletingId === doc.document_id}
+                    onClick={() => deleteDocument(doc)}
+                  >
+                    {deletingId === doc.document_id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
+      {viewerOpen && (
+        <Suspense fallback={null}>
+          <DocumentViewerDialog
+            open={viewerOpen}
+            onOpenChange={setViewerOpen}
+            signedUrl={viewerUrl}
+            title={viewerTitle}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }
