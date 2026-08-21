@@ -73,12 +73,12 @@ curl -X POST "https://api.supabase.com/v1/projects/$REF/database/query" \
 ./scripts/deploy-functions.sh "$REF"
 ```
 
-`sign-credential` also needs `HARARI_RSA_PRIVATE_KEY`, which is not in this
+`sign-credential` also needs `HARARI_EC_PRIVATE_KEY`, which is not in this
 repository. Without it the function deploys and runs but returns
 `500 {"error":"Signing key not configured"}`, and ID card issuance fails.
 
 ```bash
-supabase secrets set HARARI_RSA_PRIVATE_KEY='...' --project-ref "$REF"
+supabase secrets set HARARI_EC_PRIVATE_KEY='...' --project-ref "$REF"
 ```
 
 ## Frontend
