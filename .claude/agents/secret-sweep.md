@@ -24,7 +24,7 @@ and arguments near `vercel`, `--token`, `VERCEL_TOKEN`.
 
 ## Sweep
 
-Run all four scopes. A clean working tree proves nothing if the token is two
+Run all five scopes. A clean working tree proves nothing if the token is two
 commits back.
 
 ```bash

@@ -39,12 +39,12 @@ cat <<'EOF'
 
 ==> Deployed. One secret still has to be set by hand.
 
-sign-credential reads HARARI_RSA_PRIVATE_KEY from its function environment.
+sign-credential reads HARARI_EC_PRIVATE_KEY from its function environment.
 It is not in this repository -- it lives in the SOURCE project's Edge Function
 secrets (Dashboard -> Edge Functions -> Secrets). Without it the function
 deploys but fails at runtime, and it is the function behind ID card issuance.
 
-  supabase secrets set HARARI_RSA_PRIVATE_KEY='<value from the old project>' \
+  supabase secrets set HARARI_EC_PRIVATE_KEY='<value from the old project>' \
     --project-ref <project-ref>
 
 SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are injected
