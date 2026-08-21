@@ -78,6 +78,7 @@ const formSchema = z
     prior_credential_id: z.string().uuid().nullable().optional(),
     supporting_document_path: z.string().nullable().optional(),
     supporting_document_name: z.string().nullable().optional(),
+    supporting_document_content_type: z.string().nullable().optional(),
     notes: z.string().max(2000).optional().nullable(),
   })
   .refine((v) => v.request_type === "new_issue" || !!v.prior_credential_id, {
@@ -140,6 +141,7 @@ function NewCredentialRequestPage() {
       prior_credential_id: null,
       supporting_document_path: null,
       supporting_document_name: null,
+      supporting_document_content_type: null,
       notes: "",
     },
   });
@@ -284,6 +286,7 @@ function NewCredentialRequestPage() {
       if (error) throw error;
       setValue("supporting_document_path", path, { shouldValidate: true });
       setValue("supporting_document_name", file.name);
+      setValue("supporting_document_content_type", file.type);
       toast.success("ሰነድ ተጭኗል / Document uploaded");
     } catch (e) {
       toast.error(`ፋይል መጫን አልተሳካም / Upload failed: ${(e as Error).message}`);
@@ -335,6 +338,7 @@ function NewCredentialRequestPage() {
         submitted_at: new Date().toISOString(),
         supporting_document_path: values.supporting_document_path ?? null,
         supporting_document_name: values.supporting_document_name ?? null,
+        supporting_document_content_type: values.supporting_document_content_type ?? null,
         duplicate_flag: duplicateFlag,
         duplicate_notes: duplicateFlag ? dupNotes.join("; ") : null,
         // request_number auto-assigned by trigger; provide empty to satisfy NOT NULL — trigger overrides
@@ -678,6 +682,7 @@ function NewCredentialRequestPage() {
                   onClick={() => {
                     setValue("supporting_document_path", null, { shouldValidate: true });
                     setValue("supporting_document_name", null);
+                    setValue("supporting_document_content_type", null);
                   }}
                   className="rounded p-1 text-slate-500 hover:bg-blue-100 hover:text-red-600"
                 >

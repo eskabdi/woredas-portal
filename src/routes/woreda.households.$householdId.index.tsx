@@ -44,6 +44,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/integrations/supabase/client";
 import { P } from "@/config/permissions";
 import { formatEthiopianDate } from "@/utils/ethiopianCalendar";
+import { ErrorState } from "@/components/residents/ResidentProfileTabs";
 
 const LocationDisplayMap = lazy(() => import("@/components/gis/LocationDisplayMap"));
 const DocumentViewerDialog = lazy(() => import("@/components/common/DocumentViewerDialog"));
@@ -575,6 +576,13 @@ function CardHeader({
   );
 }
 
+/** Ethiopian + Gregorian, matching ResidentProfileTabs.tsx's dateLabel(). */
+function documentDateLabel(value: string) {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return `${formatEthiopianDate(d)} · ${d.toLocaleDateString()}`;
+}
+
 function notRecorded() {
   return (
     <span className="font-noto-ethiopic text-slate-400">
@@ -710,6 +718,7 @@ function HouseholdDocumentsTab({
   };
 
   if (q.isLoading) return <Skeleton className="h-56 w-full" />;
+  if (q.isError) return <ErrorState message={(q.error as Error)?.message} />;
 
   const docs = q.data ?? [];
   const byResident = new Map<string, { name: string; docs: HouseholdDocumentRow[] }>();
@@ -765,7 +774,7 @@ function HouseholdDocumentsTab({
                           {doc.document_label}
                         </div>
                         <div className="truncate text-xs text-slate-500">
-                          {doc.file_name} · {formatEthiopianDate(new Date(doc.created_at))}
+                          {doc.file_name} · {documentDateLabel(doc.created_at)}
                         </div>
                       </div>
                       <Button

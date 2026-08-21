@@ -44,6 +44,22 @@ function EmptyState({ am, en }: { am: string; en: string }) {
   );
 }
 
+/**
+ * An empty list and a failed query render identically without this: a
+ * pending app_user, a revoked resident.read/household.read, a missing
+ * table on a fresh deploy, and a network error are all indistinguishable
+ * from "no documents" otherwise -- see the doctor skill's symptom index.
+ */
+export function ErrorState({ message }: { message?: string }) {
+  return (
+    <p className="rounded-md border border-dashed border-red-200 bg-red-50 px-4 py-10 text-center text-sm text-red-700">
+      <span className="font-noto-ethiopic">መጫን አልተቻለም</span>
+      <span className="text-red-500"> / Couldn&apos;t load this</span>
+      {message && <span className="mt-1 block text-xs text-red-400">{message}</span>}
+    </p>
+  );
+}
+
 function PanelHeading({
   icon: Icon,
   am,
@@ -785,7 +801,13 @@ export function DocumentsTab({
         content_type: "application/pdf",
         uploaded_by_user_id: actorUserId,
       } as never);
-      if (error) throw error;
+      if (error) {
+        // The object already landed (the storage policy only checks the
+        // woreda prefix, not resident.update) -- without this, a rejected
+        // insert leaves an orphaned PDF that nothing can list or remove.
+        await supabase.storage.from("resident-documents").remove([path]);
+        throw error;
+      }
       toast.success("ሰነዱ ተጭኗል / Document uploaded");
       setLabel("");
       queryClient.invalidateQueries({ queryKey: ["resident-tab-documents", residentId, woredaId] });
@@ -818,12 +840,15 @@ export function DocumentsTab({
   const deleteDocument = async (doc: ResidentDocumentRow) => {
     setDeletingId(doc.document_id);
     try {
-      await supabase.storage.from("resident-documents").remove([doc.storage_path]);
+      // Row first: if the DB refuses the delete (e.g. a revoked permission
+      // between render and click), the object stays intact rather than the
+      // row surviving with nothing left to open.
       const { error } = await supabase
         .from(RESIDENT_DOCUMENT_TABLE)
         .delete()
         .eq("document_id", doc.document_id);
       if (error) throw error;
+      await supabase.storage.from("resident-documents").remove([doc.storage_path]);
       toast.success("ሰነዱ ተሰርዟል / Document deleted");
       queryClient.invalidateQueries({ queryKey: ["resident-tab-documents", residentId, woredaId] });
       queryClient.invalidateQueries({ queryKey: ["household-tab-documents", householdId] });
@@ -835,6 +860,7 @@ export function DocumentsTab({
   };
 
   if (q.isLoading) return <Skeleton className="h-56 w-full" />;
+  if (q.isError) return <ErrorState message={(q.error as Error)?.message} />;
 
   const docs = q.data ?? [];
 

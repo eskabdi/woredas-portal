@@ -101,6 +101,13 @@ CREATE TRIGGER trg_force_actor BEFORE INSERT ON public.resident_document
 -- genuinely PDF-only with no mixed-type use case, so a server-side check is
 -- cheap insurance against a client-side check being bypassed by calling the
 -- Storage API directly with a valid session token.
+--
+-- What this does NOT guarantee: allowed_mime_types validates the *declared*
+-- Content-Type on upload, and the table's content_type CHECK validates a
+-- client-supplied string -- neither inspects the actual bytes. A caller can
+-- still declare application/pdf and upload anything; the practical
+-- consequence of that is react-pdf failing to render it, not a security
+-- exposure on its own.
 -- ============================================================================
 
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
