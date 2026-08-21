@@ -78,6 +78,41 @@ interface TemplateField {
   canvas_height: number;
 }
 
+/** The subset of each joined row the front/back card previews actually read. */
+interface CardResident {
+  phone_number: string | null;
+  full_name: string | null;
+  full_name_am: string | null;
+  sex: string | null;
+}
+
+interface CardCredential {
+  credential_number: string | null;
+  issue_date: string | null;
+  expiry_date: string | null;
+  qr_payload: string | null;
+}
+
+interface CardWoreda {
+  woreda_name_am: string | null;
+  woreda_name_en: string | null;
+}
+
+interface CardWoredaSettings {
+  woreda_name_display: string | null;
+  woreda_name_display_en?: string | null;
+}
+
+interface CardKebele {
+  kebele_name_am: string | null;
+  kebele_name_en: string | null;
+  kebele_number: string | number | null;
+}
+
+interface CardHousehold {
+  house_number: string | null;
+}
+
 // A signed credential token is two base64url segments joined by a dot:
 // payload.signature. There is no JWT header — the algorithm is pinned in code,
 // so a token cannot claim its own.
@@ -267,24 +302,26 @@ function PrintPage() {
   });
 
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const residentPhotoPath = (request?.resident as any)?.photo_url as string | null | undefined;
+
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const path = (request?.resident as any)?.photo_url as string | null | undefined;
-      if (!path) {
+      if (!residentPhotoPath) {
         if (!cancelled) setPhotoUrl(null);
         return;
       }
-      const { data } = await supabase.storage.from("resident-photos").createSignedUrl(path, 900);
+      const { data } = await supabase.storage
+        .from("resident-photos")
+        .createSignedUrl(residentPhotoPath, 900);
       if (!cancelled) setPhotoUrl(data?.signedUrl ?? null);
     }
     load();
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  }, [(request?.resident as any)?.photo_url]);
+  }, [residentPhotoPath]);
 
   // Signed URLs for tenant-assets (logo + signature) and credential-templates
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -944,7 +981,6 @@ function PrintPage() {
 
 /* ============ Preview visuals ============ */
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function CardFront({
   resident,
   cred,
@@ -957,7 +993,19 @@ function CardFront({
   issueEth,
   bgUrl,
   orientation,
-}: any) {
+}: {
+  resident: CardResident | null | undefined;
+  cred: CardCredential | null | undefined;
+  woreda: CardWoreda | null | undefined;
+  settings: CardWoredaSettings | null | undefined;
+  photoUrl: string | null;
+  logoUrl: string | null;
+  dobEthiopian: string;
+  dobGregorian: string;
+  issueEth: string;
+  bgUrl: string | null;
+  orientation: "portrait" | "landscape";
+}) {
   const isPortrait = orientation === "portrait";
   return (
     <div
@@ -975,7 +1023,6 @@ function CardFront({
         <>
           <div className="absolute inset-x-0 top-0 flex items-center gap-3 bg-blue-800/90 px-4 py-3 text-white">
             {logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
               <img src={logoUrl} alt="" className="h-9 w-9 rounded-full bg-white p-0.5" />
             ) : (
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20 text-xs font-bold">
@@ -999,7 +1046,6 @@ function CardFront({
             <div className="flex gap-4">
               <div className="h-24 w-20 shrink-0 overflow-hidden rounded border-2 border-white bg-slate-200 shadow">
                 {photoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
                   <img src={photoUrl} alt="" className="h-full w-full object-cover" />
                 ) : (
                   <div className="flex h-full items-center justify-center text-[10px] text-slate-500">
@@ -1077,8 +1123,23 @@ function FrontRow({
   );
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function CardBack({ cred, kebele, household, signatureUrl, expiryEth, bgUrl, orientation }: any) {
+function CardBack({
+  cred,
+  kebele,
+  household,
+  signatureUrl,
+  expiryEth,
+  bgUrl,
+  orientation,
+}: {
+  cred: CardCredential;
+  kebele: CardKebele | null | undefined;
+  household: CardHousehold | null | undefined;
+  signatureUrl: string | null;
+  expiryEth: string;
+  bgUrl: string | null;
+  orientation: "portrait" | "landscape";
+}) {
   const isPortrait = orientation === "portrait";
   return (
     <div
@@ -1158,7 +1219,6 @@ function CardBack({ cred, kebele, household, signatureUrl, expiryEth, bgUrl, ori
             <div className="flex flex-col items-end">
               <div className="h-14 w-40 border-b border-slate-400">
                 {signatureUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
                   <img src={signatureUrl} alt="" className="h-full w-full object-contain" />
                 )}
               </div>
@@ -1176,15 +1236,17 @@ function CardBack({ cred, kebele, household, signatureUrl, expiryEth, bgUrl, ori
 
 /* ============ Printable (template-driven, unchanged behavior) ============ */
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function buildFieldValues(
-  _request: any,
-  cred: any,
-  resident: any,
-  household: any,
-  kebele: any,
-  woreda: any,
-  settings: any,
+  _request: unknown,
+  cred: CardCredential & { serial_number: string | null },
+  resident:
+    | (CardResident & { national_id_no: string | null; resident_number: string | null })
+    | null
+    | undefined,
+  household: CardHousehold | null | undefined,
+  kebele: CardKebele | null | undefined,
+  woreda: CardWoreda | null | undefined,
+  settings: CardWoredaSettings | null | undefined,
   dobEth: string,
   dobGreg: string,
   issueEth: string,
@@ -1290,7 +1352,6 @@ function PrintableCard({
                 style={{ ...common, background: "#e2e8f0", overflow: "hidden" }}
               >
                 {photoUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={photoUrl}
                     alt=""

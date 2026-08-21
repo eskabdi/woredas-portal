@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -150,33 +150,37 @@ function AdminUsersPage() {
     });
   }, [users, roleFilter, statusFilter, qTerm]);
 
-  function sortRows(rows: AdminUserRow[]): AdminUserRow[] {
-    const mul = sort.dir === "asc" ? 1 : -1;
-    const arr = [...rows];
-    arr.sort((a, b) => {
-      switch (sort.field) {
-        case "full_name":
-          return mul * a.full_name.localeCompare(b.full_name);
-        case "role":
-          return mul * a.role.localeCompare(b.role);
-        case "status":
-          return mul * a.status.localeCompare(b.status);
-        case "tenant": {
-          const an = a.woreda_id ? (woredaMap.get(a.woreda_id)?.woreda_name_en ?? "") : "Platform";
-          const bn = b.woreda_id ? (woredaMap.get(b.woreda_id)?.woreda_name_en ?? "") : "Platform";
-          return mul * an.localeCompare(bn);
+  const sortRows = useCallback(
+    (rows: AdminUserRow[]): AdminUserRow[] => {
+      const mul = sort.dir === "asc" ? 1 : -1;
+      const arr = [...rows];
+      arr.sort((a, b) => {
+        switch (sort.field) {
+          case "full_name":
+            return mul * a.full_name.localeCompare(b.full_name);
+          case "role":
+            return mul * a.role.localeCompare(b.role);
+          case "status":
+            return mul * a.status.localeCompare(b.status);
+          case "tenant": {
+            const an = a.woreda_id
+              ? (woredaMap.get(a.woreda_id)?.woreda_name_en ?? "")
+              : "Platform";
+            const bn = b.woreda_id
+              ? (woredaMap.get(b.woreda_id)?.woreda_name_en ?? "")
+              : "Platform";
+            return mul * an.localeCompare(bn);
+          }
+          default:
+            return 0;
         }
-        default:
-          return 0;
-      }
-    });
-    return arr;
-  }
-
-  const sortedFiltered = useMemo(
-    () => sortRows(filtered),
-    [filtered, sort.field, sort.dir, woredaMap],
+      });
+      return arr;
+    },
+    [sort.field, sort.dir, woredaMap],
   );
+
+  const sortedFiltered = useMemo(() => sortRows(filtered), [filtered, sortRows]);
 
   const { page, setPage, pageSize, setPageSize, total, pageRows } = useClientPagination(
     sortedFiltered,

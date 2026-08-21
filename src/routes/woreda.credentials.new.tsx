@@ -423,7 +423,6 @@ function NewCredentialRequestPage() {
             <div className="flex items-start gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
               <div className="h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-white ring-1 ring-slate-200">
                 {photoSignedUrl ? (
-                  // eslint-disable-next-line jsx-a11y/alt-text
                   <img src={photoSignedUrl} className="h-full w-full object-cover" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">

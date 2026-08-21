@@ -161,11 +161,11 @@ function CredentialTemplatePage() {
     },
   });
 
-  const templates = templatesQuery.data ?? [];
+  const templates = useMemo(() => templatesQuery.data ?? [], [templatesQuery.data]);
   const front = templates.find((t) => t.template_type === "card_front");
   const back = templates.find((t) => t.template_type === "card_back");
 
-  const fields = fieldsQuery.data ?? [];
+  const fields = useMemo(() => fieldsQuery.data ?? [], [fieldsQuery.data]);
 
   // Signed URLs for private-bucket preview
   const [urls, setUrls] = useState<Record<string, string | null>>({});

@@ -413,12 +413,13 @@ function InviteDialog({
       return;
     }
     setSubmitting(true);
-    const { data, error } = await supabase.functions.invoke("invite-tenant-user", {
-      body: { email, full_name: fullName, role, woredaId },
-    });
+    const { data, error } = await supabase.functions.invoke<{ error?: string }>(
+      "invite-tenant-user",
+      { body: { email, full_name: fullName, role, woredaId } },
+    );
     setSubmitting(false);
-    if (error || (data as any)?.error) {
-      toast.error((data as any)?.error ?? error?.message ?? "Failed to send invitation");
+    if (error || data?.error) {
+      toast.error(data?.error ?? error?.message ?? "Failed to send invitation");
       return;
     }
     toast.success("ግብዣ ተልኳል / Invitation sent");

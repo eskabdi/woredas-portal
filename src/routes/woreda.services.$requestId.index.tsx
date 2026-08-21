@@ -352,7 +352,7 @@ function ServiceRequestDetailPage() {
     }
     setBusy(true);
     try {
-      const safe = file.name.replace(/[^\w.\-]/g, "_");
+      const safe = file.name.replace(/[^\w.-]/g, "_");
       const path = `${woredaId}/${req.service_request_id}/${Date.now()}-${safe}`;
       const up = await supabase.storage
         .from("service-request-documents")

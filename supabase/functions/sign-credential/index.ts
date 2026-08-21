@@ -1,4 +1,3 @@
-// deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 /**
@@ -222,9 +221,9 @@ Deno.serve(async (req: Request) => {
       entity_name: "residence_credential",
       entity_id: body.credentialId,
       action_type: "QR_SIGNED",
-      new_value_json: { credential_number: cred.credential_number } as any,
+      new_value_json: { credential_number: cred.credential_number },
       action_at: new Date().toISOString(),
-    } as any);
+    });
 
     return json(200, { success: true, token });
   } catch (e) {

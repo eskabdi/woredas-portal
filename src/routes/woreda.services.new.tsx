@@ -145,7 +145,7 @@ function NewServiceRequestPage() {
 
       // Attachments
       for (const pf of files) {
-        const safe = pf.file.name.replace(/[^\w.\-]/g, "_");
+        const safe = pf.file.name.replace(/[^\w.-]/g, "_");
         const path = `${woredaId}/${created.service_request_id}/${Date.now()}-${safe}`;
         const up = await supabase.storage
           .from("service-request-documents")
