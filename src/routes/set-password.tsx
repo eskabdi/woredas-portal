@@ -144,8 +144,11 @@ function SetPasswordPage() {
   };
 
   if (done) {
-    // A pending account cannot activate itself: RLS lets a user read their own
-    // app_user row but not write it, so activation is an administrator action.
+    // The activate-invited-user call in onSubmit above should have already
+    // flipped a pending account to active. This still reads false if that
+    // call failed (network blip, function not deployed) or if the account is
+    // suspended/inactive rather than pending -- those statuses are left
+    // untouched on purpose and still require an administrator.
     const pending = appUser?.status !== "active";
     return (
       <Shell>

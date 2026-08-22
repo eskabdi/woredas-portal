@@ -126,11 +126,18 @@ BEGIN
     RAISE EXCEPTION 'Only super_admin may publish the ID card template';
   END IF;
 
+  -- template_field_id is deliberately NOT copied from the draft row: draft and
+  -- live are separate PK spaces (see the no-FK note above), so reusing the
+  -- draft's id here could collide with an unrelated live row's PK when a
+  -- draft field's (template_type, field_key) has changed since the last
+  -- publish. Let the live table assign its own id; ON CONFLICT below is
+  -- keyed on (template_type, field_key), which is the only identity that
+  -- actually carries across the two tables.
   INSERT INTO public.id_card_template_field
-    (template_field_id, template_type, field_key, x, y, width, height, font_size,
+    (template_type, field_key, x, y, width, height, font_size,
      font_weight, text_align, z_index, canvas_width, canvas_height, field_type,
      color, font_family, font_style, text_decoration, binding_mode, static_value)
-  SELECT template_field_id, template_type, field_key, x, y, width, height, font_size,
+  SELECT template_type, field_key, x, y, width, height, font_size,
          font_weight, text_align, z_index, canvas_width, canvas_height, field_type,
          color, font_family, font_style, text_decoration, binding_mode, static_value
   FROM public.id_card_template_field_draft
@@ -165,10 +172,19 @@ CREATE OR REPLACE FUNCTION public.discard_id_card_template_draft()
  RETURNS void
  LANGUAGE plpgsql SECURITY INVOKER SET search_path TO 'public'
 AS $function$
+DECLARE
+  prior_front boolean;
+  prior_back boolean;
 BEGIN
   IF NOT public.is_super_admin() THEN
     RAISE EXCEPTION 'Only super_admin may discard the ID card template draft';
   END IF;
+
+  -- Capture each side's is_published state before the DELETE/INSERT below
+  -- triggers mark_template_draft_dirty() and flips both to false -- a side
+  -- that was never published (still false) must come back false, not true.
+  SELECT is_published INTO prior_front FROM public.id_card_template WHERE template_type = 'card_front';
+  SELECT is_published INTO prior_back FROM public.id_card_template WHERE template_type = 'card_back';
 
   DELETE FROM public.id_card_template_field_draft;
   INSERT INTO public.id_card_template_field_draft
@@ -180,11 +196,11 @@ BEGIN
          color, font_family, font_style, text_decoration, binding_mode, static_value
   FROM public.id_card_template_field;
 
-  -- Content now equals what's live again -- override the dirty trigger's
-  -- flip from the DELETE/INSERT above.
-  UPDATE public.id_card_template
-     SET is_published = true
-   WHERE template_type IN ('card_front', 'card_back') AND is_published = false;
+  -- Content now equals what's live again -- restore each side's prior
+  -- is_published state, overriding the dirty trigger's flip from the
+  -- DELETE/INSERT above.
+  UPDATE public.id_card_template SET is_published = prior_front WHERE template_type = 'card_front';
+  UPDATE public.id_card_template SET is_published = prior_back WHERE template_type = 'card_back';
 END;
 $function$;
 

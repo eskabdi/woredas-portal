@@ -1247,6 +1247,15 @@ INSERT INTO public.id_card_template_field_draft (template_field_id, template_typ
 INSERT INTO public.id_card_template_field_draft (template_field_id, template_type, field_key, x, y, width, height, font_size, font_weight, text_align, z_index, canvas_width, canvas_height, field_type, color, font_family, font_style, text_decoration, binding_mode, static_value) VALUES ('0d57ee07-fd85-4666-9ab2-3859bf03d37c', 'card_back', 'woreda_name', '82', '436', '632', '55', '25', 'bold', 'left', '2', '1688', '1063', 'text', '#000000', 'Inter', 'normal', 'none', 'bound', NULL) ON CONFLICT DO NOTHING;
 INSERT INTO public.id_card_template_field_draft (template_field_id, template_type, field_key, x, y, width, height, font_size, font_weight, text_align, z_index, canvas_width, canvas_height, field_type, color, font_family, font_style, text_decoration, binding_mode, static_value) VALUES ('599ac88b-0648-4651-a8b4-86b6fafeca48', 'card_back', 'woreda_name_har', '82', '496', '300', '55', '20', 'normal', 'left', '2', '1688', '1063', 'text', '#000000', 'Inter', 'normal', 'none', 'bound', NULL) ON CONFLICT DO NOTHING;
 INSERT INTO public.id_card_template_field_draft (template_field_id, template_type, field_key, x, y, width, height, font_size, font_weight, text_align, z_index, canvas_width, canvas_height, field_type, color, font_family, font_style, text_decoration, binding_mode, static_value) VALUES ('370eb957-87fa-44d4-938f-600f7aa0cd78', 'card_back', 'woreda_name_om', '395', '496', '300', '55', '20', 'normal', 'left', '2', '1688', '1063', 'text', '#000000', 'Inter', 'normal', 'none', 'bound', NULL) ON CONFLICT DO NOTHING;
+
+-- Every draft INSERT above fires trg_mark_template_draft_dirty, which flips
+-- id_card_template.is_published back to false for that side. On a fresh
+-- deploy that leaves both rows falsely "Draft" even though the seed inserted
+-- them as published above (line ~1182) -- the two sides are, by
+-- construction, in lockstep with the draft on a fresh seed, so reassert the
+-- published state the earlier INSERTs already declared.
+UPDATE public.id_card_template SET is_published = true WHERE template_type IN ('card_front', 'card_back');
+
 -- width 950 (not the original 420): at 420 the Code 128 barcode prints at
 -- ~150um per module on an 85.6mm card, below the 250um scanning floor. 950
 -- gives ~337um, matching what CredentialBarcode's density guard requires.
