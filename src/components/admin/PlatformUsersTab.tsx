@@ -915,9 +915,19 @@ function UserDetailDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="tenant_admin">Tenant Admin</SelectItem>
-                  <SelectItem value="super_admin">Super Admin</SelectItem>
+                  <SelectItem
+                    value="super_admin"
+                    disabled={user.role !== "super_admin" && !canManageConsoleRoles}
+                  >
+                    Super Admin
+                  </SelectItem>
                 </SelectContent>
               </Select>
+              {user.role !== "super_admin" && !canManageConsoleRoles && (
+                <p className="text-xs text-amber-600">
+                  Promoting to Super Admin requires console.console_users.manage.
+                </p>
+              )}
               {role === "tenant_admin" && (
                 <Select value={woredaId} onValueChange={setWoredaId} disabled={isSelf}>
                   <SelectTrigger>

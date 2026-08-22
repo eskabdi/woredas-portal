@@ -83,16 +83,20 @@ GRANT EXECUTE ON FUNCTION public.current_console_permissions() TO authenticated,
 -- console.console_users.manage specifically for *this* column, without
 -- weakening every other super_admin write app_user_super_admin_write already
 -- covers (role, woreda_id, status, full_name, ...). Covers INSERT as well as
--- UPDATE: an UPDATE-only guard leaves inviting a brand new, already-
--- unrestricted super_admin (via invite-platform-admin, itself hardened to
--- require this same permission for that specific case) as an uncovered way
--- to route around this table's own protection entirely -- a scoped admin who
--- can't touch an existing row's console_role_id could otherwise still mint a
--- second, unrestricted account for themselves through a different door.
+-- UPDATE, and (via becomes_unrestricted below) promoting an EXISTING row's
+-- `role` to super_admin, not just inserting a new one: all three are ways a
+-- scoped admin without this permission could otherwise mint an unrestricted
+-- super_admin -- inviting a brand-new one (blocked at the INSERT itself),
+-- promoting an existing tenant_admin/viewer/etc. directly (a NULL->NULL
+-- console_role_id transition that would otherwise slip past the
+-- "column unchanged" short circuit entirely), or clearing an existing
+-- super_admin's own console_role_id (the plain UPDATE case).
 CREATE OR REPLACE FUNCTION public.guard_console_role_assignment()
  RETURNS trigger
  LANGUAGE plpgsql SECURITY INVOKER SET search_path TO 'public'
 AS $function$
+DECLARE
+  becomes_unrestricted boolean;
 BEGIN
   -- No authenticated actor (service_role, a migration, the Management API
   -- SQL console) is exempt: those paths bypass RLS by design and are the
@@ -106,7 +110,19 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  IF TG_OP = 'UPDATE' AND NEW.console_role_id IS NOT DISTINCT FROM OLD.console_role_id THEN
+  -- console_role_id is NULL both before and after on every non-super_admin
+  -- row (forced by app_user_console_role_scope_check) AND on an already-
+  -- unrestricted super_admin -- so promoting an existing tenant_admin/
+  -- viewer/etc. straight to super_admin is a NULL->NULL transition on this
+  -- column and would otherwise slip past the "column unchanged" short
+  -- circuit below entirely, minting a fully unrestricted super_admin with
+  -- no permission check at all. That is the exact escalation this trigger
+  -- exists to close, just approached from role instead of console_role_id.
+  becomes_unrestricted := NEW.role = 'super_admin' AND NEW.console_role_id IS NULL
+    AND (TG_OP = 'INSERT' OR OLD.role IS DISTINCT FROM 'super_admin' OR OLD.console_role_id IS NOT NULL);
+
+  IF TG_OP = 'UPDATE' AND NEW.console_role_id IS NOT DISTINCT FROM OLD.console_role_id
+     AND NOT becomes_unrestricted THEN
     RETURN NEW;
   END IF;
 
@@ -146,9 +162,11 @@ CREATE TRIGGER trg_guard_console_role_assignment
 -- Same idea, different feature: PlatformUsersTab.tsx's UI already refuses to
 -- suspend or demote the only active super_admin, computed client-side from
 -- the currently-loaded row list. That is advisory only -- nothing stopped a
--- raw PATCH from doing it anyway, which is exactly the kind of lockout
--- recoverable only with the service_role key. This is the DB-level backstop
--- for that same rule.
+-- raw PATCH (or DELETE -- app_user_super_admin_write is FOR ALL, so a raw
+-- `DELETE .../app_user?role=eq.super_admin` reaches this table exactly like
+-- an UPDATE does) from doing it anyway, which is exactly the kind of
+-- lockout recoverable only with the service_role key. This is the DB-level
+-- backstop for that same rule, covering both verbs.
 --
 -- SECURITY INVOKER, deliberately: its count(*) below reads app_user under
 -- the CALLER's own RLS, which today is correct only because
@@ -170,22 +188,32 @@ CREATE OR REPLACE FUNCTION public.prevent_last_super_admin_lockout()
 AS $function$
 DECLARE
   remaining_active_super_admins integer;
+  losing_active_super_admin boolean;
 BEGIN
-  IF OLD.role = 'super_admin' AND OLD.status = 'active'
-     AND (NEW.role IS DISTINCT FROM 'super_admin' OR NEW.status IS DISTINCT FROM 'active') THEN
+  IF TG_OP = 'DELETE' THEN
+    losing_active_super_admin := OLD.role = 'super_admin' AND OLD.status = 'active';
+  ELSE
+    losing_active_super_admin := OLD.role = 'super_admin' AND OLD.status = 'active'
+      AND (NEW.role IS DISTINCT FROM 'super_admin' OR NEW.status IS DISTINCT FROM 'active');
+  END IF;
+
+  IF losing_active_super_admin THEN
     PERFORM pg_advisory_xact_lock(hashtext('app_user:last_active_super_admin'));
     SELECT count(*) INTO remaining_active_super_admins
     FROM public.app_user
     WHERE role = 'super_admin' AND status = 'active' AND user_id <> OLD.user_id;
     IF remaining_active_super_admins = 0 THEN
-      RAISE EXCEPTION 'Cannot suspend or demote the last active super_admin';
+      RAISE EXCEPTION 'Cannot suspend, demote, or delete the last active super_admin';
     END IF;
   END IF;
-  RETURN NEW;
+  -- NEW is NULL on DELETE -- COALESCE falls back to OLD, which for a BEFORE
+  -- DELETE trigger means "allow the delete to proceed" (returning NULL is
+  -- what cancels it).
+  RETURN COALESCE(NEW, OLD);
 END;
 $function$;
 
 DROP TRIGGER IF EXISTS trg_prevent_last_super_admin_lockout ON public.app_user;
 CREATE TRIGGER trg_prevent_last_super_admin_lockout
-  BEFORE UPDATE ON public.app_user
+  BEFORE UPDATE OR DELETE ON public.app_user
   FOR EACH ROW EXECUTE FUNCTION public.prevent_last_super_admin_lockout();
