@@ -171,18 +171,7 @@ function SettingsPage() {
   });
 
   useEffect(() => {
-    // woreda_name_display_har/_om aren't in the generated types yet -- they
-    // regenerate only once 00000000000005_woreda_name_har_om.sql is applied
-    // to the live project (see CLAUDE.md: "regenerate rather than edit").
-    // Both columns exist in the migration; this cast is the deliberate,
-    // temporary escape hatch until deploy + regeneration.
-    const s = settingsQuery.data as
-      | (Database["public"]["Tables"]["woreda_settings"]["Row"] & {
-          woreda_name_display_har: string | null;
-          woreda_name_display_om: string | null;
-        })
-      | null
-      | undefined;
+    const s = settingsQuery.data;
     if (!s) return;
     form.reset({
       woreda_name_display: s.woreda_name_display ?? "",
@@ -205,15 +194,7 @@ function SettingsPage() {
     if (!woredaId) return;
     setSaving(true);
     try {
-      // woreda_name_display_har/_om: see the matching comment in the reset
-      // effect above -- same deliberate, temporary cast until types
-      // regenerate post-deploy. Narrowed to the Insert row shape (not
-      // `as never`) so a typo in any *other* field here still fails
-      // tsc --noEmit instead of silently passing through.
-      const payload: Database["public"]["Tables"]["woreda_settings"]["Insert"] & {
-        woreda_name_display_har: string | null;
-        woreda_name_display_om: string | null;
-      } = {
+      const payload: Database["public"]["Tables"]["woreda_settings"]["Insert"] = {
         woreda_id: woredaId,
         woreda_name_display: values.woreda_name_display || null,
         woreda_name_display_en: values.woreda_name_display_en || null,
@@ -231,9 +212,7 @@ function SettingsPage() {
       };
       const { error } = await supabase
         .from("woreda_settings")
-        .upsert(payload as Database["public"]["Tables"]["woreda_settings"]["Insert"], {
-          onConflict: "woreda_id",
-        });
+        .upsert(payload, { onConflict: "woreda_id" });
       if (error) throw error;
 
       // woreda_id was previously omitted here -- audit_log_tenant_insert's
