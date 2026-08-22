@@ -644,12 +644,6 @@ function PersonLink({
   );
 }
 
-/**
- * resident_document isn't in the generated Supabase types yet (see the
- * matching comment in ResidentProfileTabs.tsx) -- deliberate temporary cast.
- */
-const RESIDENT_DOCUMENT_TABLE = "resident_document" as never;
-
 interface HouseholdDocumentRow {
   document_id: string;
   document_label: string;
@@ -682,7 +676,7 @@ function HouseholdDocumentsTab({
     enabled: !!woredaId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from(RESIDENT_DOCUMENT_TABLE)
+        .from("resident_document")
         .select(
           "document_id, document_label, file_name, storage_path, created_at, resident:resident_id(resident_id, full_name_am, full_name)",
         )
@@ -690,7 +684,7 @@ function HouseholdDocumentsTab({
         .eq("woreda_id", woredaId as string)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as unknown as HouseholdDocumentRow[];
+      return data ?? [];
     },
   });
 

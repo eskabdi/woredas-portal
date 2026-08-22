@@ -722,15 +722,6 @@ function Row({ am, en, value }: { am: string; en: string; value: string }) {
   );
 }
 
-/**
- * resident_document isn't in the generated Supabase types yet -- it's
- * regenerated only after this feature's migration is applied to the live
- * project (see CLAUDE.md: "regenerate rather than edit"). `.from(x as
- * never)` is the deliberate, temporary escape hatch until then; every
- * query below is written against the real column list from the migration.
- */
-const RESIDENT_DOCUMENT_TABLE = "resident_document" as never;
-
 export function DocumentsTab({
   residentId,
   woredaId,
@@ -751,13 +742,13 @@ export function DocumentsTab({
     enabled: !!woredaId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from(RESIDENT_DOCUMENT_TABLE)
+        .from("resident_document")
         .select("document_id, document_label, file_name, storage_path, file_size_bytes, created_at")
         .eq("resident_id", residentId)
         .eq("woreda_id", woredaId as string)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as unknown as ResidentDocumentRow[];
+      return data ?? [];
     },
   });
 
@@ -790,7 +781,7 @@ export function DocumentsTab({
         .from("resident-documents")
         .upload(path, file, { upsert: false, contentType: "application/pdf" });
       if (up.error) throw up.error;
-      const { error } = await supabase.from(RESIDENT_DOCUMENT_TABLE).insert({
+      const { error } = await supabase.from("resident_document").insert({
         woreda_id: woredaId,
         resident_id: residentId,
         household_id: householdId,
@@ -800,7 +791,7 @@ export function DocumentsTab({
         file_size_bytes: file.size,
         content_type: "application/pdf",
         uploaded_by_user_id: actorUserId,
-      } as never);
+      });
       if (error) {
         // The object already landed (the storage policy only checks the
         // woreda prefix, not resident.update) -- without this, a rejected
@@ -844,7 +835,7 @@ export function DocumentsTab({
       // between render and click), the object stays intact rather than the
       // row surviving with nothing left to open.
       const { error } = await supabase
-        .from(RESIDENT_DOCUMENT_TABLE)
+        .from("resident_document")
         .delete()
         .eq("document_id", doc.document_id);
       if (error) throw error;
