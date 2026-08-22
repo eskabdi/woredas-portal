@@ -143,10 +143,19 @@ indexes AS (
 ),
 
 -- 9. Views ------------------------------------------------------------------
+-- pg_get_viewdef() does not emit reloptions (e.g. security_invoker), so a
+-- plain CREATE VIEW here silently drops any option set on the live view --
+-- exactly how security_invoker went missing from approval_queue_v and
+-- household_member_roster in the original baseline dump (see
+-- 00000000000006_view_security_invoker.sql). Emit a WITH (...) clause from
+-- c.reloptions so a regenerated baseline carries them forward.
 views AS (
   SELECT 800 AS ord, c.relname AS sort_key,
-         format(E'CREATE OR REPLACE VIEW %I.%I AS\n%s',
-                n.nspname, c.relname, pg_get_viewdef(c.oid, true)) AS ddl
+         format(E'CREATE OR REPLACE VIEW %I.%I%s AS\n%s',
+                n.nspname, c.relname,
+                CASE WHEN c.reloptions IS NULL THEN ''
+                     ELSE ' WITH (' || array_to_string(c.reloptions, ', ') || ')' END,
+                pg_get_viewdef(c.oid, true)) AS ddl
   FROM pg_class c
   JOIN pg_namespace n ON n.oid = c.relnamespace
   WHERE c.relkind = 'v'

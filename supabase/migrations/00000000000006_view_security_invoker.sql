@@ -1,0 +1,39 @@
+-- ============================================================================
+-- Restore security_invoker on the two public views.
+--
+-- Both views were created without it, and both are owned by `postgres`, which
+-- carries rolbypassrls. A view without security_invoker executes with its
+-- owner's privileges, so RLS on the underlying tables does not apply to anyone
+-- selecting through it -- the view launders past the tenant boundary.
+--
+-- Verified against the deployed project, as role `anon`:
+--
+--   select count(*) from resident;                -- 0  (RLS applies)
+--   select count(*) from household_member_roster; -- 1  (RLS bypassed)
+--
+-- household_member_roster is the reachable one: the baseline grants SELECT on
+-- it to `anon`, so any holder of the publishable key -- which ships in the
+-- client bundle -- could read resident names, dates of birth, sex and
+-- residency status across every woreda.
+--
+-- approval_queue_v has the same defect and is empty today, but /woreda/approvals
+-- queries it with no woreda_id filter precisely because it was designed to be
+-- security_invoker, so the first pending request would be visible tenant-wide.
+--
+-- The design note (docs/general-service-requests-unified-approval-queue.md)
+-- always specified security_invoker for approval_queue_v. The option was lost
+-- in the baseline because pg_get_viewdef() does not emit reloptions, so the
+-- schema dump that produced 00000000000000_baseline.sql dropped it silently.
+--
+-- Anything added to scripts/dump-schema.sql later must carry reloptions
+-- forward, or a future rebuild reintroduces this.
+--
+-- This was applied live to the production project via the Management API
+-- ahead of this file existing in the repo (the exposure was live), and is
+-- restated here -- renumbered from 00000000000002, which has since been
+-- claimed by an unrelated migration -- purely so a fresh `supabase db push`
+-- reproduces the same state. Both statements are idempotent.
+-- ============================================================================
+
+ALTER VIEW public.approval_queue_v SET (security_invoker = on);
+ALTER VIEW public.household_member_roster SET (security_invoker = on);
