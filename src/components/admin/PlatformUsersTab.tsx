@@ -37,6 +37,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { StatusChip } from "@/components/common/StatusChip";
 import {
   TablePagination,
@@ -70,6 +71,8 @@ interface AdminUserRow {
   status: string;
   woreda_id: string | null;
   invited_at: string | null;
+  last_login_at: string | null;
+  invited_by: { full_name: string } | null;
 }
 interface WoredaOpt {
   woreda_id: string;
@@ -88,6 +91,7 @@ export function PlatformUsersTab() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [suspendUser, setSuspendUser] = useState<AdminUserRow | null>(null);
   const [reactivateUser, setReactivateUser] = useState<AdminUserRow | null>(null);
+  const [detailUser, setDetailUser] = useState<AdminUserRow | null>(null);
 
   const sort = useUrlSort("full_name", "asc");
   const [exporting, setExporting] = useState(false);
@@ -103,11 +107,13 @@ export function PlatformUsersTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("app_user")
-        .select("user_id, full_name, username, role, status, woreda_id, invited_at")
+        .select(
+          "user_id, full_name, username, role, status, woreda_id, invited_at, last_login_at, invited_by:invited_by_user_id ( full_name )",
+        )
         .in("role", ["super_admin", "tenant_admin"])
         .order("full_name");
       if (error) throw error;
-      return (data ?? []) as AdminUserRow[];
+      return (data ?? []) as unknown as AdminUserRow[];
     },
   });
 
@@ -395,7 +401,11 @@ export function PlatformUsersTab() {
               <TableEmptyRow cols={5} filtered={filtersActive} onClearFilters={clearFilters} />
             ) : (
               pageRows.map((u) => (
-                <tr key={u.user_id} className="border-t border-slate-100">
+                <tr
+                  key={u.user_id}
+                  className="cursor-pointer border-t border-slate-100 hover:bg-slate-50"
+                  onClick={() => setDetailUser(u)}
+                >
                   <td className="px-4 py-3">
                     {u.role === "super_admin" ? (
                       <Badge variant="secondary">Platform</Badge>
@@ -430,7 +440,7 @@ export function PlatformUsersTab() {
                   <td className="px-4 py-3">
                     <StatusChip status={u.status} />
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="sm">
@@ -529,6 +539,15 @@ export function PlatformUsersTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <UserDetailDialog
+        user={detailUser}
+        woredas={woredas}
+        woredaMap={woredaMap}
+        callerId={callerId}
+        onOpenChange={(o) => !o && setDetailUser(null)}
+        onChanged={refresh}
+      />
     </div>
   );
 }
@@ -674,5 +693,209 @@ function InviteAdminDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function UserDetailDialog({
+  user,
+  woredas,
+  woredaMap,
+  callerId,
+  onOpenChange,
+  onChanged,
+}: {
+  user: AdminUserRow | null;
+  woredas: WoredaOpt[];
+  woredaMap: Map<string, WoredaOpt>;
+  callerId: string | undefined;
+  onOpenChange: (o: boolean) => void;
+  onChanged: () => void | Promise<void>;
+}) {
+  const [role, setRole] = useState<"super_admin" | "tenant_admin">("tenant_admin");
+  const [woredaId, setWoredaId] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Reset local edit state whenever a different row is opened.
+  const openUserId = user?.user_id ?? null;
+  const [syncedFor, setSyncedFor] = useState<string | null>(null);
+  if (user && openUserId !== syncedFor) {
+    setRole(user.role as "super_admin" | "tenant_admin");
+    setWoredaId(user.woreda_id ?? "");
+    setSyncedFor(openUserId);
+  }
+
+  if (!user) return null;
+  const isSelf = user.user_id === callerId;
+  const roleDirty =
+    role !== user.role || (role === "tenant_admin" && woredaId !== (user.woreda_id ?? ""));
+
+  async function toggleActive(checked: boolean) {
+    if (!user) return;
+    const nextStatus = checked ? "active" : "suspended";
+    const { error } = await supabase
+      .from("app_user")
+      .update({ status: nextStatus })
+      .eq("user_id", user.user_id);
+    if (error) return toast.error(error.message);
+    await supabase.from("audit_log").insert({
+      actor_user_id: callerId ?? null,
+      entity_name: "app_user",
+      entity_id: user.user_id,
+      action_type: checked ? "PLATFORM_ADMIN_REACTIVATED" : "PLATFORM_ADMIN_SUSPENDED",
+      new_value_json: { role: user.role },
+    });
+    toast.success(checked ? "ተጠቃሚው ተመልሷል / User activated" : "ተጠቃሚው ታግዷል / User suspended");
+    await onChanged();
+  }
+
+  async function saveRoleChange() {
+    if (!user) return;
+    if (role === "tenant_admin" && !woredaId) {
+      toast.error("Select a woreda for Tenant Admin");
+      return;
+    }
+    setSaving(true);
+    const nextWoredaId = role === "tenant_admin" ? woredaId : null;
+    const { error } = await supabase
+      .from("app_user")
+      .update({ role, woreda_id: nextWoredaId })
+      .eq("user_id", user.user_id);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    await supabase.from("audit_log").insert({
+      actor_user_id: callerId ?? null,
+      entity_name: "app_user",
+      entity_id: user.user_id,
+      action_type: "PLATFORM_ADMIN_ROLE_CHANGED",
+      old_value_json: { role: user.role, woreda_id: user.woreda_id },
+      new_value_json: { role, woreda_id: nextWoredaId },
+    });
+    toast.success("Role updated");
+    setConfirmOpen(false);
+    await onChanged();
+    onOpenChange(false);
+  }
+
+  return (
+    <>
+      <Dialog open={!!user} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{user.full_name}</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 text-sm">
+            <div className="grid grid-cols-2 gap-3">
+              <DetailField label="Username" value={user.username} />
+              <DetailField label="Invited By" value={user.invited_by?.full_name ?? "—"} />
+              <DetailField
+                label="Invited At"
+                value={user.invited_at ? new Date(user.invited_at).toLocaleString("en-GB") : "—"}
+              />
+              <DetailField
+                label="Last Login"
+                value={
+                  user.last_login_at
+                    ? new Date(user.last_login_at).toLocaleString("en-GB")
+                    : "Never"
+                }
+              />
+            </div>
+
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <div>
+                <div className="text-sm font-medium text-slate-900">Active</div>
+                <div className="text-xs text-slate-500">
+                  Current status: <StatusChip status={user.status} />
+                </div>
+              </div>
+              <Switch
+                checked={user.status === "active"}
+                disabled={isSelf}
+                onCheckedChange={toggleActive}
+              />
+            </div>
+
+            <div className="space-y-3 rounded-md border p-3">
+              <div className="text-sm font-medium text-slate-900">Role</div>
+              <Select
+                value={role}
+                onValueChange={(v) => setRole(v as typeof role)}
+                disabled={isSelf}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="tenant_admin">Tenant Admin</SelectItem>
+                  <SelectItem value="super_admin">Super Admin</SelectItem>
+                </SelectContent>
+              </Select>
+              {role === "tenant_admin" && (
+                <Select value={woredaId} onValueChange={setWoredaId} disabled={isSelf}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select woreda…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {woredas.map((w) => (
+                      <SelectItem key={w.woreda_id} value={w.woreda_id}>
+                        <span className="font-noto-ethiopic">{w.woreda_name_am}</span>
+                        <span className="ml-2 text-xs text-slate-500">/ {w.woreda_name_en}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {isSelf && <p className="text-xs text-amber-600">You cannot change your own role.</p>}
+              {!isSelf && roleDirty && (
+                <Button size="sm" onClick={() => setConfirmOpen(true)} className="w-full">
+                  Save Role Change
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm role change?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {user.full_name}: {user.role}
+              {user.role === "tenant_admin" && user.woreda_id
+                ? ` (${woredaMap.get(user.woreda_id)?.woreda_name_en ?? user.woreda_id})`
+                : ""}{" "}
+              → {role}
+              {role === "tenant_admin" && woredaId
+                ? ` (${woredaMap.get(woredaId)?.woreda_name_en ?? woredaId})`
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction disabled={saving} onClick={saveRoleChange}>
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
+function DetailField({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-xs text-slate-500">{label}</div>
+      <div className="text-slate-900">{value}</div>
+    </div>
   );
 }
