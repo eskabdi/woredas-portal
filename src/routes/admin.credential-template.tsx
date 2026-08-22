@@ -319,14 +319,22 @@ function CredentialTemplatePage() {
         toast.error(error.message);
         return;
       }
+      await supabase.from("audit_log").insert({
+        actor_user_id: actorUserId,
+        entity_name: "id_card_template_field_draft",
+        entity_id: data.template_field_id,
+        action_type: "TEMPLATE_FIELD_ADDED",
+        new_value_json: { template_type: activeSide, field_key: fieldKey },
+      });
       qc.invalidateQueries({ queryKey: ["id-card-template-field-drafts"] });
       setSelectedId(data.template_field_id);
     },
-    [isSuper, fields, activeSide, qc],
+    [isSuper, fields, activeSide, qc, actorUserId],
   );
 
   const deleteField = useCallback(async () => {
     if (!isSuper || !selectedId) return;
+    const removed = fields.find((f) => f.template_field_id === selectedId);
     const { error } = await db
       .from("id_card_template_field_draft")
       .delete()
@@ -335,9 +343,18 @@ function CredentialTemplatePage() {
       toast.error(error.message);
       return;
     }
+    await supabase.from("audit_log").insert({
+      actor_user_id: actorUserId,
+      entity_name: "id_card_template_field_draft",
+      entity_id: selectedId,
+      action_type: "TEMPLATE_FIELD_REMOVED",
+      old_value_json: removed
+        ? { template_type: removed.template_type, field_key: removed.field_key }
+        : null,
+    });
     setSelectedId(null);
     qc.invalidateQueries({ queryKey: ["id-card-template-field-drafts"] });
-  }, [isSuper, selectedId, qc]);
+  }, [isSuper, selectedId, fields, qc, actorUserId]);
 
   const undo = useCallback(() => {
     setPast((p) => {
@@ -451,13 +468,20 @@ function CredentialTemplatePage() {
 
   const saveDraft = async () => {
     if (!isSuper) return;
-    if (Object.keys(drafts).length === 0) {
+    const changedIds = Object.keys(drafts);
+    if (changedIds.length === 0) {
       toast.info("No changes to save");
       return;
     }
     setSaving(true);
     try {
       await flushDrafts();
+      await supabase.from("audit_log").insert({
+        actor_user_id: actorUserId,
+        entity_name: "id_card_template_field_draft",
+        action_type: "TEMPLATE_DRAFT_SAVED",
+        new_value_json: { template_type: activeSide, field_count: changedIds.length },
+      });
       toast.success("Draft saved");
       setDrafts({});
       setPast([]);
