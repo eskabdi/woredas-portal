@@ -21,6 +21,8 @@ const MODULES = [
   { key: "revenue", am: "ገቢ", en: "Revenue" },
   { key: "reports", am: "ሪፖርቶች", en: "Reports" },
   { key: "audit", am: "ኦዲት", en: "Audit Trail" },
+  { key: "services", am: "አገልግሎት ጥያቄዎች", en: "Service Requests" },
+  { key: "approvals", am: "የማጽደቅ ወረፋ", en: "Approval Queue" },
 ] as const;
 
 interface WoredaShape {
@@ -74,13 +76,19 @@ function TenantDetailPage() {
   const { data: admin } = useQuery({
     queryKey: ["admin-tenant-detail-admin", woredaId],
     queryFn: async () => {
-      const { data } = await supabase
+      // .maybeSingle() alone 400s (PGRST116) when a tenant has more than one
+      // non-suspended tenant_admin -- order + limit(1) picks the most
+      // recently invited one instead of erroring into "No Admin Assigned".
+      const { data, error } = await supabase
         .from("app_user")
         .select("user_id, full_name, username, status")
         .eq("woreda_id", woredaId)
         .eq("role", "tenant_admin")
         .neq("status", "suspended")
+        .order("invited_at", { ascending: false })
+        .limit(1)
         .maybeSingle();
+      if (error) throw error;
       return data as AdminShape | null;
     },
   });
@@ -88,12 +96,14 @@ function TenantDetailPage() {
   const enabledMap = new Map(moduleRows.map((r) => [r.module_key, r.is_enabled]));
 
   async function toggleModule(moduleKey: string, checked: boolean) {
+    const wasEnabled = enabledMap.get(moduleKey) ?? true;
     const { error } = await supabase.from("tenant_module_config").upsert(
       {
         woreda_id: woredaId,
         module_key: moduleKey,
         is_enabled: checked,
         updated_by: callerId ?? null,
+        updated_at: new Date().toISOString(),
       },
       { onConflict: "woreda_id,module_key" },
     );
@@ -101,14 +111,16 @@ function TenantDetailPage() {
       toast.error(error.message);
       return;
     }
-    await supabase.from("audit_log").insert({
+    const { error: auditError } = await supabase.from("audit_log").insert({
       actor_user_id: callerId ?? null,
       woreda_id: woredaId,
       entity_name: "tenant_module_config",
       entity_id: woredaId,
       action_type: "TENANT_MODULE_TOGGLED",
+      old_value_json: { module_key: moduleKey, is_enabled: wasEnabled },
       new_value_json: { module_key: moduleKey, is_enabled: checked },
     });
+    if (auditError) toast.error(`Config saved, but audit logging failed: ${auditError.message}`);
     await qc.invalidateQueries({ queryKey: ["admin-tenant-detail-modules", woredaId] });
     await qc.invalidateQueries({ queryKey: ["admin-tenants-modules"] });
     toast.success("Module configuration updated");

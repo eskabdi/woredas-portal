@@ -73,6 +73,7 @@ interface AdminUserRow {
   invited_at: string | null;
   last_login_at: string | null;
   invited_by: { full_name: string } | null;
+  console_role_id: string | null;
 }
 interface WoredaOpt {
   woreda_id: string;
@@ -108,7 +109,7 @@ export function PlatformUsersTab() {
       const { data, error } = await supabase
         .from("app_user")
         .select(
-          "user_id, full_name, username, role, status, woreda_id, invited_at, last_login_at, invited_by:invited_by_user_id ( full_name )",
+          "user_id, full_name, username, role, status, woreda_id, invited_at, last_login_at, console_role_id, invited_by:invited_by_user_id ( full_name )",
         )
         .in("role", ["super_admin", "tenant_admin"])
         .order("full_name");
@@ -247,6 +248,13 @@ export function PlatformUsersTab() {
   async function refresh() {
     await qc.invalidateQueries({ queryKey: ["admin-users"] });
   }
+
+  // Guards against locking the console out entirely: suspending, demoting or
+  // deactivating the last active super_admin (including yourself) would
+  // leave nobody able to undo it short of the service_role key.
+  const activeSuperAdminCount = users.filter(
+    (u) => u.role === "super_admin" && u.status === "active",
+  ).length;
 
   async function suspend(u: AdminUserRow) {
     const { error } = await supabase
@@ -456,7 +464,10 @@ export function PlatformUsersTab() {
                         )}
                         {u.status !== "suspended" ? (
                           <DropdownMenuItem
-                            disabled={u.user_id === callerId}
+                            disabled={
+                              u.user_id === callerId ||
+                              (u.role === "super_admin" && activeSuperAdminCount <= 1)
+                            }
                             onClick={() => setSuspendUser(u)}
                           >
                             <span className="font-noto-ethiopic text-red-600">እግድ</span>
@@ -545,6 +556,7 @@ export function PlatformUsersTab() {
         woredas={woredas}
         woredaMap={woredaMap}
         callerId={callerId}
+        activeSuperAdminCount={activeSuperAdminCount}
         onOpenChange={(o) => !o && setDetailUser(null)}
         onChanged={refresh}
       />
@@ -701,6 +713,7 @@ function UserDetailDialog({
   woredas,
   woredaMap,
   callerId,
+  activeSuperAdminCount,
   onOpenChange,
   onChanged,
 }: {
@@ -708,6 +721,7 @@ function UserDetailDialog({
   woredas: WoredaOpt[];
   woredaMap: Map<string, WoredaOpt>;
   callerId: string | undefined;
+  activeSuperAdminCount: number;
   onOpenChange: (o: boolean) => void;
   onChanged: () => void | Promise<void>;
 }) {
@@ -715,6 +729,19 @@ function UserDetailDialog({
   const [woredaId, setWoredaId] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const { data: consoleRoles = [] } = useQuery({
+    queryKey: ["console-roles-picker"],
+    enabled: user?.role === "super_admin",
+    queryFn: async () => {
+      const { data, error } = await (supabase as unknown as { from: (t: string) => any }) // eslint-disable-line @typescript-eslint/no-explicit-any
+        .from("console_role")
+        .select("console_role_id, name, is_active")
+        .order("name");
+      if (error) throw error;
+      return data as { console_role_id: string; name: string; is_active: boolean }[];
+    },
+  });
 
   // Reset local edit state whenever a different row is opened.
   const openUserId = user?.user_id ?? null;
@@ -729,9 +756,17 @@ function UserDetailDialog({
   const isSelf = user.user_id === callerId;
   const roleDirty =
     role !== user.role || (role === "tenant_admin" && woredaId !== (user.woreda_id ?? ""));
+  // The only active super_admin can't be demoted or suspended -- that locks
+  // the console out entirely, recoverable only with the service_role key.
+  const isLastActiveSuperAdmin =
+    user.role === "super_admin" && user.status === "active" && activeSuperAdminCount <= 1;
 
   async function toggleActive(checked: boolean) {
     if (!user) return;
+    if (!checked && isLastActiveSuperAdmin) {
+      toast.error("Cannot suspend the last active super admin");
+      return;
+    }
     const nextStatus = checked ? "active" : "suspended";
     const { error } = await supabase
       .from("app_user")
@@ -755,6 +790,10 @@ function UserDetailDialog({
       toast.error("Select a woreda for Tenant Admin");
       return;
     }
+    if (role !== "super_admin" && isLastActiveSuperAdmin) {
+      toast.error("Cannot demote the last active super admin");
+      return;
+    }
     setSaving(true);
     const nextWoredaId = role === "tenant_admin" ? woredaId : null;
     const { error } = await supabase
@@ -765,6 +804,10 @@ function UserDetailDialog({
     if (error) return toast.error(error.message);
     await supabase.from("audit_log").insert({
       actor_user_id: callerId ?? null,
+      // Scoped to the tenant the user is being assigned into (or was in, if
+      // demoted away from tenant_admin) so this shows up in that tenant's
+      // own audit view, not just Platform.
+      woreda_id: nextWoredaId ?? user.woreda_id ?? null,
       entity_name: "app_user",
       entity_id: user.user_id,
       action_type: "PLATFORM_ADMIN_ROLE_CHANGED",
@@ -775,6 +818,25 @@ function UserDetailDialog({
     setConfirmOpen(false);
     await onChanged();
     onOpenChange(false);
+  }
+
+  async function setConsoleRole(nextConsoleRoleId: string | null) {
+    if (!user) return;
+    const { error } = await supabase
+      .from("app_user")
+      .update({ console_role_id: nextConsoleRoleId } as never)
+      .eq("user_id", user.user_id);
+    if (error) return toast.error(error.message);
+    await supabase.from("audit_log").insert({
+      actor_user_id: callerId ?? null,
+      entity_name: "app_user",
+      entity_id: user.user_id,
+      action_type: "CONSOLE_ROLE_ASSIGNED",
+      old_value_json: { console_role_id: user.console_role_id },
+      new_value_json: { console_role_id: nextConsoleRoleId },
+    });
+    toast.success("Console role updated");
+    await onChanged();
   }
 
   return (
@@ -812,17 +874,22 @@ function UserDetailDialog({
               </div>
               <Switch
                 checked={user.status === "active"}
-                disabled={isSelf}
+                disabled={isSelf || isLastActiveSuperAdmin}
                 onCheckedChange={toggleActive}
               />
             </div>
+            {isLastActiveSuperAdmin && (
+              <p className="text-xs text-amber-600">
+                This is the only active super admin -- it cannot be suspended or demoted.
+              </p>
+            )}
 
             <div className="space-y-3 rounded-md border p-3">
               <div className="text-sm font-medium text-slate-900">Role</div>
               <Select
                 value={role}
                 onValueChange={(v) => setRole(v as typeof role)}
-                disabled={isSelf}
+                disabled={isSelf || isLastActiveSuperAdmin}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -854,6 +921,33 @@ function UserDetailDialog({
                 </Button>
               )}
             </div>
+
+            {user.role === "super_admin" && (
+              <div className="space-y-2 rounded-md border p-3">
+                <div className="text-sm font-medium text-slate-900">Console Role</div>
+                <p className="text-xs text-slate-500">
+                  Unrestricted grants full access to every Super Admin Console section. A named role
+                  limits access to only its granted console permissions.
+                </p>
+                <Select
+                  value={user.console_role_id ?? "__unrestricted__"}
+                  onValueChange={(v) => setConsoleRole(v === "__unrestricted__" ? null : v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__unrestricted__">Unrestricted</SelectItem>
+                    {consoleRoles.map((cr) => (
+                      <SelectItem key={cr.console_role_id} value={cr.console_role_id}>
+                        {cr.name}
+                        {!cr.is_active ? " (inactive)" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           <DialogFooter>

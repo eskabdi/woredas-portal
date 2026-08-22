@@ -15,6 +15,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as SetPasswordRouteImport } from './routes/set-password'
 import { Route as WoredaRouteImport } from './routes/woreda'
 import { Route as AdminAuditRouteImport } from './routes/admin.audit'
+import { Route as AdminConsoleRolesRouteImport } from './routes/admin.console-roles'
 import { Route as AdminCredentialTemplateRouteImport } from './routes/admin.credential-template'
 import { Route as AdminDashboardRouteImport } from './routes/admin.dashboard'
 import { Route as VTokenRouteImport } from './routes/v.$token'
@@ -93,6 +94,11 @@ const WoredaRoute = WoredaRouteImport.update({
 const AdminAuditRoute = AdminAuditRouteImport.update({
   id: '/audit',
   path: '/audit',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminConsoleRolesRoute = AdminConsoleRolesRouteImport.update({
+  id: '/console-roles',
+  path: '/console-roles',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminCredentialTemplateRoute = AdminCredentialTemplateRouteImport.update({
@@ -363,6 +369,7 @@ export interface FileRoutesByFullPath {
   '/set-password': typeof SetPasswordRoute
   '/woreda': typeof WoredaRouteWithChildren
   '/admin/audit': typeof AdminAuditRoute
+  '/admin/console-roles': typeof AdminConsoleRolesRoute
   '/admin/credential-template': typeof AdminCredentialTemplateRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/v/$token': typeof VTokenRoute
@@ -420,6 +427,7 @@ export interface FileRoutesByTo {
   '/set-password': typeof SetPasswordRoute
   '/woreda': typeof WoredaRouteWithChildren
   '/admin/audit': typeof AdminAuditRoute
+  '/admin/console-roles': typeof AdminConsoleRolesRoute
   '/admin/credential-template': typeof AdminCredentialTemplateRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/v/$token': typeof VTokenRoute
@@ -473,6 +481,7 @@ export interface FileRoutesById {
   '/set-password': typeof SetPasswordRoute
   '/woreda': typeof WoredaRouteWithChildren
   '/admin/audit': typeof AdminAuditRoute
+  '/admin/console-roles': typeof AdminConsoleRolesRoute
   '/admin/credential-template': typeof AdminCredentialTemplateRoute
   '/admin/dashboard': typeof AdminDashboardRoute
   '/v/$token': typeof VTokenRoute
@@ -532,6 +541,7 @@ export interface FileRouteTypes {
     | '/set-password'
     | '/woreda'
     | '/admin/audit'
+    | '/admin/console-roles'
     | '/admin/credential-template'
     | '/admin/dashboard'
     | '/v/$token'
@@ -589,6 +599,7 @@ export interface FileRouteTypes {
     | '/set-password'
     | '/woreda'
     | '/admin/audit'
+    | '/admin/console-roles'
     | '/admin/credential-template'
     | '/admin/dashboard'
     | '/v/$token'
@@ -641,6 +652,7 @@ export interface FileRouteTypes {
     | '/set-password'
     | '/woreda'
     | '/admin/audit'
+    | '/admin/console-roles'
     | '/admin/credential-template'
     | '/admin/dashboard'
     | '/v/$token'
@@ -744,6 +756,13 @@ declare module '@tanstack/react-router' {
       path: '/audit'
       fullPath: '/admin/audit'
       preLoaderRoute: typeof AdminAuditRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/console-roles': {
+      id: '/admin/console-roles'
+      path: '/console-roles'
+      fullPath: '/admin/console-roles'
+      preLoaderRoute: typeof AdminConsoleRolesRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/credential-template': {
@@ -1094,6 +1113,7 @@ declare module '@tanstack/react-router' {
 
 interface AdminRouteChildren {
   AdminAuditRoute: typeof AdminAuditRoute
+  AdminConsoleRolesRoute: typeof AdminConsoleRolesRoute
   AdminCredentialTemplateRoute: typeof AdminCredentialTemplateRoute
   AdminDashboardRoute: typeof AdminDashboardRoute
   AdminTenantsIndexRoute: typeof AdminTenantsIndexRoute
@@ -1103,6 +1123,7 @@ interface AdminRouteChildren {
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAuditRoute: AdminAuditRoute,
+  AdminConsoleRolesRoute: AdminConsoleRolesRoute,
   AdminCredentialTemplateRoute: AdminCredentialTemplateRoute,
   AdminDashboardRoute: AdminDashboardRoute,
   AdminTenantsIndexRoute: AdminTenantsIndexRoute,

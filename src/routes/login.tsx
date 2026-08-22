@@ -70,7 +70,9 @@ function LoginPage() {
 
     const { data: userRow, error: userErr } = await supabase
       .from("app_user")
-      .select("user_id, woreda_id, role, full_name, username, status")
+      // console_role_id doesn't exist in the generated types yet -- see the
+      // cast below, same as useAuthBootstrap.ts's fetchAppUser.
+      .select("user_id, woreda_id, role, full_name, username, status, console_role_id")
       .eq("user_id", data.user.id)
       .maybeSingle();
 
@@ -81,13 +83,23 @@ function LoginPage() {
       return;
     }
 
+    const row = userRow as unknown as {
+      user_id: string;
+      woreda_id: string | null;
+      role: string;
+      full_name: string;
+      username: string;
+      status: string;
+      console_role_id: string | null;
+    };
     const appUser: AppUser = {
-      user_id: userRow.user_id,
-      woreda_id: userRow.woreda_id,
-      role: userRow.role as Role,
-      full_name: userRow.full_name,
-      username: userRow.username,
-      status: userRow.status,
+      user_id: row.user_id,
+      woreda_id: row.woreda_id,
+      role: row.role as Role,
+      full_name: row.full_name,
+      username: row.username,
+      status: row.status,
+      console_role_id: row.console_role_id,
     };
 
     // Only an active account resolves permissions: user_has_perm() checks the

@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Building2, Shield, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
@@ -33,6 +33,9 @@ import {
 } from "@/components/common/TableToolbar";
 import { TableEmptyRow, TableErrorRow, TableSkeletonRows } from "@/components/common/TableStates";
 import { exportRowsToCsv, exportRowsToPdf, type TableColumn } from "@/utils/tableExport";
+import { InsufficientConsolePermissionNotice } from "@/components/common/ConsolePermissionGate";
+import { CP } from "@/config/permissions";
+import { useAuthStore } from "@/stores/authStore";
 
 const PLATFORM_BRANDING = {
   nameAm: "የሐረሪ ክልል አስተዳደር",
@@ -62,6 +65,8 @@ const MODULE_LABELS: Record<string, { am: string; en: string }> = {
   revenue: { am: "ገቢ", en: "Revenue" },
   reports: { am: "ሪፖርቶች", en: "Reports" },
   audit: { am: "ኦዲት", en: "Audit" },
+  services: { am: "አገልግሎት ጥያቄዎች", en: "Services" },
+  approvals: { am: "የማጽደቅ ወረፋ", en: "Approvals" },
 };
 
 interface WoredaRow {
@@ -107,8 +112,35 @@ function TenantsListPage() {
   const { tab } = Route.useSearch();
   const navigate = useNavigate();
   const setTab = (next: TenantsTab) => {
+    // No-op on the already-active tab: Radix's TabsTrigger fires
+    // onValueChange unconditionally on mousedown, even re-clicking the
+    // selected tab, and this is a full replace below (see comment) -- so
+    // without this guard, re-clicking "Tenants" while already on it would
+    // reset its own filters as a side effect of a no-op click.
+    if (next === tab) return;
+    // Deliberately a full replace, not a merge: the Tenants table and
+    // PlatformUsersTab both read/write the same unnamespaced q/sort/dir/
+    // page/size keys (useUrlSort and useUrlPagination don't take a key
+    // prefix the way useUrlSearchTerm does), so merging would leak one
+    // tab's filter/sort/page into the other on every switch. Resetting to
+    // just {tab} means each tab starts clean instead of silently
+    // inheriting state that doesn't apply to it.
     navigate({ to: "/admin/tenants", search: { tab: next } });
   };
+
+  const hasConsolePerm = useAuthStore((s) => s.hasConsolePermission);
+  const canTenants = hasConsolePerm(CP.TENANTS_MANAGE);
+  const canUsers = hasConsolePerm(CP.USERS_MANAGE);
+
+  // A console-scoped super_admin might only hold one of the two permissions
+  // behind this merged nav entry -- land them on the tab they can actually
+  // use rather than the fixed "tenants" default, and correct a direct link
+  // to the other tab the same way.
+  useEffect(() => {
+    if (tab === "tenants" && !canTenants && canUsers) setTab("users");
+    else if (tab === "users" && !canUsers && canTenants) setTab("tenants");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, canTenants, canUsers]);
 
   const {
     data: woredas = [],
@@ -252,6 +284,14 @@ function TenantsListPage() {
     }
   }
 
+  if (!canTenants && !canUsers) {
+    return (
+      <div className="p-6">
+        <InsufficientConsolePermissionNotice />
+      </div>
+    );
+  }
+
   return (
     <div className="p-6">
       <PageHeader
@@ -263,159 +303,175 @@ function TenantsListPage() {
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as TenantsTab)} className="w-full">
         <TabsList className="mb-4">
-          <TabsTrigger value="tenants">
-            <span className="font-noto-ethiopic">ወረዳዎች</span>
-            <span className="ml-1 text-slate-400">/ Tenants</span>
-          </TabsTrigger>
-          <TabsTrigger value="users">
-            <span className="font-noto-ethiopic">ተጠቃሚዎች</span>
-            <span className="ml-1 text-slate-400">/ Users</span>
-          </TabsTrigger>
+          {canTenants && (
+            <TabsTrigger value="tenants">
+              <span className="font-noto-ethiopic">ወረዳዎች</span>
+              <span className="ml-1 text-slate-400">/ Tenants</span>
+            </TabsTrigger>
+          )}
+          {canUsers && (
+            <TabsTrigger value="users">
+              <span className="font-noto-ethiopic">ተጠቃሚዎች</span>
+              <span className="ml-1 text-slate-400">/ Users</span>
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="tenants">
-          <Card className="mb-4 p-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <Input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="በወረዳ ስም ወይም ኮድ ይፈልጉ / Search woreda name or code…"
-                className="max-w-md"
-              />
-              <ClearFiltersButton active={filtersActive} onClear={clearFilters} />
-              <ExportButtons
-                onCsv={() => handleExport("csv")}
-                onPdf={() => handleExport("pdf")}
-                busy={exporting}
-              />
-            </div>
-          </Card>
+          {!canTenants ? (
+            <InsufficientConsolePermissionNotice />
+          ) : (
+            <>
+              <Card className="mb-4 p-4">
+                <div className="flex flex-wrap items-center gap-3">
+                  <Input
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                    placeholder="በወረዳ ስም ወይም ኮድ ይፈልጉ / Search woreda name or code…"
+                    className="max-w-md"
+                  />
+                  <ClearFiltersButton active={filtersActive} onClear={clearFilters} />
+                  <ExportButtons
+                    onCsv={() => handleExport("csv")}
+                    onPdf={() => handleExport("pdf")}
+                    busy={exporting}
+                  />
+                </div>
+              </Card>
 
-          <Card className="overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-600">
-                <tr>
-                  <SortableTh field="woreda_name" sort={sort} className="text-xs font-medium">
-                    <span className="font-noto-ethiopic">ወረዳ</span>
-                    <span className="ml-1 text-slate-400">/ Woreda</span>
-                  </SortableTh>
-                  <SortableTh field="woreda_code" sort={sort} className="text-xs font-medium">
-                    <span className="font-noto-ethiopic">ኮድ</span>
-                    <span className="ml-1 text-slate-400">/ Code</span>
-                  </SortableTh>
-                  <Th am="የወረዳ አስተዳዳሪ" en="Tenant Admin" />
-                  <Th am="የነቁ ሞጁሎች" en="Enabled Modules" />
-                  <Th am="ድርጊት" en="Actions" className="text-right" />
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading && <TableSkeletonRows cols={5} />}
-                {!isLoading && isError && (
-                  <TableErrorRow cols={5} error={error} onRetry={() => refetch()} />
-                )}
-                {!isLoading && !isError && filteredWoredas.length === 0 && (
-                  <TableEmptyRow cols={5} filtered={filtersActive} onClearFilters={clearFilters} />
-                )}
-                {!isLoading &&
-                  !isError &&
-                  pageRows.map((w) => {
-                    const wAdmins = adminByWoreda.get(w.woreda_id) ?? [];
-                    const activeAdmin = wAdmins.find((a) => a.status !== "suspended");
-                    const enabled = modulesByWoreda.get(w.woreda_id) ?? new Set<string>();
-                    return (
-                      <tr key={w.woreda_id} className="border-t border-slate-100">
-                        <td className="px-4 py-3">
-                          <Link
-                            to="/admin/tenants/$woredaId"
-                            params={{ woredaId: w.woreda_id }}
-                            className="hover:underline"
-                          >
-                            <div className="font-noto-ethiopic font-medium text-blue-700">
-                              {w.woreda_name_am}
-                            </div>
-                            <div className="text-xs text-slate-500">{w.woreda_name_en}</div>
-                          </Link>
-                        </td>
-                        <td className="px-4 py-3 text-slate-700">
-                          <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-xs">
-                            {w.woreda_numeric_code ?? w.woreda_code}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          {activeAdmin ? (
-                            <div className="flex items-center gap-2">
-                              <span className="text-slate-800">{activeAdmin.full_name}</span>
-                              <StatusChip status={activeAdmin.status} />
-                            </div>
-                          ) : (
-                            <span className="font-noto-ethiopic text-amber-700">
-                              አስተዳዳሪ አልተመደበም
-                              <span className="ml-1 text-xs text-amber-600">
-                                / No Admin Assigned
+              <Card className="overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 text-slate-600">
+                    <tr>
+                      <SortableTh field="woreda_name" sort={sort} className="text-xs font-medium">
+                        <span className="font-noto-ethiopic">ወረዳ</span>
+                        <span className="ml-1 text-slate-400">/ Woreda</span>
+                      </SortableTh>
+                      <SortableTh field="woreda_code" sort={sort} className="text-xs font-medium">
+                        <span className="font-noto-ethiopic">ኮድ</span>
+                        <span className="ml-1 text-slate-400">/ Code</span>
+                      </SortableTh>
+                      <Th am="የወረዳ አስተዳዳሪ" en="Tenant Admin" />
+                      <Th am="የነቁ ሞጁሎች" en="Enabled Modules" />
+                      <Th am="ድርጊት" en="Actions" className="text-right" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {isLoading && <TableSkeletonRows cols={5} />}
+                    {!isLoading && isError && (
+                      <TableErrorRow cols={5} error={error} onRetry={() => refetch()} />
+                    )}
+                    {!isLoading && !isError && filteredWoredas.length === 0 && (
+                      <TableEmptyRow
+                        cols={5}
+                        filtered={filtersActive}
+                        onClearFilters={clearFilters}
+                      />
+                    )}
+                    {!isLoading &&
+                      !isError &&
+                      pageRows.map((w) => {
+                        const wAdmins = adminByWoreda.get(w.woreda_id) ?? [];
+                        const activeAdmin = wAdmins.find((a) => a.status !== "suspended");
+                        const enabled = modulesByWoreda.get(w.woreda_id) ?? new Set<string>();
+                        return (
+                          <tr key={w.woreda_id} className="border-t border-slate-100">
+                            <td className="px-4 py-3">
+                              <Link
+                                to="/admin/tenants/$woredaId"
+                                params={{ woredaId: w.woreda_id }}
+                                className="hover:underline"
+                              >
+                                <div className="font-noto-ethiopic font-medium text-blue-700">
+                                  {w.woreda_name_am}
+                                </div>
+                                <div className="text-xs text-slate-500">{w.woreda_name_en}</div>
+                              </Link>
+                            </td>
+                            <td className="px-4 py-3 text-slate-700">
+                              <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-xs">
+                                {w.woreda_numeric_code ?? w.woreda_code}
                               </span>
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex flex-wrap gap-1">
-                            {Object.keys(MODULE_LABELS).map((key) => {
-                              const on = enabled.has(key);
-                              return (
-                                <Badge
-                                  key={key}
-                                  variant={on ? "default" : "outline"}
-                                  className={
-                                    on
-                                      ? "bg-blue-100 text-blue-800 hover:bg-blue-100"
-                                      : "text-slate-400"
-                                  }
-                                >
-                                  <span className="font-noto-ethiopic">
-                                    {MODULE_LABELS[key].am}
+                            </td>
+                            <td className="px-4 py-3">
+                              {activeAdmin ? (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-slate-800">{activeAdmin.full_name}</span>
+                                  <StatusChip status={activeAdmin.status} />
+                                </div>
+                              ) : (
+                                <span className="font-noto-ethiopic text-amber-700">
+                                  አስተዳዳሪ አልተመደበም
+                                  <span className="ml-1 text-xs text-amber-600">
+                                    / No Admin Assigned
                                   </span>
-                                </Badge>
-                              );
-                            })}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem asChild>
-                                <Link
-                                  to="/admin/tenants/$woredaId/provision"
-                                  params={{ woredaId: w.woreda_id }}
-                                >
-                                  <Shield className="mr-2 h-4 w-4" />
-                                  <span className="font-noto-ethiopic">አስተዳዳሪ መድብ</span>
-                                  <span className="ml-2 text-xs text-slate-500">/ Provision</span>
-                                </Link>
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </td>
-                      </tr>
-                    );
-                  })}
-              </tbody>
-            </table>
-            <TablePagination
-              page={page}
-              pageSize={pageSize}
-              total={total}
-              onPageChange={setPage}
-              onPageSizeChange={setPageSize}
-            />
-          </Card>
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex flex-wrap gap-1">
+                                {Object.keys(MODULE_LABELS).map((key) => {
+                                  const on = enabled.has(key);
+                                  return (
+                                    <Badge
+                                      key={key}
+                                      variant={on ? "default" : "outline"}
+                                      className={
+                                        on
+                                          ? "bg-blue-100 text-blue-800 hover:bg-blue-100"
+                                          : "text-slate-400"
+                                      }
+                                    >
+                                      <span className="font-noto-ethiopic">
+                                        {MODULE_LABELS[key].am}
+                                      </span>
+                                    </Badge>
+                                  );
+                                })}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem asChild>
+                                    <Link
+                                      to="/admin/tenants/$woredaId/provision"
+                                      params={{ woredaId: w.woreda_id }}
+                                    >
+                                      <Shield className="mr-2 h-4 w-4" />
+                                      <span className="font-noto-ethiopic">አስተዳዳሪ መድብ</span>
+                                      <span className="ml-2 text-xs text-slate-500">
+                                        / Provision
+                                      </span>
+                                    </Link>
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+                <TablePagination
+                  page={page}
+                  pageSize={pageSize}
+                  total={total}
+                  onPageChange={setPage}
+                  onPageSizeChange={setPageSize}
+                />
+              </Card>
+            </>
+          )}
         </TabsContent>
 
         <TabsContent value="users">
-          <PlatformUsersTab />
+          {canUsers ? <PlatformUsersTab /> : <InsufficientConsolePermissionNotice />}
         </TabsContent>
       </Tabs>
     </div>

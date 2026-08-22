@@ -55,6 +55,20 @@ export const P = {
 
 export type Permission = (typeof P)[keyof typeof P];
 
+// Console permissions are a second, separate dimension scoped to the Super
+// Admin Console itself (see console_role / console_role_permission /
+// user_has_console_perm() in 00000000000009_console_roles.sql). These keys
+// must match that migration's CHECK constraint exactly.
+export const CP = {
+  TENANTS_MANAGE: "console.tenants.manage",
+  USERS_MANAGE: "console.users.manage",
+  AUDIT_VIEW: "console.audit.view",
+  CREDENTIAL_TEMPLATE_MANAGE: "console.credential_template.manage",
+  CONSOLE_USERS_MANAGE: "console.console_users.manage",
+} as const;
+
+export type ConsolePermission = (typeof CP)[keyof typeof CP];
+
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   super_admin: [
     P.PLATFORM_MANAGE,
@@ -333,9 +347,43 @@ export const NAV_PERMISSION_MAP: NavItem[] = [
   },
 ];
 
-export const ADMIN_NAV: { label: string; icon: string; href: string }[] = [
-  { label: "Dashboard", icon: "LayoutDashboard", href: "/admin/dashboard" },
-  { label: "Tenants", icon: "Building2", href: "/admin/tenants" },
-  { label: "ID Card Template", icon: "CreditCard", href: "/admin/credential-template" },
-  { label: "Audit Logs", icon: "ScrollText", href: "/admin/audit" },
+export interface AdminNavItem {
+  label: string;
+  icon: string;
+  href: string;
+  /** null = always visible; an array is satisfied by any one permission. */
+  consolePermission: ConsolePermission | ConsolePermission[] | null;
+}
+
+export const ADMIN_NAV: AdminNavItem[] = [
+  {
+    label: "Dashboard",
+    icon: "LayoutDashboard",
+    href: "/admin/dashboard",
+    consolePermission: null,
+  },
+  {
+    label: "Tenants",
+    icon: "Building2",
+    href: "/admin/tenants",
+    consolePermission: [CP.TENANTS_MANAGE, CP.USERS_MANAGE],
+  },
+  {
+    label: "ID Card Template",
+    icon: "CreditCard",
+    href: "/admin/credential-template",
+    consolePermission: CP.CREDENTIAL_TEMPLATE_MANAGE,
+  },
+  {
+    label: "Audit Logs",
+    icon: "ScrollText",
+    href: "/admin/audit",
+    consolePermission: CP.AUDIT_VIEW,
+  },
+  {
+    label: "Console Users and Role",
+    icon: "Users",
+    href: "/admin/console-roles",
+    consolePermission: CP.CONSOLE_USERS_MANAGE,
+  },
 ];

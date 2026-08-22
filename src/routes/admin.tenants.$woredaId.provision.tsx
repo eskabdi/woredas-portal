@@ -22,6 +22,8 @@ const MODULES = [
   { key: "revenue", am: "ገቢ", en: "Revenue" },
   { key: "reports", am: "ሪፖርቶች", en: "Reports" },
   { key: "audit", am: "ኦዲት", en: "Audit Trail" },
+  { key: "services", am: "አገልግሎት ጥያቄዎች", en: "Service Requests" },
+  { key: "approvals", am: "የማጽደቅ ወረፋ", en: "Approval Queue" },
 ] as const;
 
 const STEPS = [
@@ -51,13 +53,19 @@ function ProvisionPage() {
   const { data: existingAdmin } = useQuery({
     queryKey: ["provision-existing", woredaId],
     queryFn: async () => {
-      const { data } = await supabase
+      // .maybeSingle() alone 400s (PGRST116) when a tenant has more than one
+      // non-suspended tenant_admin -- order + limit(1) picks the most
+      // recently invited one instead of erroring into "no existing admin".
+      const { data, error } = await supabase
         .from("app_user")
         .select("full_name, status")
         .eq("woreda_id", woredaId)
         .eq("role", "tenant_admin")
         .neq("status", "suspended")
+        .order("invited_at", { ascending: false })
+        .limit(1)
         .maybeSingle();
+      if (error) throw error;
       return data;
     },
   });

@@ -26,8 +26,17 @@ const ICON_MAP: Record<string, LucideIcon> = {
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const appUser = useAuthStore((s) => s.appUser);
+  const hasConsolePermission = useAuthStore((s) => s.hasConsolePermission);
   const currentPath = useRouterState({ select: (r) => r.location.pathname });
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const visibleNav = ADMIN_NAV.filter((item) => {
+    if (item.consolePermission === null) return true;
+    const required = Array.isArray(item.consolePermission)
+      ? item.consolePermission
+      : [item.consolePermission];
+    return required.some((p) => hasConsolePermission(p));
+  });
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -44,7 +53,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
         <nav className="flex-1 overflow-y-auto px-3 py-4">
           <ul className="space-y-1">
-            {ADMIN_NAV.map((item) => {
+            {visibleNav.map((item) => {
               const Icon = ICON_MAP[item.icon] ?? LayoutDashboard;
               const active = currentPath === item.href || currentPath.startsWith(item.href + "/");
               return (

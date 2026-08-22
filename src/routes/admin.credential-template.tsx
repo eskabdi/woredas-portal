@@ -33,6 +33,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toWebp, storageExtension, TEMPLATE_WEBP } from "@/utils/imageCompression";
 import { useAuthStore } from "@/stores/authStore";
+import { CP } from "@/config/permissions";
 
 export const Route = createFileRoute("/admin/credential-template")({
   ssr: false,
@@ -117,7 +118,12 @@ type Handle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
 const ASPECT_LOCKED_FIELD_KEYS = new Set(["qr_code"]);
 
 function CredentialTemplatePage() {
-  const isSuper = useAuthStore((s) => s.role === "super_admin");
+  // isSuper doubles as this page's console-permission gate: role===super_admin
+  // is necessary but not sufficient once a super_admin is scoped to a
+  // console_role that lacks console.credential_template.manage.
+  const hasConsolePerm = useAuthStore((s) => s.hasConsolePermission);
+  const isSuper =
+    useAuthStore((s) => s.role === "super_admin") && hasConsolePerm(CP.CREDENTIAL_TEMPLATE_MANAGE);
   const actorUserId = useAuthStore((s) => s.appUser?.user_id ?? null);
   const qc = useQueryClient();
 
@@ -396,7 +402,7 @@ function CredentialTemplatePage() {
   if (!isSuper) {
     return (
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-800">
-        Super admin permission required.
+        You do not have permission to manage the ID card template.
       </div>
     );
   }

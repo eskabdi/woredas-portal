@@ -26,6 +26,11 @@ import {
   useUrlSort,
 } from "@/components/common/TableToolbar";
 import { exportRowsToCsv, exportRowsToPdf, type TableColumn } from "@/utils/tableExport";
+import {
+  ConsolePermissionGate,
+  InsufficientConsolePermissionNotice,
+} from "@/components/common/ConsolePermissionGate";
+import { CP } from "@/config/permissions";
 
 interface AuditSearch {
   woreda?: string;
@@ -40,8 +45,19 @@ export const Route = createFileRoute("/admin/audit")({
   validateSearch: (raw: Record<string, unknown>): AuditSearch => ({
     woreda: typeof raw.woreda === "string" ? raw.woreda : undefined,
   }),
-  component: AdminAuditPage,
+  component: AdminAuditPageGated,
 });
+
+function AdminAuditPageGated() {
+  return (
+    <ConsolePermissionGate
+      permission={CP.AUDIT_VIEW}
+      fallback={<InsufficientConsolePermissionNotice />}
+    >
+      <AdminAuditPage />
+    </ConsolePermissionGate>
+  );
+}
 
 /** The `/admin` layout already restricts this console to super admins. */
 
