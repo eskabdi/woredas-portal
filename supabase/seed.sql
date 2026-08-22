@@ -1179,8 +1179,8 @@ INSERT INTO public.tenant_module_config (woreda_id, module_key, is_enabled, upda
 -- Template backgrounds are PNG files; the source project recorded them with a
 -- .jpg suffix. The app passes this column straight to createSignedUrl(), so
 -- the value has to match the object's real name in the bucket.
-INSERT INTO public.id_card_template (template_type, background_image_url, status, updated_at, updated_by) VALUES ('card_front', 'card_front.webp', 'active', '2026-07-14T17:49:19.583+00:00', NULL) ON CONFLICT DO NOTHING;
-INSERT INTO public.id_card_template (template_type, background_image_url, status, updated_at, updated_by) VALUES ('card_back', 'card_back.webp', 'active', '2026-07-14T17:49:19.583+00:00', NULL) ON CONFLICT DO NOTHING;
+INSERT INTO public.id_card_template (template_type, background_image_url, is_published, updated_at, updated_by) VALUES ('card_front', 'card_front.webp', true, '2026-07-14T17:49:19.583+00:00', NULL) ON CONFLICT DO NOTHING;
+INSERT INTO public.id_card_template (template_type, background_image_url, is_published, updated_at, updated_by) VALUES ('card_back', 'card_back.webp', true, '2026-07-14T17:49:19.583+00:00', NULL) ON CONFLICT DO NOTHING;
 -- The inserts above are ON CONFLICT DO NOTHING, so they leave an existing row
 -- untouched. This corrects a database already seeded with the .jpg values.
 UPDATE public.id_card_template

@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
+import { fetchAppUser } from "@/hooks/useAuthBootstrap";
 import { getCurrentEthiopianDate } from "@/utils/ethiopianCalendar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,6 +58,7 @@ function SetPasswordPage() {
   const user = useAuthStore((s) => s.user);
   const appUser = useAuthStore((s) => s.appUser);
   const isLoading = useAuthStore((s) => s.isLoading);
+  const setAuth = useAuthStore((s) => s.setAuth);
 
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -120,6 +122,22 @@ function SetPasswordPage() {
       setSubmitError(error.message);
       setIsSubmitting(false);
       return;
+    }
+    // Best-effort: the password is already set regardless of whether this
+    // succeeds. Non-fatal on error -- falls through to the existing "contact
+    // an administrator" messaging below if activation didn't happen.
+    try {
+      await supabase.functions.invoke("activate-invited-user", { body: {} });
+    } catch {
+      // ignore -- see comment above
+    }
+    // Explicitly refetch rather than trusting the ambient USER_UPDATED
+    // listener in useAuthBootstrap.ts, which defers via setTimeout(0) and
+    // isn't guaranteed to have landed before the `done` branch below reads
+    // appUser.status.
+    if (user) {
+      const freshAppUser = await fetchAppUser(user.id);
+      setAuth(user, freshAppUser);
     }
     setIsSubmitting(false);
     setDone(true);

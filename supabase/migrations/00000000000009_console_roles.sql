@@ -16,6 +16,12 @@ CREATE TABLE public.console_role (
   console_role_id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
   name text NOT NULL UNIQUE,
   description text,
+  -- Lets a role be taken out of use without deleting it (and losing its
+  -- permission grid / breaking the FK from any app_user row still assigned
+  -- to it). A disabled role's holders keep their console_role_id but
+  -- user_has_console_perm() below treats a disabled role as granting
+  -- nothing -- see the is_active check in that function.
+  is_active boolean DEFAULT true NOT NULL,
   created_at timestamp with time zone DEFAULT now() NOT NULL,
   updated_at timestamp with time zone DEFAULT now() NOT NULL,
   updated_by uuid REFERENCES public.app_user(user_id)
@@ -64,9 +70,11 @@ AS $function$
         au.console_role_id IS NULL
         OR EXISTS (
           SELECT 1 FROM public.console_role_permission crp
+          JOIN public.console_role cr ON cr.console_role_id = crp.console_role_id
           WHERE crp.console_role_id = au.console_role_id
             AND crp.permission_key = _perm
             AND crp.is_granted = true
+            AND cr.is_active = true
         )
       )
   )

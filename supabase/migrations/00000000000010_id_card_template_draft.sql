@@ -8,11 +8,24 @@
 -- or not a super_admin has clicked Publish. This migration introduces a
 -- shadow draft table the editor reads/writes exclusively, so unpublished
 -- edits genuinely cannot affect production printing until publish_id_
--- card_template() reconciles them into the live table. The print route
--- needs zero changes -- it keeps reading id_card_template_field directly,
--- which this design guarantees always holds exactly the last-published
--- state.
+-- card_template() reconciles them into the live table. The print route's
+-- own field query (id_card_template_field) needs zero changes -- it keeps
+-- reading that table directly, which this design guarantees always holds
+-- exactly the last-published state. It DOES need one line dropped: its
+-- background-image query selects the old `status` text column, which this
+-- migration replaces below.
+--
+-- id_card_template.status ('draft'/'active' text) is also converted to a
+-- boolean is_published here, so the admin UI can render it as a checkbox
+-- instead of a status-label badge.
 -- ============================================================================
+
+ALTER TABLE public.id_card_template
+  ADD COLUMN is_published boolean DEFAULT false NOT NULL;
+UPDATE public.id_card_template SET is_published = (status = 'active');
+ALTER TABLE public.id_card_template
+  DROP CONSTRAINT id_card_template_status_check,
+  DROP COLUMN status;
 
 CREATE TABLE public.id_card_template_field_draft (
   template_field_id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
@@ -83,9 +96,9 @@ CREATE OR REPLACE FUNCTION public.mark_template_draft_dirty()
 AS $function$
 BEGIN
   UPDATE public.id_card_template
-     SET status = 'draft'
+     SET is_published = false
    WHERE template_type = COALESCE(NEW.template_type, OLD.template_type)
-     AND status <> 'draft';
+     AND is_published = true;
   RETURN COALESCE(NEW, OLD);
 END;
 $function$;
@@ -138,7 +151,7 @@ BEGIN
   );
 
   UPDATE public.id_card_template
-     SET status = 'active', updated_by = auth.uid(), updated_at = now()
+     SET is_published = true, updated_by = auth.uid(), updated_at = now()
    WHERE template_type IN ('card_front', 'card_back');
 
   INSERT INTO public.audit_log (actor_user_id, entity_name, action_type, new_value_json)
@@ -170,8 +183,8 @@ BEGIN
   -- Content now equals what's live again -- override the dirty trigger's
   -- flip from the DELETE/INSERT above.
   UPDATE public.id_card_template
-     SET status = 'active'
-   WHERE template_type IN ('card_front', 'card_back') AND status <> 'active';
+     SET is_published = true
+   WHERE template_type IN ('card_front', 'card_back') AND is_published = false;
 END;
 $function$;
 

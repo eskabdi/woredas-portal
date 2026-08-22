@@ -3,7 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore, type AppUser } from "@/stores/authStore";
 import type { Role } from "@/config/permissions";
 
-async function fetchAppUser(userId: string): Promise<AppUser | null> {
+// Exported so set-password.tsx can refetch after the activate-invited-user
+// Edge Function resolves, instead of racing the USER_UPDATED listener below
+// (which defers via setTimeout(0) and isn't guaranteed to land before the
+// component reads the freshly-activated status).
+export async function fetchAppUser(userId: string): Promise<AppUser | null> {
   const { data, error } = await supabase
     .from("app_user")
     .select("user_id, woreda_id, role, full_name, username, status")

@@ -283,7 +283,7 @@ function PrintPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("id_card_template")
-        .select("template_type, background_image_url, status");
+        .select("template_type, background_image_url");
       if (error) throw error;
       return data ?? [];
     },

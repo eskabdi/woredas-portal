@@ -44,7 +44,7 @@ type Side = "card_front" | "card_back";
 interface TemplateRow {
   template_type: Side;
   background_image_url: string | null;
-  status: "draft" | "active";
+  is_published: boolean;
   updated_at: string;
 }
 
@@ -141,11 +141,16 @@ function CredentialTemplatePage() {
   const templatesQuery = useQuery({
     queryKey: ["id-card-templates"],
     queryFn: async () => {
+      // is_published isn't in the generated types yet -- it regenerates only
+      // once 00000000000010_id_card_template_draft.sql is applied to the live
+      // project (see CLAUDE.md: "regenerate rather than edit"). The column
+      // exists in the migration; this cast is the deliberate, temporary
+      // escape hatch until deploy + regeneration.
       const { data, error } = await supabase
         .from("id_card_template")
-        .select("template_type, background_image_url, status, updated_at");
+        .select("template_type, background_image_url, is_published, updated_at");
       if (error) throw error;
-      return (data ?? []) as TemplateRow[];
+      return (data ?? []) as unknown as TemplateRow[];
     },
   });
 
@@ -289,14 +294,16 @@ function CredentialTemplatePage() {
       toast.error(`Upload failed: ${upErr.message}`);
       return;
     }
+    // is_published: see the matching comment on templatesQuery above -- same
+    // deliberate, temporary cast until types regenerate post-deploy.
     const { error: dbErr } = await supabase
       .from("id_card_template")
       .update({
         background_image_url: path,
-        status: "draft",
+        is_published: false,
         updated_by: actorUserId,
         updated_at: new Date().toISOString(),
-      })
+      } as never)
       .eq("template_type", side);
     if (dbErr) {
       toast.error(`Save failed: ${dbErr.message}`);
@@ -371,13 +378,14 @@ function CredentialTemplatePage() {
         if (error) throw error;
       }
 
+      // is_published: same deliberate, temporary cast as templatesQuery above.
       const { error } = await supabase
         .from("id_card_template")
         .update({
-          status: "active",
+          is_published: true,
           updated_by: actorUserId,
           updated_at: new Date().toISOString(),
-        })
+        } as never)
         .in("template_type", ["card_front", "card_back"]);
       if (error) throw error;
       toast.success("Template published");
@@ -478,7 +486,7 @@ function CredentialTemplatePage() {
               </button>
             ))}
           </div>
-          {currentTemplate?.status === "active" ? (
+          {currentTemplate?.is_published ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2.5 py-0.5 text-xs font-medium text-white">
               <CheckCircle2 className="h-3 w-3" /> Active
             </span>
