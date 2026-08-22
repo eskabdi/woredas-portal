@@ -6,9 +6,9 @@ import { useState } from "react";
 import { Loader2 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
-import { useAuthStore, type AppUser } from "@/stores/authStore";
+import { useAuthStore } from "@/stores/authStore";
+import { fetchAuthState } from "@/hooks/useAuthBootstrap";
 import { getCurrentEthiopianDate } from "@/utils/ethiopianCalendar";
-import type { Role } from "@/config/permissions";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -68,45 +68,26 @@ function LoginPage() {
       return;
     }
 
-    const { data: userRow, error: userErr } = await supabase
-      .from("app_user")
-      // console_role_id doesn't exist in the generated types yet -- see the
-      // cast below, same as useAuthBootstrap.ts's fetchAppUser.
-      .select("user_id, woreda_id, role, full_name, username, status, console_role_id")
-      .eq("user_id", data.user.id)
-      .maybeSingle();
+    // fetchAuthState fetches app_user AND (when console_role_id is non-null)
+    // that role's granted console permissions in one call -- reusing this
+    // instead of a separate app_user-only query is what keeps this path from
+    // populating the store with an empty consolePermissions list that a
+    // restricted-role super_admin would see as "denied everywhere" until the
+    // ambient USER_UPDATED listener happens to correct it later.
+    const { appUser, consolePermissions } = await fetchAuthState(data.user.id);
 
-    if (userErr || !userRow) {
+    if (!appUser) {
       setSubmitError("Your account is not provisioned in the system. Contact your administrator.");
       await supabase.auth.signOut();
       setIsSubmitting(false);
       return;
     }
 
-    const row = userRow as unknown as {
-      user_id: string;
-      woreda_id: string | null;
-      role: string;
-      full_name: string;
-      username: string;
-      status: string;
-      console_role_id: string | null;
-    };
-    const appUser: AppUser = {
-      user_id: row.user_id,
-      woreda_id: row.woreda_id,
-      role: row.role as Role,
-      full_name: row.full_name,
-      username: row.username,
-      status: row.status,
-      console_role_id: row.console_role_id,
-    };
-
     // Only an active account resolves permissions: user_has_perm() checks the
     // status column, so anything else lands on a dashboard where every query
     // returns empty and nothing explains why.
     if (appUser.status !== "active") {
-      setAuth(data.user, appUser);
+      setAuth(data.user, appUser, consolePermissions);
       setIsSubmitting(false);
       if (appUser.status === "pending") {
         navigate({ to: "/set-password" });
@@ -117,7 +98,7 @@ function LoginPage() {
       return;
     }
 
-    setAuth(data.user, appUser);
+    setAuth(data.user, appUser, consolePermissions);
 
     if (appUser.role === "super_admin") {
       navigate({ to: "/admin/dashboard" });

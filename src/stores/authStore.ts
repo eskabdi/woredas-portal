@@ -57,7 +57,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   // permissions of an active role by fetchAppUser/fetchConsolePermissions).
   hasConsolePermission: (permission) => {
     const { appUser, consolePermissions } = get();
-    if (!appUser || appUser.role !== "super_admin") return false;
+    if (!appUser || appUser.role !== "super_admin" || appUser.status !== "active") return false;
     if (appUser.console_role_id === null) return true;
     return consolePermissions.includes(permission);
   },

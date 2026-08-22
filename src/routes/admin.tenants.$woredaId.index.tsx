@@ -9,11 +9,27 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { StatusChip } from "@/components/common/StatusChip";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
+import { CP } from "@/config/permissions";
+import {
+  ConsolePermissionGate,
+  InsufficientConsolePermissionNotice,
+} from "@/components/common/ConsolePermissionGate";
 
 export const Route = createFileRoute("/admin/tenants/$woredaId/")({
   ssr: false,
-  component: TenantDetailPage,
+  component: TenantDetailPageGated,
 });
+
+function TenantDetailPageGated() {
+  return (
+    <ConsolePermissionGate
+      permission={CP.TENANTS_MANAGE}
+      fallback={<InsufficientConsolePermissionNotice />}
+    >
+      <TenantDetailPage />
+    </ConsolePermissionGate>
+  );
+}
 
 const MODULES = [
   { key: "credentials", am: "የመኖሪያ መታወቂያ", en: "Credentials" },

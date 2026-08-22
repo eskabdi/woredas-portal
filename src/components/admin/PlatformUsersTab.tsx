@@ -56,6 +56,7 @@ import { exportRowsToCsv, exportRowsToPdf, type TableColumn } from "@/utils/tabl
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
+import { CP } from "@/config/permissions";
 
 const PLATFORM_BRANDING = {
   nameAm: "የሐረሪ ክልል አስተዳደር",
@@ -729,6 +730,9 @@ function UserDetailDialog({
   const [woredaId, setWoredaId] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const canManageConsoleRoles = useAuthStore((s) =>
+    s.hasConsolePermission(CP.CONSOLE_USERS_MANAGE),
+  );
 
   const { data: consoleRoles = [] } = useQuery({
     queryKey: ["console-roles-picker"],
@@ -796,9 +800,14 @@ function UserDetailDialog({
     }
     setSaving(true);
     const nextWoredaId = role === "tenant_admin" ? woredaId : null;
+    // app_user_console_role_scope_check requires console_role_id IS NULL
+    // whenever role <> 'super_admin' -- demoting away from super_admin
+    // without clearing it would fail the CHECK and surface a raw Postgres
+    // error instead of succeeding.
+    const nextConsoleRoleId = role === "super_admin" ? user.console_role_id : null;
     const { error } = await supabase
       .from("app_user")
-      .update({ role, woreda_id: nextWoredaId })
+      .update({ role, woreda_id: nextWoredaId, console_role_id: nextConsoleRoleId } as never)
       .eq("user_id", user.user_id);
     setSaving(false);
     if (error) return toast.error(error.message);
@@ -811,8 +820,12 @@ function UserDetailDialog({
       entity_name: "app_user",
       entity_id: user.user_id,
       action_type: "PLATFORM_ADMIN_ROLE_CHANGED",
-      old_value_json: { role: user.role, woreda_id: user.woreda_id },
-      new_value_json: { role, woreda_id: nextWoredaId },
+      old_value_json: {
+        role: user.role,
+        woreda_id: user.woreda_id,
+        console_role_id: user.console_role_id,
+      },
+      new_value_json: { role, woreda_id: nextWoredaId, console_role_id: nextConsoleRoleId },
     });
     toast.success("Role updated");
     setConfirmOpen(false);
@@ -837,6 +850,12 @@ function UserDetailDialog({
     });
     toast.success("Console role updated");
     await onChanged();
+    // The <Select> below reads console_role_id off the `user` prop, which is
+    // this component's own plain-useState snapshot and doesn't re-sync when
+    // `users` refetches -- close the dialog so it resets to null on next
+    // open, same as saveRoleChange does, instead of showing the pre-save
+    // value right after a save that actually succeeded.
+    onOpenChange(false);
   }
 
   return (
@@ -922,16 +941,20 @@ function UserDetailDialog({
               )}
             </div>
 
-            {user.role === "super_admin" && (
+            {user.role === "super_admin" && canManageConsoleRoles && (
               <div className="space-y-2 rounded-md border p-3">
                 <div className="text-sm font-medium text-slate-900">Console Role</div>
                 <p className="text-xs text-slate-500">
                   Unrestricted grants full access to every Super Admin Console section. A named role
                   limits access to only its granted console permissions.
                 </p>
+                {isSelf && (
+                  <p className="text-xs text-amber-600">You cannot change your own console role.</p>
+                )}
                 <Select
                   value={user.console_role_id ?? "__unrestricted__"}
                   onValueChange={(v) => setConsoleRole(v === "__unrestricted__" ? null : v)}
+                  disabled={isSelf}
                 >
                   <SelectTrigger>
                     <SelectValue />

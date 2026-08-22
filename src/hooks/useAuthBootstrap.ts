@@ -64,7 +64,13 @@ async function fetchConsolePermissions(consoleRoleId: string): Promise<ConsolePe
     .map((row) => row.permission_key);
 }
 
-async function fetchAuthState(
+// Exported so login.tsx can populate the store with the full auth state in
+// one call instead of duplicating the app_user query and always defaulting
+// consolePermissions to [] -- a restricted-role super_admin logging in
+// through the form would otherwise briefly (or, if the ambient
+// USER_UPDATED listener's correction loses the race, indefinitely until
+// reload) see every console section as denied.
+export async function fetchAuthState(
   userId: string,
 ): Promise<{ appUser: AppUser | null; consolePermissions: ConsolePermission[] }> {
   const appUser = await fetchAppUser(userId);

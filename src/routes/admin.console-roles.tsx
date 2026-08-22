@@ -122,11 +122,18 @@ function ConsoleRolesPage() {
   }
 
   async function toggleGrant(consoleRoleId: string, key: ConsolePermission, next: boolean) {
+    // upsert, not update: an UPDATE matching zero rows succeeds silently
+    // with no error, so a role missing this grant row (the create dialog's
+    // insert failed partway, or a future CP.* key added after this role was
+    // created) would flip the checkbox, write an audit row, and then
+    // silently revert on refresh -- looks like the toggle is broken rather
+    // than actually fixing the missing row.
     const { error } = await db
       .from("console_role_permission")
-      .update({ is_granted: next })
-      .eq("console_role_id", consoleRoleId)
-      .eq("permission_key", key);
+      .upsert(
+        { console_role_id: consoleRoleId, permission_key: key, is_granted: next },
+        { onConflict: "console_role_id,permission_key" },
+      );
     if (error) return toast.error(error.message);
     await supabase.from("audit_log").insert({
       actor_user_id: callerId ?? null,

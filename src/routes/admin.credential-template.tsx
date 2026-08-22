@@ -113,6 +113,15 @@ const FONT_FAMILIES = [
 const MIN_W = 20;
 const MIN_H = 10;
 
+/** Physical width of a CR80 card -- mirrors CARD_WIDTH_MM in the print route
+ * (woreda.credentials.$requestId.print.tsx), used here only to size a
+ * freshly-inserted field in real millimetres rather than arbitrary canvas
+ * units. */
+const CARD_WIDTH_MM = 85.6;
+/** Mirrors QR_PRINT_MM in the print route: below this, modules are finer
+ * than a 300dpi card printer resolves and the code won't scan. */
+const QR_MIN_PRINT_MM = 24;
+
 type Handle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
 
 // A QR code is a square grid of modules — stretching its bounding box would
@@ -283,10 +292,47 @@ function CredentialTemplatePage() {
       const canvasWidth = existingOnSide[0]?.canvas_width ?? 1688;
       const canvasHeight = existingOnSide[0]?.canvas_height ?? 1063;
       const isImage = IMAGE_FIELD_KEYS.has(fieldKey);
-      const isSquare = ASPECT_LOCKED_FIELD_KEYS.has(fieldKey);
-      const squareSize = Math.round(canvasHeight * 0.3);
-      const width = isSquare ? squareSize : Math.round(canvasWidth * 0.25);
-      const height = isSquare ? squareSize : Math.round(canvasHeight * 0.1);
+
+      // Per-key default sizes rather than one generic box: a QR or barcode
+      // inserted at an arbitrary size can silently cross this app's own
+      // print-safety floors (a QR that looks fine on screen but is too fine
+      // for a 300dpi printer to resolve, or a barcode narrow enough that
+      // CredentialBarcode's MIN_X_DIMENSION_UM guard refuses to render it),
+      // and the other image fields look visibly wrong cropped into a
+      // flat text-shaped box. Ratios for photo/watermark_photo/signature
+      // mirror their seeded proportions (supabase/seed.sql) at the
+      // reference 1688x1063 canvas, scaled to whatever this template's
+      // actual canvas size is.
+      let width: number;
+      let height: number;
+      if (fieldKey === "qr_code") {
+        // PrintableCard renders the QR at 90% of the smaller field
+        // dimension, so the field itself must clear QR_MIN_PRINT_MM / 0.9
+        // (plus a small margin) to keep the printed QR at or above the same
+        // floor the print route documents for the untemplated fallback card.
+        const mmPerUnit = CARD_WIDTH_MM / canvasWidth;
+        const sizeUnits = Math.ceil((QR_MIN_PRINT_MM / 0.9 / mmPerUnit) * 1.1);
+        width = sizeUnits;
+        height = sizeUnits;
+      } else if (fieldKey === "barcode") {
+        // Matches the seeded barcode field's real width (~48mm) -- narrower
+        // than that and CredentialBarcode's density guard throws for a
+        // 13-digit Code 128 code instead of rendering.
+        width = Math.round(canvasWidth * (950 / 1688));
+        height = Math.round(canvasHeight * (154 / 1063));
+      } else if (fieldKey === "photo") {
+        width = Math.round(canvasWidth * (430 / 1688));
+        height = Math.round(canvasHeight * (530 / 1063));
+      } else if (fieldKey === "signature") {
+        width = Math.round(canvasWidth * (392 / 1688));
+        height = Math.round(canvasHeight * (177 / 1063));
+      } else if (fieldKey === "watermark_photo") {
+        width = Math.round(canvasWidth * (151 / 1688));
+        height = Math.round(canvasHeight * (149 / 1063));
+      } else {
+        width = Math.round(canvasWidth * 0.25);
+        height = Math.round(canvasHeight * 0.1);
+      }
       const maxZ = existingOnSide.reduce((m, f) => Math.max(m, f.z_index ?? 0), 0);
       const centerX = dropCenter?.x ?? canvasWidth / 2;
       const centerY = dropCenter?.y ?? canvasHeight / 2;

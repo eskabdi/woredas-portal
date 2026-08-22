@@ -10,11 +10,27 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { PageHeader } from "@/components/common/PageHeader";
 import { supabase } from "@/integrations/supabase/client";
+import { CP } from "@/config/permissions";
+import {
+  ConsolePermissionGate,
+  InsufficientConsolePermissionNotice,
+} from "@/components/common/ConsolePermissionGate";
 
 export const Route = createFileRoute("/admin/tenants/$woredaId/provision")({
   ssr: false,
-  component: ProvisionPage,
+  component: ProvisionPageGated,
 });
+
+function ProvisionPageGated() {
+  return (
+    <ConsolePermissionGate
+      permission={CP.TENANTS_MANAGE}
+      fallback={<InsufficientConsolePermissionNotice />}
+    >
+      <ProvisionPage />
+    </ConsolePermissionGate>
+  );
+}
 
 const MODULES = [
   { key: "credentials", am: "የመኖሪያ መታወቂያ", en: "Credentials" },
