@@ -78,6 +78,8 @@ const FIELD_LABELS: Record<string, string> = {
   photo: "Photo",
   watermark_photo: "Watermark",
   woreda_name: "Woreda",
+  woreda_name_har: "Woreda (Harari)",
+  woreda_name_om: "Woreda (Oromiffa)",
   kebele_name: "Kebele",
   house_number: "House #",
   phone_number: "Phone",
