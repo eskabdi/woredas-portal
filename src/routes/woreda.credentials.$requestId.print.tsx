@@ -256,35 +256,12 @@ function PrintPage() {
       const { data, error } = await supabase
         .from("woreda_settings")
         .select(
-          "logo_url, stamp_url, supervisor_signature_url, woreda_name_display, woreda_name_display_en",
+          "logo_url, stamp_url, supervisor_signature_url, woreda_name_display, woreda_name_display_en, woreda_name_display_har, woreda_name_display_om",
         )
         .eq("woreda_id", woredaId!)
         .maybeSingle();
       if (error) throw error;
       return data;
-    },
-  });
-
-  // TODO(post-deploy): once types.ts is regenerated for
-  // 00000000000005_woreda_name_har_om.sql, fold woreda_name_display_har/_om
-  // back into settingsQuery's own select and delete this query + the merge
-  // below -- it exists only because an unrecognized column in a typed
-  // .select() string collapses the whole return type to SelectQueryError
-  // (see the matching comment in woreda.settings.tsx).
-  const settingsLangQuery = useQuery({
-    queryKey: ["woreda-settings-lang-for-print", woredaId],
-    enabled: !!woredaId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("woreda_settings")
-        .select("woreda_name_display_har, woreda_name_display_om")
-        .eq("woreda_id", woredaId!)
-        .maybeSingle();
-      if (error) throw error;
-      return data as unknown as {
-        woreda_name_display_har: string | null;
-        woreda_name_display_om: string | null;
-      } | null;
     },
   });
 
@@ -402,11 +379,7 @@ function PrintPage() {
   const household = request?.household as any;
   const kebele = household?.kebele;
   const woreda = woredaQuery.data;
-  const settings: CardWoredaSettings | null | undefined = settingsQuery.data && {
-    ...settingsQuery.data,
-    woreda_name_display_har: settingsLangQuery.data?.woreda_name_display_har ?? null,
-    woreda_name_display_om: settingsLangQuery.data?.woreda_name_display_om ?? null,
-  };
+  const settings = settingsQuery.data;
 
   const priorCount = priorPrintsQuery.data?.length ?? 0;
   const isReprint = priorCount > 0;
