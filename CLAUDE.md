@@ -189,8 +189,16 @@ that renders and then returns nothing.
 A `pending` app_user authenticates fine but `user_has_perm()` requires
 `status = 'active'`, so every query comes back empty with nothing in the UI
 explaining why — check status before assuming a permission is misconfigured.
-RLS also lets a user read their own `app_user` row but not write it, so an
-account can't activate itself; activation is an administrator action by design.
+RLS also lets a user read their own `app_user` row but not write it, so a
+client-side `.update()` can never flip `status` on its own row. The
+`activate-invited-user` Edge Function is the one deliberate exception: right
+after `set-password.tsx` sets a new password, it calls that function
+(service-role, resolves the caller from their own JWT only) to flip
+`pending -> active` for that same user, so an invited user does not need an
+administrator to click anything after redeeming their invite. It only ever
+touches `pending` rows — `suspended`/`inactive` stay untouched, so
+reactivating a suspended or deactivated account is still an administrator
+action, same as before.
 
 ### Module gating is a third, separate axis
 

@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
+import { fetchAppUser } from "@/hooks/useAuthBootstrap";
 import { getCurrentEthiopianDate } from "@/utils/ethiopianCalendar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,6 +58,7 @@ function SetPasswordPage() {
   const user = useAuthStore((s) => s.user);
   const appUser = useAuthStore((s) => s.appUser);
   const isLoading = useAuthStore((s) => s.isLoading);
+  const setAuth = useAuthStore((s) => s.setAuth);
 
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -121,13 +123,32 @@ function SetPasswordPage() {
       setIsSubmitting(false);
       return;
     }
+    // Best-effort: the password is already set regardless of whether this
+    // succeeds. Non-fatal on error -- falls through to the existing "contact
+    // an administrator" messaging below if activation didn't happen.
+    try {
+      await supabase.functions.invoke("activate-invited-user", { body: {} });
+    } catch {
+      // ignore -- see comment above
+    }
+    // Explicitly refetch rather than trusting the ambient USER_UPDATED
+    // listener in useAuthBootstrap.ts, which defers via setTimeout(0) and
+    // isn't guaranteed to have landed before the `done` branch below reads
+    // appUser.status.
+    if (user) {
+      const freshAppUser = await fetchAppUser(user.id);
+      setAuth(user, freshAppUser);
+    }
     setIsSubmitting(false);
     setDone(true);
   };
 
   if (done) {
-    // A pending account cannot activate itself: RLS lets a user read their own
-    // app_user row but not write it, so activation is an administrator action.
+    // The activate-invited-user call in onSubmit above should have already
+    // flipped a pending account to active. This still reads false if that
+    // call failed (network blip, function not deployed) or if the account is
+    // suspended/inactive rather than pending -- those statuses are left
+    // untouched on purpose and still require an administrator.
     const pending = appUser?.status !== "active";
     return (
       <Shell>
