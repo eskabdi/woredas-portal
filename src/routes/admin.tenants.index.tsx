@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Building2, Shield, MoreHorizontal } from "lucide-react";
@@ -13,8 +13,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatusChip } from "@/components/common/StatusChip";
+import { PlatformUsersTab } from "@/components/admin/PlatformUsersTab";
 import { supabase } from "@/integrations/supabase/client";
 import {
   TablePagination,
@@ -38,8 +40,19 @@ const PLATFORM_BRANDING = {
   logoDataUrl: null,
 };
 
+type TenantsTab = "tenants" | "users";
+const VALID_TABS: TenantsTab[] = ["tenants", "users"];
+
+interface TenantsSearch {
+  tab?: TenantsTab;
+}
+
 export const Route = createFileRoute("/admin/tenants/")({
   ssr: false,
+  validateSearch: (raw: Record<string, unknown>): TenantsSearch => {
+    const t = raw.tab;
+    return { tab: VALID_TABS.includes(t as TenantsTab) ? (t as TenantsTab) : "tenants" };
+  },
   component: TenantsListPage,
 });
 
@@ -91,6 +104,12 @@ function sortWoredas(rows: WoredaRow[], field: string, dir: "asc" | "desc"): Wor
 }
 
 function TenantsListPage() {
+  const { tab } = Route.useSearch();
+  const navigate = useNavigate();
+  const setTab = (next: TenantsTab) => {
+    navigate({ to: "/admin/tenants", search: { tab: next } });
+  };
+
   const {
     data: woredas = [],
     isLoading,
@@ -242,134 +261,163 @@ function TenantsListPage() {
         description="Provision administrators and configure modules for each woreda."
       />
 
-      <Card className="mb-4 p-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="በወረዳ ስም ወይም ኮድ ይፈልጉ / Search woreda name or code…"
-            className="max-w-md"
-          />
-          <ClearFiltersButton active={filtersActive} onClear={clearFilters} />
-          <ExportButtons
-            onCsv={() => handleExport("csv")}
-            onPdf={() => handleExport("pdf")}
-            busy={exporting}
-          />
-        </div>
-      </Card>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as TenantsTab)} className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="tenants">
+            <span className="font-noto-ethiopic">ወረዳዎች</span>
+            <span className="ml-1 text-slate-400">/ Tenants</span>
+          </TabsTrigger>
+          <TabsTrigger value="users">
+            <span className="font-noto-ethiopic">ተጠቃሚዎች</span>
+            <span className="ml-1 text-slate-400">/ Users</span>
+          </TabsTrigger>
+        </TabsList>
 
-      <Card className="overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-slate-600">
-            <tr>
-              <SortableTh field="woreda_name" sort={sort} className="text-xs font-medium">
-                <span className="font-noto-ethiopic">ወረዳ</span>
-                <span className="ml-1 text-slate-400">/ Woreda</span>
-              </SortableTh>
-              <SortableTh field="woreda_code" sort={sort} className="text-xs font-medium">
-                <span className="font-noto-ethiopic">ኮድ</span>
-                <span className="ml-1 text-slate-400">/ Code</span>
-              </SortableTh>
-              <Th am="የወረዳ አስተዳዳሪ" en="Tenant Admin" />
-              <Th am="የነቁ ሞጁሎች" en="Enabled Modules" />
-              <Th am="ድርጊት" en="Actions" className="text-right" />
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading && <TableSkeletonRows cols={5} />}
-            {!isLoading && isError && (
-              <TableErrorRow cols={5} error={error} onRetry={() => refetch()} />
-            )}
-            {!isLoading && !isError && filteredWoredas.length === 0 && (
-              <TableEmptyRow cols={5} filtered={filtersActive} onClearFilters={clearFilters} />
-            )}
-            {!isLoading &&
-              !isError &&
-              pageRows.map((w) => {
-                const wAdmins = adminByWoreda.get(w.woreda_id) ?? [];
-                const activeAdmin = wAdmins.find((a) => a.status !== "suspended");
-                const enabled = modulesByWoreda.get(w.woreda_id) ?? new Set<string>();
-                return (
-                  <tr key={w.woreda_id} className="border-t border-slate-100">
-                    <td className="px-4 py-3">
-                      <div className="font-noto-ethiopic font-medium text-slate-900">
-                        {w.woreda_name_am}
-                      </div>
-                      <div className="text-xs text-slate-500">{w.woreda_name_en}</div>
-                    </td>
-                    <td className="px-4 py-3 text-slate-700">
-                      <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-xs">
-                        {w.woreda_numeric_code ?? w.woreda_code}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      {activeAdmin ? (
-                        <div className="flex items-center gap-2">
-                          <span className="text-slate-800">{activeAdmin.full_name}</span>
-                          <StatusChip status={activeAdmin.status} />
-                        </div>
-                      ) : (
-                        <span className="font-noto-ethiopic text-amber-700">
-                          አስተዳዳሪ አልተመደበም
-                          <span className="ml-1 text-xs text-amber-600">/ No Admin Assigned</span>
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-1">
-                        {Object.keys(MODULE_LABELS).map((key) => {
-                          const on = enabled.has(key);
-                          return (
-                            <Badge
-                              key={key}
-                              variant={on ? "default" : "outline"}
-                              className={
-                                on
-                                  ? "bg-blue-100 text-blue-800 hover:bg-blue-100"
-                                  : "text-slate-400"
-                              }
-                            >
-                              <span className="font-noto-ethiopic">{MODULE_LABELS[key].am}</span>
-                            </Badge>
-                          );
-                        })}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem asChild>
-                            <Link
-                              to="/admin/tenants/$woredaId/provision"
-                              params={{ woredaId: w.woreda_id }}
-                            >
-                              <Shield className="mr-2 h-4 w-4" />
-                              <span className="font-noto-ethiopic">አስተዳዳሪ መድብ</span>
-                              <span className="ml-2 text-xs text-slate-500">/ Provision</span>
-                            </Link>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
-                  </tr>
-                );
-              })}
-          </tbody>
-        </table>
-        <TablePagination
-          page={page}
-          pageSize={pageSize}
-          total={total}
-          onPageChange={setPage}
-          onPageSizeChange={setPageSize}
-        />
-      </Card>
+        <TabsContent value="tenants">
+          <Card className="mb-4 p-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <Input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="በወረዳ ስም ወይም ኮድ ይፈልጉ / Search woreda name or code…"
+                className="max-w-md"
+              />
+              <ClearFiltersButton active={filtersActive} onClear={clearFilters} />
+              <ExportButtons
+                onCsv={() => handleExport("csv")}
+                onPdf={() => handleExport("pdf")}
+                busy={exporting}
+              />
+            </div>
+          </Card>
+
+          <Card className="overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-slate-600">
+                <tr>
+                  <SortableTh field="woreda_name" sort={sort} className="text-xs font-medium">
+                    <span className="font-noto-ethiopic">ወረዳ</span>
+                    <span className="ml-1 text-slate-400">/ Woreda</span>
+                  </SortableTh>
+                  <SortableTh field="woreda_code" sort={sort} className="text-xs font-medium">
+                    <span className="font-noto-ethiopic">ኮድ</span>
+                    <span className="ml-1 text-slate-400">/ Code</span>
+                  </SortableTh>
+                  <Th am="የወረዳ አስተዳዳሪ" en="Tenant Admin" />
+                  <Th am="የነቁ ሞጁሎች" en="Enabled Modules" />
+                  <Th am="ድርጊት" en="Actions" className="text-right" />
+                </tr>
+              </thead>
+              <tbody>
+                {isLoading && <TableSkeletonRows cols={5} />}
+                {!isLoading && isError && (
+                  <TableErrorRow cols={5} error={error} onRetry={() => refetch()} />
+                )}
+                {!isLoading && !isError && filteredWoredas.length === 0 && (
+                  <TableEmptyRow cols={5} filtered={filtersActive} onClearFilters={clearFilters} />
+                )}
+                {!isLoading &&
+                  !isError &&
+                  pageRows.map((w) => {
+                    const wAdmins = adminByWoreda.get(w.woreda_id) ?? [];
+                    const activeAdmin = wAdmins.find((a) => a.status !== "suspended");
+                    const enabled = modulesByWoreda.get(w.woreda_id) ?? new Set<string>();
+                    return (
+                      <tr key={w.woreda_id} className="border-t border-slate-100">
+                        <td className="px-4 py-3">
+                          <Link
+                            to="/admin/tenants/$woredaId"
+                            params={{ woredaId: w.woreda_id }}
+                            className="hover:underline"
+                          >
+                            <div className="font-noto-ethiopic font-medium text-blue-700">
+                              {w.woreda_name_am}
+                            </div>
+                            <div className="text-xs text-slate-500">{w.woreda_name_en}</div>
+                          </Link>
+                        </td>
+                        <td className="px-4 py-3 text-slate-700">
+                          <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-xs">
+                            {w.woreda_numeric_code ?? w.woreda_code}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          {activeAdmin ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-slate-800">{activeAdmin.full_name}</span>
+                              <StatusChip status={activeAdmin.status} />
+                            </div>
+                          ) : (
+                            <span className="font-noto-ethiopic text-amber-700">
+                              አስተዳዳሪ አልተመደበም
+                              <span className="ml-1 text-xs text-amber-600">
+                                / No Admin Assigned
+                              </span>
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-1">
+                            {Object.keys(MODULE_LABELS).map((key) => {
+                              const on = enabled.has(key);
+                              return (
+                                <Badge
+                                  key={key}
+                                  variant={on ? "default" : "outline"}
+                                  className={
+                                    on
+                                      ? "bg-blue-100 text-blue-800 hover:bg-blue-100"
+                                      : "text-slate-400"
+                                  }
+                                >
+                                  <span className="font-noto-ethiopic">
+                                    {MODULE_LABELS[key].am}
+                                  </span>
+                                </Badge>
+                              );
+                            })}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem asChild>
+                                <Link
+                                  to="/admin/tenants/$woredaId/provision"
+                                  params={{ woredaId: w.woreda_id }}
+                                >
+                                  <Shield className="mr-2 h-4 w-4" />
+                                  <span className="font-noto-ethiopic">አስተዳዳሪ መድብ</span>
+                                  <span className="ml-2 text-xs text-slate-500">/ Provision</span>
+                                </Link>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+            <TablePagination
+              page={page}
+              pageSize={pageSize}
+              total={total}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="users">
+          <PlatformUsersTab />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -336,7 +336,6 @@ export const NAV_PERMISSION_MAP: NavItem[] = [
 export const ADMIN_NAV: { label: string; icon: string; href: string }[] = [
   { label: "Dashboard", icon: "LayoutDashboard", href: "/admin/dashboard" },
   { label: "Tenants", icon: "Building2", href: "/admin/tenants" },
-  { label: "Users", icon: "Users", href: "/admin/users" },
   { label: "ID Card Template", icon: "CreditCard", href: "/admin/credential-template" },
   { label: "Audit Logs", icon: "ScrollText", href: "/admin/audit" },
 ];

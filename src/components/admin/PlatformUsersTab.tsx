@@ -1,8 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Users, Plus, MoreHorizontal, Download, Search } from "lucide-react";
+import { Plus, MoreHorizontal, Search } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,7 +41,6 @@ import { StatusChip } from "@/components/common/StatusChip";
 import {
   TablePagination,
   useClientPagination,
-  useUrlPagination,
   useUrlSearchTerm,
 } from "@/components/common/TablePagination";
 import {
@@ -55,7 +53,6 @@ import {
 import { TableEmptyRow, TableErrorRow, TableSkeletonRows } from "@/components/common/TableStates";
 import { exportRowsToCsv, exportRowsToPdf, type TableColumn } from "@/utils/tableExport";
 
-import { PageHeader } from "@/components/common/PageHeader";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -64,11 +61,6 @@ const PLATFORM_BRANDING = {
   nameEn: "Harari Regional Administration",
   logoDataUrl: null,
 };
-
-export const Route = createFileRoute("/admin/users/")({
-  ssr: false,
-  component: AdminUsersPage,
-});
 
 interface AdminUserRow {
   user_id: string;
@@ -85,7 +77,7 @@ interface WoredaOpt {
   woreda_name_en: string;
 }
 
-function AdminUsersPage() {
+export function PlatformUsersTab() {
   const qc = useQueryClient();
   const callerId = useAuthStore((s) => s.user?.id);
   const [roleFilter, setRoleFilter] = useState<"all" | "super_admin" | "tenant_admin">("all");
@@ -307,20 +299,20 @@ function AdminUsersPage() {
   }
 
   return (
-    <div className="p-6">
-      <PageHeader
-        icon={Users}
-        titleAm="የተጠቃሚ አስተዳደር"
-        titleEn="User Management"
-        description="Super Admin and Tenant Admin accounts across the platform."
-        actions={
-          <Button onClick={() => setInviteOpen(true)} className="bg-blue-700 hover:bg-blue-800">
-            <Plus className="mr-1 h-4 w-4" />
-            <span className="font-noto-ethiopic">አዲስ አስተዳዳሪ</span>
-            <span className="ml-1 text-xs opacity-80">/ Add Admin</span>
-          </Button>
-        }
-      />
+    <div>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h2 className="font-noto-ethiopic text-lg font-semibold text-slate-900">የተጠቃሚ አስተዳደር</h2>
+          <p className="text-sm text-slate-500">
+            User Management — Super Admin and Tenant Admin accounts across the platform.
+          </p>
+        </div>
+        <Button onClick={() => setInviteOpen(true)} className="bg-blue-700 hover:bg-blue-800">
+          <Plus className="mr-1 h-4 w-4" />
+          <span className="font-noto-ethiopic">አዲስ አስተዳዳሪ</span>
+          <span className="ml-1 text-xs opacity-80">/ Add Admin</span>
+        </Button>
+      </div>
 
       {/* KPI */}
       <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">

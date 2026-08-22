@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Eye, Loader2, ScrollText, Search } from "lucide-react";
@@ -27,8 +27,19 @@ import {
 } from "@/components/common/TableToolbar";
 import { exportRowsToCsv, exportRowsToPdf, type TableColumn } from "@/utils/tableExport";
 
+interface AuditSearch {
+  woreda?: string;
+}
+
 export const Route = createFileRoute("/admin/audit")({
   ssr: false,
+  // Only `woreda` is validated -- it's the one filter a deep link (the
+  // tenant detail page's "View Audit Trail" button) needs to pre-populate.
+  // Other filters stay local state, same as every other table on this
+  // portal that isn't search/sort/pagination.
+  validateSearch: (raw: Record<string, unknown>): AuditSearch => ({
+    woreda: typeof raw.woreda === "string" ? raw.woreda : undefined,
+  }),
   component: AdminAuditPage,
 });
 
@@ -97,7 +108,15 @@ function actionTone(action: string) {
 
 function AdminAuditPage() {
   const { input: q, setInput: setQ, term: qTerm } = useUrlSearchTerm();
-  const [woreda, setWoreda] = useState("");
+  const navigate = useNavigate();
+  const woreda = Route.useSearch({ select: (s) => s.woreda }) ?? "";
+  const setWoreda = (next: string) => {
+    navigate({
+      to: ".",
+      search: (prev: Record<string, unknown>) => ({ ...prev, woreda: next || undefined }),
+      replace: true,
+    } as never);
+  };
   const [entity, setEntity] = useState("");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
@@ -324,10 +343,7 @@ function AdminAuditPage() {
             <select
               className="h-10 w-[220px] rounded-md border border-input bg-background px-3 text-sm"
               value={woreda}
-              onChange={(e) => {
-                setWoreda(e.target.value);
-                setPage(0);
-              }}
+              onChange={(e) => setWoreda(e.target.value)}
             >
               <option value="">All tenants</option>
               <option value={PLATFORM_SCOPE}>Platform (no tenant)</option>
