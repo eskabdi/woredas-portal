@@ -17,6 +17,10 @@ import {
   AlignRight,
   Undo2,
   Redo2,
+  RotateCcw,
+  Trash2,
+  Plus,
+  Lock,
 } from "lucide-react";
 
 import { PageHeader } from "@/components/common/PageHeader";
@@ -78,7 +82,8 @@ const FIELD_LABELS: Record<string, string> = {
   dob_gregorian: "DOB (Gregorian)",
   photo: "Photo",
   watermark_photo: "Watermark",
-  woreda_name: "Woreda",
+  woreda_name: "Woreda (Amharic)",
+  woreda_name_en: "Woreda (English)",
   woreda_name_har: "Woreda (Harari)",
   woreda_name_om: "Woreda (Oromiffa)",
   kebele_name: "Kebele",
@@ -117,6 +122,27 @@ type Handle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
 // a UI nicety.
 const ASPECT_LOCKED_FIELD_KEYS = new Set(["qr_code"]);
 
+// A handful of reference entities render as an <img>, not text -- confirmed
+// against the current seed data (supabase/seed.sql) rather than assumed:
+// barcode is field_type 'text' despite being special-rendered, so "special"
+// doesn't mean "image".
+const IMAGE_FIELD_KEYS = new Set(["photo", "watermark_photo", "signature", "qr_code"]);
+
+// id_card_template_field_draft is a wholly new table, absent from the
+// generated types entirely -- cast the client for these calls rather than
+// each query result, same pattern used for console_role/console_role_permission
+// in admin.console-roles.tsx and useAuthBootstrap.ts. Regenerate types.ts
+// post-deploy and drop this.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = supabase as unknown as { from: (t: string) => any };
+// publish_id_card_template()/discard_id_card_template_draft() aren't in the
+// generated types yet either -- same temporary cast.
+const rpc = (
+  supabase as unknown as {
+    rpc: (fn: string) => Promise<{ error: { message: string } | null }>;
+  }
+).rpc;
+
 function CredentialTemplatePage() {
   // isSuper doubles as this page's console-permission gate: role===super_admin
   // is necessary but not sufficient once a super_admin is scoped to a
@@ -134,6 +160,7 @@ function CredentialTemplatePage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [discarding, setDiscarding] = useState(false);
 
   const HISTORY_LIMIT = 50;
   const pushHistory = useCallback((snapshot: Record<string, Partial<FieldRow>>) => {
@@ -160,11 +187,17 @@ function CredentialTemplatePage() {
     },
   });
 
+  // Reads the DRAFT table, not the live one -- this is the whole point of
+  // the staging design (00000000000010_id_card_template_draft.sql): edits
+  // made here have zero effect on printed cards until publish_id_card_
+  // template() reconciles them into id_card_template_field. The print route
+  // (woreda.credentials.$requestId.print.tsx) keeps reading the live table
+  // directly and needs no changes.
   const fieldsQuery = useQuery({
-    queryKey: ["id-card-template-fields"],
+    queryKey: ["id-card-template-field-drafts"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("id_card_template_field")
+      const { data, error } = await db
+        .from("id_card_template_field_draft")
         .select(
           "template_field_id, template_type, field_key, field_type, x, y, width, height, font_size, font_weight, font_style, text_decoration, color, font_family, text_align, z_index, canvas_width, canvas_height",
         )
@@ -239,6 +272,73 @@ function CredentialTemplatePage() {
     });
   }, [pushHistory]);
 
+  // Insert/delete are structural changes to the draft table itself, applied
+  // immediately -- not part of the in-memory drafts/undo-redo system, which
+  // only tracks property patches on existing rows.
+  const insertField = useCallback(
+    async (fieldKey: string, dropCenter?: { x: number; y: number }) => {
+      if (!isSuper) return;
+      const existingOnSide = fields.filter((f) => f.template_type === activeSide);
+      if (existingOnSide.some((f) => f.field_key === fieldKey)) return;
+      const canvasWidth = existingOnSide[0]?.canvas_width ?? 1688;
+      const canvasHeight = existingOnSide[0]?.canvas_height ?? 1063;
+      const isImage = IMAGE_FIELD_KEYS.has(fieldKey);
+      const isSquare = ASPECT_LOCKED_FIELD_KEYS.has(fieldKey);
+      const squareSize = Math.round(canvasHeight * 0.3);
+      const width = isSquare ? squareSize : Math.round(canvasWidth * 0.25);
+      const height = isSquare ? squareSize : Math.round(canvasHeight * 0.1);
+      const maxZ = existingOnSide.reduce((m, f) => Math.max(m, f.z_index ?? 0), 0);
+      const centerX = dropCenter?.x ?? canvasWidth / 2;
+      const centerY = dropCenter?.y ?? canvasHeight / 2;
+      const x = Math.round(Math.max(0, Math.min(canvasWidth - width, centerX - width / 2)));
+      const y = Math.round(Math.max(0, Math.min(canvasHeight - height, centerY - height / 2)));
+      const { data, error } = await db
+        .from("id_card_template_field_draft")
+        .insert({
+          template_type: activeSide,
+          field_key: fieldKey,
+          x,
+          y,
+          width,
+          height,
+          font_size: isImage ? null : 20,
+          font_weight: isImage ? null : "normal",
+          text_align: "left",
+          z_index: maxZ + 1,
+          canvas_width: canvasWidth,
+          canvas_height: canvasHeight,
+          field_type: isImage ? "image" : "text",
+          color: "#000000",
+          font_family: "Inter",
+          font_style: "normal",
+          text_decoration: "none",
+        })
+        .select("template_field_id")
+        .single();
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      qc.invalidateQueries({ queryKey: ["id-card-template-field-drafts"] });
+      setSelectedId(data.template_field_id);
+    },
+    [isSuper, fields, activeSide, qc],
+  );
+
+  const deleteField = useCallback(async () => {
+    if (!isSuper || !selectedId) return;
+    const { error } = await db
+      .from("id_card_template_field_draft")
+      .delete()
+      .eq("template_field_id", selectedId);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setSelectedId(null);
+    qc.invalidateQueries({ queryKey: ["id-card-template-field-drafts"] });
+  }, [isSuper, selectedId, qc]);
+
   const undo = useCallback(() => {
     setPast((p) => {
       if (p.length === 0) return p;
@@ -272,6 +372,11 @@ function CredentialTemplatePage() {
       ) {
         return;
       }
+      if ((e.key === "Delete" || e.key === "Backspace") && selectedId) {
+        e.preventDefault();
+        deleteField();
+        return;
+      }
       const mod = e.ctrlKey || e.metaKey;
       if (!mod) return;
       const key = e.key.toLowerCase();
@@ -285,7 +390,7 @@ function CredentialTemplatePage() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [undo, redo]);
+  }, [undo, redo, deleteField, selectedId]);
 
   const handleUpload = async (side: Side, file: File) => {
     if (!isSuper) return;
@@ -319,39 +424,45 @@ function CredentialTemplatePage() {
     qc.invalidateQueries({ queryKey: ["id-card-templates"] });
   };
 
+  // Flushes in-memory patches to the draft table -- shared by saveDraft()
+  // and publish() (publish must flush first, otherwise a field moved but
+  // never explicitly saved would publish its old position).
+  const flushDrafts = async () => {
+    for (const [id, patch] of Object.entries(drafts)) {
+      const { error } = await db
+        .from("id_card_template_field_draft")
+        .update({
+          x: patch.x,
+          y: patch.y,
+          width: patch.width,
+          height: patch.height,
+          font_size: patch.font_size,
+          font_weight: patch.font_weight ?? undefined,
+          font_style: patch.font_style ?? undefined,
+          text_decoration: patch.text_decoration ?? undefined,
+          color: patch.color ?? undefined,
+          font_family: patch.font_family ?? undefined,
+          text_align: patch.text_align,
+        })
+        .eq("template_field_id", id);
+      if (error) throw error;
+    }
+  };
+
   const saveDraft = async () => {
     if (!isSuper) return;
-    const entries = Object.entries(drafts);
-    if (entries.length === 0) {
+    if (Object.keys(drafts).length === 0) {
       toast.info("No changes to save");
       return;
     }
     setSaving(true);
     try {
-      for (const [id, patch] of entries) {
-        const { error } = await supabase
-          .from("id_card_template_field")
-          .update({
-            x: patch.x,
-            y: patch.y,
-            width: patch.width,
-            height: patch.height,
-            font_size: patch.font_size,
-            font_weight: patch.font_weight ?? undefined,
-            font_style: patch.font_style ?? undefined,
-            text_decoration: patch.text_decoration ?? undefined,
-            color: patch.color ?? undefined,
-            font_family: patch.font_family ?? undefined,
-            text_align: patch.text_align,
-          })
-          .eq("template_field_id", id);
-        if (error) throw error;
-      }
+      await flushDrafts();
       toast.success("Draft saved");
       setDrafts({});
       setPast([]);
       setFuture([]);
-      qc.invalidateQueries({ queryKey: ["id-card-template-fields"] });
+      qc.invalidateQueries({ queryKey: ["id-card-template-field-drafts"] });
     } catch (e) {
       toast.error(`Save failed: ${(e as Error).message}`);
     } finally {
@@ -363,47 +474,42 @@ function CredentialTemplatePage() {
     if (!isSuper) return;
     setPublishing(true);
     try {
-      // Persist any pending drafts first
-      for (const [id, patch] of Object.entries(drafts)) {
-        const { error } = await supabase
-          .from("id_card_template_field")
-          .update({
-            x: patch.x,
-            y: patch.y,
-            width: patch.width,
-            height: patch.height,
-            font_size: patch.font_size,
-            font_weight: patch.font_weight ?? undefined,
-            font_style: patch.font_style ?? undefined,
-            text_decoration: patch.text_decoration ?? undefined,
-            color: patch.color ?? undefined,
-            font_family: patch.font_family ?? undefined,
-            text_align: patch.text_align,
-          })
-          .eq("template_field_id", id);
-        if (error) throw error;
-      }
-
-      // is_published: same deliberate, temporary cast as templatesQuery above.
-      const { error } = await supabase
-        .from("id_card_template")
-        .update({
-          is_published: true,
-          updated_by: actorUserId,
-          updated_at: new Date().toISOString(),
-        } as never)
-        .in("template_type", ["card_front", "card_back"]);
+      await flushDrafts();
+      // Reconciles the draft table into the live one (upsert changed/new
+      // fields, delete any live field the draft no longer has) in one
+      // transaction, then flips id_card_template.is_published = true.
+      const { error } = await rpc("publish_id_card_template");
       if (error) throw error;
       toast.success("Template published");
       setDrafts({});
       setPast([]);
       setFuture([]);
       qc.invalidateQueries({ queryKey: ["id-card-templates"] });
-      qc.invalidateQueries({ queryKey: ["id-card-template-fields"] });
+      qc.invalidateQueries({ queryKey: ["id-card-template-field-drafts"] });
     } catch (e) {
       toast.error(`Publish failed: ${(e as Error).message}`);
     } finally {
       setPublishing(false);
+    }
+  };
+
+  const discardDraft = async () => {
+    if (!isSuper) return;
+    setDiscarding(true);
+    try {
+      const { error } = await rpc("discard_id_card_template_draft");
+      if (error) throw error;
+      toast.success("Draft discarded");
+      setDrafts({});
+      setPast([]);
+      setFuture([]);
+      setSelectedId(null);
+      qc.invalidateQueries({ queryKey: ["id-card-templates"] });
+      qc.invalidateQueries({ queryKey: ["id-card-template-field-drafts"] });
+    } catch (e) {
+      toast.error(`Discard failed: ${(e as Error).message}`);
+    } finally {
+      setDiscarding(false);
     }
   };
 
@@ -452,6 +558,19 @@ function CredentialTemplatePage() {
                 <Save className="mr-2 h-4 w-4" />
               )}
               Save Draft
+            </Button>
+            <Button
+              variant="outline"
+              onClick={discardDraft}
+              disabled={discarding}
+              title="Reset the draft back to the last published state"
+            >
+              {discarding ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <RotateCcw className="mr-2 h-4 w-4" />
+              )}
+              Discard Draft
             </Button>
             <Button
               className="bg-blue-700 hover:bg-blue-800"
@@ -518,8 +637,9 @@ function CredentialTemplatePage() {
           onSelect={setSelectedId}
           onPatch={patchField}
           onBeginGesture={beginGesture}
+          onDropInsert={(fieldKey, x, y) => insertField(fieldKey, { x, y })}
         />
-        <PropertiesPanel field={selected} onPatch={patchField} />
+        <PropertiesPanel field={selected} onPatch={patchField} onDelete={deleteField} />
       </div>
 
       {Object.keys(drafts).length > 0 && (
@@ -528,6 +648,8 @@ function CredentialTemplatePage() {
           “Publish Template” to activate.
         </p>
       )}
+
+      <ReferenceEntityPalette activeSide={activeSide} fields={fields} onInsert={insertField} />
     </div>
   );
 }
@@ -580,6 +702,7 @@ function EditorCanvas({
   onSelect,
   onPatch,
   onBeginGesture,
+  onDropInsert,
 }: {
   fields: FieldRow[];
   backgroundUrl: string | null;
@@ -587,6 +710,7 @@ function EditorCanvas({
   onSelect: (id: string | null) => void;
   onPatch: (id: string, patch: Partial<FieldRow>, options?: { history?: boolean }) => void;
   onBeginGesture: () => void;
+  onDropInsert: (fieldKey: string, x: number, y: number) => void;
 }) {
   const canvasW = fields[0]?.canvas_width ?? 1688;
   const canvasH = fields[0]?.canvas_height ?? 1063;
@@ -749,6 +873,18 @@ function EditorCanvas({
       <div
         ref={wrapperRef}
         onPointerDown={() => onSelect(null)}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => {
+          e.preventDefault();
+          const fieldKey = e.dataTransfer.getData("text/plain");
+          if (!fieldKey) return;
+          const rect = wrapperRef.current?.getBoundingClientRect();
+          if (!rect) return;
+          const { sx, sy } = getScale();
+          const x = (e.clientX - rect.left) * sx;
+          const y = (e.clientY - rect.top) * sy;
+          onDropInsert(fieldKey, x, y);
+        }}
         className="relative w-full select-none overflow-hidden rounded-md border border-slate-300 bg-slate-100"
         style={{ aspectRatio: `${canvasW} / ${canvasH}` }}
       >
@@ -859,9 +995,11 @@ function ResizeHandle({
 function PropertiesPanel({
   field,
   onPatch,
+  onDelete,
 }: {
   field: FieldRow | null;
   onPatch: (id: string, patch: Partial<FieldRow>) => void;
+  onDelete: () => void;
 }) {
   if (!field) {
     return (
@@ -881,10 +1019,21 @@ function PropertiesPanel({
 
   return (
     <aside className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div>
-        <h3 className="text-sm font-semibold text-slate-700">Properties</h3>
-        <p className="mt-1 text-sm font-medium text-blue-700">{label}</p>
-        <p className="font-mono text-[10px] text-slate-400">{field.field_key}</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-700">Properties</h3>
+          <p className="mt-1 text-sm font-medium text-blue-700">{label}</p>
+          <p className="font-mono text-[10px] text-slate-400">{field.field_key}</p>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onDelete}
+          title="Delete field (Delete/Backspace)"
+          className="text-red-600 hover:bg-red-50 hover:text-red-700"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
       </div>
 
       {!isImage && (
@@ -1062,5 +1211,55 @@ function ToggleBtn({
     >
       {children}
     </button>
+  );
+}
+
+function ReferenceEntityPalette({
+  activeSide,
+  fields,
+  onInsert,
+}: {
+  activeSide: Side;
+  fields: FieldRow[];
+  onInsert: (fieldKey: string) => void;
+}) {
+  const usedOnSide = new Set(
+    fields.filter((f) => f.template_type === activeSide).map((f) => f.field_key),
+  );
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <h3 className="text-sm font-semibold text-slate-700">Reference Entities</h3>
+      <p className="mt-1 text-xs text-slate-500">
+        Click or drag onto the canvas to place. An entity already on this side is locked — delete it
+        from the canvas (or its Properties panel) to place it again.
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {Object.keys(FIELD_LABELS).map((key) => {
+          const inUse = usedOnSide.has(key);
+          return (
+            <button
+              key={key}
+              type="button"
+              disabled={inUse}
+              draggable={!inUse}
+              onDragStart={(e) => e.dataTransfer.setData("text/plain", key)}
+              onClick={() => !inUse && onInsert(key)}
+              title={
+                inUse ? `${FIELD_LABELS[key]} is already on this side` : `Add ${FIELD_LABELS[key]}`
+              }
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                inUse
+                  ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+                  : "cursor-grab border-blue-200 bg-blue-50 text-blue-800 hover:bg-blue-100 active:cursor-grabbing"
+              }`}
+            >
+              {inUse ? <Lock className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+              {FIELD_LABELS[key]}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
