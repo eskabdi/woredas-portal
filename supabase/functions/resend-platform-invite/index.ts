@@ -38,14 +38,17 @@ Deno.serve(async (req) => {
     const { email, user_id } = (await req.json()) as { email?: string; user_id?: string };
     if (!email) return json(400, { error: "email is required" });
 
-    // Verify caller is super_admin
+    // Verify caller is an ACTIVE super_admin -- a suspended account's JWT is
+    // still live, so status has to be checked explicitly.
     const { data: caller } = await admin
       .from("app_user")
-      .select("role")
+      .select("role, status")
       .eq("user_id", callerId)
       .maybeSingle();
-    if (!caller || caller.role !== "super_admin") {
-      return json(403, { error: "Forbidden: only super_admin can resend platform invites." });
+    if (!caller || caller.role !== "super_admin" || caller.status !== "active") {
+      return json(403, {
+        error: "Forbidden: only an active super_admin can resend platform invites.",
+      });
     }
 
     // Target must be a platform admin (super_admin or tenant_admin)

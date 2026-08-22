@@ -38,30 +38,26 @@ export async function fetchAppUser(userId: string): Promise<AppUser | null> {
   };
 }
 
-// Mirrors user_has_console_perm()'s own JOIN: only rows for an active role
-// count, so a disabled console_role grants nothing client-side either, same
-// as the DB-side check. Only called when console_role_id is non-null --
-// null already means unrestricted and needs no permission list at all.
-//
-// console_role_permission is a wholly new table, absent from the generated
-// types entirely (not just a missing column), so .from() itself fails to
-// resolve an overload -- cast the client for this one call rather than the
-// query result, same intent as the other pre-deploy casts in this PR set.
-async function fetchConsolePermissions(consoleRoleId: string): Promise<ConsolePermission[]> {
-  const { data, error } = await (supabase as unknown as { from: (t: string) => any }) // eslint-disable-line @typescript-eslint/no-explicit-any
-    .from("console_role_permission")
-    .select("permission_key, is_granted, console_role:console_role_id ( is_active )")
-    .eq("console_role_id", consoleRoleId)
-    .eq("is_granted", true);
+// Calls current_console_permissions() (00000000000012_enforce_console_rbac.sql)
+// rather than querying console_role_permission directly. That table's own
+// SELECT policy is intentionally left open to any active super_admin (see
+// that migration's comment), but relying on a direct table query here would
+// be one narrowing-of-that-policy away from silently breaking every scoped
+// admin's own permission list again -- this RPC is SECURITY DEFINER and
+// resolves auth.uid() server-side, so it doesn't depend on that policy at
+// all. Only called when console_role_id is non-null -- null already means
+// unrestricted and needs no permission list at all. Not yet in the
+// generated types -- same temporary cast pattern as the other pre-deploy
+// RPC/table additions in this PR set.
+async function fetchConsolePermissions(): Promise<ConsolePermission[]> {
+  const { data, error } = await (
+    supabase.rpc as unknown as (fn: string) => Promise<{
+      data: ConsolePermission[] | null;
+      error: { message: string } | null;
+    }>
+  )("current_console_permissions");
   if (error || !data) return [];
-  return (
-    data as unknown as {
-      permission_key: ConsolePermission;
-      console_role: { is_active: boolean } | null;
-    }[]
-  )
-    .filter((row) => row.console_role?.is_active)
-    .map((row) => row.permission_key);
+  return data;
 }
 
 // Exported so login.tsx can populate the store with the full auth state in
@@ -74,9 +70,7 @@ export async function fetchAuthState(
   userId: string,
 ): Promise<{ appUser: AppUser | null; consolePermissions: ConsolePermission[] }> {
   const appUser = await fetchAppUser(userId);
-  const consolePermissions = appUser?.console_role_id
-    ? await fetchConsolePermissions(appUser.console_role_id)
-    : [];
+  const consolePermissions = appUser?.console_role_id ? await fetchConsolePermissions() : [];
   return { appUser, consolePermissions };
 }
 
