@@ -2,7 +2,7 @@
 -- Drop table privileges that no PostgREST client can use, and close one
 -- SECURITY DEFINER function to anon.
 --
--- Every relation in public (38 of them) grants the full privilege set to both
+-- Every relation in public (39 of them) grants the full privilege set to both
 -- anon and authenticated: SELECT, INSERT, UPDATE, DELETE, REFERENCES, TRIGGER,
 -- TRUNCATE. The DML half is intentional -- RLS is what constrains it, and an
 -- audit confirmed that holds: no policy in public admits anon or PUBLIC, and as
@@ -58,13 +58,14 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
 -- get_credential_live_status(text) -- SECURITY DEFINER, currently executable
 -- by anon.
 --
--- Its only caller is HararildScanner.tsx, mounted on /woreda/credentials/verify,
--- which sits behind the authenticated /woreda layout. Left executable by anon
--- it is a credential-status oracle for anyone holding the publishable key:
+-- Has zero callers in the current codebase -- HararildScanner.tsx, its
+-- original caller, now calls verify_credential_token() instead (added by
+-- 00000000000002_credential.sql). Left executable by anon it would still be
+-- a credential-status oracle for anyone holding the publishable key:
 -- credential numbers are structured WW-KK-YY-NNNNNN-C with an enumerable
--- sequence, so valid numbers can be discovered and their status read. It
+-- sequence, so valid numbers could be discovered and their status read. It
 -- returns status text only -- enumeration, not disclosure -- but the function
--- has no unauthenticated caller to serve.
+-- has no unauthenticated caller to serve, now or previously.
 --
 -- verify_service_letter() is deliberately left alone: it backs the public
 -- /verify/letter/$token page and must stay executable by anon.

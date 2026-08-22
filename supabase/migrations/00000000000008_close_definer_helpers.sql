@@ -1,7 +1,7 @@
 -- ============================================================================
 -- Close the remaining directly-callable SECURITY DEFINER helpers to anon.
 --
--- Defense in depth, not a fix for live exposure: all five key off auth.uid(),
+-- Defense in depth, not a fix for live exposure: all six key off auth.uid(),
 -- which is NULL for an anonymous caller, so they already return false or NULL.
 -- The point is that a SECURITY DEFINER function runs as its owner, and `anon`
 -- is reachable by anyone holding the publishable key -- so the surface should
@@ -17,6 +17,13 @@
 -- without re-granting to authenticated and every policy using them fails with
 -- "permission denied for function".
 --
+-- is_active_app_user() is the sixth: 00000000000002_credential.sql (added
+-- after the original five were identified) grants it explicitly `TO anon,
+-- authenticated`, so a PUBLIC-only revoke would leave it open through that
+-- direct grant. Its only caller is verify_credential_token(), itself
+-- SECURITY DEFINER and never inlined, so the inner call executes as the
+-- definer regardless -- no application path calls it as an RPC.
+--
 -- Unlike 00000000000006/00000000000007, this one was NOT applied ahead of
 -- merge -- it still needs a real deploy (renumbered from 00000000000004,
 -- which has since been claimed by an unrelated migration).
@@ -27,12 +34,14 @@ REVOKE EXECUTE ON FUNCTION public.is_super_admin()              FROM PUBLIC, ano
 REVOKE EXECUTE ON FUNCTION public.is_tenant_admin()             FROM PUBLIC, anon;
 REVOKE EXECUTE ON FUNCTION public.user_has_perm(text)           FROM PUBLIC, anon;
 REVOKE EXECUTE ON FUNCTION public.user_has_any_perm(text[])     FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.is_active_app_user()          FROM PUBLIC, anon;
 
-GRANT EXECUTE ON FUNCTION public.get_user_woreda_id()           TO authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.is_super_admin()               TO authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.is_tenant_admin()               TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.get_user_woreda_id()          TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.is_super_admin()              TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.is_tenant_admin()              TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.user_has_perm(text)            TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.user_has_any_perm(text[])      TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.is_active_app_user()           TO authenticated, service_role;
 
 -- ============================================================================
 -- Deliberately NOT revoked: the 15 trigger functions
