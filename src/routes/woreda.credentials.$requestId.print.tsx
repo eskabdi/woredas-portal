@@ -101,6 +101,8 @@ interface CardWoreda {
 interface CardWoredaSettings {
   woreda_name_display: string | null;
   woreda_name_display_en?: string | null;
+  woreda_name_display_har?: string | null;
+  woreda_name_display_om?: string | null;
 }
 
 interface CardKebele {
@@ -263,6 +265,29 @@ function PrintPage() {
     },
   });
 
+  // TODO(post-deploy): once types.ts is regenerated for
+  // 00000000000005_woreda_name_har_om.sql, fold woreda_name_display_har/_om
+  // back into settingsQuery's own select and delete this query + the merge
+  // below -- it exists only because an unrecognized column in a typed
+  // .select() string collapses the whole return type to SelectQueryError
+  // (see the matching comment in woreda.settings.tsx).
+  const settingsLangQuery = useQuery({
+    queryKey: ["woreda-settings-lang-for-print", woredaId],
+    enabled: !!woredaId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("woreda_settings")
+        .select("woreda_name_display_har, woreda_name_display_om")
+        .eq("woreda_id", woredaId!)
+        .maybeSingle();
+      if (error) throw error;
+      return data as unknown as {
+        woreda_name_display_har: string | null;
+        woreda_name_display_om: string | null;
+      } | null;
+    },
+  });
+
   const templateQuery = useQuery({
     queryKey: ["id-card-template"],
     queryFn: async () => {
@@ -377,7 +402,11 @@ function PrintPage() {
   const household = request?.household as any;
   const kebele = household?.kebele;
   const woreda = woredaQuery.data;
-  const settings = settingsQuery.data;
+  const settings: CardWoredaSettings | null | undefined = settingsQuery.data && {
+    ...settingsQuery.data,
+    woreda_name_display_har: settingsLangQuery.data?.woreda_name_display_har ?? null,
+    woreda_name_display_om: settingsLangQuery.data?.woreda_name_display_om ?? null,
+  };
 
   const priorCount = priorPrintsQuery.data?.length ?? 0;
   const isReprint = priorCount > 0;
@@ -1290,6 +1319,11 @@ function buildFieldValues(
     dob_ethiopian: dobEth,
     dob_gregorian: dobGreg,
     woreda_name: `${woreda?.woreda_name_am ?? ""} / ${woreda?.woreda_name_en ?? ""}`,
+    // No raw woreda.woreda_name_har/om registry column exists (unlike
+    // Amharic/English) -- these are settings-only overrides, so an unset
+    // value just renders blank rather than falling back to anything.
+    woreda_name_har: settings?.woreda_name_display_har ?? "",
+    woreda_name_om: settings?.woreda_name_display_om ?? "",
     kebele_name: `${kebele?.kebele_name_am ?? ""} / ${kebele?.kebele_name_en ?? ""}`,
     house_number: household?.house_number ?? "",
     issue_date: issueEth ? `${issueEth} (${cred?.issue_date ?? ""})` : "",

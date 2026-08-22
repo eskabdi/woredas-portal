@@ -44,6 +44,7 @@ import { P } from "@/config/permissions";
 import { useAuthStore } from "@/stores/authStore";
 import { useWoredaInfo } from "@/hooks/useWoredaInfo";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { toWebp, storageExtension, BRANDING_WEBP } from "@/utils/imageCompression";
 import { RolesPermissionsTab } from "@/components/settings/RolesPermissionsTab";
 import { UsersRolesTab } from "@/components/settings/UsersRolesTab";
@@ -71,6 +72,8 @@ export const Route = createFileRoute("/woreda/settings")({
 const profileSchema = z.object({
   woreda_name_display: z.string().trim().max(200).optional().or(z.literal("")),
   woreda_name_display_en: z.string().trim().max(200).optional().or(z.literal("")),
+  woreda_name_display_har: z.string().trim().max(200).optional().or(z.literal("")),
+  woreda_name_display_om: z.string().trim().max(200).optional().or(z.literal("")),
   contact_phone: z
     .string()
     .trim()
@@ -155,6 +158,8 @@ function SettingsPage() {
     defaultValues: {
       woreda_name_display: "",
       woreda_name_display_en: "",
+      woreda_name_display_har: "",
+      woreda_name_display_om: "",
       contact_phone: "",
       contact_email: "",
       address_line: "",
@@ -166,11 +171,24 @@ function SettingsPage() {
   });
 
   useEffect(() => {
-    const s = settingsQuery.data;
+    // woreda_name_display_har/_om aren't in the generated types yet -- they
+    // regenerate only once 00000000000005_woreda_name_har_om.sql is applied
+    // to the live project (see CLAUDE.md: "regenerate rather than edit").
+    // Both columns exist in the migration; this cast is the deliberate,
+    // temporary escape hatch until deploy + regeneration.
+    const s = settingsQuery.data as
+      | (Database["public"]["Tables"]["woreda_settings"]["Row"] & {
+          woreda_name_display_har: string | null;
+          woreda_name_display_om: string | null;
+        })
+      | null
+      | undefined;
     if (!s) return;
     form.reset({
       woreda_name_display: s.woreda_name_display ?? "",
       woreda_name_display_en: s.woreda_name_display_en ?? "",
+      woreda_name_display_har: s.woreda_name_display_har ?? "",
+      woreda_name_display_om: s.woreda_name_display_om ?? "",
       contact_phone: stripPhonePrefix(s.contact_phone),
       contact_email: s.contact_email ?? "",
       address_line: s.address_line ?? "",
@@ -187,10 +205,20 @@ function SettingsPage() {
     if (!woredaId) return;
     setSaving(true);
     try {
-      const payload = {
+      // woreda_name_display_har/_om: see the matching comment in the reset
+      // effect above -- same deliberate, temporary cast until types
+      // regenerate post-deploy. Narrowed to the Insert row shape (not
+      // `as never`) so a typo in any *other* field here still fails
+      // tsc --noEmit instead of silently passing through.
+      const payload: Database["public"]["Tables"]["woreda_settings"]["Insert"] & {
+        woreda_name_display_har: string | null;
+        woreda_name_display_om: string | null;
+      } = {
         woreda_id: woredaId,
         woreda_name_display: values.woreda_name_display || null,
         woreda_name_display_en: values.woreda_name_display_en || null,
+        woreda_name_display_har: values.woreda_name_display_har || null,
+        woreda_name_display_om: values.woreda_name_display_om || null,
         contact_phone: values.contact_phone ? `+251${values.contact_phone}` : null,
         contact_email: values.contact_email || null,
         address_line: values.address_line || null,
@@ -203,15 +231,26 @@ function SettingsPage() {
       };
       const { error } = await supabase
         .from("woreda_settings")
-        .upsert(payload, { onConflict: "woreda_id" });
+        .upsert(payload as Database["public"]["Tables"]["woreda_settings"]["Insert"], {
+          onConflict: "woreda_id",
+        });
       if (error) throw error;
 
-      await supabase.from("audit_log").insert({
+      // woreda_id was previously omitted here -- audit_log_tenant_insert's
+      // WITH CHECK is `woreda_id = get_user_woreda_id()`, and NULL = uuid
+      // evaluates to NULL (not true), so the row was silently rejected by
+      // RLS on every save (the error was never checked). No settings save
+      // has ever produced an audit trail, including this one now covering
+      // the two new language fields.
+      const { error: auditError } = await supabase.from("audit_log").insert({
+        woreda_id: woredaId,
+        actor_user_id: userId ?? null,
         entity_name: "woreda_settings",
         entity_id: woredaId,
         action_type: "SETTINGS_UPDATED",
         new_value_json: payload as never,
       });
+      if (auditError) throw auditError;
 
       toast.success("ቅንብሮች ተስተካክለዋል / Settings saved");
       qc.invalidateQueries({ queryKey: ["woreda_settings", woredaId] });
@@ -262,9 +301,17 @@ function SettingsPage() {
                   placeholder={woreda?.woreda_name_en ?? ""}
                 />
               </Field>
+              <Field labelAm="የወረዳ ስም (ሐረሪ)" labelEn="Woreda Name (Harari)">
+                <Input {...form.register("woreda_name_display_har")} />
+              </Field>
+              <Field labelAm="የወረዳ ስም (ኦሮምኛ)" labelEn="Woreda Name (Oromiffa)">
+                <Input {...form.register("woreda_name_display_om")} />
+              </Field>
               <p className="col-span-full text-xs text-slate-500">
                 Shown as the issuing entity — including as "place of issue" on residence ID cards —
-                instead of the official registry name below. Leave blank to use the registry name.
+                instead of the official registry name below. Amharic/English: leave blank to use the
+                registry name. Harari/Oromiffa have no registry equivalent to fall back to — leave
+                blank and that field prints empty on the card.
               </p>
             </div>
           </Card>
