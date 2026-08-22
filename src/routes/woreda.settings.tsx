@@ -205,7 +205,15 @@ function SettingsPage() {
     if (!woredaId) return;
     setSaving(true);
     try {
-      const payload = {
+      // woreda_name_display_har/_om: see the matching comment in the reset
+      // effect above -- same deliberate, temporary cast until types
+      // regenerate post-deploy. Narrowed to the Insert row shape (not
+      // `as never`) so a typo in any *other* field here still fails
+      // tsc --noEmit instead of silently passing through.
+      const payload: Database["public"]["Tables"]["woreda_settings"]["Insert"] & {
+        woreda_name_display_har: string | null;
+        woreda_name_display_om: string | null;
+      } = {
         woreda_id: woredaId,
         woreda_name_display: values.woreda_name_display || null,
         woreda_name_display_en: values.woreda_name_display_en || null,
@@ -221,20 +229,28 @@ function SettingsPage() {
         updated_by: userId ?? null,
         updated_at: new Date().toISOString(),
       };
-      // woreda_name_display_har/_om: see the matching comment in the reset
-      // effect above -- same deliberate, temporary cast until types
-      // regenerate post-deploy.
       const { error } = await supabase
         .from("woreda_settings")
-        .upsert(payload as never, { onConflict: "woreda_id" });
+        .upsert(payload as Database["public"]["Tables"]["woreda_settings"]["Insert"], {
+          onConflict: "woreda_id",
+        });
       if (error) throw error;
 
-      await supabase.from("audit_log").insert({
+      // woreda_id was previously omitted here -- audit_log_tenant_insert's
+      // WITH CHECK is `woreda_id = get_user_woreda_id()`, and NULL = uuid
+      // evaluates to NULL (not true), so the row was silently rejected by
+      // RLS on every save (the error was never checked). No settings save
+      // has ever produced an audit trail, including this one now covering
+      // the two new language fields.
+      const { error: auditError } = await supabase.from("audit_log").insert({
+        woreda_id: woredaId,
+        actor_user_id: userId ?? null,
         entity_name: "woreda_settings",
         entity_id: woredaId,
         action_type: "SETTINGS_UPDATED",
         new_value_json: payload as never,
       });
+      if (auditError) throw auditError;
 
       toast.success("ቅንብሮች ተስተካክለዋል / Settings saved");
       qc.invalidateQueries({ queryKey: ["woreda_settings", woredaId] });
@@ -293,7 +309,9 @@ function SettingsPage() {
               </Field>
               <p className="col-span-full text-xs text-slate-500">
                 Shown as the issuing entity — including as "place of issue" on residence ID cards —
-                instead of the official registry name below. Leave blank to use the registry name.
+                instead of the official registry name below. Amharic/English: leave blank to use the
+                registry name. Harari/Oromiffa have no registry equivalent to fall back to — leave
+                blank and that field prints empty on the card.
               </p>
             </div>
           </Card>

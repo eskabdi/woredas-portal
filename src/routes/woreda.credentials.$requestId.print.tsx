@@ -265,10 +265,12 @@ function PrintPage() {
     },
   });
 
-  // woreda_name_display_har/_om aren't in the generated types yet (see the
-  // matching comment in woreda.settings.tsx) -- kept in a separate query so
-  // adding an unrecognized column doesn't collapse settingsQuery's whole
-  // return type to SelectQueryError for every field above.
+  // TODO(post-deploy): once types.ts is regenerated for
+  // 00000000000005_woreda_name_har_om.sql, fold woreda_name_display_har/_om
+  // back into settingsQuery's own select and delete this query + the merge
+  // below -- it exists only because an unrecognized column in a typed
+  // .select() string collapses the whole return type to SelectQueryError
+  // (see the matching comment in woreda.settings.tsx).
   const settingsLangQuery = useQuery({
     queryKey: ["woreda-settings-lang-for-print", woredaId],
     enabled: !!woredaId,
