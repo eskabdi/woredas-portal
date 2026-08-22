@@ -644,6 +644,26 @@ function PrintPage() {
   const canPrint =
     allAuthorized && verified && !busy && (!isReprint || reprintReason.trim().length >= 5);
 
+  // Shared by the on-screen preview and the hidden print surface, so both
+  // read the same field layout and the same resolved values -- previously
+  // the preview pane never consumed these at all (it only ever rendered
+  // CardFront/CardBack), which is how the two surfaces drifted out of sync.
+  const frontFields = (templateQuery.data ?? []).filter((f) => f.template_type === "card_front");
+  const backFields = (templateQuery.data ?? []).filter((f) => f.template_type === "card_back");
+  const fieldValues = buildFieldValues(
+    request,
+    cred,
+    resident,
+    household,
+    kebele,
+    woreda,
+    settings,
+    dobEthiopian,
+    dobGregorian,
+    issueEth,
+    expiryEth,
+  );
+
   return (
     <div className="space-y-6">
       <div className="no-print">
@@ -850,28 +870,61 @@ function PrintPage() {
             <span className="ml-2 text-sm text-white/80">/ Card Preview</span>
           </div>
           <div className="space-y-6 bg-slate-50 p-6">
-            <CardFront
-              resident={resident}
-              cred={cred}
-              woreda={woreda}
-              settings={settings}
-              photoUrl={photoUrl}
-              logoUrl={logoUrl}
-              dobEthiopian={dobEthiopian}
-              dobGregorian={dobGregorian}
-              issueEth={issueEth}
-              bgUrl={frontBgUrl}
-              orientation={orientation}
-            />
-            <CardBack
-              cred={cred}
-              kebele={kebele}
-              household={household}
-              signatureUrl={signatureUrl}
-              expiryEth={expiryEth}
-              bgUrl={backBgUrl}
-              orientation={orientation}
-            />
+            {/* CardFront is a hand-styled fallback for a tenant that hasn't
+                uploaded a template background yet. Once one is set, the
+                background's own artwork carries the field labels, so the
+                preview has to switch to the same field-positioned renderer
+                the physical card prints with (PrintableCard) -- otherwise
+                the background shows through with none of its labels' values
+                actually filled in, which is what the fallback used to do. */}
+            {frontBgUrl ? (
+              <PrintableCard
+                side="front"
+                fields={frontFields}
+                values={fieldValues}
+                photoUrl={photoUrl}
+                qrPayload={null}
+                credentialNumber={cred?.credential_number ?? null}
+                bgUrl={frontBgUrl}
+                previewMode
+              />
+            ) : (
+              <CardFront
+                resident={resident}
+                cred={cred}
+                woreda={woreda}
+                settings={settings}
+                photoUrl={photoUrl}
+                logoUrl={logoUrl}
+                dobEthiopian={dobEthiopian}
+                dobGregorian={dobGregorian}
+                issueEth={issueEth}
+                bgUrl={frontBgUrl}
+                orientation={orientation}
+              />
+            )}
+            {backBgUrl ? (
+              <PrintableCard
+                side="back"
+                fields={backFields}
+                values={fieldValues}
+                photoUrl={photoUrl}
+                qrPayload={cred.qr_payload as string | null}
+                credentialNumber={cred?.credential_number ?? null}
+                bgUrl={backBgUrl}
+                previewMode
+              />
+            ) : (
+              <CardBack
+                cred={cred}
+                kebele={kebele}
+                household={household}
+                signatureUrl={signatureUrl}
+                expiryEth={expiryEth}
+                bgUrl={backBgUrl}
+                orientation={orientation}
+              />
+            )}
           </div>
         </section>
       </div>
@@ -882,20 +935,8 @@ function PrintPage() {
           <div style={{ pageBreakAfter: "always" }}>
             <PrintableCard
               side="front"
-              fields={(templateQuery.data ?? []).filter((f) => f.template_type === "card_front")}
-              values={buildFieldValues(
-                request,
-                cred,
-                resident,
-                household,
-                kebele,
-                woreda,
-                settings,
-                dobEthiopian,
-                dobGregorian,
-                issueEth,
-                expiryEth,
-              )}
+              fields={frontFields}
+              values={fieldValues}
               photoUrl={photoUrl}
               qrPayload={null}
               credentialNumber={cred?.credential_number ?? null}
@@ -905,20 +946,8 @@ function PrintPage() {
           <div>
             <PrintableCard
               side="back"
-              fields={(templateQuery.data ?? []).filter((f) => f.template_type === "card_back")}
-              values={buildFieldValues(
-                request,
-                cred,
-                resident,
-                household,
-                kebele,
-                woreda,
-                settings,
-                dobEthiopian,
-                dobGregorian,
-                issueEth,
-                expiryEth,
-              )}
+              fields={backFields}
+              values={fieldValues}
               photoUrl={photoUrl}
               qrPayload={cred.qr_payload as string | null}
               credentialNumber={cred?.credential_number ?? null}
@@ -1280,6 +1309,7 @@ function PrintableCard({
   qrPayload,
   credentialNumber,
   bgUrl,
+  previewMode,
 }: {
   side: "front" | "back";
   fields: TemplateField[];
@@ -1288,11 +1318,17 @@ function PrintableCard({
   qrPayload: string | null;
   credentialNumber: string | null;
   bgUrl: string | null;
+  /** On-screen preview pane, not the physical print surface -- sizes for
+   * legibility on a monitor instead of the card's true millimetre width.
+   * Every field position below is already percentage/cqh-based, so this
+   * only changes the container's own size, not the layout math. */
+  previewMode?: boolean;
 }) {
   const canvasW = fields[0]?.canvas_width ?? 1688;
   const canvasH = fields[0]?.canvas_height ?? 1063;
   return (
     <div
+      className={previewMode ? "mx-auto rounded-xl shadow-lg ring-1 ring-slate-200" : undefined}
       style={{
         position: "relative",
         // Physical width, not a DPI guess: the template canvas is ~1688px wide
@@ -1301,7 +1337,7 @@ function PrintableCard({
         // on an actual 85.6mm-wide printer that clipped everything past the
         // top-left ~60%, including any field placed in the lower portion of
         // the canvas.
-        width: `${CARD_WIDTH_MM}mm`,
+        width: previewMode ? "min(100%, 640px)" : `${CARD_WIDTH_MM}mm`,
         aspectRatio: `${canvasW} / ${canvasH}`,
         // Field font-size below is set in cqh (container query height) so it
         // scales with the card rather than a fixed rem value. cqh needs a
