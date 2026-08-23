@@ -259,41 +259,10 @@ function RevenuePage() {
           printed_at: nowIso,
         } as never,
       });
-      // Trigger browser print of a compact receipt window.
-      // Values are inserted with DOM APIs (textContent) so stored data can
-      // never be interpreted as HTML/script in the print window.
-      const w = window.open("", "_blank", "width=420,height=600");
-      if (w) {
-        const doc = w.document;
-        doc.title = `Receipt ${row.receipt.receipt_number}`;
-        const style = doc.createElement("style");
-        style.textContent =
-          "body{font-family:sans-serif;padding:16px}h2{margin:0 0 8px 0}dl{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:14px}dt{color:#64748b}";
-        doc.head.appendChild(style);
-
-        const h2 = doc.createElement("h2");
-        h2.textContent = `Receipt ${row.receipt.receipt_number}`;
-        doc.body.appendChild(h2);
-
-        const dl = doc.createElement("dl");
-        const rows: [string, string][] = [
-          ["Payment ID", row.payment_id],
-          ["Type", row.payment_type],
-          ["Amount", `${Number(row.amount).toLocaleString()} ETB`],
-          ["Channel", row.channel],
-          ["Reference", row.reference_no ?? "—"],
-          ["Date", row.payment_date],
-        ];
-        for (const [label, value] of rows) {
-          const dt = doc.createElement("dt");
-          dt.textContent = label;
-          const dd = doc.createElement("dd");
-          dd.textContent = String(value ?? "—");
-          dl.append(dt, dd);
-        }
-        doc.body.appendChild(dl);
-        w.print();
-      }
+      // Opens the real two-page A4 receipt (customer copy + office stub);
+      // that route owns the actual browser print trigger via its own Print
+      // button, so this only needs to get the user there.
+      window.open(`/woreda/revenue/${row.payment_id}/receipt`, "_blank");
     },
     onSuccess: () => {
       toast.success("Receipt sent to printer");
