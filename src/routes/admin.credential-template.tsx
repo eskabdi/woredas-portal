@@ -142,15 +142,25 @@ const IMAGE_FIELD_KEYS = new Set(["photo", "watermark_photo", "signature", "qr_c
 // each query result, same pattern used for console_role/console_role_permission
 // in admin.console-roles.tsx and useAuthBootstrap.ts. Regenerate types.ts
 // post-deploy and drop this.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const db = supabase as unknown as { from: (t: string) => any };
-// publish_id_card_template()/discard_id_card_template_draft() aren't in the
-// generated types yet either -- same temporary cast.
-const rpc = (
-  supabase as unknown as {
-    rpc: (fn: string) => Promise<{ error: { message: string } | null }>;
-  }
-).rpc;
+//
+// db and rpc are cast VIEWS of the same `supabase` object, not extracted
+// method references -- `db.rpc(...)`/`db.from(...)` still call with `this`
+// bound to the real client. Pulling `.rpc` off into its own const (the
+// previous shape here) strips that binding: SupabaseClient#rpc's body reads
+// `this.rest.rpc(...)`, so an unbound call throws "Cannot read properties of
+// undefined (reading 'rest')" synchronously, before any request is sent.
+// flushDrafts() (a `db.from(...).update(...)` call, still correctly bound)
+// would succeed and save the edit to the draft table, then publish/discard
+// would throw immediately after -- draft edits never reach the live table,
+// is_published never flips, and the print route (which only ever reads the
+// live table) shows nothing new. That silent-looking failure is exactly
+// what this cast shape now prevents.
+const db = supabase as unknown as {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  from: (t: string) => any;
+  rpc: (fn: string) => Promise<{ error: { message: string } | null }>;
+};
+const rpc = (fn: string) => db.rpc(fn);
 
 function CredentialTemplatePage() {
   // isSuper doubles as this page's console-permission gate: role===super_admin
