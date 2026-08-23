@@ -13,10 +13,14 @@ function json(status: number, body: unknown): Response {
   });
 }
 
-// Called from useAuthBootstrap.ts on the SIGNED_IN auth event. app_user has
-// no self-write RLS policy at all (by design -- see CLAUDE.md), so a
-// client-side .update() can never touch last_login_at on its own row; this
-// bridges that gap the same way activate-invited-user bridges the
+// Called from login.tsx right after a successful signInWithPassword() --
+// deliberately NOT from the ambient onAuthStateChange listener in
+// useAuthBootstrap.ts, since that listener's SIGNED_IN event also fires on
+// tab-visibility recovery of an existing session (and is broadcast to every
+// open tab), which would make "last login" mean "last tab focus" instead.
+// app_user has no self-write RLS policy at all (by design -- see CLAUDE.md),
+// so a client-side .update() can never touch last_login_at on its own row;
+// this bridges that gap the same way activate-invited-user bridges the
 // "no self-write for status" gap, via the service-role client.
 //
 // Only ever writes the CALLER's own row (resolved from their own JWT, never a
@@ -45,11 +49,14 @@ Deno.serve(async (req) => {
     if (userErr || !userData.user) return json(401, { error: "Unauthorized" });
     const callerId = userData.user.id;
 
-    const { error: updateErr } = await admin
+    const { data: updated, error: updateErr } = await admin
       .from("app_user")
       .update({ last_login_at: new Date().toISOString() })
-      .eq("user_id", callerId);
+      .eq("user_id", callerId)
+      .select("user_id")
+      .maybeSingle();
     if (updateErr) return json(500, { error: updateErr.message });
+    if (!updated) return json(404, { error: "No app_user profile found" });
 
     return json(200, { success: true });
   } catch (e) {

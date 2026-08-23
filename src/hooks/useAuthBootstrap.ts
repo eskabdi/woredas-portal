@@ -110,13 +110,12 @@ export function useAuthBootstrap() {
             if (mounted) setAuth(sessionUser, appUser, consolePermissions);
           });
         }, 0);
-        // Only on an actual sign-in, not a token refresh or profile update --
-        // getSession() on page load doesn't fire this listener at all, so a
-        // reload of an existing session never re-stamps it. Fire-and-forget:
-        // a failed write here must never block or fail the login itself.
-        if (event === "SIGNED_IN") {
-          supabase.functions.invoke("record-login", { body: {} }).catch(() => {});
-        }
+        // record-login (last_login_at) is deliberately NOT fired from this
+        // listener: SIGNED_IN also fires on tab-visibility recovery of an
+        // existing session, and auth-js broadcasts it across every open tab
+        // -- so "last login" would really mean "last tab focus", amplified by
+        // tab count. login.tsx calls it directly, once, right after the
+        // actual supabase.auth.signInWithPassword() call succeeds.
       }
     });
 

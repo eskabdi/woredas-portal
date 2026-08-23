@@ -90,6 +90,11 @@ function LoginPage() {
       setAuth(data.user, appUser, consolePermissions);
       setIsSubmitting(false);
       if (appUser.status === "pending") {
+        // Fire-and-forget: last_login_at is a nice-to-have, must never block
+        // or fail the sign-in itself. Called here (the one real sign-in
+        // event), not from the ambient auth listener -- see the comment in
+        // useAuthBootstrap.ts for why that listener is the wrong place.
+        supabase.functions.invoke("record-login", { body: {} }).catch(() => {});
         navigate({ to: "/set-password" });
       } else {
         setSubmitError("This account is not active. Contact your administrator.");
@@ -99,6 +104,7 @@ function LoginPage() {
     }
 
     setAuth(data.user, appUser, consolePermissions);
+    supabase.functions.invoke("record-login", { body: {} }).catch(() => {});
 
     if (appUser.role === "super_admin") {
       navigate({ to: "/admin/dashboard" });
