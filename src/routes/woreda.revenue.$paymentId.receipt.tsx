@@ -57,6 +57,7 @@ interface ReceiptData {
   payment_date: string;
   channel: string;
   reference_no: string | null;
+  status: string;
   resident: PersonRef | null;
   household: { house_number: string; kebele: KebeleRef | null } | null;
   rental_request: {
@@ -98,7 +99,7 @@ function ReceiptPrintPage() {
       const { data, error } = await supabase
         .from("payment")
         .select(
-          `payment_id, payment_type, amount, payment_date, channel, reference_no,
+          `payment_id, payment_type, amount, payment_date, channel, reference_no, status,
            resident:resident_id ( resident_id, resident_number, full_name, full_name_am ),
            household:household_id ( house_number, kebele:kebele_id ( kebele_name_am, kebele_name_en, kebele_number ) ),
            rental_request:rental_request_id (
@@ -260,14 +261,27 @@ function ReceiptPrintPage() {
   if (dataQuery.isLoading) {
     return (
       <div className="flex items-center justify-center gap-2 p-10 text-sm text-slate-500">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading receipt…
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <span className="font-noto-ethiopic">ደረሰኝ በመጫን ላይ…</span> / Loading receipt…
       </div>
     );
   }
-  if (dataQuery.isError || !dataQuery.data || !dataQuery.data.receipt) {
+  if (dataQuery.isError) {
     return (
       <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-red-800">
-        No receipt found for this payment.
+        <p className="font-noto-ethiopic font-medium">ደረሰኙን መጫን አልተቻለም</p>
+        <p className="text-sm">
+          Failed to load this receipt:{" "}
+          {dataQuery.error instanceof Error ? dataQuery.error.message : "Unknown error"}
+        </p>
+      </div>
+    );
+  }
+  if (!dataQuery.data || !dataQuery.data.receipt) {
+    return (
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-800">
+        <p className="font-noto-ethiopic font-medium">ለዚህ ክፍያ ደረሰኝ አልተገኘም</p>
+        <p className="text-sm">No receipt has been generated for this payment.</p>
       </div>
     );
   }
@@ -278,6 +292,9 @@ function ReceiptPrintPage() {
     settingsQuery.data?.woreda_name_display || woredaQuery.data?.woreda_name_am || "ወረዳ አስተዳደር";
   const woredaNameEn = woredaQuery.data?.woreda_name_en || "Woreda Administration";
   const verifyUrl = receipt.verification_token ? receiptVerifyUrl(receipt.verification_token) : "";
+  const verifyPath = receipt.verification_token
+    ? `/verify/receipt/${receipt.verification_token}`
+    : "";
 
   return (
     <div className="space-y-4">
@@ -322,6 +339,7 @@ function ReceiptPrintPage() {
             kebeleNumber={kebele?.kebele_number ?? null}
             houseNumber={houseNumber}
             paymentTypeLabel={PAYMENT_TYPE_LABEL[d.payment_type] ?? d.payment_type}
+            paymentStatus={d.status}
             channelLabel={CHANNEL_LABEL[d.channel] ?? d.channel}
             referenceNo={d.reference_no}
             descriptionAm={description.am}
@@ -332,6 +350,7 @@ function ReceiptPrintPage() {
             amountWordsEn={amountInWordsEn(receipt.total_amount)}
             collectedByName={d.posted_by?.full_name ?? null}
             verifyUrl={verifyUrl}
+            verifyPath={verifyPath}
           />
           <div style={{ pageBreakBefore: "always", breakBefore: "page" }}>
             <ReceiptPage
@@ -352,6 +371,7 @@ function ReceiptPrintPage() {
               kebeleNumber={kebele?.kebele_number ?? null}
               houseNumber={houseNumber}
               paymentTypeLabel={PAYMENT_TYPE_LABEL[d.payment_type] ?? d.payment_type}
+              paymentStatus={d.status}
               channelLabel={CHANNEL_LABEL[d.channel] ?? d.channel}
               referenceNo={d.reference_no}
               descriptionAm={description.am}
@@ -362,6 +382,7 @@ function ReceiptPrintPage() {
               amountWordsEn={amountInWordsEn(receipt.total_amount)}
               collectedByName={d.posted_by?.full_name ?? null}
               verifyUrl={verifyUrl}
+              verifyPath={verifyPath}
             />
           </div>
         </div>
@@ -395,6 +416,7 @@ interface ReceiptPageProps {
   kebeleNumber: string | null;
   houseNumber: string | null;
   paymentTypeLabel: string;
+  paymentStatus: string;
   channelLabel: string;
   referenceNo: string | null;
   descriptionAm: string;
@@ -405,6 +427,7 @@ interface ReceiptPageProps {
   amountWordsEn: string;
   collectedByName: string | null;
   verifyUrl: string;
+  verifyPath: string;
 }
 
 /** One physical A4 page. `variant="original"` is the customer copy (§1a of
@@ -430,6 +453,7 @@ function ReceiptPage({
   kebeleNumber,
   houseNumber,
   paymentTypeLabel,
+  paymentStatus,
   channelLabel,
   referenceNo,
   descriptionAm,
@@ -440,6 +464,7 @@ function ReceiptPage({
   amountWordsEn,
   collectedByName,
   verifyUrl,
+  verifyPath,
 }: ReceiptPageProps) {
   const receiptDateObj = new Date(receiptDate);
   const dateEc = formatEthiopianDate(receiptDateObj);
@@ -755,7 +780,19 @@ function ReceiptPage({
               <DetailPair labelAm="ዓይነት" labelEn="Type" value={paymentTypeLabel} />
               <DetailPair labelAm="ቻናል" labelEn="Channel" value={channelLabel} />
               <DetailPair labelAm="ማጣቀሻ" labelEn="Reference No." value={referenceNo} mono />
-              <DetailPair labelAm="ሁኔታ" labelEn="Status" value="CONFIRMED" bold color="#1c6b3a" />
+              <DetailPair
+                labelAm="ሁኔታ"
+                labelEn="Status"
+                value={paymentStatus.toUpperCase()}
+                bold
+                color={
+                  paymentStatus === "confirmed"
+                    ? "#1c6b3a"
+                    : paymentStatus === "reversed"
+                      ? "#b91c1c"
+                      : "#a16207"
+                }
+              />
             </div>
           </div>
         </div>
@@ -893,7 +930,7 @@ function ReceiptPage({
                 wordBreak: "break-all",
               }}
             >
-              verify/{receiptNumber}
+              {verifyPath || "—"}
             </div>
           </div>
         </div>
@@ -1259,7 +1296,20 @@ function ReceiptPage({
               WOREDA REVENUE OFFICE
             </div>
           </div>
-          <div>{qr}</div>
+          <div>
+            {qr}
+            <div
+              style={{
+                fontFamily: "'IBM Plex Mono',monospace",
+                fontSize: 7.5,
+                color: "#6b7280",
+                marginTop: 4,
+                wordBreak: "break-all",
+              }}
+            >
+              {verifyPath || "—"}
+            </div>
+          </div>
         </div>
 
         <div
