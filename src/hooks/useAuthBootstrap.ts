@@ -110,6 +110,13 @@ export function useAuthBootstrap() {
             if (mounted) setAuth(sessionUser, appUser, consolePermissions);
           });
         }, 0);
+        // Only on an actual sign-in, not a token refresh or profile update --
+        // getSession() on page load doesn't fire this listener at all, so a
+        // reload of an existing session never re-stamps it. Fire-and-forget:
+        // a failed write here must never block or fail the login itself.
+        if (event === "SIGNED_IN") {
+          supabase.functions.invoke("record-login", { body: {} }).catch(() => {});
+        }
       }
     });
 
