@@ -44,7 +44,7 @@ import {
 import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/integrations/supabase/client";
 import { P } from "@/config/permissions";
-import { formatEthiopianDate } from "@/utils/ethiopianCalendar";
+import { formatEthiopianDate, parseDateOnly } from "@/utils/ethiopianCalendar";
 
 export const Route = createFileRoute("/woreda/credentials/$requestId/print")({
   ssr: false,
@@ -637,11 +637,11 @@ function PrintPage() {
   }
 
   const dobEthiopian = resident?.date_of_birth
-    ? formatEthiopianDate(new Date(resident.date_of_birth))
+    ? formatEthiopianDate(parseDateOnly(resident.date_of_birth)!)
     : "";
   const dobGregorian = resident?.date_of_birth ?? "";
-  const issueEth = cred.issue_date ? formatEthiopianDate(new Date(cred.issue_date)) : "";
-  const expiryEth = cred.expiry_date ? formatEthiopianDate(new Date(cred.expiry_date)) : "";
+  const issueEth = cred.issue_date ? formatEthiopianDate(parseDateOnly(cred.issue_date)!) : "";
+  const expiryEth = cred.expiry_date ? formatEthiopianDate(parseDateOnly(cred.expiry_date)!) : "";
 
   const canPrint =
     allAuthorized && verified && !busy && (!isReprint || reprintReason.trim().length >= 5);

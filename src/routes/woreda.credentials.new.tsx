@@ -24,7 +24,7 @@ import { ResidentSearchPicker } from "@/components/forms/ResidentSearchPicker";
 import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/integrations/supabase/client";
 import { P } from "@/config/permissions";
-import { formatEthiopianDate } from "@/utils/ethiopianCalendar";
+import { formatEthiopianDate, parseDateOnly } from "@/utils/ethiopianCalendar";
 
 const searchSchema = z.object({
   residentId: z.string().optional(),
@@ -386,7 +386,8 @@ function NewCredentialRequestPage() {
 
   const dobDisplay = useMemo(() => {
     if (!resident?.date_of_birth) return "—";
-    return formatEthiopianDate(new Date(resident.date_of_birth));
+    const d = parseDateOnly(resident.date_of_birth);
+    return d ? formatEthiopianDate(d) : "—";
   }, [resident?.date_of_birth]);
 
   return (
