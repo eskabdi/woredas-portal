@@ -37,7 +37,7 @@ import {
 import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/integrations/supabase/client";
 import { P } from "@/config/permissions";
-import { formatEthiopianDate } from "@/utils/ethiopianCalendar";
+import { formatEthiopianDate, parseDateOnly } from "@/utils/ethiopianCalendar";
 
 export const Route = createFileRoute("/woreda/civil/$eventId")({
   ssr: false,
@@ -498,11 +498,11 @@ function CivilEventDetailPage() {
                 <span className="font-mono">{event.event_number}</span>
               </Field>
               <Field labelAm="የክስተት ቀን" labelEn="Event Date">
-                {event.event_date ? formatEthiopianDate(new Date(event.event_date)) : "—"}
+                {event.event_date ? formatEthiopianDate(parseDateOnly(event.event_date)!) : "—"}
               </Field>
               <Field labelAm="የተመዘገበበት ቀን" labelEn="Registered">
                 {event.registration_date
-                  ? formatEthiopianDate(new Date(event.registration_date))
+                  ? formatEthiopianDate(parseDateOnly(event.registration_date)!)
                   : "—"}
               </Field>
 
@@ -647,7 +647,7 @@ function CivilEventDetailPage() {
                     <>
                       <Field labelAm="የጋብቻ ቀን" labelEn="Marriage Date">
                         {divorceD.marriage_date
-                          ? formatEthiopianDate(new Date(divorceD.marriage_date))
+                          ? formatEthiopianDate(parseDateOnly(divorceD.marriage_date)!)
                           : "—"}
                       </Field>
                       <Field labelAm="ፍርድ ቤት" labelEn="Court">

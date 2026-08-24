@@ -26,7 +26,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
 import { P } from "@/config/permissions";
-import { formatEthiopianDateShort } from "@/utils/ethiopianCalendar";
+import { formatEthiopianDateShort, parseDateOnly } from "@/utils/ethiopianCalendar";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/woreda/rental-houses/requests/$requestId/")({
@@ -45,8 +45,8 @@ type Stage = "submitted" | "verified" | "approved" | "final";
 
 function toEth(iso: string | null | undefined): string {
   if (!iso) return "—";
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "—";
+  const d = parseDateOnly(iso);
+  if (!d) return "—";
   return formatEthiopianDateShort(d);
 }
 

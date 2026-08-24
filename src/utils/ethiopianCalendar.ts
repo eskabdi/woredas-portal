@@ -1,6 +1,8 @@
 // Ethiopian (Ge'ez) calendar conversion.
-// Algorithm based on the standard JDN (Julian Day Number) approach which
-// produces exact Gregorian <-> Ethiopian conversions for any date.
+// Algorithm based on the standard JDN (Julian Day Number) approach, which
+// produces exact Gregorian <-> Ethiopian conversions for any date. The two
+// directions use two different (but related) epoch constants — see the note
+// above ETHIOPIC_EPOCH below before "simplifying" them into one.
 
 export const ETHIOPIAN_MONTHS_AM = [
   "መስከረም",
@@ -57,14 +59,21 @@ function gregorianToJDN(y: number, m: number, d: number): number {
 }
 
 // Ethiopian epoch JDN (29 August 8 CE in the Julian calendar -> Meskerem 1, 1 EC).
-const ETHIOPIC_EPOCH = 1724220;
+// NOTE: the two conversion directions below use two different epoch
+// constants that are 365 apart. They are NOT interchangeable: each is
+// calibrated to its own formula shape (this one anchors year 0 at the epoch,
+// ethiopianToGregorian's `365 * (year - 1)` shape anchors year 1 at the
+// epoch), and collapsing them into a single constant breaks both directions.
+const JDN_EPOCH_OFFSET_AMETE_MIHRET = 1723856;
 
 export function gregorianToEthiopian(date: Date): EthiopianDate {
   const jdn = gregorianToJDN(date.getFullYear(), date.getMonth() + 1, date.getDate());
-  const r = (jdn - ETHIOPIC_EPOCH) % 1461;
+  const r = (jdn - JDN_EPOCH_OFFSET_AMETE_MIHRET) % 1461;
   const n = (r % 365) + 365 * Math.floor(r / 1460);
   const year =
-    4 * Math.floor((jdn - ETHIOPIC_EPOCH) / 1461) + Math.floor(r / 365) - Math.floor(r / 1460);
+    4 * Math.floor((jdn - JDN_EPOCH_OFFSET_AMETE_MIHRET) / 1461) +
+    Math.floor(r / 365) -
+    Math.floor(r / 1460);
   const month = Math.floor(n / 30) + 1;
   const day = (n % 30) + 1;
   return { year, month, day };
@@ -111,10 +120,41 @@ function jdnToGregorian(jdn: number): Date {
   return new Date(year, month - 1, day);
 }
 
+// True JDN of Meskerem 1, 1 EC (= JDN_EPOCH_OFFSET_AMETE_MIHRET + 365).
+// See the note above JDN_EPOCH_OFFSET_AMETE_MIHRET: this constant is
+// calibrated to the `365 * (year - 1)` formula shape below, not shared with
+// gregorianToEthiopian's formula.
+const ETHIOPIC_EPOCH = 1724221;
+
 export function ethiopianToGregorian(e: EthiopianDate): Date {
   const jdn =
     ETHIOPIC_EPOCH + 365 * (e.year - 1) + Math.floor(e.year / 4) + 30 * (e.month - 1) + (e.day - 1);
   return jdnToGregorian(jdn);
+}
+
+// Parse a date-only ISO string ("yyyy-mm-dd") as a local calendar date,
+// avoiding the UTC-midnight interpretation `new Date(iso)` gives, which
+// shifts the displayed day backward in any negative-UTC-offset timezone.
+// Only use this for `date`-typed columns (date_of_birth, issue_date, etc.);
+// genuine timestamptz instants (action_at, revoked_at, ...) should keep
+// using `new Date(iso)` as before.
+export function parseDateOnly(iso: string): Date | null {
+  const parts = iso.split("-");
+  if (parts.length !== 3) return null;
+  const [y, m, d] = parts.map(Number);
+  const date = new Date(y, m - 1, d);
+  return isNaN(date.getTime()) ? null : date;
+}
+
+// For helpers fed values from both `date` and `timestamptz` columns
+// (e.g. a shared "created/event date" formatter): a bare `yyyy-mm-dd` string
+// is a date-only Postgres `date` value and must use the local-calendar parse
+// above; anything else (a full ISO timestamp) is a real instant and should
+// keep standard `new Date(...)` parsing.
+export function parseStoredDate(value: string): Date | null {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return parseDateOnly(value);
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? null : d;
 }
 
 export function isValidEthiopianDate(e: EthiopianDate): boolean {

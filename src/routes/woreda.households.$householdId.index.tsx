@@ -43,7 +43,7 @@ import {
 import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/integrations/supabase/client";
 import { P } from "@/config/permissions";
-import { formatEthiopianDate } from "@/utils/ethiopianCalendar";
+import { formatEthiopianDate, parseStoredDate } from "@/utils/ethiopianCalendar";
 import { ErrorState } from "@/components/residents/ResidentProfileTabs";
 
 const LocationDisplayMap = lazy(() => import("@/components/gis/LocationDisplayMap"));
@@ -578,8 +578,8 @@ function CardHeader({
 
 /** Ethiopian + Gregorian, matching ResidentProfileTabs.tsx's dateLabel(). */
 function documentDateLabel(value: string) {
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
+  const d = parseStoredDate(value);
+  if (!d) return "—";
   return `${formatEthiopianDate(d)} · ${d.toLocaleDateString()}`;
 }
 
