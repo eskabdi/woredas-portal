@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StatusChip } from "@/components/common/StatusChip";
 import { supabase } from "@/integrations/supabase/client";
-import { formatEthiopianDate } from "@/utils/ethiopianCalendar";
+import { formatEthiopianDate, parseStoredDate } from "@/utils/ethiopianCalendar";
 
 const DocumentViewerDialog = lazy(() => import("@/components/common/DocumentViewerDialog"));
 
@@ -197,8 +197,8 @@ function inRange(value: string | null | undefined, range: string) {
 
 function dateLabel(value?: string | null) {
   if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
+  const d = parseStoredDate(value);
+  if (!d) return "—";
   return `${formatEthiopianDate(d)} · ${d.toLocaleDateString()}`;
 }
 

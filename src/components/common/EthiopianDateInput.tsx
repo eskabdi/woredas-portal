@@ -5,6 +5,7 @@ import {
   ethiopianToGregorian,
   gregorianToEthiopian,
   isValidEthiopianDate,
+  parseDateOnly,
 } from "@/utils/ethiopianCalendar";
 
 interface Props {
@@ -18,10 +19,8 @@ interface Props {
 
 function isoToEth(iso: string): { y: string; m: string; d: string } | null {
   if (!iso) return null;
-  const parts = iso.split("-");
-  if (parts.length !== 3) return null;
-  const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-  if (isNaN(d.getTime())) return null;
+  const d = parseDateOnly(iso);
+  if (!d) return null;
   const e = gregorianToEthiopian(d);
   return { y: String(e.year), m: String(e.month), d: String(e.day) };
 }
@@ -74,8 +73,8 @@ export function EthiopianDateInput({ value, onChange, id, ariaInvalid, disabled 
 
   const gregorianPreview = (() => {
     if (!value) return "";
-    const d = new Date(value);
-    if (isNaN(d.getTime())) return "";
+    const d = parseDateOnly(value);
+    if (!d) return "";
     return d.toLocaleDateString("en-GB");
   })();
 
