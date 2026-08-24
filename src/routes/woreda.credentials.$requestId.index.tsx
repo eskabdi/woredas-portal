@@ -45,7 +45,11 @@ import {
 import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/integrations/supabase/client";
 import { P } from "@/config/permissions";
-import { formatEthiopianDate, parseDateOnly } from "@/utils/ethiopianCalendar";
+import {
+  formatEthiopianDate,
+  formatEthiopianDateOnly,
+  parseDateOnly,
+} from "@/utils/ethiopianCalendar";
 
 export const Route = createFileRoute("/woreda/credentials/$requestId/")({
   ssr: false,
@@ -770,7 +774,7 @@ function CredentialRequestDetailPage() {
                     <StatusChip status={prior.status} />
                     {prior.issue_date && (
                       <span className="ml-2 text-xs text-slate-500">
-                        {formatEthiopianDate(parseDateOnly(prior.issue_date)!)}
+                        {formatEthiopianDateOnly(prior.issue_date)}
                       </span>
                     )}
                   </dd>
@@ -970,7 +974,7 @@ function CredentialRequestDetailPage() {
                             <StatusChip status={c.status} />
                             {c.issue_date && (
                               <span className="text-xs text-slate-500">
-                                {formatEthiopianDate(parseDateOnly(c.issue_date)!)}
+                                {formatEthiopianDateOnly(c.issue_date)}
                               </span>
                             )}
                           </li>
@@ -1664,9 +1668,9 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
                     <dt className="font-noto-ethiopic text-slate-500">ቀን / Date</dt>
                     <dd className="text-slate-800">
                       {paidQuery.data.receipt?.receipt_date
-                        ? formatEthiopianDate(parseDateOnly(paidQuery.data.receipt.receipt_date)!)
+                        ? formatEthiopianDateOnly(paidQuery.data.receipt.receipt_date)
                         : paidQuery.data.payment?.payment_date
-                          ? formatEthiopianDate(parseDateOnly(paidQuery.data.payment.payment_date)!)
+                          ? formatEthiopianDateOnly(paidQuery.data.payment.payment_date)
                           : "—"}
                     </dd>
                     <dt className="font-noto-ethiopic text-slate-500">የክፍያ መንገድ / Channel</dt>
@@ -1847,7 +1851,7 @@ function CredentialReadinessCard({
                     <span className="ml-1 text-xs text-slate-500">/ Expiry</span>
                   </dt>
                   <dd className="text-slate-900">
-                    {cred.expiry_date ? formatEthiopianDate(parseDateOnly(cred.expiry_date)!) : "—"}
+                    {cred.expiry_date ? formatEthiopianDateOnly(cred.expiry_date) : "—"}
                   </dd>
                 </dl>
                 <div className="mt-4">
