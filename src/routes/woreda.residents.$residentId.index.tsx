@@ -51,7 +51,7 @@ import {
 import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/integrations/supabase/client";
 import { P } from "@/config/permissions";
-import { formatEthiopianDate, parseDateOnly } from "@/utils/ethiopianCalendar";
+import { formatEthiopianDate, formatEthiopianDateOnly } from "@/utils/ethiopianCalendar";
 import { EDUCATION_OPTIONS, OCCUPATION_OPTIONS } from "@/lib/residentConstants";
 
 const LocationDisplayMap = lazy(() => import("@/components/gis/LocationDisplayMap"));
@@ -391,9 +391,7 @@ function ResidentProfilePage() {
                     labelAm="የትውልድ ቀን"
                     labelEn="Date of Birth"
                     value={
-                      r.date_of_birth
-                        ? formatEthiopianDate(parseDateOnly(r.date_of_birth)!)
-                        : notRecorded()
+                      r.date_of_birth ? formatEthiopianDateOnly(r.date_of_birth) : notRecorded()
                     }
                   />
                   <Field

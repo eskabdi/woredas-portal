@@ -157,6 +157,21 @@ export function parseStoredDate(value: string): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
+// Format a date-only ISO string ("yyyy-mm-dd") as an Ethiopian date, falling
+// back to `fallback` instead of throwing if the value is malformed. Prefer
+// these over `formatEthiopianDate(parseDateOnly(iso)!)` at any call site
+// that can't guarantee `iso` is a well-formed date string (e.g. any value
+// read straight off a query result).
+export function formatEthiopianDateOnly(iso: string, fallback = "—"): string {
+  const d = parseDateOnly(iso);
+  return d ? formatEthiopianDate(d) : fallback;
+}
+
+export function formatEthiopianDateShortOnly(iso: string, fallback = "—"): string {
+  const d = parseDateOnly(iso);
+  return d ? formatEthiopianDateShort(d) : fallback;
+}
+
 export function isValidEthiopianDate(e: EthiopianDate): boolean {
   if (e.month < 1 || e.month > 13) return false;
   if (e.day < 1) return false;
