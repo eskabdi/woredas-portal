@@ -1,7 +1,9 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useReactToPrint } from "react-to-print";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
+import { toast } from "sonner";
 import { QRCodeCanvas } from "qrcode.react";
 import { ArrowLeft, Loader2, Printer } from "lucide-react";
 
@@ -201,14 +203,47 @@ function ReceiptPrintPage() {
   }, [settingsQuery.data]);
 
   const printRef = useRef<HTMLDivElement>(null);
-  const doPrint = useReactToPrint({
-    contentRef: printRef,
-    documentTitle: dataQuery.data?.receipt?.receipt_number
-      ? `receipt-${dataQuery.data.receipt.receipt_number}`
-      : "receipt",
-    pageStyle:
-      "@page { size: A4; margin: 0; } @media print { html, body { margin: 0 !important; padding: 0 !important; } }",
-  });
+  const [printing, setPrinting] = useState(false);
+
+  // Renders the receipt to a real PDF (html2canvas -> jsPDF, the same
+  // pipeline woreda.households.$householdId.index.tsx already uses for its
+  // "Export PDF" button) and opens it in a new tab, instead of printing the
+  // live page via window.print(). A browser's native PDF viewer only ever
+  // prints the PDF's own pages -- never the app chrome around it -- which is
+  // what window.print() on the live DOM could not reliably guarantee here
+  // (the sidebar and other page sections were bleeding into the printout).
+  //
+  // window.open() is called synchronously, before the first await, so the
+  // popup isn't blocked as an unsolicited window -- browsers only allow
+  // window.open() without a user-gesture/popup warning when it's a direct,
+  // synchronous result of the click. The tab's location is then pointed at
+  // the generated PDF once it's ready.
+  const handlePrint = async () => {
+    if (!printRef.current) return;
+    const win = window.open("", "_blank");
+    if (!win) {
+      toast.error("Popup blocked — allow popups for this site to view the receipt.");
+      return;
+    }
+    setPrinting(true);
+    try {
+      const canvas = await html2canvas(printRef.current, { scale: 2, useCORS: true });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      pdf.addImage(imgData, "PNG", 0, 0, pageWidth, pageHeight);
+      const receiptNumber = dataQuery.data?.receipt?.receipt_number;
+      pdf.setProperties({ title: receiptNumber ? `Receipt ${receiptNumber}` : "Receipt" });
+      const blobUrl = URL.createObjectURL(pdf.output("blob"));
+      win.location.href = blobUrl;
+    } catch (e) {
+      win.close();
+      toast.error(`Failed to generate the receipt PDF: ${(e as Error).message}`);
+    } finally {
+      setPrinting(false);
+    }
+  };
 
   const resident = dataQuery.data?.resident ?? dataQuery.data?.rental_request?.resident ?? null;
   const kebele =
@@ -298,31 +333,33 @@ function ReceiptPrintPage() {
 
   return (
     <div className="space-y-4">
-      <div className="no-print space-y-4">
-        <PageHeader
-          variant="plain"
-          icon={Printer}
-          titleAm="ደረሰኝ"
-          titleEn="Receipt"
-          actions={
-            <>
-              <Link to="/woreda/revenue">
-                <Button variant="outline">
-                  <ArrowLeft className="mr-2 h-4 w-4" /> Back
-                </Button>
-              </Link>
-              <Button onClick={() => doPrint()}>
-                <Printer className="mr-2 h-4 w-4" /> Print
+      <PageHeader
+        variant="plain"
+        icon={Printer}
+        titleAm="ደረሰኝ"
+        titleEn="Receipt"
+        actions={
+          <>
+            <Link to="/woreda/revenue">
+              <Button variant="outline">
+                <ArrowLeft className="mr-2 h-4 w-4" /> Back
               </Button>
-            </>
-          }
-        />
-      </div>
+            </Link>
+            <Button onClick={handlePrint} disabled={printing}>
+              {printing ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Printer className="mr-2 h-4 w-4" />
+              )}
+              Print
+            </Button>
+          </>
+        }
+      />
 
       <div className="flex justify-center overflow-x-auto bg-slate-200 py-6">
         <div ref={printRef}>
           <ReceiptPage
-            variant="original"
             woredaNameAm={woredaNameAm}
             woredaNameEn={woredaNameEn}
             logoUrl={logoUrl}
@@ -352,54 +389,13 @@ function ReceiptPrintPage() {
             verifyUrl={verifyUrl}
             verifyPath={verifyPath}
           />
-          <div style={{ pageBreakBefore: "always", breakBefore: "page" }}>
-            <ReceiptPage
-              variant="stub"
-              woredaNameAm={woredaNameAm}
-              woredaNameEn={woredaNameEn}
-              logoUrl={logoUrl}
-              stampUrl={stampUrl}
-              signatureUrl={signatureUrl}
-              receiptNumber={receipt.receipt_number}
-              receiptDate={receipt.receipt_date}
-              printedAt={receipt.printed_at}
-              paymentId={d.payment_id}
-              residentNameAm={resident?.full_name_am ?? null}
-              residentNameEn={resident?.full_name ?? null}
-              residentNumber={resident?.resident_number ?? null}
-              kebeleNameAm={kebele?.kebele_name_am ?? null}
-              kebeleNumber={kebele?.kebele_number ?? null}
-              houseNumber={houseNumber}
-              paymentTypeLabel={PAYMENT_TYPE_LABEL[d.payment_type] ?? d.payment_type}
-              paymentStatus={d.status}
-              channelLabel={CHANNEL_LABEL[d.channel] ?? d.channel}
-              referenceNo={d.reference_no}
-              descriptionAm={description.am}
-              descriptionEn={description.en}
-              period={period}
-              amount={receipt.total_amount}
-              amountWordsAm={amountInWordsAm(receipt.total_amount)}
-              amountWordsEn={amountInWordsEn(receipt.total_amount)}
-              collectedByName={d.posted_by?.full_name ?? null}
-              verifyUrl={verifyUrl}
-              verifyPath={verifyPath}
-            />
-          </div>
         </div>
       </div>
-
-      <style>{`
-        @media print {
-          .no-print { display: none !important; }
-          html, body { background: #fff !important; }
-        }
-      `}</style>
     </div>
   );
 }
 
 interface ReceiptPageProps {
-  variant: "original" | "stub";
   woredaNameAm: string;
   woredaNameEn: string;
   logoUrl: string | null;
@@ -430,13 +426,11 @@ interface ReceiptPageProps {
   verifyPath: string;
 }
 
-/** One physical A4 page. `variant="original"` is the customer copy (§1a of
- * the Claude Design mockup this was implemented from); `variant="stub"` is
- * the office copy with the "OFFICE STUB" side strip (§1b). Both render the
- * same data -- the stub is a second physical page kept in the woreda's own
- * files, not a different document. */
+/** One physical A4 page -- the customer copy (§1a of the Claude Design
+ * mockup this was implemented from). The design's §1b "office stub" page is
+ * deliberately not rendered: this receipt is one document, not a choice
+ * between two. */
 function ReceiptPage({
-  variant,
   woredaNameAm,
   woredaNameEn,
   logoUrl,
@@ -580,390 +574,15 @@ function ReceiptPage({
 
   const fontStack = { fontFamily: "'IBM Plex Sans',sans-serif" };
 
-  if (variant === "original") {
-    return (
-      <section
-        style={{
-          width: "210mm",
-          minHeight: "297mm",
-          boxSizing: "border-box",
-          padding: "56px 54px 44px",
-          display: "flex",
-          flexDirection: "column",
-          background: "#fff",
-          color: "#141821",
-          ...fontStack,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            gap: 28,
-            borderBottom: "2.5px solid #141821",
-            paddingBottom: 16,
-          }}
-        >
-          <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-            {seal}
-            <div>
-              <div
-                style={{
-                  fontFamily: "'Noto Serif Ethiopic',serif",
-                  fontWeight: 600,
-                  fontSize: 23,
-                  lineHeight: 1.2,
-                }}
-              >
-                {woredaNameAm}
-              </div>
-              <div
-                style={{ fontSize: 12.5, letterSpacing: ".06em", color: "#4b5361", marginTop: 4 }}
-              >
-                {woredaNameEn.toUpperCase()}
-              </div>
-              <div
-                style={{
-                  fontFamily: "'Noto Sans Ethiopic',sans-serif",
-                  fontSize: 12,
-                  color: "#4b5361",
-                  marginTop: 7,
-                }}
-              >
-                የገቢ ክፍል · Revenue Office
-              </div>
-            </div>
-          </div>
-          <div style={{ border: "1.5px solid #141821", padding: "10px 14px", minWidth: 214 }}>
-            <div style={{ fontSize: 8.5, letterSpacing: ".16em", color: "#6b7280" }}>
-              ደረሰኝ ቁጥር · RECEIPT NO.
-            </div>
-            <div
-              style={{
-                fontFamily: "'IBM Plex Mono',monospace",
-                fontSize: 17,
-                fontWeight: 600,
-                marginTop: 3,
-              }}
-            >
-              {receiptNumber}
-            </div>
-            <div
-              style={{
-                display: "flex",
-                gap: 18,
-                marginTop: 10,
-                paddingTop: 9,
-                borderTop: "1px solid #d6dae1",
-              }}
-            >
-              <div>
-                <div style={{ fontSize: 8.5, letterSpacing: ".14em", color: "#6b7280" }}>
-                  ቀን · E.C.
-                </div>
-                <div
-                  style={{
-                    fontFamily: "'Noto Sans Ethiopic',sans-serif",
-                    fontSize: 12.5,
-                    fontWeight: 500,
-                    marginTop: 2,
-                  }}
-                >
-                  {dateEc}
-                </div>
-              </div>
-              <div>
-                <div style={{ fontSize: 8.5, letterSpacing: ".14em", color: "#6b7280" }}>GREG.</div>
-                <div
-                  style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12.5, marginTop: 2 }}
-                >
-                  {dateGreg}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "baseline",
-            marginTop: 20,
-          }}
-        >
-          <div
-            style={{
-              fontFamily: "'Noto Serif Ethiopic',serif",
-              fontSize: 19,
-              fontWeight: 600,
-              letterSpacing: ".02em",
-            }}
-          >
-            የገቢ ደረሰኝ{" "}
-            <span
-              style={{
-                fontSize: 12,
-                fontWeight: 500,
-                letterSpacing: ".2em",
-                color: "#6b7280",
-                marginLeft: 8,
-              }}
-            >
-              REVENUE RECEIPT
-            </span>
-          </div>
-          <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: "#6b7280" }}>
-            PAYMENT ID · {paymentId}
-          </div>
-        </div>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            border: "1px solid #141821",
-            marginTop: 14,
-          }}
-        >
-          <div style={{ padding: "14px 16px", borderRight: "1px solid #141821" }}>
-            <div
-              style={{ fontSize: 8.5, letterSpacing: ".16em", color: "#6b7280", marginBottom: 10 }}
-            >
-              ከፋይ · PAID BY
-            </div>
-            <div
-              style={{
-                fontFamily: "'Noto Sans Ethiopic',sans-serif",
-                fontSize: 16,
-                fontWeight: 600,
-              }}
-            >
-              {residentNameAm ?? residentNameEn ?? "—"}
-            </div>
-            {residentNameEn && (
-              <div style={{ fontSize: 12, color: "#4b5361", marginTop: 2 }}>{residentNameEn}</div>
-            )}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "auto 1fr",
-                gap: "6px 14px",
-                marginTop: 12,
-                fontSize: 11.5,
-              }}
-            >
-              <DetailPair labelAm="የነዋሪ ቁጥር" labelEn="Resident No." value={residentNumber} mono />
-              <DetailPair
-                labelAm="ቀበሌ"
-                labelEn="Kebele"
-                value={kebeleNameAm ? `ቀበሌ ${kebeleNumber ?? ""}` : null}
-              />
-              <DetailPair labelAm="የቤት ቁጥር" labelEn="House No." value={houseNumber} mono />
-            </div>
-          </div>
-          <div style={{ padding: "14px 16px" }}>
-            <div
-              style={{ fontSize: 8.5, letterSpacing: ".16em", color: "#6b7280", marginBottom: 10 }}
-            >
-              የክፍያ ዝርዝር · PAYMENT DETAIL
-            </div>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "auto 1fr",
-                gap: "6px 14px",
-                fontSize: 11.5,
-              }}
-            >
-              <DetailPair labelAm="ዓይነት" labelEn="Type" value={paymentTypeLabel} />
-              <DetailPair labelAm="ቻናል" labelEn="Channel" value={channelLabel} />
-              <DetailPair labelAm="ማጣቀሻ" labelEn="Reference No." value={referenceNo} mono />
-              <DetailPair
-                labelAm="ሁኔታ"
-                labelEn="Status"
-                value={paymentStatus.toUpperCase()}
-                bold
-                color={
-                  paymentStatus === "confirmed"
-                    ? "#1c6b3a"
-                    : paymentStatus === "reversed"
-                      ? "#b91c1c"
-                      : "#a16207"
-                }
-              />
-            </div>
-          </div>
-        </div>
-
-        <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 20, fontSize: 12 }}>
-          <thead>
-            <tr style={{ background: "#141821", color: "#fff" }}>
-              <Th align="left" width={34}>
-                #
-              </Th>
-              <Th align="left">መግለጫ · DESCRIPTION</Th>
-              <Th align="left" width={150}>
-                ወር · PERIOD
-              </Th>
-              <Th align="right" width={130}>
-                መጠን (ብር) · AMOUNT
-              </Th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <Td mono muted borderBottomWidth={2.5}>
-                01
-              </Td>
-              <Td borderBottomWidth={2.5}>
-                <div style={{ fontFamily: "'Noto Sans Ethiopic',sans-serif" }}>{descriptionAm}</div>
-                {descriptionEn && (
-                  <div style={{ fontSize: 10.5, color: "#6b7280", marginTop: 2 }}>
-                    {descriptionEn}
-                  </div>
-                )}
-              </Td>
-              <Td borderBottomWidth={2.5}>{period}</Td>
-              <Td align="right" mono borderBottomWidth={2.5}>
-                {amountFormatted}
-              </Td>
-            </tr>
-            <tr>
-              <td
-                colSpan={3}
-                style={{
-                  padding: "13px 12px",
-                  textAlign: "right",
-                  fontWeight: 600,
-                  fontSize: 13,
-                  borderBottom: "2.5px solid #141821",
-                  fontFamily: "'Noto Sans Ethiopic',sans-serif",
-                }}
-              >
-                ጠቅላላ ድምር · TOTAL PAID
-              </td>
-              <td
-                style={{
-                  padding: "13px 12px",
-                  textAlign: "right",
-                  fontFamily: "'IBM Plex Mono',monospace",
-                  fontSize: 17,
-                  fontWeight: 600,
-                  borderBottom: "2.5px solid #141821",
-                }}
-              >
-                {amountFormatted}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-
-        <div
-          style={{
-            marginTop: 16,
-            padding: "12px 14px",
-            background: "#f4f5f7",
-            borderLeft: "3px solid #8A1F1F",
-          }}
-        >
-          <div style={{ fontSize: 8.5, letterSpacing: ".16em", color: "#6b7280" }}>
-            በፊደል · AMOUNT IN WORDS
-          </div>
-          <div
-            style={{
-              fontFamily: "'Noto Serif Ethiopic',serif",
-              fontSize: 15,
-              fontWeight: 500,
-              marginTop: 4,
-            }}
-          >
-            {amountWordsAm}
-          </div>
-          <div style={{ fontSize: 11, color: "#4b5361", marginTop: 2 }}>{amountWordsEn}</div>
-        </div>
-
-        <div style={{ flex: 1 }} />
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1.15fr 1fr 118px",
-            gap: 22,
-            alignItems: "end",
-            borderTop: "1px solid #141821",
-            paddingTop: 18,
-            marginTop: 22,
-          }}
-        >
-          <div>
-            <div style={{ fontSize: 8.5, letterSpacing: ".16em", color: "#6b7280" }}>
-              ገቢ ሰብሳቢ · COLLECTED BY
-            </div>
-            <div
-              style={{
-                fontFamily: "'Noto Sans Ethiopic',sans-serif",
-                fontSize: 13,
-                fontWeight: 600,
-                marginTop: 6,
-              }}
-            >
-              {collectedByName ?? "—"}
-            </div>
-            <div style={{ fontSize: 10.5, color: "#6b7280" }}>Revenue Clerk</div>
-            {signature}
-            <div style={{ fontSize: 9, letterSpacing: ".12em", color: "#6b7280", marginTop: 5 }}>
-              ፊርማ · SIGNATURE
-            </div>
-          </div>
-          {stamp}
-          <div>
-            {qr}
-            <div
-              style={{
-                fontFamily: "'IBM Plex Mono',monospace",
-                fontSize: 7.5,
-                color: "#6b7280",
-                marginTop: 5,
-                lineHeight: 1.4,
-                wordBreak: "break-all",
-              }}
-            >
-              {verifyPath || "—"}
-            </div>
-          </div>
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginTop: 14,
-            fontSize: 9.5,
-            color: "#6b7280",
-          }}
-        >
-          <div style={{ fontFamily: "'Noto Sans Ethiopic',sans-serif" }}>
-            ይህ ደረሰኝ ያለ ማህተም እና ፊርማ ተቀባይነት አይኖረውም። · Not valid without official stamp and signature.
-          </div>
-          <div style={{ fontFamily: "'IBM Plex Mono',monospace" }}>
-            ORIGINAL · PRINTED {printedLabel}
-          </div>
-        </div>
-      </section>
-    );
-  }
-
   return (
     <section
       style={{
         width: "210mm",
         minHeight: "297mm",
         boxSizing: "border-box",
-        padding: 0,
+        padding: "56px 54px 44px",
         display: "flex",
+        flexDirection: "column",
         background: "#fff",
         color: "#141821",
         ...fontStack,
@@ -971,362 +590,353 @@ function ReceiptPage({
     >
       <div
         style={{
-          width: 52,
-          flex: "none",
-          borderRight: "1px dashed #9aa1ad",
-          background: "#f4f5f7",
           display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 28,
+          borderBottom: "2.5px solid #141821",
+          paddingBottom: 16,
         }}
       >
-        <div
-          style={{
-            transform: "rotate(180deg)",
-            writingMode: "vertical-rl",
-            fontFamily: "'Noto Sans Ethiopic',sans-serif",
-            fontSize: 10,
-            letterSpacing: ".3em",
-            color: "#8b929d",
-          }}
-        >
-          የቢሮ ቅጂ · OFFICE STUB
+        <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+          {seal}
+          <div>
+            <div
+              style={{
+                fontFamily: "'Noto Serif Ethiopic',serif",
+                fontWeight: 600,
+                fontSize: 23,
+                lineHeight: 1.2,
+              }}
+            >
+              {woredaNameAm}
+            </div>
+            <div style={{ fontSize: 12.5, letterSpacing: ".06em", color: "#4b5361", marginTop: 4 }}>
+              {woredaNameEn.toUpperCase()}
+            </div>
+            <div
+              style={{
+                fontFamily: "'Noto Sans Ethiopic',sans-serif",
+                fontSize: 12,
+                color: "#4b5361",
+                marginTop: 7,
+              }}
+            >
+              የገቢ ክፍል · Revenue Office
+            </div>
+          </div>
+        </div>
+        <div style={{ border: "1.5px solid #141821", padding: "10px 14px", minWidth: 214 }}>
+          <div style={{ fontSize: 8.5, letterSpacing: ".16em", color: "#6b7280" }}>
+            ደረሰኝ ቁጥር · RECEIPT NO.
+          </div>
+          <div
+            style={{
+              fontFamily: "'IBM Plex Mono',monospace",
+              fontSize: 17,
+              fontWeight: 600,
+              marginTop: 3,
+            }}
+          >
+            {receiptNumber}
+          </div>
+          <div
+            style={{
+              display: "flex",
+              gap: 18,
+              marginTop: 10,
+              paddingTop: 9,
+              borderTop: "1px solid #d6dae1",
+            }}
+          >
+            <div>
+              <div style={{ fontSize: 8.5, letterSpacing: ".14em", color: "#6b7280" }}>
+                ቀን · E.C.
+              </div>
+              <div
+                style={{
+                  fontFamily: "'Noto Sans Ethiopic',sans-serif",
+                  fontSize: 12.5,
+                  fontWeight: 500,
+                  marginTop: 2,
+                }}
+              >
+                {dateEc}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 8.5, letterSpacing: ".14em", color: "#6b7280" }}>GREG.</div>
+              <div
+                style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12.5, marginTop: 2 }}
+              >
+                {dateGreg}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
       <div
         style={{
-          flex: 1,
-          boxSizing: "border-box",
-          padding: "52px 50px 40px",
           display: "flex",
-          flexDirection: "column",
+          justifyContent: "space-between",
+          alignItems: "baseline",
+          marginTop: 20,
         }}
       >
         <div
           style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            gap: 24,
+            fontFamily: "'Noto Serif Ethiopic',serif",
+            fontSize: 19,
+            fontWeight: 600,
+            letterSpacing: ".02em",
           }}
         >
-          <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-            {seal}
-            <div>
-              <div
-                style={{ fontFamily: "'Noto Serif Ethiopic',serif", fontWeight: 600, fontSize: 19 }}
-              >
-                {woredaNameAm}
-              </div>
-              <div style={{ fontSize: 11, letterSpacing: ".07em", color: "#4b5361", marginTop: 3 }}>
-                {woredaNameEn.toUpperCase()} · REVENUE OFFICE
-              </div>
-            </div>
-          </div>
-          <div style={{ textAlign: "right" }}>
-            <div
-              style={{ fontFamily: "'Noto Serif Ethiopic',serif", fontSize: 17, fontWeight: 600 }}
-            >
-              የገቢ ደረሰኝ
-            </div>
-            <div style={{ fontSize: 9.5, letterSpacing: ".22em", color: "#6b7280", marginTop: 2 }}>
-              REVENUE RECEIPT
-            </div>
-          </div>
+          የገቢ ደረሰኝ{" "}
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 500,
+              letterSpacing: ".2em",
+              color: "#6b7280",
+              marginLeft: 8,
+            }}
+          >
+            REVENUE RECEIPT
+          </span>
         </div>
-
-        <div
-          style={{
-            display: "flex",
-            gap: 32,
-            marginTop: 26,
-            padding: "14px 0",
-            borderTop: "1px solid #141821",
-            borderBottom: "1px solid #141821",
-          }}
-        >
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 8.5, letterSpacing: ".16em", color: "#6b7280" }}>
-              ደረሰኝ ቁጥር · RECEIPT NO.
-            </div>
-            <div
-              style={{
-                fontFamily: "'IBM Plex Mono',monospace",
-                fontSize: 19,
-                fontWeight: 600,
-                color: "#8A1F1F",
-                marginTop: 3,
-              }}
-            >
-              {receiptNumber}
-            </div>
-          </div>
-          <div>
-            <div style={{ fontSize: 8.5, letterSpacing: ".16em", color: "#6b7280" }}>
-              ቀን · DATE (E.C. / GREG.)
-            </div>
-            <div
-              style={{
-                fontFamily: "'Noto Sans Ethiopic',sans-serif",
-                fontSize: 14,
-                fontWeight: 500,
-                marginTop: 3,
-              }}
-            >
-              {dateEc}{" "}
-              <span
-                style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, color: "#6b7280" }}
-              >
-                / {dateGreg}
-              </span>
-            </div>
-          </div>
+        <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: "#6b7280" }}>
+          PAYMENT ID · {paymentId}
         </div>
+      </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "auto 1fr auto 1fr",
-            gap: "16px 20px",
-            marginTop: 24,
-            fontSize: 12,
-            alignItems: "baseline",
-          }}
-        >
-          <StubLabel>ከከፋዩ · Received from</StubLabel>
-          <StubValue span={3}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          border: "1px solid #141821",
+          marginTop: 14,
+        }}
+      >
+        <div style={{ padding: "14px 16px", borderRight: "1px solid #141821" }}>
+          <div
+            style={{ fontSize: 8.5, letterSpacing: ".16em", color: "#6b7280", marginBottom: 10 }}
+          >
+            ከፋይ · PAID BY
+          </div>
+          <div
+            style={{ fontFamily: "'Noto Sans Ethiopic',sans-serif", fontSize: 16, fontWeight: 600 }}
+          >
             {residentNameAm ?? residentNameEn ?? "—"}
-            {residentNameEn && residentNameAm && (
-              <span
-                style={{
-                  fontFamily: "'IBM Plex Sans',sans-serif",
-                  fontSize: 11,
-                  fontWeight: 400,
-                  color: "#6b7280",
-                }}
-              >
-                {" "}
-                · {residentNameEn}
-              </span>
-            )}
-          </StubValue>
-
-          <StubLabel>የነዋሪ ቁጥር · Resident No.</StubLabel>
-          <StubValue mono>{residentNumber ?? "—"}</StubValue>
-          <StubLabel>ቀበሌ / ቤት ቁጥር</StubLabel>
-          <StubValue>
-            {kebeleNameAm ? `ቀበሌ ${kebeleNumber ?? ""}` : "—"}
-            {houseNumber && (
-              <span style={{ fontFamily: "'IBM Plex Mono',monospace" }}> / {houseNumber}</span>
-            )}
-          </StubValue>
-
-          <StubLabel>የክፍያ ዓይነት · Type</StubLabel>
-          <StubValue>{paymentTypeLabel}</StubValue>
-          <StubLabel>ቻናል · Channel</StubLabel>
-          <StubValue>{channelLabel}</StubValue>
-
-          <StubLabel>ማጣቀሻ · Reference No.</StubLabel>
-          <StubValue mono>{referenceNo ?? "—"}</StubValue>
-          <StubLabel>Payment ID</StubLabel>
-          <StubValue mono small>
-            {paymentId}
-          </StubValue>
+          </div>
+          {residentNameEn && (
+            <div style={{ fontSize: 12, color: "#4b5361", marginTop: 2 }}>{residentNameEn}</div>
+          )}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "auto 1fr",
+              gap: "6px 14px",
+              marginTop: 12,
+              fontSize: 11.5,
+            }}
+          >
+            <DetailPair labelAm="የነዋሪ ቁጥር" labelEn="Resident No." value={residentNumber} mono />
+            <DetailPair
+              labelAm="ቀበሌ"
+              labelEn="Kebele"
+              value={kebeleNameAm ? `ቀበሌ ${kebeleNumber ?? ""}` : null}
+            />
+            <DetailPair labelAm="የቤት ቁጥር" labelEn="House No." value={houseNumber} mono />
+          </div>
         </div>
-
-        <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 28, fontSize: 12 }}>
-          <thead>
-            <tr>
-              <Th align="left" thin>
-                መግለጫ · DESCRIPTION
-              </Th>
-              <Th align="left" width={140} thin>
-                ወር · PERIOD
-              </Th>
-              <Th align="right" width={130} thin>
-                ብር · AMOUNT
-              </Th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td
-                style={{
-                  padding: "12px 0",
-                  borderBottom: "1px dotted #c5cad2",
-                  fontFamily: "'Noto Sans Ethiopic',sans-serif",
-                }}
-              >
-                {descriptionAm}
-                {descriptionEn && (
-                  <div
-                    style={{
-                      fontFamily: "'IBM Plex Sans',sans-serif",
-                      fontSize: 10.5,
-                      color: "#6b7280",
-                    }}
-                  >
-                    {descriptionEn}
-                  </div>
-                )}
-              </td>
-              <td
-                style={{
-                  padding: "12px 0",
-                  borderBottom: "1px dotted #c5cad2",
-                  fontFamily: "'Noto Sans Ethiopic',sans-serif",
-                }}
-              >
-                {period}
-              </td>
-              <td
-                style={{
-                  padding: "12px 0",
-                  borderBottom: "1px dotted #c5cad2",
-                  textAlign: "right",
-                  fontFamily: "'IBM Plex Mono',monospace",
-                }}
-              >
-                {amountFormatted}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-end",
-            gap: 28,
-            marginTop: 20,
-          }}
-        >
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 8.5, letterSpacing: ".16em", color: "#6b7280" }}>
-              በፊደል · AMOUNT IN WORDS
-            </div>
-            <div
-              style={{
-                fontFamily: "'Noto Serif Ethiopic',serif",
-                fontSize: 15,
-                fontWeight: 500,
-                marginTop: 5,
-                borderBottom: "1px dotted #6b7280",
-                paddingBottom: 5,
-              }}
-            >
-              {amountWordsAm}
-            </div>
-            <div style={{ fontSize: 10.5, color: "#6b7280", marginTop: 4 }}>{amountWordsEn}</div>
+        <div style={{ padding: "14px 16px" }}>
+          <div
+            style={{ fontSize: 8.5, letterSpacing: ".16em", color: "#6b7280", marginBottom: 10 }}
+          >
+            የክፍያ ዝርዝር · PAYMENT DETAIL
           </div>
           <div
             style={{
-              border: "2px solid #141821",
-              padding: "11px 18px",
-              textAlign: "right",
-              minWidth: 190,
+              display: "grid",
+              gridTemplateColumns: "auto 1fr",
+              gap: "6px 14px",
+              fontSize: 11.5,
             }}
           >
-            <div
+            <DetailPair labelAm="ዓይነት" labelEn="Type" value={paymentTypeLabel} />
+            <DetailPair labelAm="ቻናል" labelEn="Channel" value={channelLabel} />
+            <DetailPair labelAm="ማጣቀሻ" labelEn="Reference No." value={referenceNo} mono />
+            <DetailPair
+              labelAm="ሁኔታ"
+              labelEn="Status"
+              value={paymentStatus.toUpperCase()}
+              bold
+              color={
+                paymentStatus === "confirmed"
+                  ? "#1c6b3a"
+                  : paymentStatus === "reversed"
+                    ? "#b91c1c"
+                    : "#a16207"
+              }
+            />
+          </div>
+        </div>
+      </div>
+
+      <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 20, fontSize: 12 }}>
+        <thead>
+          <tr style={{ background: "#141821", color: "#fff" }}>
+            <Th align="left" width={34}>
+              #
+            </Th>
+            <Th align="left">መግለጫ · DESCRIPTION</Th>
+            <Th align="left" width={150}>
+              ወር · PERIOD
+            </Th>
+            <Th align="right" width={130}>
+              መጠን (ብር) · AMOUNT
+            </Th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <Td mono muted borderBottomWidth={2.5}>
+              01
+            </Td>
+            <Td borderBottomWidth={2.5}>
+              <div style={{ fontFamily: "'Noto Sans Ethiopic',sans-serif" }}>{descriptionAm}</div>
+              {descriptionEn && (
+                <div style={{ fontSize: 10.5, color: "#6b7280", marginTop: 2 }}>
+                  {descriptionEn}
+                </div>
+              )}
+            </Td>
+            <Td borderBottomWidth={2.5}>{period}</Td>
+            <Td align="right" mono borderBottomWidth={2.5}>
+              {amountFormatted}
+            </Td>
+          </tr>
+          <tr>
+            <td
+              colSpan={3}
               style={{
+                padding: "13px 12px",
+                textAlign: "right",
+                fontWeight: 600,
+                fontSize: 13,
+                borderBottom: "2.5px solid #141821",
                 fontFamily: "'Noto Sans Ethiopic',sans-serif",
-                fontSize: 9,
-                letterSpacing: ".14em",
-                color: "#6b7280",
               }}
             >
               ጠቅላላ ድምር · TOTAL PAID
-            </div>
-            <div
+            </td>
+            <td
               style={{
+                padding: "13px 12px",
+                textAlign: "right",
                 fontFamily: "'IBM Plex Mono',monospace",
-                fontSize: 26,
+                fontSize: 17,
                 fontWeight: 600,
-                marginTop: 2,
+                borderBottom: "2.5px solid #141821",
               }}
             >
-              {amountFormatted}{" "}
-              <span style={{ fontSize: 13, fontWeight: 500, color: "#6b7280" }}>ETB</span>
-            </div>
-          </div>
+              {amountFormatted}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div
+        style={{
+          marginTop: 16,
+          padding: "12px 14px",
+          background: "#f4f5f7",
+          borderLeft: "3px solid #8A1F1F",
+        }}
+      >
+        <div style={{ fontSize: 8.5, letterSpacing: ".16em", color: "#6b7280" }}>
+          በፊደል · AMOUNT IN WORDS
         </div>
-
-        <div style={{ flex: 1 }} />
-
         <div
           style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr 108px",
-            gap: 26,
-            alignItems: "end",
-            marginTop: 30,
+            fontFamily: "'Noto Serif Ethiopic',serif",
+            fontSize: 15,
+            fontWeight: 500,
+            marginTop: 4,
           }}
         >
-          <div>
-            {signature}
-            <div
-              style={{
-                fontFamily: "'Noto Sans Ethiopic',sans-serif",
-                fontSize: 11,
-                fontWeight: 600,
-                marginTop: 6,
-              }}
-            >
-              {collectedByName ?? "—"}
-            </div>
-            <div style={{ fontSize: 9, letterSpacing: ".1em", color: "#6b7280", marginTop: 2 }}>
-              COLLECTED BY · REVENUE CLERK
-            </div>
+          {amountWordsAm}
+        </div>
+        <div style={{ fontSize: 11, color: "#4b5361", marginTop: 2 }}>{amountWordsEn}</div>
+      </div>
+
+      <div style={{ flex: 1 }} />
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1.15fr 1fr 118px",
+          gap: 22,
+          alignItems: "end",
+          borderTop: "1px solid #141821",
+          paddingTop: 18,
+          marginTop: 22,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 8.5, letterSpacing: ".16em", color: "#6b7280" }}>
+            ገቢ ሰብሳቢ · COLLECTED BY
           </div>
-          <div>
-            <div style={{ borderBottom: "1px solid #141821", height: 34 }} />
-            <div
-              style={{
-                fontFamily: "'Noto Sans Ethiopic',sans-serif",
-                fontSize: 11,
-                fontWeight: 600,
-                marginTop: 6,
-              }}
-            >
-              ማህተም · OFFICIAL STAMP
-            </div>
-            <div style={{ fontSize: 9, letterSpacing: ".1em", color: "#6b7280", marginTop: 2 }}>
-              WOREDA REVENUE OFFICE
-            </div>
+          <div
+            style={{
+              fontFamily: "'Noto Sans Ethiopic',sans-serif",
+              fontSize: 13,
+              fontWeight: 600,
+              marginTop: 6,
+            }}
+          >
+            {collectedByName ?? "—"}
           </div>
-          <div>
-            {qr}
-            <div
-              style={{
-                fontFamily: "'IBM Plex Mono',monospace",
-                fontSize: 7.5,
-                color: "#6b7280",
-                marginTop: 4,
-                wordBreak: "break-all",
-              }}
-            >
-              {verifyPath || "—"}
-            </div>
+          <div style={{ fontSize: 10.5, color: "#6b7280" }}>Revenue Clerk</div>
+          {signature}
+          <div style={{ fontSize: 9, letterSpacing: ".12em", color: "#6b7280", marginTop: 5 }}>
+            ፊርማ · SIGNATURE
           </div>
         </div>
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            marginTop: 20,
-            paddingTop: 10,
-            borderTop: "1px solid #dfe3e9",
-            fontSize: 9.5,
-            color: "#6b7280",
-          }}
-        >
-          <div style={{ fontFamily: "'Noto Sans Ethiopic',sans-serif" }}>
-            ይህ ደረሰኝ ያለ ማህተም እና ፊርማ ተቀባይነት አይኖረውም። · Not valid without stamp and signature.
+        {stamp}
+        <div>
+          {qr}
+          <div
+            style={{
+              fontFamily: "'IBM Plex Mono',monospace",
+              fontSize: 7.5,
+              color: "#6b7280",
+              marginTop: 5,
+              lineHeight: 1.4,
+              wordBreak: "break-all",
+            }}
+          >
+            {verifyPath || "—"}
           </div>
-          <div style={{ fontFamily: "'IBM Plex Mono',monospace" }}>ORIGINAL · {printedLabel}</div>
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginTop: 14,
+          fontSize: 9.5,
+          color: "#6b7280",
+        }}
+      >
+        <div style={{ fontFamily: "'Noto Sans Ethiopic',sans-serif" }}>
+          ይህ ደረሰኝ ያለ ማህተም እና ፊርማ ተቀባይነት አይኖረውም። · Not valid without official stamp and signature.
+        </div>
+        <div style={{ fontFamily: "'IBM Plex Mono',monospace" }}>
+          ORIGINAL · PRINTED {printedLabel}
         </div>
       </div>
     </section>
@@ -1371,24 +981,20 @@ function Th({
   children,
   align,
   width,
-  thin,
 }: {
   children: React.ReactNode;
   align: "left" | "right";
   width?: number;
-  thin?: boolean;
 }) {
   return (
     <th
       style={{
         textAlign: align,
-        padding: thin ? "0 0 7px" : "9px 12px",
+        padding: "9px 12px",
         fontSize: 9,
         letterSpacing: ".14em",
         fontWeight: 600,
         width,
-        color: thin ? "#6b7280" : undefined,
-        borderBottom: thin ? "1.5px solid #141821" : undefined,
       }}
     >
       {children}
@@ -1421,46 +1027,5 @@ function Td({
     >
       {children}
     </td>
-  );
-}
-
-function StubLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      style={{
-        fontFamily: "'Noto Sans Ethiopic',sans-serif",
-        color: "#6b7280",
-        whiteSpace: "nowrap",
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-function StubValue({
-  children,
-  span,
-  mono,
-  small,
-}: {
-  children: React.ReactNode;
-  span?: number;
-  mono?: boolean;
-  small?: boolean;
-}) {
-  return (
-    <div
-      style={{
-        borderBottom: "1px dotted #6b7280",
-        paddingBottom: 3,
-        fontFamily: mono ? "'IBM Plex Mono',monospace" : "'Noto Sans Ethiopic',sans-serif",
-        fontSize: small ? 10 : mono ? undefined : 14,
-        fontWeight: mono ? undefined : 600,
-        gridColumn: span ? `span ${span}` : undefined,
-      }}
-    >
-      {children}
-    </div>
   );
 }
