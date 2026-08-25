@@ -1,7 +1,13 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import html2canvas from "html2canvas";
+// html2canvas-pro, not html2canvas: this app's Tailwind v4 build resolves
+// computed colors (e.g. document.body's `color`) to oklch(...) strings, which
+// plain html2canvas 1.4.1 throws on ("Attempting to parse an unsupported
+// color function") since its color parser predates CSS Color 4. -pro is a
+// maintained fork adding oklch/oklab/lab/lch/color() support; same default
+// export and call signature otherwise.
+import html2canvas from "html2canvas-pro";
 import jsPDF from "jspdf";
 import { toast } from "sonner";
 import { QRCodeCanvas } from "qrcode.react";

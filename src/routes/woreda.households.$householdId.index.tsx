@@ -2,7 +2,10 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useReactToPrint } from "react-to-print";
-import html2canvas from "html2canvas";
+// html2canvas-pro, not html2canvas -- see the identical comment in
+// woreda.revenue.$paymentId.receipt.tsx: this app's Tailwind v4 build
+// resolves computed colors to oklch(...), which plain html2canvas throws on.
+import html2canvas from "html2canvas-pro";
 import jsPDF from "jspdf";
 import { toast } from "sonner";
 import {
