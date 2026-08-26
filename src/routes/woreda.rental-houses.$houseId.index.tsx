@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Building2, Pencil, UserPlus, UserMinus, ScrollText, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -31,6 +31,23 @@ export const Route = createFileRoute("/woreda/rental-houses/$houseId/")({
 
 function fmtDate(d: string | null | undefined) {
   return d ? d : "—";
+}
+
+interface ResidentBirthPlace {
+  place_name?: string;
+  kebele?: string;
+  woreda?: string;
+}
+
+interface ResidentWorkInfo {
+  occupation_post?: string;
+  work_address?: string;
+}
+
+function birthPlaceLabel(bp: ResidentBirthPlace | null): string {
+  if (!bp) return "";
+  if (bp.place_name?.trim()) return bp.place_name;
+  return [bp.kebele, bp.woreda].filter((x): x is string => !!x?.trim()).join(", ");
 }
 
 function RentalHouseDetailPage() {
@@ -367,8 +384,36 @@ function AssignDialog({
   const [dob, setDob] = useState("");
   const [occupation, setOccupation] = useState("");
   const [workAddress, setWorkAddress] = useState("");
-  const [rentStart, setRentStart] = useState("");
+  const [rentStart, setRentStart] = useState(() => new Date().toISOString().slice(0, 10));
   const [rent, setRent] = useState(String(defaultRent || ""));
+
+  const residentDetailQuery = useQuery({
+    queryKey: ["assign-dialog-resident-detail", residentId],
+    enabled: !!residentId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("resident")
+        .select("resident_id, date_of_birth, birth_place, work_info")
+        .eq("resident_id", residentId)
+        .maybeSingle();
+      if (error) throw error;
+      return data as {
+        resident_id: string;
+        date_of_birth: string | null;
+        birth_place: ResidentBirthPlace | null;
+        work_info: ResidentWorkInfo | null;
+      } | null;
+    },
+  });
+
+  useEffect(() => {
+    const r = residentDetailQuery.data;
+    if (!r) return;
+    setDob(r.date_of_birth || "");
+    setPlaceOfBirth(birthPlaceLabel(r.birth_place));
+    setOccupation(r.work_info?.occupation_post || "");
+    setWorkAddress(r.work_info?.work_address || "");
+  }, [residentDetailQuery.data]);
 
   const mutation = useMutation({
     mutationFn: async () => {

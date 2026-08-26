@@ -1,6 +1,7 @@
 import { createFileRoute, Navigate, useNavigate, useSearch } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { z } from "zod";
 import { FileText, MessageSquareWarning, Paperclip, Send, User, X } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -23,6 +24,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { P } from "@/config/permissions";
 import { useServiceTypes, requiredDocList } from "@/hooks/useServiceTypes";
 import { kebeleOptionLabel, useKebeleOptions } from "@/hooks/useKebeleOptions";
+import { tenantUserOptionLabel, useTenantUsers } from "@/hooks/useTenantUsers";
 import {
   ALLOWED_UPLOAD_TYPES,
   DOCUMENT_TYPES,
@@ -31,8 +33,14 @@ import {
   type ServiceCategory,
 } from "@/lib/serviceConstants";
 
+const searchSchema = z.object({
+  residentId: z.string().optional(),
+  category: z.string().optional(),
+});
+
 export const Route = createFileRoute("/woreda/services/new")({
   ssr: false,
+  validateSearch: (s) => searchSchema.parse(s),
   component: NewServiceRequestPage,
 });
 
@@ -50,11 +58,14 @@ function NewServiceRequestPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  const presetResidentId = typeof search["residentId"] === "string" ? search["residentId"] : "";
+
   const typesQuery = useServiceTypes({ category });
   const kebelesQuery = useKebeleOptions();
+  const usersQuery = useTenantUsers();
 
   const [serviceTypeId, setServiceTypeId] = useState("");
-  const [residentId, setResidentId] = useState("");
+  const [residentId, setResidentId] = useState(presetResidentId);
   const [applicantName, setApplicantName] = useState("");
   const [applicantPhone, setApplicantPhone] = useState("");
   const [kebeleId, setKebeleId] = useState("");
@@ -76,6 +87,36 @@ function NewServiceRequestPage() {
     [typesQuery.data, serviceTypeId],
   );
   const requiredDocs = requiredDocList(selectedType?.required_documents);
+
+  const residentDetailQuery = useQuery({
+    queryKey: ["service-new-resident-detail", residentId],
+    enabled: !!residentId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("resident")
+        .select(
+          "resident_id, full_name, full_name_am, phone_number, current_household_id, household:current_household_id(kebele_id)",
+        )
+        .eq("resident_id", residentId)
+        .maybeSingle();
+      if (error) throw error;
+      return data as {
+        resident_id: string;
+        full_name: string | null;
+        full_name_am: string | null;
+        phone_number: string | null;
+        household: { kebele_id: string | null } | null;
+      } | null;
+    },
+  });
+
+  useEffect(() => {
+    const r = residentDetailQuery.data;
+    if (!r) return;
+    setApplicantName(r.full_name_am || r.full_name || "");
+    setApplicantPhone(r.phone_number || "");
+    setKebeleId(r.household?.kebele_id || "");
+  }, [residentDetailQuery.data]);
 
   if (!hasPermission(P.SERVICE_CREATE)) return <Navigate to="/woreda/dashboard" />;
 
@@ -226,7 +267,7 @@ function NewServiceRequestPage() {
               <option value="">ይምረጡ / Select…</option>
               {(typesQuery.data ?? []).map((t) => (
                 <option key={t.service_type_id} value={t.service_type_id}>
-                  {t.name_am} / {t.name_en}
+                  {t.name_am}
                   {t.requires_payment ? ` — ${Number(t.fee_amount).toFixed(2)} ETB` : ""}
                 </option>
               ))}
@@ -337,11 +378,14 @@ function NewServiceRequestPage() {
                 />
               </FieldWrap>
               <FieldWrap labelAm="ለማን ይቀርባል" labelEn="Addressed to">
-                <Input
-                  className="font-noto-ethiopic"
-                  value={addressedTo}
-                  onChange={(e) => setAddressedTo(e.target.value)}
-                />
+                <Select value={addressedTo} onChange={(e) => setAddressedTo(e.target.value)}>
+                  <option value="">ይምረጡ / Select…</option>
+                  {(usersQuery.data ?? []).map((u) => (
+                    <option key={u.user_id} value={tenantUserOptionLabel(u)}>
+                      {tenantUserOptionLabel(u)}
+                    </option>
+                  ))}
+                </Select>
               </FieldWrap>
             </>
           )}

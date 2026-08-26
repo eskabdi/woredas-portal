@@ -679,31 +679,38 @@ function ResidentProfilePage() {
                   <QuickAction
                     permission={P.CREDENTIAL_ISSUE}
                     icon={CreditCard}
-                    am="የመታወቂያ መስጫ"
-                    en="Issue ID"
+                    am="የመታወቂያ ጥያቄ"
+                    en="ID Request"
                     onClick={() =>
                       navigate({
-                        to: "/woreda/credentials",
-                        search: { new: 1, residentId } as never,
+                        to: "/woreda/credentials/new",
+                        search: { residentId },
+                      })
+                    }
+                  />
+                  <QuickAction
+                    permission={P.SERVICE_CREATE}
+                    icon={FileText}
+                    am="አገልግሎት ጥያቄ"
+                    en="Service Request"
+                    onClick={() =>
+                      navigate({
+                        to: "/woreda/services/new",
+                        search: { residentId },
                       })
                     }
                   />
                   <QuickAction
                     permission={P.CIVIL_REGISTER}
-                    icon={FileText}
-                    am="ልደት መዝግብ"
-                    en="Register Birth"
-                    onClick={() =>
-                      navigate({
-                        to: "/woreda/civil",
-                        search: { new: 1, residentId, eventType: "birth" } as never,
-                      })
-                    }
+                    icon={CalendarClock}
+                    am="የኩነት ምዝገባ"
+                    en="Civil Event"
+                    onClick={() => navigate({ to: "/woreda/civil" })}
                   />
                   <QuickAction
                     permission={P.RESIDENT_UPDATE}
                     icon={Edit3}
-                    am="መረጃ አሻሽል"
+                    am="የነዋሪው መረጃ አሻሽል"
                     en="Update Profile"
                     onClick={() =>
                       navigate({
@@ -713,21 +720,9 @@ function ResidentProfilePage() {
                     }
                   />
                   <QuickAction
-                    permission={P.CIVIL_READ}
-                    icon={Printer}
-                    am="ማስረጃ አትም"
-                    en="Print Extract"
-                    onClick={() =>
-                      navigate({
-                        to: "/woreda/civil",
-                        search: { extract: 1, residentId } as never,
-                      })
-                    }
-                  />
-                  <QuickAction
                     permission={P.RESIDENT_READ}
                     icon={Printer}
-                    am="የግል መገለጫ አትም"
+                    am="የነዋሪው ማህደር አትም"
                     en="Print Profile"
                     onClick={() =>
                       navigate({
