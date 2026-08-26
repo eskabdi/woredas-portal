@@ -15,6 +15,7 @@ import {
   Loader2,
   Pencil,
   Plus,
+  Trash2,
 } from "lucide-react";
 
 import { PageHeader } from "@/components/common/PageHeader";
@@ -34,12 +35,23 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { P } from "@/config/permissions";
 import { useAuthStore } from "@/stores/authStore";
 import { useWoredaInfo } from "@/hooks/useWoredaInfo";
@@ -255,7 +267,7 @@ function SettingsPage() {
           <SettingsTab value="profile" labelAm="ወረዳ መረጃ" labelEn="Woreda Profile" />
           <SettingsTab value="images" labelAm="የምስል ሰነዶች" labelEn="Official Images" />
           <SettingsTab value="numbering" labelAm="የቁጥር ቅርጸቶች" labelEn="Numbering Formats" />
-          <SettingsTab value="fees" labelAm="ክፍያ" labelEn="Fees" />
+          <SettingsTab value="fees" labelAm="የአገልግሎትና የክፍያ ተመን" labelEn="Services and Fees" />
           <SettingsTab value="letters" labelAm="የደብዳቤ አብነቶች" labelEn="Letter Templates" />
         </TabsList>
 
@@ -419,14 +431,42 @@ function SettingsPage() {
           </Card>
         </TabsContent>
 
-        {/* -------- TAB 4: Fees -------- */}
+        {/* -------- TAB 4: Services and Fees -------- */}
         <TabsContent value="fees" className="mt-6">
-          <FeesTab
-            woredaId={woredaId}
-            rows={feesQuery.data ?? []}
-            loading={feesQuery.isLoading}
-            onChanged={() => qc.invalidateQueries({ queryKey: ["fee_schedule", woredaId] })}
-          />
+          <Tabs defaultValue="services" className="w-full">
+            <TabsList className="h-auto w-full justify-start gap-1 rounded-none border-b border-slate-200 bg-transparent p-0">
+              <SettingsTab value="services" labelAm="የአገልግሎት ዝርዝር" labelEn="Services" />
+              <SettingsTab value="complaints" labelAm="ቅሬታዎች ዝርዝር" labelEn="Complaints" />
+              <SettingsTab value="service-fees" labelAm="የአገልግሎት ክፍያዎች" labelEn="Service Fees" />
+            </TabsList>
+
+            <TabsContent value="services" className="mt-6">
+              <ServiceTypeCatalogTab
+                woredaId={woredaId}
+                category="letter"
+                titleAm="የአገልግሎት ዝርዝር"
+                titleEn="Services"
+              />
+            </TabsContent>
+
+            <TabsContent value="complaints" className="mt-6">
+              <ServiceTypeCatalogTab
+                woredaId={woredaId}
+                category="complaint"
+                titleAm="ቅሬታዎች ዝርዝር"
+                titleEn="Complaints"
+              />
+            </TabsContent>
+
+            <TabsContent value="service-fees" className="mt-6">
+              <FeesTab
+                woredaId={woredaId}
+                rows={feesQuery.data ?? []}
+                loading={feesQuery.isLoading}
+                onChanged={() => qc.invalidateQueries({ queryKey: ["fee_schedule", woredaId] })}
+              />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         <TabsContent value="letters" className="mt-6">
@@ -666,6 +706,436 @@ function ImageUploadCard({
         Max {Math.round(maxBytes / 1024 / 1024)}MB · PNG / JPEG
       </p>
     </Card>
+  );
+}
+
+/* ---------- Service / Complaint catalog tab ---------- */
+
+interface ServiceTypeCatalogRow {
+  service_type_id: string;
+  code: string;
+  name_am: string;
+  name_en: string;
+  fee_amount: number | string;
+  requires_payment: boolean;
+  requires_approval: boolean;
+  is_active: boolean;
+}
+
+function ServiceTypeCatalogTab({
+  woredaId,
+  category,
+  titleAm,
+  titleEn,
+}: {
+  woredaId: string | null;
+  category: "letter" | "complaint";
+  titleAm: string;
+  titleEn: string;
+}) {
+  const qc = useQueryClient();
+  const actorUserId = useAuthStore((s) => s.user?.id ?? null);
+  const [editing, setEditing] = useState<ServiceTypeCatalogRow | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [deleting, setDeleting] = useState<ServiceTypeCatalogRow | null>(null);
+
+  const query = useQuery({
+    queryKey: ["service_type_catalog", woredaId, category],
+    enabled: !!woredaId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("service_type")
+        .select(
+          "service_type_id, code, name_am, name_en, fee_amount, requires_payment, requires_approval, is_active",
+        )
+        .eq("woreda_id", woredaId as string)
+        .eq("category", category)
+        .order("name_am");
+      if (error) throw error;
+      return (data ?? []) as ServiceTypeCatalogRow[];
+    },
+  });
+
+  const onChanged = () => {
+    qc.invalidateQueries({ queryKey: ["service_type_catalog", woredaId, category] });
+    qc.invalidateQueries({ queryKey: ["service-types"] });
+    // Letter Templates (the sibling settings tab) lists this same table's
+    // "letter" rows under its own key -- keep it from going stale too.
+    if (category === "letter") {
+      qc.invalidateQueries({ queryKey: ["letter-template-types"] });
+    }
+  };
+
+  const deleteConfirmed = async () => {
+    if (!deleting) return;
+    try {
+      const { error } = await supabase
+        .from("service_type")
+        .delete()
+        .eq("service_type_id", deleting.service_type_id);
+      if (error) throw error;
+      const { error: auditError } = await supabase.from("audit_log").insert({
+        woreda_id: woredaId,
+        actor_user_id: actorUserId,
+        entity_name: "service_type",
+        entity_id: deleting.service_type_id,
+        action_type: "SERVICE_TYPE_DELETED",
+        old_value_json: deleting as never,
+      });
+      if (auditError) throw auditError;
+      toast.success("ተሰርዟል / Deleted");
+      setDeleting(null);
+      onChanged();
+    } catch (e) {
+      const code = (e as { code?: string }).code;
+      if (code === "23503") {
+        toast.error(
+          "ይህ የአገልግሎት ዓይነት ስራ ላይ ነው — በምትኩ ያቦዝኑት / This service type is in use — deactivate it instead",
+        );
+      } else {
+        toast.error(e instanceof Error ? e.message : "Delete failed");
+      }
+    }
+  };
+
+  const rows = query.data ?? [];
+
+  return (
+    <Card className="overflow-hidden">
+      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+        <div>
+          <h3 className="font-noto-ethiopic text-base font-semibold text-slate-900">{titleAm}</h3>
+          <p className="text-xs text-slate-500">{titleEn}</p>
+        </div>
+        <Button
+          onClick={() => setCreating(true)}
+          className="bg-blue-700 hover:bg-blue-800"
+          size="sm"
+        >
+          <Plus className="mr-1.5 h-4 w-4" />
+          <span className="font-noto-ethiopic">አዲስ</span>
+          <span className="ml-1 text-xs opacity-80">/ New</span>
+        </Button>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+              <th className="px-5 py-3">
+                <span className="font-noto-ethiopic">ኮድ</span> / Code
+              </th>
+              <th className="px-5 py-3">
+                <span className="font-noto-ethiopic">ስም</span> / Name
+              </th>
+              <th className="px-5 py-3">
+                <span className="font-noto-ethiopic">ክፍያ</span> / Fee
+              </th>
+              <th className="px-5 py-3">
+                <span className="font-noto-ethiopic">ክፍያ ይፈለጋል?</span> / Payment
+              </th>
+              <th className="px-5 py-3">
+                <span className="font-noto-ethiopic">ማጽደቅ ይፈለጋል?</span> / Approval
+              </th>
+              <th className="px-5 py-3">
+                <span className="font-noto-ethiopic">ሁኔታ</span> / Status
+              </th>
+              <th className="px-5 py-3 text-right">
+                <span className="font-noto-ethiopic">ድርጊት</span> / Action
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {query.isLoading ? (
+              <tr>
+                <td colSpan={7} className="px-5 py-8 text-center text-slate-500">
+                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+                </td>
+              </tr>
+            ) : rows.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-5 py-8 text-center text-slate-500">
+                  <span className="font-noto-ethiopic">ገና ምንም አልተመዘገበም</span> / No entries yet.
+                </td>
+              </tr>
+            ) : (
+              rows.map((r) => (
+                <tr key={r.service_type_id} className="border-t border-slate-100">
+                  <td className="px-5 py-3 font-mono text-xs text-slate-600">{r.code}</td>
+                  <td className="px-5 py-3">
+                    <div className="font-noto-ethiopic font-medium text-slate-800">{r.name_am}</div>
+                    <div className="text-xs text-slate-500">{r.name_en}</div>
+                  </td>
+                  <td className="px-5 py-3 text-slate-700">
+                    ETB {Number(r.fee_amount).toFixed(2)}
+                  </td>
+                  <td className="px-5 py-3 text-slate-700">
+                    {r.requires_payment ? "አዎ / Yes" : "አይደለም / No"}
+                  </td>
+                  <td className="px-5 py-3 text-slate-700">
+                    {r.requires_approval ? "አዎ / Yes" : "አይደለም / No"}
+                  </td>
+                  <td className="px-5 py-3">
+                    <StatusChip status={r.is_active ? "active" : "inactive"} />
+                  </td>
+                  <td className="px-5 py-3 text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEditing(r)}
+                        className="text-blue-700"
+                      >
+                        <Pencil className="mr-1 h-3.5 w-3.5" />
+                        <span className="font-noto-ethiopic">አርትዕ</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setDeleting(r)}
+                        className="text-red-600"
+                      >
+                        <Trash2 className="mr-1 h-3.5 w-3.5" />
+                        <span className="font-noto-ethiopic">ሰርዝ</span>
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {(editing || creating) && (
+        <ServiceTypeDialog
+          initial={editing}
+          category={category}
+          woredaId={woredaId}
+          onClose={() => {
+            setEditing(null);
+            setCreating(false);
+          }}
+          onSaved={() => {
+            setEditing(null);
+            setCreating(false);
+            onChanged();
+          }}
+        />
+      )}
+
+      <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              <span className="font-noto-ethiopic">ይሰርዙ? "{deleting?.name_am}"</span>
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="font-noto-ethiopic">ይህ የአገልግሎት ዓይነት እስከመጨረሻው ይሰረዛል።</span>
+              <span className="mt-1 block text-xs">
+                / Delete "{deleting?.name_en}" permanently. If existing requests reference it,
+                deletion will fail and you should deactivate it instead.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ተመለስ / Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={deleteConfirmed}>
+              ሰርዝ / Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </Card>
+  );
+}
+
+/* ---------- Service/Complaint type dialog ---------- */
+
+const serviceTypeSchema = z.object({
+  code: z.string().trim().min(1, "ያስፈልጋል / Required"),
+  name_am: z.string().trim().min(1, "ያስፈልጋል / Required"),
+  name_en: z.string().trim().min(1, "ያስፈልጋል / Required"),
+  fee_amount: z.coerce.number().min(0),
+  requires_payment: z.boolean(),
+  requires_approval: z.boolean(),
+  is_active: z.boolean(),
+});
+type ServiceTypeForm = z.infer<typeof serviceTypeSchema>;
+
+function ServiceTypeDialog({
+  initial,
+  category,
+  woredaId,
+  onClose,
+  onSaved,
+}: {
+  initial: ServiceTypeCatalogRow | null;
+  category: "letter" | "complaint";
+  woredaId: string | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const isEdit = !!initial;
+  const actorUserId = useAuthStore((s) => s.user?.id ?? null);
+  const [saving, setSaving] = useState(false);
+  const form = useForm<ServiceTypeForm>({
+    resolver: zodResolver(serviceTypeSchema),
+    defaultValues: {
+      code: initial?.code ?? "",
+      name_am: initial?.name_am ?? "",
+      name_en: initial?.name_en ?? "",
+      fee_amount: Number(initial?.fee_amount ?? 0),
+      requires_payment: initial?.requires_payment ?? false,
+      requires_approval: initial?.requires_approval ?? true,
+      is_active: initial?.is_active ?? true,
+    },
+  });
+
+  const onSubmit = form.handleSubmit(async (values) => {
+    if (!woredaId) return;
+    setSaving(true);
+    try {
+      if (isEdit && initial) {
+        const { error } = await supabase
+          .from("service_type")
+          .update({
+            name_am: values.name_am,
+            name_en: values.name_en,
+            fee_amount: values.fee_amount,
+            requires_payment: values.requires_payment,
+            requires_approval: values.requires_approval,
+            is_active: values.is_active,
+          })
+          .eq("service_type_id", initial.service_type_id);
+        if (error) throw error;
+        const { error: auditError } = await supabase.from("audit_log").insert({
+          woreda_id: woredaId,
+          actor_user_id: actorUserId,
+          entity_name: "service_type",
+          entity_id: initial.service_type_id,
+          action_type: "SERVICE_TYPE_UPDATED",
+          new_value_json: values as never,
+        });
+        if (auditError) throw auditError;
+      } else {
+        const { data, error } = await supabase
+          .from("service_type")
+          .insert({ ...values, category, woreda_id: woredaId })
+          .select("service_type_id")
+          .single();
+        if (error) throw error;
+        const { error: auditError } = await supabase.from("audit_log").insert({
+          woreda_id: woredaId,
+          actor_user_id: actorUserId,
+          entity_name: "service_type",
+          entity_id: data.service_type_id,
+          action_type: "SERVICE_TYPE_CREATED",
+          new_value_json: { ...values, category } as never,
+        });
+        if (auditError) throw auditError;
+      }
+      toast.success("ተቀምጧል / Saved");
+      onSaved();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  });
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>
+            <span className="font-noto-ethiopic">{isEdit ? "አርትዕ" : "አዲስ"}</span>
+            <span className="ml-2 text-sm font-normal text-slate-500">
+              / {isEdit ? "Edit" : "New"} {category === "letter" ? "Service" : "Complaint"} Type
+            </span>
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <Field labelAm="ኮድ" labelEn="Code" error={form.formState.errors.code?.message}>
+            <Input {...form.register("code")} disabled={isEdit} className="font-mono" />
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field
+              labelAm="ስም (አማርኛ)"
+              labelEn="Name (Amharic)"
+              error={form.formState.errors.name_am?.message}
+            >
+              <Input className="font-noto-ethiopic" {...form.register("name_am")} />
+            </Field>
+            <Field
+              labelAm="ስም (እንግሊዝኛ)"
+              labelEn="Name (English)"
+              error={form.formState.errors.name_en?.message}
+            >
+              <Input {...form.register("name_en")} />
+            </Field>
+          </div>
+          <Field
+            labelAm="ክፍያ (ETB)"
+            labelEn="Fee Amount"
+            error={form.formState.errors.fee_amount?.message}
+          >
+            <Input type="number" step="0.01" min="0" {...form.register("fee_amount")} />
+          </Field>
+          <div className="space-y-3">
+            <Controller
+              control={form.control}
+              name="requires_payment"
+              render={({ field }) => (
+                <div className="flex items-center justify-between">
+                  <Label className="font-noto-ethiopic text-sm font-normal">
+                    ክፍያ ይፈለጋል? <span className="text-slate-400">/ Requires payment</span>
+                  </Label>
+                  <Switch checked={field.value} onCheckedChange={field.onChange} />
+                </div>
+              )}
+            />
+            <Controller
+              control={form.control}
+              name="requires_approval"
+              render={({ field }) => (
+                <div className="flex items-center justify-between">
+                  <Label className="font-noto-ethiopic text-sm font-normal">
+                    ማጽደቅ ይፈለጋል? <span className="text-slate-400">/ Requires approval</span>
+                  </Label>
+                  <Switch checked={field.value} onCheckedChange={field.onChange} />
+                </div>
+              )}
+            />
+            <Controller
+              control={form.control}
+              name="is_active"
+              render={({ field }) => (
+                <div className="flex items-center justify-between">
+                  <Label className="font-noto-ethiopic text-sm font-normal">
+                    ንቁ <span className="text-slate-400">/ Active</span>
+                  </Label>
+                  <Switch checked={field.value} onCheckedChange={field.onChange} />
+                </div>
+              )}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={saving}>
+            Cancel
+          </Button>
+          <Button onClick={onSubmit} disabled={saving} className="bg-blue-700 hover:bg-blue-800">
+            {saving ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
+            )}
+            Save
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
