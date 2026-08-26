@@ -22,6 +22,7 @@ import { ResidentSearchPicker } from "@/components/forms/ResidentSearchPicker";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
 import { P } from "@/config/permissions";
+import { OCCUPATION_OPTIONS } from "@/lib/residentConstants";
 import { Navigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/woreda/rental-houses/$houseId/")({
@@ -41,6 +42,7 @@ interface ResidentBirthPlace {
 
 interface ResidentWorkInfo {
   occupation_post?: string;
+  occupation_status?: string;
   work_address?: string;
 }
 
@@ -48,6 +50,20 @@ function birthPlaceLabel(bp: ResidentBirthPlace | null): string {
   if (!bp) return "";
   if (bp.place_name?.trim()) return bp.place_name;
   return [bp.kebele, bp.woreda].filter((x): x is string => !!x?.trim()).join(", ");
+}
+
+/** Mirrors formatOccupation() in woreda.residents.$residentId.index.tsx --
+ * occupation_post (a specific job title) is the exception, not the norm;
+ * most residents only have occupation_status (a category like "Employed")
+ * recorded, and reading only occupation_post left this blank for them. */
+function occupationLabel(wi: ResidentWorkInfo | null): string {
+  if (!wi) return "";
+  if (wi.occupation_post?.trim()) return wi.occupation_post;
+  if (wi.occupation_status) {
+    const opt = OCCUPATION_OPTIONS.find((o) => o.value === wi.occupation_status);
+    return opt ? `${opt.am} / ${opt.en}` : wi.occupation_status;
+  }
+  return "";
 }
 
 function RentalHouseDetailPage() {
@@ -411,7 +427,7 @@ function AssignDialog({
     if (!r) return;
     setDob(r.date_of_birth || "");
     setPlaceOfBirth(birthPlaceLabel(r.birth_place));
-    setOccupation(r.work_info?.occupation_post || "");
+    setOccupation(occupationLabel(r.work_info));
     setWorkAddress(r.work_info?.work_address || "");
   }, [residentDetailQuery.data]);
 

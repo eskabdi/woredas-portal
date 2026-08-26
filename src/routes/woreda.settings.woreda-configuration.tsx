@@ -127,6 +127,19 @@ function previewResidentNumber(format: string, woredaCode: string): string {
   return out;
 }
 
+/** Supabase/PostgREST throws a plain `{code,message,details,hint}` object on
+ * a query error, not an `Error` instance -- `e instanceof Error` is false
+ * for it, so a naive check silently drops the real message (e.g. a unique-
+ * constraint violation's actual text) in favor of a generic fallback. Read
+ * `.message` off whatever shape came back instead of gating on the class. */
+function errorMessage(e: unknown, fallback: string): string {
+  if (e && typeof e === "object" && "message" in e) {
+    const m = (e as { message?: unknown }).message;
+    if (typeof m === "string" && m) return m;
+  }
+  return fallback;
+}
+
 /* ---------- Page ---------- */
 
 function SettingsPage() {
@@ -244,7 +257,7 @@ function SettingsPage() {
       toast.success("ቅንብሮች ተስተካክለዋል / Settings saved");
       qc.invalidateQueries({ queryKey: ["woreda_settings", woredaId] });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Save failed");
+      toast.error(errorMessage(e, "ማስቀመጥ አልተሳካም / Save failed"));
     } finally {
       setSaving(false);
     }
@@ -793,7 +806,7 @@ function ServiceTypeCatalogTab({
           "ይህ የአገልግሎት ዓይነት ስራ ላይ ነው — በምትኩ ያቦዝኑት / This service type is in use — deactivate it instead",
         );
       } else {
-        toast.error(e instanceof Error ? e.message : "Delete failed");
+        toast.error(errorMessage(e, "መሰረዝ አልተሳካም / Delete failed"));
       }
     }
   };
@@ -1038,7 +1051,7 @@ function ServiceTypeDialog({
       toast.success("ተቀምጧል / Saved");
       onSaved();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Save failed");
+      toast.error(errorMessage(e, "ማስቀመጥ አልተሳካም / Save failed"));
     } finally {
       setSaving(false);
     }
@@ -1347,7 +1360,7 @@ function FeeDialog({
       toast.success("ክፍያው ተስተካክሏል / Fee updated");
       onSaved();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Save failed");
+      toast.error(errorMessage(e, "ማስቀመጥ አልተሳካም / Save failed"));
     } finally {
       setSaving(false);
     }
