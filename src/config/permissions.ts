@@ -339,10 +339,17 @@ export const NAV_PERMISSION_MAP: NavItem[] = [
     moduleKey: "audit",
   },
   {
-    labelAm: "ቅንብሮች",
-    labelEn: "Settings",
+    labelAm: "የወረዳ ውቅር",
+    labelEn: "Woreda Configuration",
     icon: "Settings",
-    href: "/woreda/settings",
+    href: "/woreda/settings/woreda-configuration",
+    permission: P.TENANT_MANAGE,
+  },
+  {
+    labelAm: "ተጠቃሚዎች እና ፈቃዶች",
+    labelEn: "Users and Permissions",
+    icon: "UserCog",
+    href: "/woreda/settings/users-permissions",
     permission: P.TENANT_MANAGE,
   },
 ];

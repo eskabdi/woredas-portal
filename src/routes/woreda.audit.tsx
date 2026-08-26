@@ -147,8 +147,9 @@ function deepLinkFor(row: { entity_name: string; entity_id: string | null }): De
       return { to: "/woreda/revenue", labelEn: "Open revenue ledger" };
     case "app_user":
     case "role_permission":
+      return { to: "/woreda/settings/users-permissions", labelEn: "Open users & permissions" };
     case "woreda_settings":
-      return { to: "/woreda/settings", labelEn: "Open settings" };
+      return { to: "/woreda/settings/woreda-configuration", labelEn: "Open woreda configuration" };
     default:
       return null;
   }

@@ -18,6 +18,7 @@ import {
   MailQuestion,
   MessageSquareWarning,
   Inbox,
+  UserCog,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -44,6 +45,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   MailQuestion,
   MessageSquareWarning,
   Inbox,
+  UserCog,
 };
 
 const ROLE_LABEL_AM: Record<string, string> = {

@@ -46,11 +46,9 @@ import { useWoredaInfo } from "@/hooks/useWoredaInfo";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { toWebp, storageExtension, BRANDING_WEBP } from "@/utils/imageCompression";
-import { RolesPermissionsTab } from "@/components/settings/RolesPermissionsTab";
-import { UsersRolesTab } from "@/components/settings/UsersRolesTab";
 import { LetterTemplatesTab } from "@/components/settings/LetterTemplatesTab";
 
-export const Route = createFileRoute("/woreda/settings")({
+export const Route = createFileRoute("/woreda/settings/woreda-configuration")({
   ssr: false,
   component: () => (
     <PermissionGate
@@ -247,9 +245,9 @@ function SettingsPage() {
     <div className="pb-32">
       <PageHeader
         icon={Building2}
-        titleAm="ቅንብሮች"
-        titleEn="Settings"
-        description="የወረዳ ውቅር እና አገልግሎት አስተዳደር / Woreda configuration & service administration"
+        titleAm="የወረዳ ውቅር"
+        titleEn="Woreda Configuration"
+        description="የወረዳ መገለጫ፣ ምስሎች፣ ቅርጸቶች እና ክፍያዎች / Woreda profile, images, numbering formats & fees"
       />
 
       <Tabs defaultValue="profile" className="w-full">
@@ -259,8 +257,6 @@ function SettingsPage() {
           <SettingsTab value="numbering" labelAm="የቁጥር ቅርጸቶች" labelEn="Numbering Formats" />
           <SettingsTab value="fees" labelAm="ክፍያ" labelEn="Fees" />
           <SettingsTab value="letters" labelAm="የደብዳቤ አብነቶች" labelEn="Letter Templates" />
-          <SettingsTab value="roles" labelAm="የተጠቃሚ ሚናዎች" labelEn="Roles & Permissions" />
-          <SettingsTab value="users" labelAm="ተጠቃሚዎች እና የስራ ድርሻ" labelEn="Users & Roles" />
         </TabsList>
 
         {/* -------- TAB 1: Profile -------- */}
@@ -435,14 +431,6 @@ function SettingsPage() {
 
         <TabsContent value="letters" className="mt-6">
           <LetterTemplatesTab />
-        </TabsContent>
-
-        <TabsContent value="roles" className="mt-6">
-          <RolesPermissionsTab />
-        </TabsContent>
-
-        <TabsContent value="users" className="mt-6">
-          <UsersRolesTab />
         </TabsContent>
       </Tabs>
 
