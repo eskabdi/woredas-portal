@@ -133,7 +133,9 @@ function RentalHouseDetailPage() {
                 })
               }
             >
-              <Printer className="mr-1 h-4 w-4" /> Print occupant profile
+              <Printer className="mr-1 h-4 w-4" />
+              <span className="font-noto-ethiopic">የተከራይ መገለጫ አትም</span>
+              <span className="ml-1 opacity-80">/ Print occupant profile</span>
             </Button>
             {hasPermission(P.RENTAL_CREATE) && (
               <Button
