@@ -371,6 +371,18 @@ function ResidentProfilePage() {
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <Button
+              type="button"
+              size="sm"
+              onClick={() =>
+                navigate({ to: "/woreda/residents/$residentId/print", params: { residentId } })
+              }
+              className="bg-white text-blue-700 hover:bg-blue-50"
+            >
+              <Printer className="mr-2 h-4 w-4" />
+              <span className="font-noto-ethiopic">አትም</span>
+              <span className="ml-1 opacity-80">/ Print</span>
+            </Button>
+            <Button
               variant="ghost"
               size="icon"
               onClick={handleShare}

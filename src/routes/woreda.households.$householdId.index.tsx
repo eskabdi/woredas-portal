@@ -1,12 +1,6 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useReactToPrint } from "react-to-print";
-// html2canvas-pro, not html2canvas -- see the identical comment in
-// woreda.revenue.$paymentId.receipt.tsx: this app's Tailwind v4 build
-// resolves computed colors to oklch(...), which plain html2canvas throws on.
-import html2canvas from "html2canvas-pro";
-import jsPDF from "jspdf";
 import { toast } from "sonner";
 import {
   Home,
@@ -17,7 +11,6 @@ import {
   Phone,
   Crown,
   Printer,
-  FileDown,
   FileText,
   Loader2,
 } from "lucide-react";
@@ -94,10 +87,7 @@ function HouseholdDetailPage() {
     });
   };
 
-  const printRef = useRef<HTMLDivElement>(null);
-  const [exportingPdf, setExportingPdf] = useState(false);
   const [setHeadFor, setSetHeadFor] = useState<{ id: string; name: string } | null>(null);
-  const [pendingCapture, setPendingCapture] = useState<"print" | "export" | null>(null);
 
   const householdQuery = useQuery({
     queryKey: ["household", householdId],
@@ -165,71 +155,8 @@ function HouseholdDetailPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const handlePrint = useReactToPrint({
-    contentRef: printRef,
-    documentTitle: `household-${householdQuery.data?.house_number ?? "detail"}`,
-  });
-
-  const handleExportPdf = useCallback(async () => {
-    if (!printRef.current) return;
-    setExportingPdf(true);
-    try {
-      const canvas = await html2canvas(printRef.current, { scale: 2, useCORS: true });
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pageWidth - 40;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let position = 20;
-      let heightLeft = imgHeight;
-      pdf.addImage(imgData, "PNG", 20, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight - 40;
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight + 20;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 20, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight - 40;
-      }
-      pdf.save(`household-${householdQuery.data?.house_number ?? "detail"}.pdf`);
-    } catch (e) {
-      toast.error(`PDF ማውጣት አልተሳካም / PDF export failed: ${(e as Error).message}`);
-    } finally {
-      setExportingPdf(false);
-    }
-  }, [householdQuery.data?.house_number]);
-
-  // Print/Export only ever capture the Overview tab's card grid (printRef
-  // points into it). Radix's TabsContent unmounts inactive tabs entirely, so
-  // printRef.current is null while on the Documents tab -- clicking either
-  // button first switches back to Overview, then fires the actual
-  // print/export once that content has remounted.
-  useEffect(() => {
-    if (!pendingCapture || tab !== "overview") return;
-    const raf = requestAnimationFrame(() => {
-      if (pendingCapture === "print") handlePrint?.();
-      else void handleExportPdf();
-      setPendingCapture(null);
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [pendingCapture, tab, handlePrint, handleExportPdf]);
-
   const triggerPrint = () => {
-    if (tab !== "overview") {
-      setPendingCapture("print");
-      setTab("overview");
-    } else {
-      handlePrint?.();
-    }
-  };
-
-  const triggerExportPdf = () => {
-    if (tab !== "overview") {
-      setPendingCapture("export");
-      setTab("overview");
-    } else {
-      void handleExportPdf();
-    }
+    navigate({ to: "/woreda/households/$householdId/print", params: { householdId } });
   };
 
   if (!hasPermission(P.HOUSEHOLD_READ)) {
@@ -299,21 +226,6 @@ function HouseholdDetailPage() {
               <span className="font-noto-ethiopic">አትም</span>
               <span className="ml-1 opacity-80">/ Print</span>
             </Button>
-            <Button
-              type="button"
-              onClick={triggerExportPdf}
-              disabled={exportingPdf}
-              className="rounded-md bg-blue-700 text-white hover:bg-blue-800"
-              size="sm"
-            >
-              {exportingPdf ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <FileDown className="mr-2 h-4 w-4" />
-              )}
-              <span className="font-noto-ethiopic">PDF አውርድ</span>
-              <span className="ml-1 opacity-80">/ Export PDF</span>
-            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -332,18 +244,6 @@ function HouseholdDetailPage() {
                   <Edit className="mr-2 h-4 w-4" />
                   <span className="font-noto-ethiopic">አስተካክል</span>
                   <span className="ml-1 text-xs opacity-70">/ Edit</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() =>
-                    navigate({
-                      to: "/woreda/households/$householdId/print",
-                      params: { householdId },
-                    })
-                  }
-                >
-                  <Printer className="mr-2 h-4 w-4" />
-                  <span className="font-noto-ethiopic">የቤተሰብ መገለጫ አትም</span>
-                  <span className="ml-1 text-xs opacity-70">/ Print Household Profile</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -364,7 +264,7 @@ function HouseholdDetailPage() {
         </TabsList>
 
         <TabsContent value="overview" className="mt-4">
-          <div ref={printRef} className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {/* CARD 1 — Basic Information */}
             <Card className="overflow-hidden p-0">
               <CardHeader icon={Home} titleAm="መሰረታዊ መረጃ" titleEn="Basic Information" />
