@@ -1,12 +1,17 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Printer } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useReportBranding } from "@/hooks/useReportBranding";
 import { formatEthiopianDate } from "@/utils/ethiopianCalendar";
 import { plainTextToHtml, renderLetterTemplate, sanitizeLetterHtml } from "@/lib/letterTemplate";
+import {
+  PrintDocumentShell,
+  DocSignatureBlock,
+  SystemAttributionFooter,
+} from "@/components/print/PrintDocumentShell";
 
 export const Route = createFileRoute("/woreda/services/$requestId/print")({
   ssr: false,
@@ -93,91 +98,101 @@ function ServiceLetterPrintPage() {
     : null;
 
   return (
-    <div className="space-y-4 pb-16">
-      <div className="flex items-center justify-between print:hidden">
+    <PrintDocumentShell
+      backButton={
         <Link to="/woreda/services/$requestId" params={{ requestId }}>
           <Button variant="outline" size="sm">
             <ArrowLeft className="mr-1 h-4 w-4" /> ተመለስ / Back
           </Button>
         </Link>
-        <Button size="sm" onClick={() => window.print()}>
-          <Printer className="mr-1 h-4 w-4" /> አትም / Print
-        </Button>
-      </div>
-
-      <div className="mx-auto w-full max-w-[820px] border bg-white p-12 shadow-sm print:border-0 print:shadow-none">
-        <div className="flex items-center gap-4 border-b-2 border-blue-800 pb-4">
-          {branding.data?.logoDataUrl && (
-            <img src={branding.data.logoDataUrl} alt="" className="h-20 w-20 object-contain" />
-          )}
-          <div className="flex-1 text-center">
-            <div className="font-noto-ethiopic text-xl font-bold">{branding.data?.nameAm}</div>
-            <div className="text-sm text-slate-700">{branding.data?.nameEn}</div>
-            <div className="font-noto-ethiopic text-xs text-slate-600">
-              {data.kebele ? `${data.kebele.kebele_name_am} ቀበሌ` : ""}
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-6 flex justify-between text-sm">
-          <div className="font-mono">{data.request_number}</div>
-          <div className="font-noto-ethiopic">
-            ቀን / Date: {formatEthiopianDate(issuedDate)} ({issuedDate.toLocaleDateString("en-GB")})
-          </div>
-        </div>
-
-        {data.addressed_to && (
-          <div className="font-noto-ethiopic mt-6 text-sm font-semibold">
-            ለ: {data.addressed_to}
-          </div>
-        )}
-
-        <h1 className="font-noto-ethiopic mt-6 text-center text-base font-bold underline">
-          {data.service_type?.name_am} / {data.service_type?.name_en}
-        </h1>
-
-        {bodyHtml.trim() ? (
-          <div
-            className="letter-body font-noto-ethiopic mt-6 text-sm leading-8"
-            dangerouslySetInnerHTML={{ __html: bodyHtml }}
-          />
-        ) : (
-          <div className="font-noto-ethiopic mt-6 whitespace-pre-wrap text-sm leading-8">
-            {fallbackBody}
-          </div>
-        )}
-
-        {data.details && !templateHtml.includes("{DETAILS}") && (
-          <div className="font-noto-ethiopic mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-700">
-            {data.details}
-          </div>
-        )}
-
-        <div className="mt-16 flex items-end justify-between text-sm">
-          <div>
-            <div className="h-16 w-48 border-b border-slate-400" />
-            <div className="font-noto-ethiopic mt-1 text-xs">ፊርማ / Signature</div>
-          </div>
-          <div>
-            <div className="h-16 w-48 border-b border-slate-400" />
-            <div className="font-noto-ethiopic mt-1 text-xs">ማህተም / Official stamp</div>
-          </div>
-        </div>
-
-        {verifyUrl && (
-          <div className="mt-10 flex items-center gap-4 border-t border-dashed border-slate-300 pt-4">
-            <QRCodeSVG value={verifyUrl} size={92} level="M" includeMargin={false} />
-            <div className="font-noto-ethiopic text-[11px] leading-5 text-slate-600">
-              <div className="font-semibold">ይህን ደብዳቤ ያረጋግጡ / Verify this letter</div>
-              <div>QR ኮዱን በስልክዎ ካሜራ ይቅሙ ወይም ይህን አድራሻ ይጎብኙ:</div>
-              <div className="break-all font-mono text-[10px] text-slate-700">{verifyUrl}</div>
-              <div>
-                የማረጋገጫ ኮድ / Code: <span className="font-mono">{data.verification_token}</span>
+      }
+      logoDataUrl={branding.data?.logoDataUrl}
+      woredaNameAm={branding.data?.nameAm ?? ""}
+      woredaNameEn={branding.data?.nameEn ?? ""}
+      contactLine={
+        [
+          branding.data?.addressLine,
+          branding.data?.contactPhone,
+          branding.data?.contactEmail,
+          data.kebele ? `${data.kebele.kebele_name_am} ቀበሌ` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ") || null
+      }
+      docTagAm={data.service_type?.name_am ?? "የአገልግሎት ደብዳቤ"}
+      docTagEn={data.service_type?.name_en ?? "Service Letter"}
+      docNumberLabelAm="ቁ."
+      docNumberLabelEn="No."
+      docNumber={data.request_number}
+      dateEth={formatEthiopianDate(issuedDate)}
+      dateGreg={issuedDate.toLocaleDateString("en-GB")}
+      footer={
+        <>
+          {verifyUrl && (
+            <div className="mt-10 flex items-center gap-4 border-t border-dashed border-slate-300 pt-4">
+              <QRCodeSVG value={verifyUrl} size={92} level="M" includeMargin={false} />
+              <div className="font-noto-ethiopic text-[11px] leading-5 text-slate-600">
+                <div className="font-semibold">ይህን ደብዳቤ ያረጋግጡ / Verify this letter</div>
+                <div>QR ኮዱን በስልክዎ ካሜራ ይቅሙ ወይም ይህን አድራሻ ይጎብኙ:</div>
+                <div className="break-all font-mono text-[10px] text-slate-700">{verifyUrl}</div>
+                <div>
+                  የማረጋገጫ ኮድ / Code: <span className="font-mono">{data.verification_token}</span>
+                </div>
               </div>
             </div>
+          )}
+          <div className="mt-6">
+            <SystemAttributionFooter woredaNameAm={branding.data?.nameAm ?? ""} />
           </div>
-        )}
+        </>
+      }
+    >
+      <div>
+        <div className="font-noto-ethiopic text-sm font-semibold">
+          {data.addressed_to || "ለሚመለከተው ሁሉ፣"}
+        </div>
+        <div className="text-xs text-slate-400">
+          {data.addressed_to ? "" : "To Whom It May Concern,"}
+        </div>
       </div>
-    </div>
+
+      <div>
+        <div className="font-noto-ethiopic text-base font-semibold">
+          ጉዳይ፦ {data.subject || data.service_type?.name_am}
+        </div>
+        <div className="text-xs text-slate-400">Re: {data.service_type?.name_en}</div>
+      </div>
+
+      {bodyHtml.trim() ? (
+        <div
+          className="letter-body font-noto-ethiopic text-sm leading-8"
+          dangerouslySetInnerHTML={{ __html: bodyHtml }}
+        />
+      ) : (
+        <div className="font-noto-ethiopic whitespace-pre-wrap text-sm leading-8">
+          {fallbackBody}
+        </div>
+      )}
+
+      {data.details && !templateHtml.includes("{DETAILS}") && (
+        <div className="font-noto-ethiopic whitespace-pre-wrap text-sm leading-7 text-slate-700">
+          {data.details}
+        </div>
+      )}
+
+      <div>
+        <div className="font-noto-ethiopic text-sm font-semibold">በአክብሮት፣</div>
+        <div className="text-xs text-slate-400">Sincerely,</div>
+      </div>
+
+      <div className="pt-8">
+        <DocSignatureBlock
+          items={[
+            { labelAm: "የቀበሌ ሥራ አስኪያጅ", labelEn: "Kebele Manager" },
+            { labelAm: "የወረዳ መዝጋቢ", labelEn: "Woreda Registrar" },
+          ]}
+        />
+      </div>
+    </PrintDocumentShell>
   );
 }

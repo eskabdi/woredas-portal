@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Building2, Pencil, UserPlus, UserMinus, ScrollText } from "lucide-react";
+import { Building2, Pencil, UserPlus, UserMinus, ScrollText, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card } from "@/components/ui/card";
@@ -124,6 +124,17 @@ function RentalHouseDetailPage() {
         }
         actions={
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() =>
+                navigate({
+                  to: "/woreda/rental-houses/$houseId/occupant-print",
+                  params: { houseId },
+                })
+              }
+            >
+              <Printer className="mr-1 h-4 w-4" /> Print occupant profile
+            </Button>
             {hasPermission(P.RENTAL_CREATE) && (
               <Button
                 variant="outline"
