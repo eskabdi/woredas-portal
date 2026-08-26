@@ -395,6 +395,11 @@ do not push, rewrite history or rotate credentials.
 - **`deploy`** — the four-artifact deploy (schema, seed, Edge Functions,
   frontend), its ordering, how to verify each artifact at its own surface, and
   the credential teardown that ends it.
+- **`pdf-print-pipeline`** — how every printable document in this app is built:
+  the shared `PrintDocumentShell` component and its `Doc*` primitives, and a
+  real Chromium bug (a deferred `window.open()` navigation to a `blob:` URL
+  gets silently blocked) that the current anchor-click pattern exists to avoid
+  regressing. Use it before adding a new print route or "አትም / Print" button.
 
 The `review` and `doctor` skills exist for the same underlying reason: this repo
 has no test suite and `tsc --noEmit` stays clean through most of the bugs that
