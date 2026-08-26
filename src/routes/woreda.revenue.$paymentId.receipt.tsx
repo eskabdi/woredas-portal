@@ -219,18 +219,17 @@ function ReceiptPrintPage() {
   // what window.print() on the live DOM could not reliably guarantee here
   // (the sidebar and other page sections were bleeding into the printout).
   //
-  // window.open() is called synchronously, before the first await, so the
-  // popup isn't blocked as an unsolicited window -- browsers only allow
-  // window.open() without a user-gesture/popup warning when it's a direct,
-  // synchronous result of the click. The tab's location is then pointed at
-  // the generated PDF once it's ready.
+  // Chromium blocks a *deferred* top-level navigation of an already-open
+  // window to a blob:/data: URL (window.open("", "_blank") then later
+  // win.location.href = blobUrl lands on "about:blank#blocked" once the
+  // async html2canvas/jsPDF work finishes, because by then the click's user
+  // activation no longer covers a fresh navigation). An <a target="_blank">
+  // click is exempt from that block -- Chromium treats a simulated click on
+  // an anchor as a genuine new-tab-open request even from inside an async
+  // continuation, so the PDF opens in that tab's native viewer instead of
+  // triggering a download.
   const handlePrint = async () => {
     if (!printRef.current) return;
-    const win = window.open("", "_blank");
-    if (!win) {
-      toast.error("Popup blocked — allow popups for this site to view the receipt.");
-      return;
-    }
     setPrinting(true);
     try {
       const canvas = await html2canvas(printRef.current, { scale: 2, useCORS: true });
@@ -242,9 +241,15 @@ function ReceiptPrintPage() {
       const receiptNumber = dataQuery.data?.receipt?.receipt_number;
       pdf.setProperties({ title: receiptNumber ? `Receipt ${receiptNumber}` : "Receipt" });
       const blobUrl = URL.createObjectURL(pdf.output("blob"));
-      win.location.href = blobUrl;
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.target = "_blank";
+      link.rel = "noopener";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
     } catch (e) {
-      win.close();
       toast.error(`Failed to generate the receipt PDF: ${(e as Error).message}`);
     } finally {
       setPrinting(false);

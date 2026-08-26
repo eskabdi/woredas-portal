@@ -61,17 +61,17 @@ export function PrintDocumentShell({
   const printRef = useRef<HTMLDivElement>(null);
   const [printing, setPrinting] = useState(false);
 
-  // window.open() is called synchronously, before the first await, so the
-  // popup isn't blocked as unsolicited -- browsers only allow window.open()
-  // without a popup warning when it's a direct, synchronous result of the
-  // click. The tab's location is pointed at the generated PDF once ready.
+  // Chromium blocks a *deferred* top-level navigation of an already-open
+  // window to a blob:/data: URL (window.open("", "_blank") then later
+  // win.location.href = blobUrl lands on "about:blank#blocked" once the
+  // async html2canvas/jsPDF work finishes, because by then the click's user
+  // activation no longer covers a fresh navigation). An <a target="_blank">
+  // click is exempt from that block -- Chromium treats a simulated click on
+  // an anchor as a genuine new-tab-open request even from inside an async
+  // continuation, so the PDF opens in that tab's native viewer instead of
+  // triggering a download.
   const handlePrint = async () => {
     if (!printRef.current) return;
-    const win = window.open("", "_blank");
-    if (!win) {
-      toast.error("Popup blocked — allow popups for this site to view the document.");
-      return;
-    }
     setPrinting(true);
     try {
       const canvas = await html2canvas(printRef.current, { scale: 2, useCORS: true });
@@ -82,9 +82,15 @@ export function PrintDocumentShell({
       pdf.addImage(imgData, "PNG", 0, 0, pageWidth, pageHeight);
       pdf.setProperties({ title: `${docTagEn} ${docNumber}` });
       const blobUrl = URL.createObjectURL(pdf.output("blob"));
-      win.location.href = blobUrl;
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.target = "_blank";
+      link.rel = "noopener";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
     } catch (e) {
-      win.close();
       toast.error(`Failed to generate the document PDF: ${(e as Error).message}`);
     } finally {
       setPrinting(false);
@@ -216,6 +222,82 @@ export function DocField({
         {value}
       </div>
     </div>
+  );
+}
+
+/** Big-number KPI tiles -- the "01 — Summary" row on the printable reports. */
+export function DocStatGrid({ cols = 3, children }: { cols?: 2 | 3 | 4; children: ReactNode }) {
+  const colsClass = cols === 4 ? "grid-cols-4" : cols === 2 ? "grid-cols-2" : "grid-cols-3";
+  return <div className={`grid gap-x-5 gap-y-3 ${colsClass}`}>{children}</div>;
+}
+
+export function DocStat({
+  labelAm,
+  labelEn,
+  value,
+}: {
+  labelAm: string;
+  labelEn: string;
+  value: string;
+}) {
+  return (
+    <div>
+      <div className="text-[9.5px] font-medium uppercase tracking-wide text-slate-400">
+        <span className="font-noto-ethiopic">{labelAm}</span>
+        <span className="ml-1 normal-case text-slate-400">/ {labelEn}</span>
+      </div>
+      <div className="font-noto-ethiopic mt-0.5 text-xl font-bold text-slate-900">{value}</div>
+    </div>
+  );
+}
+
+/** Label / value(+share) / Total table for one ReportSection, matching the
+ * on-screen Reports tab tables so the printed figures never diverge. */
+export function DocDataTable({
+  rows,
+  valueLabel = "Count",
+}: {
+  rows: { name: string; value: number }[];
+  valueLabel?: string;
+}) {
+  const total = rows.reduce((s, r) => s + r.value, 0);
+  return (
+    <table className="w-full border-collapse text-xs">
+      <thead>
+        <tr className="border-b border-slate-300 text-left">
+          <th className="pb-1.5 pr-3 font-noto-ethiopic font-semibold text-slate-700">Label</th>
+          <th className="pb-1.5 pr-3 text-right font-semibold text-slate-700">{valueLabel}</th>
+          <th className="pb-1.5 text-right font-semibold text-slate-700">Share</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.length === 0 && (
+          <tr>
+            <td colSpan={3} className="py-3 text-center text-slate-400">
+              ለዚህ ጊዜ መረጃ የለም / No data for this period
+            </td>
+          </tr>
+        )}
+        {rows.map((r) => (
+          <tr key={r.name} className="border-b border-slate-100">
+            <td className="py-1.5 pr-3 font-noto-ethiopic text-slate-800">{r.name}</td>
+            <td className="py-1.5 pr-3 text-right text-slate-800">{r.value.toLocaleString()}</td>
+            <td className="py-1.5 text-right text-slate-500">
+              {total > 0 ? `${((r.value / total) * 100).toFixed(1)}%` : "0.0%"}
+            </td>
+          </tr>
+        ))}
+        {rows.length > 0 && (
+          <tr className="border-t-2 border-slate-300 font-semibold">
+            <td className="py-1.5 pr-3 text-slate-900">
+              ድምር <span className="ml-1 font-normal text-slate-400">Total</span>
+            </td>
+            <td className="py-1.5 pr-3 text-right text-slate-900">{total.toLocaleString()}</td>
+            <td className="py-1.5 text-right text-slate-900">100%</td>
+          </tr>
+        )}
+      </tbody>
+    </table>
   );
 }
 
