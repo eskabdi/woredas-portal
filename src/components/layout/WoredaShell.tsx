@@ -106,7 +106,6 @@ export function WoredaShell({ children }: { children: React.ReactNode }) {
               <h2 className="font-noto-ethiopic text-xl font-bold leading-snug text-white [text-wrap:balance]">
                 {woreda?.display_name_am ?? "—"}
               </h2>
-              <p className="font-noto-ethiopic mt-1 text-sm text-slate-300">አስተዳደር ፖርታል</p>
               <p className="mt-0.5 text-xs text-slate-400">{woreda?.woreda_name_en ?? ""}</p>
             </div>
           </div>
