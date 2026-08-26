@@ -72,6 +72,7 @@ function NewServiceRequestPage() {
   const [subject, setSubject] = useState("");
   const [purpose, setPurpose] = useState("");
   const [addressedTo, setAddressedTo] = useState("");
+  const [addressedToMode, setAddressedToMode] = useState<"select" | "custom">("select");
   const [details, setDetails] = useState("");
   const [priority, setPriority] = useState("normal");
   const [respondentName, setRespondentName] = useState("");
@@ -378,14 +379,46 @@ function NewServiceRequestPage() {
                 />
               </FieldWrap>
               <FieldWrap labelAm="ለማን ይቀርባል" labelEn="Addressed to">
-                <Select value={addressedTo} onChange={(e) => setAddressedTo(e.target.value)}>
-                  <option value="">ይምረጡ / Select…</option>
-                  {(usersQuery.data ?? []).map((u) => (
-                    <option key={u.user_id} value={tenantUserOptionLabel(u)}>
-                      {tenantUserOptionLabel(u)}
-                    </option>
-                  ))}
-                </Select>
+                {addressedToMode === "select" ? (
+                  <Select
+                    value={addressedTo}
+                    onChange={(e) => {
+                      if (e.target.value === "__custom__") {
+                        setAddressedToMode("custom");
+                        setAddressedTo("");
+                      } else {
+                        setAddressedTo(e.target.value);
+                      }
+                    }}
+                  >
+                    <option value="">ይምረጡ / Select…</option>
+                    {(usersQuery.data ?? []).map((u) => (
+                      <option key={u.user_id} value={tenantUserOptionLabel(u)}>
+                        {tenantUserOptionLabel(u)}
+                      </option>
+                    ))}
+                    <option value="__custom__">ለ አድራሻ (ተቋም) / Other</option>
+                  </Select>
+                ) : (
+                  <div className="flex gap-2">
+                    <Input
+                      className="font-noto-ethiopic"
+                      value={addressedTo}
+                      onChange={(e) => setAddressedTo(e.target.value)}
+                      placeholder="ለምሳሌ: ባንክ፣ ፍርድ ቤት፣ አሰሪ / e.g. bank, court, employer"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setAddressedToMode("select");
+                        setAddressedTo("");
+                      }}
+                    >
+                      ዝርዝር / List
+                    </Button>
+                  </div>
+                )}
               </FieldWrap>
             </>
           )}
