@@ -301,9 +301,12 @@ export function DocDataTable({
   );
 }
 
-/** Fixed hex palette (not Tailwind/oklch tokens) for chart segments -- the
- * print pipeline rasterizes via html2canvas-pro, so plain hex avoids any
- * doubt about color-function support in the canvas conversion. */
+/** Fixed hex palette for chart segments -- html2canvas-pro rasterizes the
+ * Tailwind/oklch colors used elsewhere in this file fine (that's the whole
+ * reason this app uses html2canvas-pro over plain html2canvas), so this
+ * isn't a color-function workaround. It's a categorical palette: Tailwind's
+ * scale doesn't give 8 easily-distinguishable hues without picking across
+ * several color families, so the segments are enumerated directly instead. */
 const CHART_COLORS = [
   "#1e40af",
   "#0891b2",
@@ -359,6 +362,7 @@ export function DocDonutChart({
   centerLabelAm: string;
   centerLabelEn: string;
 }) {
+  if (rows.length === 0) return null;
   const total = rows.reduce((s, r) => s + r.value, 0);
   const r = 15.9155;
   const circumference = 2 * Math.PI * r;

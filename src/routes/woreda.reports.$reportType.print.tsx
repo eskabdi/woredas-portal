@@ -261,8 +261,10 @@ function ReportPrintPage() {
             titleAm={sec.titleAm}
             titleEn={sec.titleEn}
           >
-            {type === "services" && i === 0 && <DocBarChart rows={sec.rows} />}
-            {type === "services" && i === 1 && (
+            {type === "services" && sec.titleEn === "Service requests by status" && (
+              <DocBarChart rows={sec.rows} />
+            )}
+            {type === "services" && sec.titleEn === "Service requests by type" && (
               <DocDonutChart rows={sec.rows} centerLabelAm="ጠቅላላ" centerLabelEn="Total" />
             )}
             <DocDataTable rows={sec.rows} valueLabel={sec.valueLabel} />
