@@ -128,7 +128,13 @@ export function WoredaShell({ children }: { children: React.ReactNode }) {
                   >
                     <Icon className="h-4 w-4 shrink-0" />
                     <span className="flex-1">
-                      <span className="font-noto-ethiopic block leading-tight">{item.labelAm}</span>
+                      <span
+                        className={`font-noto-ethiopic block leading-tight ${
+                          active ? "text-[16px] font-bold" : "font-semibold"
+                        }`}
+                      >
+                        {item.labelAm}
+                      </span>
                       <span className="block text-[10px] uppercase tracking-wide text-slate-400">
                         {item.labelEn}
                       </span>
