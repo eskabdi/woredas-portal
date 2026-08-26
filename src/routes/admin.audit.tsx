@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Eye, Loader2, ScrollText, Search } from "lucide-react";
@@ -26,11 +26,38 @@ import {
   useUrlSort,
 } from "@/components/common/TableToolbar";
 import { exportRowsToCsv, exportRowsToPdf, type TableColumn } from "@/utils/tableExport";
+import {
+  ConsolePermissionGate,
+  InsufficientConsolePermissionNotice,
+} from "@/components/common/ConsolePermissionGate";
+import { CP } from "@/config/permissions";
+
+interface AuditSearch {
+  woreda?: string;
+}
 
 export const Route = createFileRoute("/admin/audit")({
   ssr: false,
-  component: AdminAuditPage,
+  // Only `woreda` is validated -- it's the one filter a deep link (the
+  // tenant detail page's "View Audit Trail" button) needs to pre-populate.
+  // Other filters stay local state, same as every other table on this
+  // portal that isn't search/sort/pagination.
+  validateSearch: (raw: Record<string, unknown>): AuditSearch => ({
+    woreda: typeof raw.woreda === "string" ? raw.woreda : undefined,
+  }),
+  component: AdminAuditPageGated,
 });
+
+function AdminAuditPageGated() {
+  return (
+    <ConsolePermissionGate
+      permission={CP.AUDIT_VIEW}
+      fallback={<InsufficientConsolePermissionNotice />}
+    >
+      <AdminAuditPage />
+    </ConsolePermissionGate>
+  );
+}
 
 /** The `/admin` layout already restricts this console to super admins. */
 
@@ -57,10 +84,20 @@ const ENTITIES = [
   "fee_schedule",
   "rental_occupancy_request",
   "kebele_rental_house",
+  "id_card_template",
+  "id_card_template_field_draft",
+  "console_role",
+  "console_role_permission",
 ] as const;
 
-/** Sentinel for rows with no `woreda_id` — platform-level actions. */
+/** Sentinel for rows with no `woreda_id` — platform-level actions. This is
+ * also the page's default scope: the console-scoped audit view should open
+ * on console/platform activity, not the full cross-tenant firehose. */
 const PLATFORM_SCOPE = "platform";
+/** Explicit "no tenant filter at all" -- distinct from an absent URL param
+ * (which defaults to PLATFORM_SCOPE) so that choosing "All tenants" sticks
+ * instead of collapsing back to the default on the next render. */
+const ALL_SCOPE = "all";
 
 /** Rows are capped on export so a full-platform log cannot exhaust the browser. */
 const EXPORT_ROW_LIMIT = 5000;
@@ -97,7 +134,15 @@ function actionTone(action: string) {
 
 function AdminAuditPage() {
   const { input: q, setInput: setQ, term: qTerm } = useUrlSearchTerm();
-  const [woreda, setWoreda] = useState("");
+  const navigate = useNavigate();
+  const woreda = Route.useSearch({ select: (s) => s.woreda }) ?? PLATFORM_SCOPE;
+  const setWoreda = (next: string) => {
+    navigate({
+      to: ".",
+      search: (prev: Record<string, unknown>) => ({ ...prev, woreda: next }),
+      replace: true,
+    } as never);
+  };
   const [entity, setEntity] = useState("");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
@@ -120,9 +165,16 @@ function AdminAuditPage() {
     [qTerm, woreda, entity, start, end, sort.key].join("|"),
   );
 
-  const filtersActive = !!(q || woreda || entity || start || end || !sort.isDefault);
+  const filtersActive = !!(
+    q ||
+    woreda !== PLATFORM_SCOPE ||
+    entity ||
+    start ||
+    end ||
+    !sort.isDefault
+  );
   const clearFilters = useClearTableFilters([], () => {
-    setWoreda("");
+    setWoreda(PLATFORM_SCOPE);
     setEntity("");
     setStart("");
     setEnd("");
@@ -165,7 +217,7 @@ function AdminAuditPage() {
     query = query.range(rangeStart, rangeEnd);
 
     if (filters.woreda === PLATFORM_SCOPE) query = query.is("woreda_id", null);
-    else if (filters.woreda) query = query.eq("woreda_id", filters.woreda);
+    else if (filters.woreda !== ALL_SCOPE) query = query.eq("woreda_id", filters.woreda);
     if (filters.entity) query = query.eq("entity_name", filters.entity);
     if (filters.start) query = query.gte("action_at", `${filters.start}T00:00:00.000Z`);
     if (filters.end) query = query.lte("action_at", `${filters.end}T23:59:59.999Z`);
@@ -200,8 +252,8 @@ function AdminAuditPage() {
   const filterLabel =
     [
       filters.q ? `Search: "${filters.q}"` : null,
-      filters.woreda
-        ? `Tenant: ${filters.woreda === PLATFORM_SCOPE ? "Platform" : tenantLabel({ woreda_id: filters.woreda })}`
+      filters.woreda !== PLATFORM_SCOPE
+        ? `Tenant: ${filters.woreda === ALL_SCOPE ? "All tenants" : tenantLabel({ woreda_id: filters.woreda })}`
         : null,
       filters.entity ? `Entity: ${filters.entity}` : null,
       filters.start ? `From: ${filters.start}` : null,
@@ -324,13 +376,10 @@ function AdminAuditPage() {
             <select
               className="h-10 w-[220px] rounded-md border border-input bg-background px-3 text-sm"
               value={woreda}
-              onChange={(e) => {
-                setWoreda(e.target.value);
-                setPage(0);
-              }}
+              onChange={(e) => setWoreda(e.target.value)}
             >
-              <option value="">All tenants</option>
               <option value={PLATFORM_SCOPE}>Platform (no tenant)</option>
+              <option value={ALL_SCOPE}>All tenants</option>
               {woredas.map((w) => (
                 <option key={w.woreda_id} value={w.woreda_id}>
                   {w.woreda_name_en}

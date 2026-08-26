@@ -44,7 +44,7 @@ import {
 import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/integrations/supabase/client";
 import { P } from "@/config/permissions";
-import { formatEthiopianDate, parseDateOnly } from "@/utils/ethiopianCalendar";
+import { formatEthiopianDateOnly } from "@/utils/ethiopianCalendar";
 
 export const Route = createFileRoute("/woreda/credentials/$requestId/print")({
   ssr: false,
@@ -283,7 +283,7 @@ function PrintPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("id_card_template")
-        .select("template_type, background_image_url, status");
+        .select("template_type, background_image_url");
       if (error) throw error;
       return data ?? [];
     },
@@ -637,11 +637,11 @@ function PrintPage() {
   }
 
   const dobEthiopian = resident?.date_of_birth
-    ? formatEthiopianDate(parseDateOnly(resident.date_of_birth)!)
+    ? formatEthiopianDateOnly(resident.date_of_birth)
     : "";
   const dobGregorian = resident?.date_of_birth ?? "";
-  const issueEth = cred.issue_date ? formatEthiopianDate(parseDateOnly(cred.issue_date)!) : "";
-  const expiryEth = cred.expiry_date ? formatEthiopianDate(parseDateOnly(cred.expiry_date)!) : "";
+  const issueEth = cred.issue_date ? formatEthiopianDateOnly(cred.issue_date) : "";
+  const expiryEth = cred.expiry_date ? formatEthiopianDateOnly(cred.expiry_date) : "";
 
   const canPrint =
     allAuthorized && verified && !busy && (!isReprint || reprintReason.trim().length >= 5);
@@ -885,6 +885,7 @@ function PrintPage() {
                 fields={frontFields}
                 values={fieldValues}
                 photoUrl={photoUrl}
+                signatureUrl={signatureUrl}
                 qrPayload={null}
                 credentialNumber={cred?.credential_number ?? null}
                 bgUrl={frontBgUrl}
@@ -911,6 +912,7 @@ function PrintPage() {
                 fields={backFields}
                 values={fieldValues}
                 photoUrl={photoUrl}
+                signatureUrl={signatureUrl}
                 qrPayload={cred.qr_payload as string | null}
                 credentialNumber={cred?.credential_number ?? null}
                 bgUrl={backBgUrl}
@@ -940,6 +942,7 @@ function PrintPage() {
               fields={frontFields}
               values={fieldValues}
               photoUrl={photoUrl}
+              signatureUrl={signatureUrl}
               qrPayload={null}
               credentialNumber={cred?.credential_number ?? null}
               bgUrl={frontBgUrl}
@@ -951,6 +954,7 @@ function PrintPage() {
               fields={backFields}
               values={fieldValues}
               photoUrl={photoUrl}
+              signatureUrl={signatureUrl}
               qrPayload={cred.qr_payload as string | null}
               credentialNumber={cred?.credential_number ?? null}
               bgUrl={backBgUrl}
@@ -1288,19 +1292,28 @@ function buildFieldValues(
     full_name_en: resident?.full_name ?? "",
     id_number:
       cred?.credential_number || resident?.national_id_no || resident?.resident_number || "",
-    gender: resident?.sex === "female" ? "ሴት / Female" : "ወንድ / Male",
+    // Card space is at a premium, so this prints only the initial, not the
+    // full word -- Amharic first, matching every other bilingual field here.
+    gender: resident?.sex === "female" ? "ሴ / F" : "ወ / M",
     dob_ethiopian: dobEth,
     dob_gregorian: dobGreg,
-    woreda_name: `${woreda?.woreda_name_am ?? ""} / ${woreda?.woreda_name_en ?? ""}`,
+    // Amharic-only now, not "am / en" combined -- an admin who wants the
+    // English name visible too can drag the separate woreda_name_en entity
+    // from the template editor's palette onto the card.
+    woreda_name: woreda?.woreda_name_am ?? "",
+    woreda_name_en: woreda?.woreda_name_en ?? "",
     // No raw woreda.woreda_name_har/om registry column exists (unlike
     // Amharic/English) -- these are settings-only overrides, so an unset
     // value just renders blank rather than falling back to anything.
     woreda_name_har: settings?.woreda_name_display_har ?? "",
     woreda_name_om: settings?.woreda_name_display_om ?? "",
-    kebele_name: `${kebele?.kebele_name_am ?? ""} / ${kebele?.kebele_name_en ?? ""}`,
+    // Kebeles are identified on the printed card by their 2-digit number,
+    // not their name -- kebele_name_am/en still exist for other UI, but the
+    // card field intentionally prints only the number.
+    kebele_name: kebele?.kebele_number != null ? String(kebele.kebele_number).padStart(2, "0") : "",
     house_number: household?.house_number ?? "",
-    issue_date: issueEth ? `${issueEth} (${cred?.issue_date ?? ""})` : "",
-    expiry_date: expiryEth ? `${expiryEth} (${cred?.expiry_date ?? ""})` : "",
+    issue_date: issueEth || cred?.issue_date ? `${issueEth} / ${cred?.issue_date ?? ""}` : "",
+    expiry_date: expiryEth || cred?.expiry_date ? `${expiryEth} / ${cred?.expiry_date ?? ""}` : "",
     // The issuing entity is the tenant's configured display name, not
     // necessarily the raw registry name -- see woreda_settings.
     place_of_issue: `${settings?.woreda_name_display || woreda?.woreda_name_am || ""} / ${settings?.woreda_name_display_en || woreda?.woreda_name_en || ""}`,
@@ -1313,6 +1326,7 @@ function PrintableCard({
   fields,
   values,
   photoUrl,
+  signatureUrl,
   qrPayload,
   credentialNumber,
   bgUrl,
@@ -1322,6 +1336,7 @@ function PrintableCard({
   fields: TemplateField[];
   values: Record<string, string>;
   photoUrl: string | null;
+  signatureUrl: string | null;
   qrPayload: string | null;
   credentialNumber: string | null;
   bgUrl: string | null;
@@ -1399,6 +1414,47 @@ function PrintableCard({
                     src={photoUrl}
                     alt=""
                     style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                )}
+              </div>
+            );
+          }
+          if (f.field_key === "watermark_photo") {
+            // Same resident photo as the "photo" field, faded to 50% opacity
+            // -- a security-watermark background element, not a second photo
+            // upload.
+            return (
+              <div key={f.field_key} style={{ ...common, overflow: "hidden" }}>
+                {photoUrl && (
+                  <img
+                    src={photoUrl}
+                    alt=""
+                    style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.5 }}
+                  />
+                )}
+              </div>
+            );
+          }
+          if (f.field_key === "signature") {
+            // Sourced from woreda_settings.supervisor_signature_url -- set in
+            // Settings > Official Images > "Signature Stamp" (signatureUrl is
+            // that field's already-signed URL, fetched once per woreda, not
+            // per-resident).
+            return (
+              <div
+                key={f.field_key}
+                style={{
+                  ...common,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {signatureUrl && (
+                  <img
+                    src={signatureUrl}
+                    alt=""
+                    style={{ width: "100%", height: "100%", objectFit: "contain" }}
                   />
                 )}
               </div>

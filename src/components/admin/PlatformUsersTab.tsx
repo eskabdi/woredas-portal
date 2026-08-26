@@ -1,8 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Users, Plus, MoreHorizontal, Download, Search } from "lucide-react";
+import { Plus, MoreHorizontal, Search } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,11 +37,11 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { StatusChip } from "@/components/common/StatusChip";
 import {
   TablePagination,
   useClientPagination,
-  useUrlPagination,
   useUrlSearchTerm,
 } from "@/components/common/TablePagination";
 import {
@@ -55,20 +54,15 @@ import {
 import { TableEmptyRow, TableErrorRow, TableSkeletonRows } from "@/components/common/TableStates";
 import { exportRowsToCsv, exportRowsToPdf, type TableColumn } from "@/utils/tableExport";
 
-import { PageHeader } from "@/components/common/PageHeader";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
+import { CP } from "@/config/permissions";
 
 const PLATFORM_BRANDING = {
   nameAm: "የሐረሪ ክልል አስተዳደር",
   nameEn: "Harari Regional Administration",
   logoDataUrl: null,
 };
-
-export const Route = createFileRoute("/admin/users/")({
-  ssr: false,
-  component: AdminUsersPage,
-});
 
 interface AdminUserRow {
   user_id: string;
@@ -78,6 +72,9 @@ interface AdminUserRow {
   status: string;
   woreda_id: string | null;
   invited_at: string | null;
+  last_login_at: string | null;
+  invited_by: { full_name: string } | null;
+  console_role_id: string | null;
 }
 interface WoredaOpt {
   woreda_id: string;
@@ -85,7 +82,7 @@ interface WoredaOpt {
   woreda_name_en: string;
 }
 
-function AdminUsersPage() {
+export function PlatformUsersTab() {
   const qc = useQueryClient();
   const callerId = useAuthStore((s) => s.user?.id);
   const [roleFilter, setRoleFilter] = useState<"all" | "super_admin" | "tenant_admin">("all");
@@ -96,6 +93,7 @@ function AdminUsersPage() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [suspendUser, setSuspendUser] = useState<AdminUserRow | null>(null);
   const [reactivateUser, setReactivateUser] = useState<AdminUserRow | null>(null);
+  const [detailUser, setDetailUser] = useState<AdminUserRow | null>(null);
 
   const sort = useUrlSort("full_name", "asc");
   const [exporting, setExporting] = useState(false);
@@ -111,11 +109,13 @@ function AdminUsersPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("app_user")
-        .select("user_id, full_name, username, role, status, woreda_id, invited_at")
+        .select(
+          "user_id, full_name, username, role, status, woreda_id, invited_at, last_login_at, console_role_id, invited_by:invited_by_user_id ( full_name )",
+        )
         .in("role", ["super_admin", "tenant_admin"])
         .order("full_name");
       if (error) throw error;
-      return (data ?? []) as AdminUserRow[];
+      return (data ?? []) as unknown as AdminUserRow[];
     },
   });
 
@@ -250,6 +250,13 @@ function AdminUsersPage() {
     await qc.invalidateQueries({ queryKey: ["admin-users"] });
   }
 
+  // Guards against locking the console out entirely: suspending, demoting or
+  // deactivating the last active super_admin (including yourself) would
+  // leave nobody able to undo it short of the service_role key.
+  const activeSuperAdminCount = users.filter(
+    (u) => u.role === "super_admin" && u.status === "active",
+  ).length;
+
   async function suspend(u: AdminUserRow) {
     const { error } = await supabase
       .from("app_user")
@@ -307,20 +314,20 @@ function AdminUsersPage() {
   }
 
   return (
-    <div className="p-6">
-      <PageHeader
-        icon={Users}
-        titleAm="የተጠቃሚ አስተዳደር"
-        titleEn="User Management"
-        description="Super Admin and Tenant Admin accounts across the platform."
-        actions={
-          <Button onClick={() => setInviteOpen(true)} className="bg-blue-700 hover:bg-blue-800">
-            <Plus className="mr-1 h-4 w-4" />
-            <span className="font-noto-ethiopic">አዲስ አስተዳዳሪ</span>
-            <span className="ml-1 text-xs opacity-80">/ Add Admin</span>
-          </Button>
-        }
-      />
+    <div>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h2 className="font-noto-ethiopic text-lg font-semibold text-slate-900">የተጠቃሚ አስተዳደር</h2>
+          <p className="text-sm text-slate-500">
+            User Management — Super Admin and Tenant Admin accounts across the platform.
+          </p>
+        </div>
+        <Button onClick={() => setInviteOpen(true)} className="bg-blue-700 hover:bg-blue-800">
+          <Plus className="mr-1 h-4 w-4" />
+          <span className="font-noto-ethiopic">አዲስ አስተዳዳሪ</span>
+          <span className="ml-1 text-xs opacity-80">/ Add Admin</span>
+        </Button>
+      </div>
 
       {/* KPI */}
       <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -403,7 +410,11 @@ function AdminUsersPage() {
               <TableEmptyRow cols={5} filtered={filtersActive} onClearFilters={clearFilters} />
             ) : (
               pageRows.map((u) => (
-                <tr key={u.user_id} className="border-t border-slate-100">
+                <tr
+                  key={u.user_id}
+                  className="cursor-pointer border-t border-slate-100 hover:bg-slate-50"
+                  onClick={() => setDetailUser(u)}
+                >
                   <td className="px-4 py-3">
                     {u.role === "super_admin" ? (
                       <Badge variant="secondary">Platform</Badge>
@@ -438,7 +449,7 @@ function AdminUsersPage() {
                   <td className="px-4 py-3">
                     <StatusChip status={u.status} />
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="sm">
@@ -454,7 +465,10 @@ function AdminUsersPage() {
                         )}
                         {u.status !== "suspended" ? (
                           <DropdownMenuItem
-                            disabled={u.user_id === callerId}
+                            disabled={
+                              u.user_id === callerId ||
+                              (u.role === "super_admin" && activeSuperAdminCount <= 1)
+                            }
                             onClick={() => setSuspendUser(u)}
                           >
                             <span className="font-noto-ethiopic text-red-600">እግድ</span>
@@ -537,6 +551,16 @@ function AdminUsersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <UserDetailDialog
+        user={detailUser}
+        woredas={woredas}
+        woredaMap={woredaMap}
+        callerId={callerId}
+        activeSuperAdminCount={activeSuperAdminCount}
+        onOpenChange={(o) => !o && setDetailUser(null)}
+        onChanged={refresh}
+      />
     </div>
   );
 }
@@ -682,5 +706,323 @@ function InviteAdminDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function UserDetailDialog({
+  user,
+  woredas,
+  woredaMap,
+  callerId,
+  activeSuperAdminCount,
+  onOpenChange,
+  onChanged,
+}: {
+  user: AdminUserRow | null;
+  woredas: WoredaOpt[];
+  woredaMap: Map<string, WoredaOpt>;
+  callerId: string | undefined;
+  activeSuperAdminCount: number;
+  onOpenChange: (o: boolean) => void;
+  onChanged: () => void | Promise<void>;
+}) {
+  const [role, setRole] = useState<"super_admin" | "tenant_admin">("tenant_admin");
+  const [woredaId, setWoredaId] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const canManageConsoleRoles = useAuthStore((s) =>
+    s.hasConsolePermission(CP.CONSOLE_USERS_MANAGE),
+  );
+
+  const { data: consoleRoles = [] } = useQuery({
+    queryKey: ["console-roles-picker"],
+    enabled: user?.role === "super_admin",
+    queryFn: async () => {
+      const { data, error } = await (supabase as unknown as { from: (t: string) => any }) // eslint-disable-line @typescript-eslint/no-explicit-any
+        .from("console_role")
+        .select("console_role_id, name, is_active")
+        .order("name");
+      if (error) throw error;
+      return data as { console_role_id: string; name: string; is_active: boolean }[];
+    },
+  });
+
+  // Reset local edit state whenever a different row is opened.
+  const openUserId = user?.user_id ?? null;
+  const [syncedFor, setSyncedFor] = useState<string | null>(null);
+  if (user && openUserId !== syncedFor) {
+    setRole(user.role as "super_admin" | "tenant_admin");
+    setWoredaId(user.woreda_id ?? "");
+    setSyncedFor(openUserId);
+  }
+
+  if (!user) return null;
+  const isSelf = user.user_id === callerId;
+  const roleDirty =
+    role !== user.role || (role === "tenant_admin" && woredaId !== (user.woreda_id ?? ""));
+  // The only active super_admin can't be demoted or suspended -- that locks
+  // the console out entirely, recoverable only with the service_role key.
+  const isLastActiveSuperAdmin =
+    user.role === "super_admin" && user.status === "active" && activeSuperAdminCount <= 1;
+
+  async function toggleActive(checked: boolean) {
+    if (!user) return;
+    if (!checked && isLastActiveSuperAdmin) {
+      toast.error("Cannot suspend the last active super admin");
+      return;
+    }
+    const nextStatus = checked ? "active" : "suspended";
+    const { error } = await supabase
+      .from("app_user")
+      .update({ status: nextStatus })
+      .eq("user_id", user.user_id);
+    if (error) return toast.error(error.message);
+    await supabase.from("audit_log").insert({
+      actor_user_id: callerId ?? null,
+      entity_name: "app_user",
+      entity_id: user.user_id,
+      action_type: checked ? "PLATFORM_ADMIN_REACTIVATED" : "PLATFORM_ADMIN_SUSPENDED",
+      new_value_json: { role: user.role },
+    });
+    toast.success(checked ? "ተጠቃሚው ተመልሷል / User activated" : "ተጠቃሚው ታግዷል / User suspended");
+    await onChanged();
+  }
+
+  async function saveRoleChange() {
+    if (!user) return;
+    if (role === "tenant_admin" && !woredaId) {
+      toast.error("Select a woreda for Tenant Admin");
+      return;
+    }
+    if (role !== "super_admin" && isLastActiveSuperAdmin) {
+      toast.error("Cannot demote the last active super admin");
+      return;
+    }
+    setSaving(true);
+    const nextWoredaId = role === "tenant_admin" ? woredaId : null;
+    // app_user_console_role_scope_check requires console_role_id IS NULL
+    // whenever role <> 'super_admin' -- demoting away from super_admin
+    // without clearing it would fail the CHECK and surface a raw Postgres
+    // error instead of succeeding.
+    const nextConsoleRoleId = role === "super_admin" ? user.console_role_id : null;
+    const { error } = await supabase
+      .from("app_user")
+      .update({ role, woreda_id: nextWoredaId, console_role_id: nextConsoleRoleId } as never)
+      .eq("user_id", user.user_id);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    await supabase.from("audit_log").insert({
+      actor_user_id: callerId ?? null,
+      // Scoped to the tenant the user is being assigned into (or was in, if
+      // demoted away from tenant_admin) so this shows up in that tenant's
+      // own audit view, not just Platform.
+      woreda_id: nextWoredaId ?? user.woreda_id ?? null,
+      entity_name: "app_user",
+      entity_id: user.user_id,
+      action_type: "PLATFORM_ADMIN_ROLE_CHANGED",
+      old_value_json: {
+        role: user.role,
+        woreda_id: user.woreda_id,
+        console_role_id: user.console_role_id,
+      },
+      new_value_json: { role, woreda_id: nextWoredaId, console_role_id: nextConsoleRoleId },
+    });
+    toast.success("Role updated");
+    setConfirmOpen(false);
+    await onChanged();
+    onOpenChange(false);
+  }
+
+  async function setConsoleRole(nextConsoleRoleId: string | null) {
+    if (!user) return;
+    const { error } = await supabase
+      .from("app_user")
+      .update({ console_role_id: nextConsoleRoleId } as never)
+      .eq("user_id", user.user_id);
+    if (error) return toast.error(error.message);
+    await supabase.from("audit_log").insert({
+      actor_user_id: callerId ?? null,
+      entity_name: "app_user",
+      entity_id: user.user_id,
+      action_type: "CONSOLE_ROLE_ASSIGNED",
+      old_value_json: { console_role_id: user.console_role_id },
+      new_value_json: { console_role_id: nextConsoleRoleId },
+    });
+    toast.success("Console role updated");
+    await onChanged();
+    // The <Select> below reads console_role_id off the `user` prop, which is
+    // this component's own plain-useState snapshot and doesn't re-sync when
+    // `users` refetches -- close the dialog so it resets to null on next
+    // open, same as saveRoleChange does, instead of showing the pre-save
+    // value right after a save that actually succeeded.
+    onOpenChange(false);
+  }
+
+  return (
+    <>
+      <Dialog open={!!user} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{user.full_name}</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 text-sm">
+            <div className="grid grid-cols-2 gap-3">
+              <DetailField label="Username" value={user.username} />
+              <DetailField label="Invited By" value={user.invited_by?.full_name ?? "—"} />
+              <DetailField
+                label="Invited At"
+                value={user.invited_at ? new Date(user.invited_at).toLocaleString("en-GB") : "—"}
+              />
+              <DetailField
+                label="Last Login"
+                value={
+                  user.last_login_at
+                    ? new Date(user.last_login_at).toLocaleString("en-GB")
+                    : "Never"
+                }
+              />
+            </div>
+
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <div>
+                <div className="text-sm font-medium text-slate-900">Active</div>
+                <div className="text-xs text-slate-500">
+                  Current status: <StatusChip status={user.status} />
+                </div>
+              </div>
+              <Switch
+                checked={user.status === "active"}
+                disabled={isSelf || isLastActiveSuperAdmin}
+                onCheckedChange={toggleActive}
+              />
+            </div>
+            {isLastActiveSuperAdmin && (
+              <p className="text-xs text-amber-600">
+                This is the only active super admin -- it cannot be suspended or demoted.
+              </p>
+            )}
+
+            <div className="space-y-3 rounded-md border p-3">
+              <div className="text-sm font-medium text-slate-900">Role</div>
+              <Select
+                value={role}
+                onValueChange={(v) => setRole(v as typeof role)}
+                disabled={isSelf || isLastActiveSuperAdmin}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="tenant_admin">Tenant Admin</SelectItem>
+                  <SelectItem
+                    value="super_admin"
+                    disabled={user.role !== "super_admin" && !canManageConsoleRoles}
+                  >
+                    Super Admin
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              {user.role !== "super_admin" && !canManageConsoleRoles && (
+                <p className="text-xs text-amber-600">
+                  Promoting to Super Admin requires console.console_users.manage.
+                </p>
+              )}
+              {role === "tenant_admin" && (
+                <Select value={woredaId} onValueChange={setWoredaId} disabled={isSelf}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select woreda…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {woredas.map((w) => (
+                      <SelectItem key={w.woreda_id} value={w.woreda_id}>
+                        <span className="font-noto-ethiopic">{w.woreda_name_am}</span>
+                        <span className="ml-2 text-xs text-slate-500">/ {w.woreda_name_en}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {isSelf && <p className="text-xs text-amber-600">You cannot change your own role.</p>}
+              {!isSelf && roleDirty && (
+                <Button size="sm" onClick={() => setConfirmOpen(true)} className="w-full">
+                  Save Role Change
+                </Button>
+              )}
+            </div>
+
+            {user.role === "super_admin" && canManageConsoleRoles && (
+              <div className="space-y-2 rounded-md border p-3">
+                <div className="text-sm font-medium text-slate-900">Console Role</div>
+                <p className="text-xs text-slate-500">
+                  Unrestricted grants full access to every Super Admin Console section. A named role
+                  limits access to only its granted console permissions.
+                </p>
+                {isSelf && (
+                  <p className="text-xs text-amber-600">You cannot change your own console role.</p>
+                )}
+                <Select
+                  value={user.console_role_id ?? "__unrestricted__"}
+                  onValueChange={(v) => setConsoleRole(v === "__unrestricted__" ? null : v)}
+                  disabled={isSelf}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__unrestricted__">Unrestricted</SelectItem>
+                    {consoleRoles.map((cr) => (
+                      <SelectItem key={cr.console_role_id} value={cr.console_role_id}>
+                        {cr.name}
+                        {!cr.is_active ? " (inactive)" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm role change?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {user.full_name}: {user.role}
+              {user.role === "tenant_admin" && user.woreda_id
+                ? ` (${woredaMap.get(user.woreda_id)?.woreda_name_en ?? user.woreda_id})`
+                : ""}{" "}
+              → {role}
+              {role === "tenant_admin" && woredaId
+                ? ` (${woredaMap.get(woredaId)?.woreda_name_en ?? woredaId})`
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction disabled={saving} onClick={saveRoleChange}>
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
+function DetailField({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-xs text-slate-500">{label}</div>
+      <div className="text-slate-900">{value}</div>
+    </div>
   );
 }

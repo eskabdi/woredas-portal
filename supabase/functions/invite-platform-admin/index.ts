@@ -59,15 +59,38 @@ Deno.serve(async (req) => {
       return json(400, { error: "super_admin must not be tied to a woreda." });
     }
 
-    // Verify caller is super_admin
+    // Verify caller is an ACTIVE super_admin -- a suspended super_admin's
+    // JWT is still live (suspension doesn't revoke it), and is_super_admin()
+    // now requires status = 'active' too (00000000000011), so this must
+    // match or a suspended caller could still mint new admin accounts.
     const { data: caller, error: callerErr } = await admin
       .from("app_user")
-      .select("role")
+      .select("role, status")
       .eq("user_id", callerId)
       .maybeSingle();
     if (callerErr || !caller) return json(403, { error: "Forbidden" });
-    if (caller.role !== "super_admin") {
-      return json(403, { error: "Forbidden: only super_admin can call this function." });
+    if (caller.role !== "super_admin" || caller.status !== "active") {
+      return json(403, { error: "Forbidden: only an active super_admin can call this function." });
+    }
+    // Minting a NEW super_admin is exactly the escalation
+    // 00000000000012_enforce_console_rbac.sql closes for existing rows (a
+    // scoped admin can't grant themselves console.console_users.manage or
+    // clear their own console_role_id) -- without this check here, the same
+    // scoped admin could route around all of that by simply inviting a
+    // second, unrestricted super_admin account for themselves. Evaluated via
+    // userClient (carries the caller's own JWT) so auth.uid() inside
+    // user_has_console_perm() resolves to the actual caller, not this
+    // function's service-role identity.
+    if (role === "super_admin") {
+      const { data: canManageConsole, error: permErr } = await userClient.rpc(
+        "user_has_console_perm",
+        { _perm: "console.console_users.manage" },
+      );
+      if (permErr || !canManageConsole) {
+        return json(403, {
+          error: "Forbidden: inviting a new super_admin requires console.console_users.manage.",
+        });
+      }
     }
 
     // Warn if the woreda already has an active tenant_admin

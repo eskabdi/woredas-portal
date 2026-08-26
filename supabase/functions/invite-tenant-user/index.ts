@@ -64,13 +64,16 @@ Deno.serve(async (req) => {
       return json(400, { error: "Invalid role" });
     }
 
-    // Verify caller is tenant_admin (or super_admin) of the target woreda
+    // Verify caller is an ACTIVE tenant_admin (or super_admin) of the target
+    // woreda -- a suspended account's JWT is still live, so status has to be
+    // checked explicitly here same as the platform-admin invite function.
     const { data: caller, error: callerErr } = await admin
       .from("app_user")
-      .select("role, woreda_id")
+      .select("role, woreda_id, status")
       .eq("user_id", callerId)
       .maybeSingle();
-    if (callerErr || !caller) return json(403, { error: "Forbidden" });
+    if (callerErr || !caller || caller.status !== "active")
+      return json(403, { error: "Forbidden" });
 
     const isSuper = caller.role === "super_admin";
     const isTenantAdmin = caller.role === "tenant_admin" && caller.woreda_id === woredaId;

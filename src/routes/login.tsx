@@ -6,9 +6,9 @@ import { useState } from "react";
 import { Loader2 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
-import { useAuthStore, type AppUser } from "@/stores/authStore";
+import { useAuthStore } from "@/stores/authStore";
+import { fetchAuthState } from "@/hooks/useAuthBootstrap";
 import { getCurrentEthiopianDate } from "@/utils/ethiopianCalendar";
-import type { Role } from "@/config/permissions";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -68,35 +68,33 @@ function LoginPage() {
       return;
     }
 
-    const { data: userRow, error: userErr } = await supabase
-      .from("app_user")
-      .select("user_id, woreda_id, role, full_name, username, status")
-      .eq("user_id", data.user.id)
-      .maybeSingle();
+    // fetchAuthState fetches app_user AND (when console_role_id is non-null)
+    // that role's granted console permissions in one call -- reusing this
+    // instead of a separate app_user-only query is what keeps this path from
+    // populating the store with an empty consolePermissions list that a
+    // restricted-role super_admin would see as "denied everywhere" until the
+    // ambient USER_UPDATED listener happens to correct it later.
+    const { appUser, consolePermissions } = await fetchAuthState(data.user.id);
 
-    if (userErr || !userRow) {
+    if (!appUser) {
       setSubmitError("Your account is not provisioned in the system. Contact your administrator.");
       await supabase.auth.signOut();
       setIsSubmitting(false);
       return;
     }
 
-    const appUser: AppUser = {
-      user_id: userRow.user_id,
-      woreda_id: userRow.woreda_id,
-      role: userRow.role as Role,
-      full_name: userRow.full_name,
-      username: userRow.username,
-      status: userRow.status,
-    };
-
     // Only an active account resolves permissions: user_has_perm() checks the
     // status column, so anything else lands on a dashboard where every query
     // returns empty and nothing explains why.
     if (appUser.status !== "active") {
-      setAuth(data.user, appUser);
+      setAuth(data.user, appUser, consolePermissions);
       setIsSubmitting(false);
       if (appUser.status === "pending") {
+        // Fire-and-forget: last_login_at is a nice-to-have, must never block
+        // or fail the sign-in itself. Called here (the one real sign-in
+        // event), not from the ambient auth listener -- see the comment in
+        // useAuthBootstrap.ts for why that listener is the wrong place.
+        supabase.functions.invoke("record-login", { body: {} }).catch(() => {});
         navigate({ to: "/set-password" });
       } else {
         setSubmitError("This account is not active. Contact your administrator.");
@@ -105,7 +103,8 @@ function LoginPage() {
       return;
     }
 
-    setAuth(data.user, appUser);
+    setAuth(data.user, appUser, consolePermissions);
+    supabase.functions.invoke("record-login", { body: {} }).catch(() => {});
 
     if (appUser.role === "super_admin") {
       navigate({ to: "/admin/dashboard" });

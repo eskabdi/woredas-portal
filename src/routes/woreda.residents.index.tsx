@@ -54,7 +54,7 @@ import { PermissionGate } from "@/components/common/PermissionGate";
 import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/integrations/supabase/client";
 import { P } from "@/config/permissions";
-import { formatEthiopianDateShort, parseDateOnly } from "@/utils/ethiopianCalendar";
+import { formatEthiopianDateShortOnly } from "@/utils/ethiopianCalendar";
 
 type SexFilter = "all" | "male" | "female";
 type StatusFilter = "all" | "active" | "inactive" | "deceased" | "moved_out";
@@ -449,9 +449,7 @@ function ResidentsListPage() {
                       {r.sex === "male" ? "ወንድ" : r.sex === "female" ? "ሴት" : r.sex}
                     </td>
                     <td className="font-noto-ethiopic px-4 py-3">
-                      {r.date_of_birth
-                        ? formatEthiopianDateShort(parseDateOnly(r.date_of_birth)!)
-                        : "—"}
+                      {r.date_of_birth ? formatEthiopianDateShortOnly(r.date_of_birth) : "—"}
                     </td>
                     <td className="font-noto-ethiopic px-4 py-3">
                       {hh?.kebele

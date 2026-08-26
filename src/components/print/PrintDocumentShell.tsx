@@ -1,5 +1,12 @@
-import type { ReactNode } from "react";
-import { Printer } from "lucide-react";
+import { useRef, useState, type ReactNode } from "react";
+import { Loader2, Printer } from "lucide-react";
+import { toast } from "sonner";
+// html2canvas-pro, not html2canvas: this app's Tailwind v4 build resolves
+// computed colors to oklch(...), which plain html2canvas 1.4.1 throws on
+// ("Attempting to parse an unsupported color function"). Same pipeline as
+// woreda.revenue.$paymentId.receipt.tsx.
+import html2canvas from "html2canvas-pro";
+import jsPDF from "jspdf";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -27,9 +34,14 @@ export interface PrintDocumentShellProps {
   footer?: ReactNode;
 }
 
-/** Shared A4 print shell: on-screen preview + browser print (same "preview,
- * then Print" flow as the receipt and credential print surfaces) rather than
- * a separate PDF renderer. */
+/** Shared A4 print shell: on-screen preview, then a generated PDF opened in a
+ * new tab (same pipeline as the receipt print surface: html2canvas-pro ->
+ * jsPDF -> blob URL) rather than window.print() on the live page. A
+ * browser's native PDF viewer only ever prints the PDF's own page, never the
+ * app chrome around it -- window.print() on the live DOM can't guarantee
+ * that (the sidebar and other page sections bleed into the printout, since
+ * this shell has no shared mechanism to hide them, unlike the one-off
+ * hidden/print:block overlay the credential print route uses). */
 export function PrintDocumentShell({
   backButton,
   logoDataUrl,
@@ -46,16 +58,54 @@ export function PrintDocumentShell({
   children,
   footer,
 }: PrintDocumentShellProps) {
+  const printRef = useRef<HTMLDivElement>(null);
+  const [printing, setPrinting] = useState(false);
+
+  // window.open() is called synchronously, before the first await, so the
+  // popup isn't blocked as unsolicited -- browsers only allow window.open()
+  // without a popup warning when it's a direct, synchronous result of the
+  // click. The tab's location is pointed at the generated PDF once ready.
+  const handlePrint = async () => {
+    if (!printRef.current) return;
+    const win = window.open("", "_blank");
+    if (!win) {
+      toast.error("Popup blocked — allow popups for this site to view the document.");
+      return;
+    }
+    setPrinting(true);
+    try {
+      const canvas = await html2canvas(printRef.current, { scale: 2, useCORS: true });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      pdf.addImage(imgData, "PNG", 0, 0, pageWidth, pageHeight);
+      pdf.setProperties({ title: `${docTagEn} ${docNumber}` });
+      const blobUrl = URL.createObjectURL(pdf.output("blob"));
+      win.location.href = blobUrl;
+    } catch (e) {
+      win.close();
+      toast.error(`Failed to generate the document PDF: ${(e as Error).message}`);
+    } finally {
+      setPrinting(false);
+    }
+  };
+
   return (
     <div className="space-y-4 pb-16">
-      <div className="flex items-center justify-between print:hidden">
+      <div className="flex items-center justify-between">
         {backButton}
-        <Button size="sm" onClick={() => window.print()}>
-          <Printer className="mr-1 h-4 w-4" /> አትም / Print
+        <Button size="sm" onClick={handlePrint} disabled={printing}>
+          {printing ? (
+            <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+          ) : (
+            <Printer className="mr-1 h-4 w-4" />
+          )}
+          አትም / Print
         </Button>
       </div>
 
-      <div className="mx-auto w-full max-w-[820px] border bg-white p-10 shadow-sm print:border-0 print:p-0 print:shadow-none">
+      <div ref={printRef} className="mx-auto w-full max-w-[820px] border bg-white p-10 shadow-sm">
         <div className="flex flex-wrap items-end justify-between gap-5 border-b-2 border-blue-800 pb-4">
           <div className="flex items-start gap-3.5">
             <div className="h-14 w-14 flex-none border border-slate-300">

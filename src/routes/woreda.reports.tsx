@@ -46,7 +46,7 @@ import { loadPresets, savePresets, type ReportPreset } from "@/utils/reportPrese
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
 import { P } from "@/config/permissions";
-import { formatEthiopianDateShort, parseDateOnly } from "@/utils/ethiopianCalendar";
+import { formatEthiopianDateShortOnly } from "@/utils/ethiopianCalendar";
 import { useReportBranding } from "@/hooks/useReportBranding";
 import {
   exportSectionsToPdf,
@@ -452,7 +452,7 @@ function ReportsPage() {
 
   if (!hasPermission(P.REPORT_VIEW)) return <Navigate to="/woreda/dashboard" />;
 
-  const rangeLabel = `${formatEthiopianDateShort(parseDateOnly(start)!)} – ${formatEthiopianDateShort(parseDateOnly(end)!)}`;
+  const rangeLabel = `${formatEthiopianDateShortOnly(start)} – ${formatEthiopianDateShortOnly(end)}`;
   const periodLabel = `ጊዜ / Period: ${rangeLabel}  (${start} → ${end})`;
 
   function tabCsv(tab: string) {

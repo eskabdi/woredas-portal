@@ -29,6 +29,8 @@ FUNCTIONS=(
   invite-platform-admin
   invite-tenant-user
   resend-platform-invite
+  activate-invited-user
+  record-login
   sign-credential
 )
 

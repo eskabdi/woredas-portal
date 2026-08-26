@@ -1,4 +1,3 @@
-// deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const CORS_HEADERS = {
@@ -14,6 +13,17 @@ function json(status: number, body: unknown): Response {
   });
 }
 
+// Called from set-password.tsx right after a successful password set. app_user
+// has no self-write RLS policy at all (by design -- see CLAUDE.md), so a
+// client-side .update() can never flip status: pending -> active on its own
+// row; this function bridges that gap the same way the three invite functions
+// bridge the "no self-insert" gap, via the service-role client.
+//
+// Only ever reads/writes the CALLER's own row (resolved from their own JWT,
+// never a user_id in the request body) -- this cannot be pointed at another
+// account. Only flips pending -> active; suspended/inactive accounts are
+// deliberately left untouched, since reactivating those stays an
+// administrator action by design.
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS_HEADERS });
   if (req.method !== "POST") return json(405, { error: "Method not allowed" });
@@ -35,46 +45,36 @@ Deno.serve(async (req) => {
     if (userErr || !userData.user) return json(401, { error: "Unauthorized" });
     const callerId = userData.user.id;
 
-    const { email, user_id } = (await req.json()) as { email?: string; user_id?: string };
-    if (!email) return json(400, { error: "email is required" });
-
-    // Verify caller is an ACTIVE super_admin -- a suspended account's JWT is
-    // still live, so status has to be checked explicitly.
-    const { data: caller } = await admin
+    const { data: caller, error: callerErr } = await admin
       .from("app_user")
-      .select("role, status")
+      .select("status, woreda_id")
       .eq("user_id", callerId)
       .maybeSingle();
-    if (!caller || caller.role !== "super_admin" || caller.status !== "active") {
-      return json(403, {
-        error: "Forbidden: only an active super_admin can resend platform invites.",
-      });
+    if (callerErr || !caller) return json(404, { error: "No app_user profile found" });
+
+    if (caller.status !== "pending") {
+      // Nothing to do -- already active, or suspended/inactive (which this
+      // function must never touch). Report the true status either way.
+      return json(200, { success: true, status: caller.status });
     }
 
-    // Target must be a platform admin (super_admin or tenant_admin)
-    if (user_id) {
-      const { data: target } = await admin
-        .from("app_user")
-        .select("role, status")
-        .eq("user_id", user_id)
-        .maybeSingle();
-      if (!target || (target.role !== "super_admin" && target.role !== "tenant_admin")) {
-        return json(400, { error: "Target is not a platform admin." });
-      }
-    }
-
-    const { error: inviteErr } = await admin.auth.admin.inviteUserByEmail(email);
-    if (inviteErr) return json(400, { error: inviteErr.message });
+    const { error: updateErr } = await admin
+      .from("app_user")
+      .update({ status: "active" })
+      .eq("user_id", callerId)
+      .eq("status", "pending");
+    if (updateErr) return json(500, { error: updateErr.message });
 
     await admin.from("audit_log").insert({
       actor_user_id: callerId,
+      woreda_id: caller.woreda_id,
       entity_name: "app_user",
-      entity_id: user_id ?? null,
-      action_type: "PLATFORM_ADMIN_INVITE_RESENT",
-      new_value_json: { email },
+      entity_id: callerId,
+      action_type: "ACTIVATED",
+      new_value_json: { status: "active", method: "self_service_password_set" },
     });
 
-    return json(200, { success: true });
+    return json(200, { success: true, status: "active" });
   } catch (e) {
     return json(500, { error: e instanceof Error ? e.message : "Internal error" });
   }

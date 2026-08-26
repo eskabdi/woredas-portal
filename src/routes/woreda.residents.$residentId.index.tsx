@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -51,7 +51,7 @@ import {
 import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/integrations/supabase/client";
 import { P } from "@/config/permissions";
-import { formatEthiopianDate, parseDateOnly } from "@/utils/ethiopianCalendar";
+import { formatEthiopianDate, formatEthiopianDateOnly } from "@/utils/ethiopianCalendar";
 import { EDUCATION_OPTIONS, OCCUPATION_OPTIONS } from "@/lib/residentConstants";
 
 const LocationDisplayMap = lazy(() => import("@/components/gis/LocationDisplayMap"));
@@ -199,6 +199,54 @@ function ResidentProfilePage() {
     },
   });
 
+  // resident.photo_url and household-member photo_url are storage paths, not
+  // public URLs -- resident-photos is a private bucket, so every image needs a
+  // signed URL (same pattern as woreda.credentials.$requestId.print.tsx).
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const headResidentPhotoPath = residentQuery.data?.photo_url as string | null | undefined;
+  useEffect(() => {
+    let cancelled = false;
+    if (!headResidentPhotoPath) {
+      setPhotoUrl(null);
+      return;
+    }
+    supabase.storage
+      .from("resident-photos")
+      .createSignedUrl(headResidentPhotoPath, 900)
+      .then(({ data }) => {
+        if (!cancelled) setPhotoUrl(data?.signedUrl ?? null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [headResidentPhotoPath]);
+
+  const [memberPhotoUrls, setMemberPhotoUrls] = useState<Record<string, string>>({});
+  useEffect(() => {
+    let cancelled = false;
+    const withPhotos = (householdMembersQuery.data ?? []).filter((m) => m.photo_url);
+    if (withPhotos.length === 0) {
+      setMemberPhotoUrls({});
+      return;
+    }
+    Promise.all(
+      withPhotos.map(async (m) => {
+        const { data } = await supabase.storage
+          .from("resident-photos")
+          .createSignedUrl(m.photo_url as string, 900);
+        return [m.resident_id, data?.signedUrl ?? null] as const;
+      }),
+    ).then((entries) => {
+      if (cancelled) return;
+      const map: Record<string, string> = {};
+      for (const [id, url] of entries) if (url) map[id] = url;
+      setMemberPhotoUrls(map);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [householdMembersQuery.data]);
+
   if (!hasPermission(P.RESIDENT_READ)) {
     return (
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-800">
@@ -290,9 +338,9 @@ function ResidentProfilePage() {
       <div className="rounded-lg bg-blue-700 px-5 py-5 text-white shadow-sm">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4 min-w-0">
-            {r.photo_url ? (
+            {photoUrl ? (
               <img
-                src={r.photo_url}
+                src={photoUrl}
                 alt={name}
                 className="h-16 w-16 rounded-full object-cover ring-2 ring-white/40"
               />
@@ -391,9 +439,7 @@ function ResidentProfilePage() {
                     labelAm="የትውልድ ቀን"
                     labelEn="Date of Birth"
                     value={
-                      r.date_of_birth
-                        ? formatEthiopianDate(parseDateOnly(r.date_of_birth)!)
-                        : notRecorded()
+                      r.date_of_birth ? formatEthiopianDateOnly(r.date_of_birth) : notRecorded()
                     }
                   />
                   <Field
@@ -560,9 +606,9 @@ function ResidentProfilePage() {
                             search={{ tab: "overview" }}
                             className="flex items-center gap-3 rounded-md px-2 py-2.5 hover:bg-blue-50/40"
                           >
-                            {m.photo_url ? (
+                            {memberPhotoUrls[m.resident_id] ? (
                               <img
-                                src={m.photo_url}
+                                src={memberPhotoUrls[m.resident_id]}
                                 alt={mname}
                                 className="h-9 w-9 flex-none rounded-full object-cover"
                               />
