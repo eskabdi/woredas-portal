@@ -91,7 +91,7 @@ function RentalOccupantPrintPage() {
   });
 
   const { data: occupancies, isPending: occPending } = useQuery({
-    queryKey: ["rental-occupancies-print", houseId],
+    queryKey: ["rental-occupancies-print", houseId, woredaId],
     enabled: !!woredaId && hasPermission(P.RENTAL_VIEW),
     queryFn: async () => {
       const { data, error } = await supabase

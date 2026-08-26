@@ -71,7 +71,7 @@ function HouseholdProfilePrintPage() {
   });
 
   const { data: members } = useQuery({
-    queryKey: ["household-print-members", householdId],
+    queryKey: ["household-print-members", householdId, woredaId],
     enabled: !!woredaId && hasPermission(P.HOUSEHOLD_READ),
     queryFn: async () => {
       const { data, error } = await supabase
