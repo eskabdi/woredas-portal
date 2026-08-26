@@ -301,6 +301,120 @@ export function DocDataTable({
   );
 }
 
+/** Fixed hex palette (not Tailwind/oklch tokens) for chart segments -- the
+ * print pipeline rasterizes via html2canvas-pro, so plain hex avoids any
+ * doubt about color-function support in the canvas conversion. */
+const CHART_COLORS = [
+  "#1e40af",
+  "#0891b2",
+  "#16a34a",
+  "#d97706",
+  "#dc2626",
+  "#7c3aed",
+  "#0f766e",
+  "#c026d3",
+];
+
+/** Horizontal bar chart for a Label/Count breakdown -- rows are expected
+ * pre-sorted descending (the `count` helper in useReportsAggregate does
+ * this), which is what makes the bar lengths read top-to-bottom. */
+export function DocBarChart({ rows }: { rows: { name: string; value: number }[] }) {
+  if (rows.length === 0) return null;
+  const max = Math.max(1, ...rows.map((r) => r.value));
+  return (
+    <div className="mb-4 space-y-2">
+      {rows.map((r, i) => (
+        <div key={r.name} className="flex items-center gap-2 text-[10.5px]">
+          <div className="w-36 flex-none font-noto-ethiopic leading-tight text-slate-700">
+            {r.name}
+          </div>
+          <div className="h-4 flex-1 rounded-sm bg-slate-100">
+            <div
+              className="h-4 rounded-sm"
+              style={{
+                width: `${(r.value / max) * 100}%`,
+                backgroundColor: CHART_COLORS[i % CHART_COLORS.length],
+              }}
+            />
+          </div>
+          <div className="w-10 flex-none text-right font-semibold text-slate-800">
+            {r.value.toLocaleString()}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Donut chart with a center total and a color-coded legend. Built as an SVG
+ * ring (stroke-dasharray per segment) rather than a CSS conic-gradient --
+ * html2canvas-pro does not rasterize conic-gradient, so that would print as
+ * a blank circle; SVG shapes rasterize reliably through the same pipeline. */
+export function DocDonutChart({
+  rows,
+  centerLabelAm,
+  centerLabelEn,
+}: {
+  rows: { name: string; value: number }[];
+  centerLabelAm: string;
+  centerLabelEn: string;
+}) {
+  const total = rows.reduce((s, r) => s + r.value, 0);
+  const r = 15.9155;
+  const circumference = 2 * Math.PI * r;
+  let cumulative = 0;
+
+  return (
+    <div className="mb-4 flex items-center gap-6">
+      <div className="relative h-32 w-32 flex-none">
+        <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90">
+          <circle cx="18" cy="18" r={r} fill="none" stroke="#e2e8f0" strokeWidth="4" />
+          {rows.map((row, i) => {
+            const pct = total > 0 ? (row.value / total) * 100 : 0;
+            const segment = (pct / 100) * circumference;
+            const offset = -((cumulative / 100) * circumference);
+            cumulative += pct;
+            return (
+              <circle
+                key={row.name}
+                cx="18"
+                cy="18"
+                r={r}
+                fill="none"
+                stroke={CHART_COLORS[i % CHART_COLORS.length]}
+                strokeWidth="4"
+                strokeDasharray={`${segment} ${circumference - segment}`}
+                strokeDashoffset={offset}
+              />
+            );
+          })}
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+          <div className="text-base font-bold text-slate-900">{total.toLocaleString()}</div>
+          <div className="font-noto-ethiopic text-[8.5px] text-slate-500">{centerLabelAm}</div>
+          <div className="text-[7.5px] text-slate-400">{centerLabelEn}</div>
+        </div>
+      </div>
+      <div className="min-w-0 flex-1 space-y-1.5">
+        {rows.map((row, i) => (
+          <div key={row.name} className="flex items-center gap-2 text-[10.5px]">
+            <span
+              className="h-2.5 w-2.5 flex-none rounded-sm"
+              style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }}
+            />
+            <span className="font-noto-ethiopic min-w-0 flex-1 break-words text-slate-700">
+              {row.name}
+            </span>
+            <span className="flex-none font-semibold text-slate-800">
+              {total > 0 ? `${((row.value / total) * 100).toFixed(1)}%` : "0.0%"}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function DocSignatureBlock({
   items,
 }: {
