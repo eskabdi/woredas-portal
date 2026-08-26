@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Plus, UserPlus, MoreHorizontal } from "lucide-react";
+import { Plus, UserPlus, MoreHorizontal, Upload, Loader2, UserCircle2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +46,13 @@ import {
 } from "@/components/common/TablePagination";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
+import {
+  toWebp,
+  storageExtension,
+  PHOTO_WEBP,
+  BRANDING_WEBP,
+  type WebpOptions,
+} from "@/utils/imageCompression";
 
 const EDITABLE_ROLES = [
   { key: "registry_clerk", am: "የመዝገብ ሰራተኛ", en: "Registry Clerk" },
@@ -68,6 +75,11 @@ interface AppUserRow {
   role: string;
   status: string;
   invited_at: string | null;
+  department: string | null;
+  job_title: string | null;
+  reports_to_user_id: string | null;
+  signature_path: string | null;
+  photo_path: string | null;
 }
 
 export function UsersRolesTab() {
@@ -81,7 +93,9 @@ export function UsersRolesTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("app_user")
-        .select("user_id, full_name, role, status, invited_at")
+        .select(
+          "user_id, full_name, role, status, invited_at, department, job_title, reports_to_user_id, signature_path, photo_path",
+        )
         .eq("woreda_id", woredaId as string)
         .order("full_name");
       if (error) throw error;
@@ -125,6 +139,12 @@ export function UsersRolesTab() {
     for (const u of users) {
       if (map[u.role] !== undefined) map[u.role] += 1;
     }
+    return map;
+  }, [users]);
+
+  const usersById = useMemo(() => {
+    const map: Record<string, AppUserRow> = {};
+    for (const u of users) map[u.user_id] = u;
     return map;
   }, [users]);
 
@@ -216,73 +236,93 @@ export function UsersRolesTab() {
             </Button>
           </div>
           <Card className="overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-600">
-                <tr>
-                  <Th am="ስም" en="Name" />
-                  <Th am="ሚና" en="Role" />
-                  <Th am="ሁኔታ" en="Status" />
-                  <Th am="ድርጊት" en="Actions" className="text-right" />
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-slate-600">
                   <tr>
-                    <td colSpan={4} className="px-4 py-6 text-center text-slate-500">
-                      Loading…
-                    </td>
+                    <Th am="ፎቶ" en="Photo" />
+                    <Th am="ስም" en="Name" />
+                    <Th am="ሚና" en="Role" />
+                    <Th am="የሥራ ክፍል" en="Department" />
+                    <Th am="የሥራ ድርሻ" en="Job Title" />
+                    <Th am="ተጠሪነት" en="Reports To" />
+                    <Th am="ፊርማ" en="Signature" />
+                    <Th am="ሁኔታ" en="Status" />
+                    <Th am="ድርጊት" en="Actions" className="text-right" />
                   </tr>
-                ) : filteredUsers.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-4 py-6 text-center text-slate-500">
-                      No users
-                    </td>
-                  </tr>
-                ) : (
-                  pageRows.map((u) => (
-                    <tr key={u.user_id} className="border-t border-slate-100">
-                      <td className="px-4 py-3 text-slate-800">{u.full_name}</td>
-                      <td className="px-4 py-3">
-                        <span className="font-noto-ethiopic">
-                          {ROLE_LABEL_MAP[u.role]?.am ?? u.role}
-                        </span>
-                        <span className="ml-1 text-xs text-slate-500">
-                          / {ROLE_LABEL_MAP[u.role]?.en ?? u.role}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <StatusChip status={u.status} />
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              disabled={u.role === "tenant_admin" || u.role === "super_admin"}
-                              onClick={() => setChangeUser(u)}
-                            >
-                              <span className="font-noto-ethiopic">ሚና ቀይር</span>
-                              <span className="ml-2 text-xs text-slate-500">/ Change Role</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              disabled={u.status === "suspended" || u.user_id === callerId}
-                              onClick={() => setSuspendUser(u)}
-                            >
-                              <span className="font-noto-ethiopic text-red-600">አግድ</span>
-                              <span className="ml-2 text-xs text-slate-500">/ Suspend</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                </thead>
+                <tbody>
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={9} className="px-4 py-6 text-center text-slate-500">
+                        Loading…
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : filteredUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="px-4 py-6 text-center text-slate-500">
+                        No users
+                      </td>
+                    </tr>
+                  ) : (
+                    pageRows.map((u) => (
+                      <tr key={u.user_id} className="border-t border-slate-100">
+                        <td className="px-4 py-3">
+                          <StaffThumb path={u.photo_path} shape="circle" />
+                        </td>
+                        <td className="px-4 py-3 text-slate-800">{u.full_name}</td>
+                        <td className="px-4 py-3">
+                          <span className="font-noto-ethiopic">
+                            {ROLE_LABEL_MAP[u.role]?.am ?? u.role}
+                          </span>
+                          <span className="ml-1 text-xs text-slate-500">
+                            / {ROLE_LABEL_MAP[u.role]?.en ?? u.role}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-slate-600">{u.department || "—"}</td>
+                        <td className="px-4 py-3 text-slate-600">{u.job_title || "—"}</td>
+                        <td className="px-4 py-3 text-slate-600">
+                          {u.reports_to_user_id
+                            ? (usersById[u.reports_to_user_id]?.full_name ?? "—")
+                            : "—"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <StaffThumb path={u.signature_path} shape="square" />
+                        </td>
+                        <td className="px-4 py-3">
+                          <StatusChip status={u.status} />
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                disabled={u.role === "tenant_admin" || u.role === "super_admin"}
+                                onClick={() => setChangeUser(u)}
+                              >
+                                <span className="font-noto-ethiopic">ሚና ቀይር</span>
+                                <span className="ml-2 text-xs text-slate-500">/ Change Role</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                disabled={u.status === "suspended" || u.user_id === callerId}
+                                onClick={() => setSuspendUser(u)}
+                              >
+                                <span className="font-noto-ethiopic text-red-600">አግድ</span>
+                                <span className="ml-2 text-xs text-slate-500">/ Suspend</span>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
             <TablePagination
               page={page}
               pageSize={pageSize}
@@ -329,6 +369,7 @@ export function UsersRolesTab() {
         open={inviteOpen}
         onOpenChange={setInviteOpen}
         woredaId={woredaId}
+        users={users}
         onDone={refresh}
       />
 
@@ -391,21 +432,172 @@ function Th({ am, en, className }: { am: string; en: string; className?: string 
   );
 }
 
+/** Small signed-URL thumbnail for a staff-assets object; a dash when there is none. */
+function StaffThumb({ path, shape }: { path: string | null; shape: "circle" | "square" }) {
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      if (!path) {
+        setSignedUrl(null);
+        return;
+      }
+      const { data } = await supabase.storage.from("staff-assets").createSignedUrl(path, 600);
+      if (!cancelled) setSignedUrl(data?.signedUrl ?? null);
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [path]);
+
+  if (!path) return <span className="text-slate-400">—</span>;
+  if (!signedUrl)
+    return (
+      <div
+        className={`h-9 w-9 animate-pulse bg-slate-100 ${shape === "circle" ? "rounded-full" : "rounded-md"}`}
+      />
+    );
+  return (
+    <img
+      src={signedUrl}
+      alt=""
+      className={`h-9 w-9 border border-slate-200 object-cover ${shape === "circle" ? "rounded-full" : "rounded-md bg-white"}`}
+    />
+  );
+}
+
+/** Inline photo/signature uploader for the Invite dialog, before the user row exists. */
+function StaffImageField({
+  am,
+  en,
+  woredaId,
+  webpOptions,
+  shape,
+  value,
+  onChange,
+}: {
+  am: string;
+  en: string;
+  woredaId: string | null;
+  webpOptions: WebpOptions;
+  shape: "circle" | "square";
+  value: string | null;
+  onChange: (path: string | null) => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      if (!value) {
+        setPreviewUrl(null);
+        return;
+      }
+      const { data } = await supabase.storage.from("staff-assets").createSignedUrl(value, 600);
+      if (!cancelled) setPreviewUrl(data?.signedUrl ?? null);
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [value]);
+
+  async function onFile(file: File) {
+    if (!woredaId) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File must be under 5MB");
+      return;
+    }
+    setUploading(true);
+    try {
+      const upload = await toWebp(file, webpOptions);
+      const path = `${woredaId}/${crypto.randomUUID()}.${storageExtension(upload, "jpg")}`;
+      const { error } = await supabase.storage
+        .from("staff-assets")
+        .upload(path, upload, { upsert: false, contentType: upload.type });
+      if (error) throw error;
+      onChange(path);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div>
+      <Label>
+        <span className="font-noto-ethiopic">{am}</span>
+        <span className="ml-1 text-xs text-slate-500">/ {en}</span>
+      </Label>
+      <div className="mt-1 flex items-center gap-3">
+        <div
+          className={`flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden border border-slate-200 bg-slate-50 ${shape === "circle" ? "rounded-full" : "rounded-md"}`}
+        >
+          {previewUrl ? (
+            <img src={previewUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <UserCircle2 className="h-8 w-8 text-slate-300" />
+          )}
+        </div>
+        <label className="flex cursor-pointer items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+          {uploading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Upload className="h-4 w-4" />
+          )}
+          <span>Upload</span>
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) onFile(f);
+            }}
+          />
+        </label>
+      </div>
+    </div>
+  );
+}
+
 function InviteDialog({
   open,
   onOpenChange,
   woredaId,
+  users,
   onDone,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   woredaId: string | null;
+  users: AppUserRow[];
   onDone: () => void;
 }) {
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [role, setRole] = useState<string>("registry_clerk");
+  const [department, setDepartment] = useState("");
+  const [jobTitle, setJobTitle] = useState("");
+  const [reportsTo, setReportsTo] = useState<string>("none");
+  const [photoPath, setPhotoPath] = useState<string | null>(null);
+  const [signaturePath, setSignaturePath] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  function reset() {
+    setEmail("");
+    setFullName("");
+    setRole("registry_clerk");
+    setDepartment("");
+    setJobTitle("");
+    setReportsTo("none");
+    setPhotoPath(null);
+    setSignaturePath(null);
+  }
 
   async function submit() {
     if (!email || !fullName || !woredaId) {
@@ -415,7 +607,19 @@ function InviteDialog({
     setSubmitting(true);
     const { data, error } = await supabase.functions.invoke<{ error?: string }>(
       "invite-tenant-user",
-      { body: { email, full_name: fullName, role, woredaId } },
+      {
+        body: {
+          email,
+          full_name: fullName,
+          role,
+          woredaId,
+          department: department || null,
+          job_title: jobTitle || null,
+          reports_to_user_id: reportsTo === "none" ? null : reportsTo,
+          photo_path: photoPath,
+          signature_path: signaturePath,
+        },
+      },
     );
     setSubmitting(false);
     if (error || data?.error) {
@@ -423,16 +627,14 @@ function InviteDialog({
       return;
     }
     toast.success("ግብዣ ተልኳል / Invitation sent");
-    setEmail("");
-    setFullName("");
-    setRole("registry_clerk");
+    reset();
     onOpenChange(false);
     onDone();
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             <span className="font-noto-ethiopic">ተጠቃሚ ጨምር</span>
@@ -464,6 +666,63 @@ function InviteDialog({
               </SelectContent>
             </Select>
           </div>
+          <div>
+            <Label>
+              <span className="font-noto-ethiopic">የሥራ ክፍል</span>
+              <span className="ml-1 text-xs text-slate-500">/ Department</span>
+            </Label>
+            <Input value={department} onChange={(e) => setDepartment(e.target.value)} />
+          </div>
+          <div>
+            <Label>
+              <span className="font-noto-ethiopic">የሥራ ድርሻ</span>
+              <span className="ml-1 text-xs text-slate-500">/ Job Title</span>
+            </Label>
+            <Input value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} />
+          </div>
+          <div>
+            <Label>
+              <span className="font-noto-ethiopic">ተጠሪነት</span>
+              <span className="ml-1 text-xs text-slate-500">/ Report To</span>
+            </Label>
+            <Select value={reportsTo} onValueChange={setReportsTo}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">
+                  <span className="font-noto-ethiopic">የለም</span>
+                  <span className="ml-2 text-xs text-slate-500">/ None</span>
+                </SelectItem>
+                {users.map((u) => (
+                  <SelectItem key={u.user_id} value={u.user_id}>
+                    {u.full_name}
+                    <span className="ml-2 text-xs text-slate-500">
+                      ({ROLE_LABEL_MAP[u.role]?.en ?? u.role})
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <StaffImageField
+            am="ፎቶ"
+            en="Photo"
+            woredaId={woredaId}
+            webpOptions={PHOTO_WEBP}
+            shape="circle"
+            value={photoPath}
+            onChange={setPhotoPath}
+          />
+          <StaffImageField
+            am="ፊርማ"
+            en="Signature"
+            woredaId={woredaId}
+            webpOptions={BRANDING_WEBP}
+            shape="square"
+            value={signaturePath}
+            onChange={setSignaturePath}
+          />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>

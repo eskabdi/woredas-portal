@@ -17,11 +17,16 @@ export type Database = {
       app_user: {
         Row: {
           created_at: string
+          department: string | null
           full_name: string
           invited_at: string | null
           invited_by_user_id: string | null
+          job_title: string | null
           last_login_at: string | null
+          photo_path: string | null
+          reports_to_user_id: string | null
           role: string
+          signature_path: string | null
           status: string
           updated_at: string
           user_id: string
@@ -30,11 +35,16 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          department?: string | null
           full_name: string
           invited_at?: string | null
           invited_by_user_id?: string | null
+          job_title?: string | null
           last_login_at?: string | null
+          photo_path?: string | null
+          reports_to_user_id?: string | null
           role: string
+          signature_path?: string | null
           status?: string
           updated_at?: string
           user_id: string
@@ -43,11 +53,16 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          department?: string | null
           full_name?: string
           invited_at?: string | null
           invited_by_user_id?: string | null
+          job_title?: string | null
           last_login_at?: string | null
+          photo_path?: string | null
+          reports_to_user_id?: string | null
           role?: string
+          signature_path?: string | null
           status?: string
           updated_at?: string
           user_id?: string
@@ -58,6 +73,13 @@ export type Database = {
           {
             foreignKeyName: "app_user_invited_by_user_id_fkey"
             columns: ["invited_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "app_user"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "app_user_reports_to_user_id_fkey"
+            columns: ["reports_to_user_id"]
             isOneToOne: false
             referencedRelation: "app_user"
             referencedColumns: ["user_id"]

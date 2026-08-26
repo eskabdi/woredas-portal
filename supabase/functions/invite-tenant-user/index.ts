@@ -19,6 +19,11 @@ interface Body {
   full_name: string;
   role: string;
   woredaId: string;
+  department?: string | null;
+  job_title?: string | null;
+  reports_to_user_id?: string | null;
+  signature_path?: string | null;
+  photo_path?: string | null;
 }
 
 const ALLOWED_ROLES = new Set([
@@ -52,7 +57,17 @@ Deno.serve(async (req) => {
     const callerId = userData.user.id;
 
     const body = (await req.json()) as Body;
-    const { email, full_name, role, woredaId } = body ?? ({} as Body);
+    const {
+      email,
+      full_name,
+      role,
+      woredaId,
+      department,
+      job_title,
+      reports_to_user_id,
+      signature_path,
+      photo_path,
+    } = body ?? ({} as Body);
     if (!email || !full_name || !role || !woredaId) {
       return json(400, { error: "Missing required fields" });
     }
@@ -79,6 +94,16 @@ Deno.serve(async (req) => {
     const isTenantAdmin = caller.role === "tenant_admin" && caller.woreda_id === woredaId;
     if (!isSuper && !isTenantAdmin) return json(403, { error: "Forbidden" });
 
+    if (reports_to_user_id) {
+      const { data: manager } = await admin
+        .from("app_user")
+        .select("user_id")
+        .eq("user_id", reports_to_user_id)
+        .eq("woreda_id", woredaId)
+        .maybeSingle();
+      if (!manager) return json(400, { error: "Invalid reports-to user" });
+    }
+
     // Send invite
     const { data: invited, error: inviteErr } = await admin.auth.admin.inviteUserByEmail(email);
     if (inviteErr || !invited?.user) {
@@ -97,6 +122,11 @@ Deno.serve(async (req) => {
       status: "pending",
       invited_by_user_id: callerId,
       invited_at: new Date().toISOString(),
+      department: department || null,
+      job_title: job_title || null,
+      reports_to_user_id: reports_to_user_id || null,
+      signature_path: signature_path || null,
+      photo_path: photo_path || null,
     });
     if (insertErr) {
       return json(400, { error: `Invite sent but profile setup failed: ${insertErr.message}` });
