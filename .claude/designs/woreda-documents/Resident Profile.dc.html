@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="_ds/modernist-4b3a5c50-da2e-44b5-81ca-7aa846da9d0a/styles.css">
+  <script src="_ds/modernist-4b3a5c50-da2e-44b5-81ca-7aa846da9d0a/_ds_bundle.js"></script>
+  <script src="./doc-page.js"></script>
+  <script src="./image-slot.js"></script>
+  <style>doc-page:not(:defined){visibility:hidden} body{margin:0}</style>
+</helmet>
+<doc-page size="a4" margin="0.6in">
+
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;">
+    <div style="display:flex;gap:14px;align-items:flex-start;">
+      <div class="grayscale" style="width:56px;height:56px;border:1px solid var(--color-divider);flex:none;">
+        <image-slot id="logo-resident-profile" shape="rect" radius="0" style="width:56px;height:56px" placeholder="Logo"></image-slot>
+      </div>
+      <div>
+      <div style="font-size:11px;letter-spacing:.1em;color:var(--color-accent-700);font-weight:600;">የሐረሪ ብሔራዊ ክልላዊ መንግስት</div>
+      <div style="font-size:9px;letter-spacing:.06em;text-transform:uppercase;opacity:.5;margin-top:1px;">Harari People's Regional State</div>
+      <h1 style="font-size:25px;margin:6px 0 0;">አቦከር ወረዳ መስተዳድር</h1>
+      <div style="font-size:12px;opacity:.6;margin-top:2px;">Aboker Woreda Administration</div>
+      <div style="font-size:11px;margin-top:8px;color:color-mix(in srgb, var(--color-text) 55%, transparent);">ሐረር፣ የሐረሪ ክልል · ስልክ +251 25 666 0142 · aboker@harariadmin.gov.et</div>
+      </div>
+    </div>
+    <div style="text-align:right;">
+      <span class="tag tag-accent">የነዋሪ መገለጫ</span>
+      <div style="font-size:9px;letter-spacing:.05em;text-transform:uppercase;opacity:.5;margin-top:4px;">Resident Profile</div>
+      <div style="font-size:11px;margin-top:8px;">ቁ. <strong>ABK/RES/2018/0934</strong></div>
+      <div style="font-size:11px;color:color-mix(in srgb, var(--color-text) 55%, transparent);">ነሐሴ 20፣ 2018 ዓ.ም · Aug 26, 2026</div>
+    </div>
+  </div>
+  <hr class="hr" style="margin:16px 0 22px;">
+
+  <h6 style="color:var(--color-accent-700);margin-bottom:14px;">01 — ማንነት <span style="font-size:10px;font-weight:400;opacity:.55;">Identity</span></h6>
+  <div style="display:grid;grid-template-columns:132px 1fr;gap:24px;align-items:start;">
+    <div class="grayscale" style="border:1px solid var(--color-divider);width:132px;height:164px;">
+      <image-slot id="resident-photo" shape="rect" radius="0" style="width:132px;height:164px" placeholder="ፎቶ · Photo"></image-slot>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px 22px;">
+      <div style="grid-column:span 3;">
+        <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:3px;">ሙሉ ስም <span style="opacity:.65;">Full Name</span></div>
+        <div style="font-size:19px;font-weight:600;font-family:var(--font-heading);">አበበ በቀለ ታደሰ</div>
+        <div style="font-size:11px;opacity:.55;margin-top:1px;">Abebe Bekele Tadesse</div>
+      </div>
+      <div><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:3px;">የነዋሪ መለያ ቁ. <span style="opacity:.65;">Resident ID</span></div><div style="font-size:15px;font-weight:600;">ABK-RES-048213</div></div>
+      <div><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:3px;">ጾታ <span style="opacity:.65;">Gender</span></div><div style="font-size:15px;font-weight:600;">ወንድ <span style="font-size:11px;font-weight:400;opacity:.55;">Male</span></div></div>
+      <div><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:3px;">የትውልድ ቀን <span style="opacity:.65;">Date of Birth</span></div><div style="font-size:15px;font-weight:600;">ጥር 14፣ 1985 ዓ.ም <span style="font-weight:400;font-size:11px;opacity:.55;">(Jan 22, 1993)</span></div></div>
+      <div><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:3px;">የትውልድ ቦታ <span style="opacity:.65;">Place of Birth</span></div><div style="font-size:15px;font-weight:600;">ሐረር፣ የሐረሪ ክልል <span style="font-size:11px;font-weight:400;opacity:.55;">Harar</span></div></div>
+      <div><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:3px;">ብሔር <span style="opacity:.65;">Ethnicity</span></div><div style="font-size:15px;font-weight:600;">ኦሮሞ <span style="font-size:11px;font-weight:400;opacity:.55;">Oromo</span></div></div>
+      <div><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:3px;">ሃይማኖት <span style="opacity:.65;">Religion</span></div><div style="font-size:15px;font-weight:600;">ሙስሊም <span style="font-size:11px;font-weight:400;opacity:.55;">Muslim</span></div></div>
+    </div>
+  </div>
+
+  <hr class="hr" style="margin:22px 0;">
+  <h6 style="color:var(--color-accent-700);margin-bottom:14px;">02 — አድራሻ <span style="font-size:10px;font-weight:400;opacity:.55;">Contact &amp; Residence</span></h6>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px 22px;">
+    <div><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:3px;">ስልክ ቁጥር <span style="opacity:.65;">Phone</span></div><div style="font-size:15px;font-weight:600;">+251 91 234 5678</div></div>
+    <div><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:3px;">ኢሜይል <span style="opacity:.65;">Email</span></div><div style="font-size:15px;font-weight:600;">abebe.bekele@example.com</div></div>
+    <div><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:3px;">የቤት ዓይነት <span style="opacity:.65;">House Type</span></div><div style="font-size:15px;font-weight:600;">የግል <span style="font-size:11px;font-weight:400;opacity:.55;">Private</span></div></div>
+    <div><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:3px;">ወረዳ <span style="opacity:.65;">Woreda</span></div><div style="font-size:15px;font-weight:600;">አቦከር <span style="font-size:11px;font-weight:400;opacity:.55;">Aboker</span></div></div>
+    <div><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:3px;">ቀበሌ <span style="opacity:.65;">Kebele</span></div><div style="font-size:15px;font-weight:600;">07</div></div>
+    <div><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:3px;">የቤት ቁጥር <span style="opacity:.65;">House Number</span></div><div style="font-size:15px;font-weight:600;">145</div></div>
+    <div style="grid-column:span 3;"><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:3px;">አድራሻ <span style="opacity:.65;">Address</span></div><div style="font-size:15px;font-weight:600;">አቦከር ወረዳ፣ ቀበሌ 07፣ ቀጠና 2፣ የቤት ቁ. 145፣ ሐረር</div></div>
+  </div>
+
+  <hr class="hr" style="margin:22px 0;">
+  <h6 style="color:var(--color-accent-700);margin-bottom:14px;">03 — ትምህርትና ሙያ <span style="font-size:10px;font-weight:400;opacity:.55;">Education &amp; Occupation</span></h6>
+  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:18px 22px;">
+    <div><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:3px;">የትምህርት ደረጃ <span style="opacity:.65;">Education</span></div><div style="font-size:15px;font-weight:600;">ዲፕሎማ <span style="font-size:11px;font-weight:400;opacity:.55;">Diploma (TVET)</span></div></div>
+    <div><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:3px;">ሙያ <span style="opacity:.65;">Occupation</span></div><div style="font-size:15px;font-weight:600;">የግል ነጋዴ <span style="font-size:11px;font-weight:400;opacity:.55;">Private Trader</span></div></div>
+  </div>
+
+  <hr class="hr" style="margin:22px 0;">
+  <h6 style="color:var(--color-accent-700);margin-bottom:14px;">04 — ማረጋገጫ <span style="font-size:10px;font-weight:400;opacity:.55;">Certification</span></h6>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;">
+    <div style="border-top:1px solid var(--color-divider);padding-top:6px;margin-top:44px;font-size:11px;">ፊርማ · ነዋሪ<br><span style="opacity:.55;font-size:10px;">Signature — Resident</span></div>
+    <div style="border-top:1px solid var(--color-divider);padding-top:6px;margin-top:44px;font-size:11px;">ፊርማ · መዝጋቢ<br><span style="opacity:.55;font-size:10px;">Signature — Registrar</span></div>
+    <div style="border:1px solid var(--color-divider);min-height:74px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:color-mix(in srgb, var(--color-text) 45%, transparent);">ኦፊሴላዊ ማህተም<br><span style="opacity:.75;font-size:9px;">Official Stamp</span></div>
+  </div>
+
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;border:1px solid var(--color-divider);padding:10px 14px;margin-top:26px;font-size:10.5px;">
+    <div><strong style="letter-spacing:.03em;">የሰነድ ማረጋገጫ</strong> <span style="opacity:.6;font-size:9.5px;">Document Verification</span> · መለያ ABK-RES-048213-2018 · portal.harariadmin.gov.et/verify</div>
+    <div style="color:color-mix(in srgb, var(--color-text) 50%, transparent);">የታተመው ቀን Aug 26, 2026</div>
+  </div>
+  <div style="margin-top:14px;text-align:center;">
+    <div style="font-size:10px;">የሐረሪ ወረዳዎች አስተዳደር ሥርዓት · አቦከር ወረዳ · በራስ-ሰር የተዘጋጀ ሰነድ</div>
+    <div style="font-size:9px;opacity:.55;margin-top:2px;">Harari Woreda Administration System · Aboker Woreda · System-generated document</div>
+  </div>
+
+</doc-page>
+</x-dc>
+</body>
+</html>

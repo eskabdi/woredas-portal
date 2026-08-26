@@ -712,6 +712,18 @@ function ResidentProfilePage() {
                       })
                     }
                   />
+                  <QuickAction
+                    permission={P.RESIDENT_READ}
+                    icon={Printer}
+                    am="የግል መገለጫ አትም"
+                    en="Print Profile"
+                    onClick={() =>
+                      navigate({
+                        to: "/woreda/residents/$residentId/print",
+                        params: { residentId },
+                      })
+                    }
+                  />
                 </div>
               </div>
             </div>

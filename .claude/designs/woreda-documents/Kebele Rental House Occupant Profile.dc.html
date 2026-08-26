@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="_ds/modernist-4b3a5c50-da2e-44b5-81ca-7aa846da9d0a/styles.css">
+  <script src="_ds/modernist-4b3a5c50-da2e-44b5-81ca-7aa846da9d0a/_ds_bundle.js"></script>
+  <script src="./doc-page.js"></script>
+  <script src="./image-slot.js"></script>
+  <style>doc-page:not(:defined){visibility:hidden} body{margin:0}</style>
+</helmet>
+<doc-page size="a4" margin="0.6in">
+
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;">
+    <div style="display:flex;gap:14px;align-items:flex-start;">
+      <div class="grayscale" style="width:56px;height:56px;border:1px solid var(--color-divider);flex:none;">
+        <image-slot id="logo-rental-profile" shape="rect" radius="0" style="width:56px;height:56px" placeholder="Logo"></image-slot>
+      </div>
+      <div>
+      <div style="font-size:11px;letter-spacing:.1em;color:var(--color-accent-700);font-weight:600;">የሐረሪ ብሔራዊ ክልላዊ መንግስት</div>
+      <div style="font-size:9px;letter-spacing:.06em;text-transform:uppercase;opacity:.5;margin-top:1px;">Harari People's Regional State</div>
+      <h1 style="font-size:25px;margin:6px 0 0;">አቦከር ወረዳ መስተዳድር</h1>
+      <div style="font-size:12px;opacity:.6;margin-top:2px;">Aboker Woreda Administration</div>
+      <div style="font-size:11px;margin-top:8px;color:color-mix(in srgb, var(--color-text) 55%, transparent);">ሐረር፣ የሐረሪ ክልል · ስልክ +251 25 666 0142 · aboker@harariadmin.gov.et</div>
+      </div>
+    </div>
+    <div style="text-align:right;">
+      <span class="tag tag-accent">የቀበሌ ኪራይ ቤት ተከራይ መገለጫ</span>
+      <div style="font-size:9px;letter-spacing:.05em;text-transform:uppercase;opacity:.5;margin-top:4px;">Kebele Rental House Occupant Profile</div>
+      <div style="font-size:11px;margin-top:8px;">ቁ. <strong>ABK/KRH/2018/0071</strong></div>
+      <div style="font-size:11px;color:color-mix(in srgb, var(--color-text) 55%, transparent);">ነሐሴ 20፣ 2018 ዓ.ም · Aug 26, 2026</div>
+    </div>
+  </div>
+  <hr class="hr" style="margin:16px 0 22px;">
+
+  <h6 style="color:var(--color-accent-700);margin-bottom:14px;">01 — የቤት ዝርዝር <span style="font-size:10px;font-weight:400;opacity:.55;">House Details</span></h6>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px 22px;">
+    <div><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:3px;">የቤት መለያ ቁ. <span style="opacity:.65;">Rental House ID</span></div><div style="font-size:15px;font-weight:600;">ABK-KRH-00071</div></div>
+    <div><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:3px;">የቤት ቁጥር <span style="opacity:.65;">House Number</span></div><div style="font-size:15px;font-weight:600;">212</div></div>
+    <div><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:3px;">ሁኔታ <span style="opacity:.65;">Occupancy Status</span></div><div style="font-size:15px;font-weight:600;">ተይዟል <span style="font-size:11px;font-weight:400;opacity:.55;">Occupied</span></div></div>
+    <div><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:3px;">ወረዳ <span style="opacity:.65;">Woreda</span></div><div style="font-size:15px;font-weight:600;">አቦከር <span style="font-size:11px;font-weight:400;opacity:.55;">Aboker</span></div></div>
+    <div><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:3px;">ቀበሌ <span style="opacity:.65;">Kebele</span></div><div style="font-size:15px;font-weight:600;">03</div></div>
+    <div><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:3px;">የመኝታ ክፍሎች <span style="opacity:.65;">Bedrooms</span></div><div style="font-size:15px;font-weight:600;">2</div></div>
+    <div><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:3px;">ወርሃዊ ኪራይ (መደበኛ) <span style="opacity:.65;">Monthly Rent (Standard)</span></div><div style="font-size:15px;font-weight:600;">ብር 850.00</div></div>
+  </div>
+
+  <hr class="hr" style="margin:22px 0;">
+  <h6 style="color:var(--color-accent-700);margin-bottom:14px;">02 — የተከራይ መረጃ <span style="font-size:10px;font-weight:400;opacity:.55;">Occupant Information</span></h6>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px 22px;">
+    <div style="grid-column:span 2;">
+      <div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:3px;">ሙሉ ስም <span style="opacity:.65;">Full Name</span></div>
+      <div style="font-size:18px;font-weight:600;font-family:var(--font-heading);">ሳራ መሀመድ ዩሱፍ</div>
+      <div style="font-size:11px;opacity:.55;margin-top:1px;">Sara Mohammed Yusuf</div>
+    </div>
+    <div><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:3px;">የነዋሪ መለያ ቁ. <span style="opacity:.65;">Resident ID</span></div><div style="font-size:15px;font-weight:600;">ABK-RES-051187</div></div>
+    <div><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:3px;">ጾታ <span style="opacity:.65;">Sex</span></div><div style="font-size:15px;font-weight:600;">ሴት <span style="font-size:11px;font-weight:400;opacity:.55;">Female</span></div></div>
+    <div><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:3px;">የትውልድ ቀን <span style="opacity:.65;">Date of Birth</span></div><div style="font-size:15px;font-weight:600;">መስከረም 3፣ 1990 ዓ.ም <span style="font-weight:400;font-size:11px;opacity:.55;">(Sep 13, 1997)</span></div></div>
+    <div><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:3px;">የትውልድ ቦታ <span style="opacity:.65;">Place of Birth</span></div><div style="font-size:15px;font-weight:600;">ድሬዳዋ <span style="font-size:11px;font-weight:400;opacity:.55;">Dire Dawa</span></div></div>
+    <div><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:3px;">ስልክ ቁጥር <span style="opacity:.65;">Phone</span></div><div style="font-size:15px;font-weight:600;">+251 92 345 6712</div></div>
+    <div><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:3px;">ሙያ <span style="opacity:.65;">Occupation</span></div><div style="font-size:15px;font-weight:600;">የመጀመሪያ ደረጃ መምህር <span style="font-size:11px;font-weight:400;opacity:.55;">Primary School Teacher</span></div></div>
+    <div style="grid-column:span 2;"><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:3px;">የስራ አድራሻ <span style="opacity:.65;">Work Address</span></div><div style="font-size:15px;font-weight:600;">ሐረር አጠቃላይ ሁለተኛ ደረጃ ትምህርት ቤት፣ አቦከር ወረዳ</div></div>
+  </div>
+
+  <hr class="hr" style="margin:22px 0;">
+  <h6 style="color:var(--color-accent-700);margin-bottom:14px;">03 — የኪራይ ዝርዝር <span style="font-size:10px;font-weight:400;opacity:.55;">Tenancy Details</span></h6>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px 22px;">
+    <div><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:3px;">ኪራይ የጀመረበት ቀን <span style="opacity:.65;">Rent Start Date</span></div><div style="font-size:15px;font-weight:600;">ሐምሌ 1፣ 2014 ዓ.ም <span style="font-weight:400;font-size:11px;opacity:.55;">(Jul 8, 2022)</span></div></div>
+    <div><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:3px;">የተስማማበት ወርሃዊ ኪራይ <span style="opacity:.65;">Agreed Monthly Rent</span></div><div style="font-size:15px;font-weight:600;">ብር 850.00</div></div>
+    <div><div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 55%, transparent);margin-bottom:3px;">የተቋረጠበት ቀን <span style="opacity:.65;">Termination Date</span></div><div style="font-size:14px;font-weight:600;opacity:.55;font-style:italic;">የለም · None</div></div>
+  </div>
+
+  <hr class="hr" style="margin:22px 0;">
+  <h6 style="color:var(--color-accent-700);margin-bottom:14px;">04 — የመኖሪያ ታሪክ <span style="font-size:10px;font-weight:400;opacity:.55;">Occupancy History</span></h6>
+  <table class="table">
+    <thead><tr>
+      <th>ተከራይ <span style="display:block;font-size:9px;font-weight:400;opacity:.65;">Occupant</span></th>
+      <th>ጊዜ <span style="display:block;font-size:9px;font-weight:400;opacity:.65;">Period</span></th>
+      <th>ሁኔታ <span style="display:block;font-size:9px;font-weight:400;opacity:.65;">Status</span></th>
+    </tr></thead>
+    <tbody>
+      <tr><td>ሳራ መሀመድ ዩሱፍ<br><span style="font-size:11px;opacity:.55;">Sara Mohammed Yusuf</span></td><td>Jul 8, 2022 – እስካሁን</td><td><span class="tag tag-accent">ንቁ · Active</span></td></tr>
+      <tr><td>ግርማ ወልደ ተክሌ<br><span style="font-size:11px;opacity:.55;">Girma Wolde Tekle</span></td><td>Jan 18, 2019 – Jun 27, 2022</td><td><span class="tag tag-neutral">ተለቋል · Vacated</span></td></tr>
+    </tbody>
+  </table>
+
+  <hr class="hr" style="margin:22px 0;">
+  <h6 style="color:var(--color-accent-700);margin-bottom:14px;">05 — ማረጋገጫ <span style="font-size:10px;font-weight:400;opacity:.55;">Certification</span></h6>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;">
+    <div style="border-top:1px solid var(--color-divider);padding-top:6px;margin-top:44px;font-size:11px;">ፊርማ · ተከራይ<br><span style="opacity:.55;font-size:10px;">Signature — Occupant</span></div>
+    <div style="border-top:1px solid var(--color-divider);padding-top:6px;margin-top:44px;font-size:11px;">ፊርማ · የቀበሌ አስተዳዳሪ<br><span style="opacity:.55;font-size:10px;">Signature — Kebele Administrator</span></div>
+    <div style="border:1px solid var(--color-divider);min-height:74px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:color-mix(in srgb, var(--color-text) 45%, transparent);">ኦፊሴላዊ ማህተም<br><span style="opacity:.75;font-size:9px;">Official Stamp</span></div>
+  </div>
+
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;border:1px solid var(--color-divider);padding:10px 14px;margin-top:26px;font-size:10.5px;">
+    <div><strong style="letter-spacing:.03em;">የሰነድ ማረጋገጫ</strong> <span style="opacity:.6;font-size:9.5px;">Document Verification</span> · መለያ ABK-KRH-00071-2018 · portal.harariadmin.gov.et/verify</div>
+    <div style="color:color-mix(in srgb, var(--color-text) 50%, transparent);">የታተመው ቀን Aug 26, 2026</div>
+  </div>
+  <div style="margin-top:14px;text-align:center;">
+    <div style="font-size:10px;">የሐረሪ ወረዳዎች አስተዳደር ሥርዓት · አቦከር ወረዳ · በራስ-ሰር የተዘጋጀ ሰነድ</div>
+    <div style="font-size:9px;opacity:.55;margin-top:2px;">Harari Woreda Administration System · Aboker Woreda · System-generated document</div>
+  </div>
+
+</doc-page>
+</x-dc>
+</body>
+</html>

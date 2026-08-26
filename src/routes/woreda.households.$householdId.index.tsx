@@ -333,6 +333,18 @@ function HouseholdDetailPage() {
                   <span className="font-noto-ethiopic">አስተካክል</span>
                   <span className="ml-1 text-xs opacity-70">/ Edit</span>
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() =>
+                    navigate({
+                      to: "/woreda/households/$householdId/print",
+                      params: { householdId },
+                    })
+                  }
+                >
+                  <Printer className="mr-2 h-4 w-4" />
+                  <span className="font-noto-ethiopic">የቤተሰብ መገለጫ አትም</span>
+                  <span className="ml-1 text-xs opacity-70">/ Print Household Profile</span>
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
