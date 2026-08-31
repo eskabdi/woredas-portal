@@ -432,7 +432,12 @@ function PrintPage() {
   const doPrint = useReactToPrint({
     contentRef: cardsRef,
     documentTitle: cred?.credential_number ? `credential-${cred.credential_number}` : "credential",
-    pageStyle: `@page { size: ${orientation === "portrait" ? "54mm 85.6mm" : "85.6mm 54mm"}; margin: 0; } @media print { html, body { margin: 0 !important; padding: 0 !important; width: ${orientation === "portrait" ? "54mm" : "85.6mm"}; height: ${orientation === "portrait" ? "85.6mm" : "54mm"}; } }`,
+    // print-color-adjust here (not just in the page's own <style> block) is
+    // load-bearing: react-to-print prints from its own iframe, and copied
+    // stylesheets aren't guaranteed to carry every rule, so the one style
+    // that keeps the template background from being dropped has to be
+    // injected directly into pageStyle to be certain it lands.
+    pageStyle: `@page { size: ${orientation === "portrait" ? "54mm 85.6mm" : "85.6mm 54mm"}; margin: 0; } @media print { html, body { margin: 0 !important; padding: 0 !important; width: ${orientation === "portrait" ? "54mm" : "85.6mm"}; height: ${orientation === "portrait" ? "85.6mm" : "54mm"}; } * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; } }`,
   });
 
   const handlePrint = async () => {
@@ -1008,6 +1013,20 @@ function PrintPage() {
             width: 85.6mm !important;
             height: 54mm !important;
             display: block !important;
+          }
+          /* Chrome/Edge/Firefox drop CSS background-image and background-color
+             by default when printing, regardless of what the on-screen preview
+             shows — this is the browser's own "background graphics" setting,
+             not something react-to-print controls. The card's template
+             background is a background-image (see PrintableCard's bgUrl
+             style), so without forcing this it prints with every field value
+             but no artwork behind them, even when the preview pane (identical
+             background CSS, just never sent to the print pipeline) looks
+             correct. */
+          #printable-card-frame, #printable-card-frame * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
           }
           .no-print { display: none !important; }
         }
