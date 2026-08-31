@@ -131,6 +131,8 @@ happen to be installed on the machine running the skill, and produces
 page-numbered footers via `Page.printToPDF`'s header/footer templates, which
 the CLI's own `--print-to-pdf` flag cannot do.
 
+Every screenshot placeholder renders at a fixed half-A4 height (148mm) regardless of caption length, so the finished PDF reads like a real print-ready manual — a page of dense text next to a thumbnail-sized placeholder looks unfinished, and a reader filling in screenshots later should be able to judge proportion (crop the real screenshot to roughly this shape) from the placeholder alone. This is set once in `assets/manual.css` (`.placeholder-box`) — don't override it per-section.
+
 It writes a `.render.html` file next to the PDF — open that in a browser (or
 screenshot it, see below) to sanity-check layout before considering the PDF
 done. Re-run the script after every content edit; it's a few seconds, and
