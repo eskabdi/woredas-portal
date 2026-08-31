@@ -37,14 +37,14 @@ ordering.
 
 ## Phase status
 
-| Phase | Scope | Status |
-|---|---|---|
-| 0 | Commit the report + this tracker | done |
-| 1 | F13 — Vitest test harness | in progress |
-| 2 | P0 — F1 (edge function errors), F5 (permission upsert) | pending |
-| 3 | P1 — F4 (backfill/seeding), F6 (row-verification), F7 (`current_permissions()`) | pending |
-| 4 | P2 — F3 (per-user overrides), F8 (single source of truth), F9 (localization), F12 (password reset) | pending, gated on D1/D2 |
-| 5 | P3 — F10 (CORS allow-list), access review (`updated_by`) | pending |
+| Phase | Scope                                                                                              | Status                  |
+| ----- | -------------------------------------------------------------------------------------------------- | ----------------------- |
+| 0     | Commit the report + this tracker                                                                   | done                    |
+| 1     | F13 — Vitest test harness                                                                          | done                    |
+| 2     | P0 — F1 (edge function errors), F5 (permission upsert)                                             | pending                 |
+| 3     | P1 — F4 (backfill/seeding), F6 (row-verification), F7 (`current_permissions()`)                    | pending                 |
+| 4     | P2 — F3 (per-user overrides), F8 (single source of truth), F9 (localization), F12 (password reset) | pending, gated on D1/D2 |
+| 5     | P3 — F10 (CORS allow-list), access review (`updated_by`)                                           | pending                 |
 
 ## Open Decisions D1/D2 — resolution
 
