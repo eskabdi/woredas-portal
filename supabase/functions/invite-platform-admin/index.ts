@@ -32,6 +32,13 @@ Deno.serve(async (req) => {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    // Without this the invite link falls back to whichever Site URL happens to
+    // be configured in the dashboard -- never guaranteed to be /set-password,
+    // and never guaranteed to even be this deploy. Fail loudly rather than
+    // silently mailing a link nobody can complete: see docs/rbac-security-
+    // forensic-review.md, F2.
+    const SITE_URL = Deno.env.get("SITE_URL");
+    if (!SITE_URL) return json(500, { error: "SITE_URL is not configured" });
 
     const userClient = createClient(SUPABASE_URL, ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
@@ -109,7 +116,9 @@ Deno.serve(async (req) => {
     }
 
     // Send invite
-    const { data: invited, error: inviteErr } = await admin.auth.admin.inviteUserByEmail(email);
+    const { data: invited, error: inviteErr } = await admin.auth.admin.inviteUserByEmail(email, {
+      redirectTo: `${SITE_URL}/set-password`,
+    });
     if (inviteErr || !invited?.user) {
       return json(400, { error: inviteErr?.message ?? "Failed to send invitation" });
     }
