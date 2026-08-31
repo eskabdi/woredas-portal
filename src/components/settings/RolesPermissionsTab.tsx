@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
+import { upsertRolePermission } from "@/lib/rolePermissions";
 import { useAuthStore } from "@/stores/authStore";
 import { ROLE_PERMISSIONS, type Role } from "@/config/permissions";
 
@@ -116,12 +117,7 @@ export function RolesPermissionsTab() {
     if (LOCKED_KEYS.has(key)) return;
     const cellId = `${role}:${key}`;
     setPending((p) => new Set(p).add(cellId));
-    const { error } = await supabase
-      .from("role_permission")
-      .update({ is_granted: next })
-      .eq("woreda_id", woredaId)
-      .eq("role_name", role)
-      .eq("permission_key", key);
+    const { error } = await upsertRolePermission(woredaId, role, key, next);
     if (error) {
       toast.error(error.message);
     } else {
