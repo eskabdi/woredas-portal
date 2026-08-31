@@ -177,6 +177,11 @@ ol.toc a {
 }
 
 .placeholder-box {
+  /* Half of an A4 page (297mm tall) at full content width, so every
+     screenshot slot reserves a consistent, print-realistic amount of
+     space regardless of how long its caption is. */
+  height: 148mm;
+  width: 100%;
   border: 1.5px dashed #9ca3af;
   background: #f8fafc;
   border-radius: 3mm;
@@ -184,6 +189,7 @@ ol.toc a {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 2mm;
   text-align: center;
 }
