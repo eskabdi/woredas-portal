@@ -19,6 +19,8 @@ import {
   DocDivider,
   DocStatGrid,
   DocStat,
+  DocBarChart,
+  DocDonutChart,
   DocDataTable,
   DocSignatureBlock,
   DocRecordFooter,
@@ -259,6 +261,12 @@ function ReportPrintPage() {
             titleAm={sec.titleAm}
             titleEn={sec.titleEn}
           >
+            {type === "services" && sec.titleEn === "Service requests by status" && (
+              <DocBarChart rows={sec.rows} />
+            )}
+            {type === "services" && sec.titleEn === "Service requests by type" && (
+              <DocDonutChart rows={sec.rows} centerLabelAm="ጠቅላላ" centerLabelEn="Total" />
+            )}
             <DocDataTable rows={sec.rows} valueLabel={sec.valueLabel} />
           </DocSection>
         </div>

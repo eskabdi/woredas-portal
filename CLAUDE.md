@@ -400,6 +400,10 @@ do not push, rewrite history or rotate credentials.
   real Chromium bug (a deferred `window.open()` navigation to a `blob:` URL
   gets silently blocked) that the current anchor-click pattern exists to avoid
   regressing. Use it before adding a new print route or "አትም / Print" button.
+- **`verify`** — the build/launch/drive recipe for runtime-verifying a change:
+  pointing local dev at the real Supabase project (there is no staging
+  project), reusing a saved browser session, and driving Playwright under
+  `xvfb` against real data. Use it before reporting a change as verified.
 
 The `review` and `doctor` skills exist for the same underlying reason: this repo
 has no test suite and `tsc --noEmit` stays clean through most of the bugs that

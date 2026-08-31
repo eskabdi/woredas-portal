@@ -26,7 +26,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
 import { KpiCard } from "@/components/common/KpiCard";
-import { ethiopianMonthLabel, formatEthiopianDateTime } from "@/utils/ethiopianCalendar";
+import { ethiopianMonthLabel } from "@/utils/ethiopianCalendar";
 
 export const Route = createFileRoute("/woreda/dashboard")({
   ssr: false,
@@ -205,22 +205,6 @@ function WoredaDashboard() {
     },
   });
 
-  const recentAudit = useQuery({
-    queryKey: ["dash", woredaId, "audit"],
-    enabled: !!woredaId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("audit_log")
-        .select("audit_log_id, entity_name, action_type, action_at, actor_user_id")
-        .eq("woreda_id", woredaId as string)
-        .gte("action_at", new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString())
-        .order("action_at", { ascending: false })
-        .limit(50);
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
   return (
     <div className="space-y-6">
       <PageHeader
@@ -335,44 +319,6 @@ function WoredaDashboard() {
               </LineChart>
             </ResponsiveContainer>
           </div>
-        </div>
-      </div>
-
-      {/* Recent activity */}
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h3 className="font-noto-ethiopic text-sm font-semibold text-slate-900">የቅርብ ጊዜ እንቅስቃሴ</h3>
-        <p className="text-xs text-slate-400">Recent activity</p>
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
-                <th className="font-noto-ethiopic py-2 pr-4">ጊዜ / Time</th>
-                <th className="font-noto-ethiopic py-2 pr-4">ድርጊት / Action</th>
-                <th className="font-noto-ethiopic py-2 pr-4">አካል / Entity</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(recentAudit.data ?? []).length === 0 ? (
-                <tr>
-                  <td colSpan={3} className="py-6 text-center text-slate-400">
-                    <span className="font-noto-ethiopic">
-                      ባለፉት 12 ሰዓታት ምንም እንቅስቃሴ የለም / No activity in the last 12 hours
-                    </span>
-                  </td>
-                </tr>
-              ) : (
-                (recentAudit.data ?? []).map((row) => (
-                  <tr key={row.audit_log_id} className="border-b border-slate-100">
-                    <td className="font-noto-ethiopic py-2 pr-4 text-slate-600">
-                      {formatEthiopianDateTime(new Date(row.action_at as string))}
-                    </td>
-                    <td className="py-2 pr-4 text-slate-700">{row.action_type}</td>
-                    <td className="py-2 pr-4 text-slate-700">{row.entity_name}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
         </div>
       </div>
     </div>

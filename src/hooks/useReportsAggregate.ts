@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { ReportSection } from "@/utils/reportExport";
+import { serviceStatusLabel } from "@/lib/serviceConstants";
 
 export interface ReportData {
   residents: { kebele: string; sex: string; status: string; created_at: string }[];
@@ -333,7 +334,7 @@ export function useReportsAggregate({
         { name: "የተከፈለ / Paid", value: rentalPaid },
         { name: "ያልተከፈለ / Due (Uncollected)", value: rentalDue },
       ],
-      serviceByStatus: count(d.services, (s) => s.status),
+      serviceByStatus: count(d.services, (s) => serviceStatusLabel(s.status)),
       serviceByType: count(d.services, (s) => s.type),
       totalRevenue: d.payments.reduce((s, p) => s + p.amount, 0),
       newResidents: d.residents.filter((r) => r.created_at >= `${start}T00:00:00`).length,

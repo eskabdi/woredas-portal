@@ -379,14 +379,19 @@ function RentalRequestDetailPage() {
     typeof bp === "string"
       ? bp
       : bp && typeof bp === "object"
-        ? String(
-            (bp as Record<string, unknown>).text ?? (bp as Record<string, unknown>).city ?? "",
-          ) || "—"
+        ? (() => {
+            const o = bp as Record<string, unknown>;
+            const placeName = typeof o.place_name === "string" ? o.place_name.trim() : "";
+            if (placeName) return placeName;
+            const parts = [o.kebele, o.woreda].filter(
+              (x): x is string => typeof x === "string" && x.trim().length > 0,
+            );
+            return parts.length ? parts.join(", ") : "—";
+          })()
         : "—";
   const workInfo = (req.resident?.work_info ?? {}) as Record<string, unknown>;
-  const occupation = String(workInfo.occupation ?? workInfo.job_title ?? "") || "—";
-  const workAddress =
-    String(workInfo.address ?? workInfo.work_address ?? workInfo.employer ?? "") || "—";
+  const occupation = String(workInfo.occupation_post ?? "") || "—";
+  const workAddress = String(workInfo.work_address ?? "") || "—";
   const houseOccupiedConflict =
     !isTermination && req.house?.occupancy_status === "occupied" && req.status !== "approved";
 
