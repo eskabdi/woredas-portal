@@ -55,6 +55,7 @@ import { TableEmptyRow, TableErrorRow, TableSkeletonRows } from "@/components/co
 import { exportRowsToCsv, exportRowsToPdf, type TableColumn } from "@/utils/tableExport";
 
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFunction } from "@/lib/edgeFunction";
 import { useAuthStore } from "@/stores/authStore";
 import { CP } from "@/config/permissions";
 
@@ -292,12 +293,12 @@ export function PlatformUsersTab() {
   }
 
   async function resendInvite(u: AdminUserRow) {
-    const { data, error } = await supabase.functions.invoke("resend-platform-invite", {
-      body: { email: u.username.includes("@") ? u.username : `${u.username}`, user_id: u.user_id },
+    const { friendlyError } = await invokeEdgeFunction("resend-platform-invite", {
+      email: u.username.includes("@") ? u.username : `${u.username}`,
+      user_id: u.user_id,
     });
-    const payload = data as { success?: boolean; error?: string } | null;
-    if (error || payload?.error) {
-      toast.error(payload?.error ?? error?.message ?? "Failed to resend invite");
+    if (friendlyError) {
+      toast.error(friendlyError);
       return;
     }
     toast.success("ግብዣ ተልኳል / Invitation resent");
@@ -630,15 +631,17 @@ function InviteAdminDialog({
     };
     if (role === "tenant_admin") body.woredaId = woredaId;
 
-    const { data, error } = await supabase.functions.invoke("invite-platform-admin", { body });
+    const { data, friendlyError } = await invokeEdgeFunction<{ warning?: string | null }>(
+      "invite-platform-admin",
+      body,
+    );
     setSubmitting(false);
-    const payload = data as { success?: boolean; warning?: string | null; error?: string } | null;
-    if (error || payload?.error) {
-      toast.error(payload?.error ?? error?.message ?? "Failed to send invitation");
+    if (friendlyError) {
+      toast.error(friendlyError);
       return;
     }
     toast.success("ግብዣ ተልኳል / Invitation sent");
-    if (payload?.warning) toast.warning(payload.warning);
+    if (data?.warning) toast.warning(data.warning);
     setFullName("");
     setEmail("");
     setRole("tenant_admin");

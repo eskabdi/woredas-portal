@@ -45,6 +45,7 @@ import {
   useUrlSearchTerm,
 } from "@/components/common/TablePagination";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFunction } from "@/lib/edgeFunction";
 import { useAuthStore } from "@/stores/authStore";
 import {
   toWebp,
@@ -605,25 +606,20 @@ function InviteDialog({
       return;
     }
     setSubmitting(true);
-    const { data, error } = await supabase.functions.invoke<{ error?: string }>(
-      "invite-tenant-user",
-      {
-        body: {
-          email,
-          full_name: fullName,
-          role,
-          woredaId,
-          department: department || null,
-          job_title: jobTitle || null,
-          reports_to_user_id: reportsTo === "none" ? null : reportsTo,
-          photo_path: photoPath,
-          signature_path: signaturePath,
-        },
-      },
-    );
+    const { friendlyError } = await invokeEdgeFunction("invite-tenant-user", {
+      email,
+      full_name: fullName,
+      role,
+      woredaId,
+      department: department || null,
+      job_title: jobTitle || null,
+      reports_to_user_id: reportsTo === "none" ? null : reportsTo,
+      photo_path: photoPath,
+      signature_path: signaturePath,
+    });
     setSubmitting(false);
-    if (error || data?.error) {
-      toast.error(data?.error ?? error?.message ?? "Failed to send invitation");
+    if (friendlyError) {
+      toast.error(friendlyError);
       return;
     }
     toast.success("ግብዣ ተልኳል / Invitation sent");
