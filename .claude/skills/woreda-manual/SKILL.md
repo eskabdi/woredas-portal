@@ -1,10 +1,21 @@
-# Woreda Portal User Manual (የወረዳ ፖርታል የተጠቃሚ መመሪያ)
+---
+name: woreda-manual
+description: Reference for how the woreda portal (/woreda/*) actually works for the staff who use it — what each module does, which role/permission it needs, and the day-to-day workflow. Use when asked how to use the woreda portal, to onboard or train woreda staff, to explain what a role can/can't do, to write user-facing help text, or when a "how do I..." question about credentials, civil registration, rental houses, service requests, approvals, revenue, or reports needs an answer grounded in the current routes and permissions rather than the original Phase 1 README.
+---
+
+# Woreda portal user manual
 
 This is the operating manual for woreda staff using `/woreda/*` — the
 per-tenant side of the app (as opposed to `/admin/*`, the super-admin
-console covered in a separate guide). It documents what each module does,
-who can use it, and the day-to-day workflow, not the code that implements
-it. For architecture and implementation details, see `CLAUDE.md`.
+console). It documents what each module does, who can use it, and the
+day-to-day workflow, not the code that implements it. It is kept in sync
+with `src/config/permissions.ts` and the routes under `src/routes/woreda.*`
+rather than the Phase 1 plan in `README.md`, which predates most of these
+modules (rental houses, service requests, approvals) and is out of date.
+
+For architecture and implementation conventions, read `CLAUDE.md` instead —
+this file is about how a woreda employee uses the finished product, not how
+to build it.
 
 ## Before you start
 
@@ -15,18 +26,18 @@ it. For architecture and implementation details, see `CLAUDE.md`.
   account is `pending` until you set your password — the app finishes
   activating it automatically at that point. An account that is
   `suspended` or `inactive` can still sign in but every list will come back
-  empty; if a screen you normally use looks blank, check with your woreda
-  administrator before assuming something is broken.
+  empty; if a screen you normally use looks blank, check account status
+  before assuming something is broken.
 - **You only see your own woreda's data.** The portal is multi-tenant —
   every resident, household, credential, and payment belongs to one woreda,
-  and the system enforces that separation for you. There is no setting to
-  view another woreda.
+  and the system enforces that separation. There is no setting to view
+  another woreda.
 - **A missing menu item usually means a missing permission, not a bug.**
   Sidebar items only appear if your role includes the permission they
   require (see the role table below). A module can also be switched off
   for your woreda entirely by an administrator (Rental Houses, Service
   Requests, and Approvals are the ones typically toggled); if a module you
-  expect is missing, ask whether it's disabled for your woreda before
+  expect is missing, check whether it's disabled for your woreda before
   assuming your account is misconfigured.
 
 ## Roles
@@ -45,9 +56,8 @@ it. For architecture and implementation details, see `CLAUDE.md`.
 the platform from `/admin/*` (tenants, platform users, the ID card
 template) and is not one of the seven operational roles above.
 
-Ask your `tenant_admin` if you need a permission you don't have — role
-assignment happens in **Users and Permissions**, not by a request to
-support.
+Role assignment happens in **Users and Permissions**
+(`P.TENANT_MANAGE`), not by a request to platform support.
 
 ## Dashboard (ዳሽቦርድ)
 
@@ -55,7 +65,7 @@ support.
 summary: resident/household counts, new registrations today, pending
 approvals, credentials issued this month, revenue today, expired
 credentials, and recent audit activity for your woreda. This is the
-landing page after login; start here to see what needs attention.
+landing page after login.
 
 ## Residents (ነዋሪዎች)
 
@@ -138,8 +148,7 @@ with a category filter, not two separate systems.
 - **Service catalog is configurable, not hardcoded.** The specific letter
   types your woreda offers (unemployment evidence, income letters, marital
   status, etc.) and complaint categories are defined in Settings, with
-  Amharic/English names, fees, and whether they need supervisor approval —
-  ask your `tenant_admin` if a letter type you need doesn't appear.
+  Amharic/English names, fees, and whether they need supervisor approval.
 - **Intake** (`service.create`) picks the resident, service type, and
   purpose, and attaches supporting documents.
 - Requests move through review → (payment, if the service type has a fee)
@@ -158,13 +167,13 @@ with a category filter, not two separate systems.
 `/woreda/approvals` — requires `approval.queue.view`; module can be
 disabled per tenant (`approvals`).
 
-A single inbox unioning everything waiting on you across the portal:
-service requests, credential requests, civil events, and rental occupancy
-requests. Summary chips (My queue, Verification, Approval, Payment,
-Returned, Overdue) give live counts; each row deep-links to that item's own
-workflow page rather than being actionable inline. Check this page first
-if you're not sure what needs attention today — it's faster than checking
-each module separately.
+A single inbox unioning everything waiting on the signed-in user across the
+portal: service requests, credential requests, civil events, and rental
+occupancy requests. Summary chips (My queue, Verification, Approval,
+Payment, Returned, Overdue) give live counts; each row deep-links to that
+item's own workflow page rather than being actionable inline. This is the
+fastest way to see what needs attention today, rather than checking each
+module separately.
 
 ## Revenue (ገቢ)
 
@@ -208,14 +217,14 @@ Split into two pages, both requiring `tenant.manage`:
 - **Users and Permissions** (`/woreda/settings/users-permissions`) —
   invite staff, assign one of the seven operational roles above, and
   activate/suspend accounts. Inviting a user sends them a set-password
-  link; their account activates itself the moment they use it, so you
-  don't need to take a second action after inviting someone.
+  link; their account activates itself the moment they use it, so no
+  second action is needed after inviting someone.
 
 ## Public verification pages
 
 Two pages outside `/woreda/*` exist so anyone — not just staff — can check
-whether a document your woreda issued is genuine, by scanning its QR code
-or visiting the printed URL directly:
+whether a document a woreda issued is genuine, by scanning its QR code or
+visiting the printed URL directly:
 
 - A printed **residence credential**'s QR points to a page that checks the
   card's signature and its live revocation status — a valid signature
@@ -226,3 +235,10 @@ or visiting the printed URL directly:
 Neither page requires login; they exist specifically so a third party
 (a bank, an employer, another office) can verify a document without staff
 involvement.
+
+## Keeping this in sync
+
+When a route, permission, or module changes in a way that changes what
+staff can do, update this file in the same change — it drifts from
+`src/config/permissions.ts` and `src/routes/woreda.*` otherwise, the same
+way `README.md`'s Phase 1 plan already has.

@@ -400,6 +400,14 @@ do not push, rewrite history or rotate credentials.
   real Chromium bug (a deferred `window.open()` navigation to a `blob:` URL
   gets silently blocked) that the current anchor-click pattern exists to avoid
   regressing. Use it before adding a new print route or "አትም / Print" button.
+- **`woreda-manual`** — the operating manual for woreda staff using
+  `/woreda/*`: what each module does, which role/permission it needs, and
+  the day-to-day workflow, kept in sync with `src/config/permissions.ts`
+  and `src/routes/woreda.*` rather than the Phase 1 plan in `README.md`.
+  Use it to answer "how do I..." questions about the portal, to write
+  user-facing help text, or when onboarding woreda staff. Update it in the
+  same change whenever a route, permission, or module toggle changes what
+  staff can do.
 
 The `review` and `doctor` skills exist for the same underlying reason: this repo
 has no test suite and `tsc --noEmit` stays clean through most of the bugs that
