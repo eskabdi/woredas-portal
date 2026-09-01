@@ -82,6 +82,7 @@ const FIELD_LABELS: Record<string, string> = {
   dob_gregorian: "DOB (Gregorian)",
   photo: "Photo",
   watermark_photo: "Watermark",
+  stamp: "Stamp",
   woreda_name: "Woreda (Amharic)",
   woreda_name_en: "Woreda (English)",
   woreda_name_har: "Woreda (Harari)",
@@ -137,7 +138,7 @@ const ASPECT_LOCKED_FIELD_KEYS = new Set(["qr_code"]);
 // against the current seed data (supabase/seed.sql) rather than assumed:
 // barcode is field_type 'text' despite being special-rendered, so "special"
 // doesn't mean "image".
-const IMAGE_FIELD_KEYS = new Set(["photo", "watermark_photo", "signature", "qr_code"]);
+const IMAGE_FIELD_KEYS = new Set(["photo", "watermark_photo", "signature", "qr_code", "stamp"]);
 
 // id_card_template_field_draft is a wholly new table, absent from the
 // generated types entirely -- cast the client for these calls rather than
@@ -341,6 +342,9 @@ function CredentialTemplatePage() {
       } else if (fieldKey === "watermark_photo") {
         width = Math.round(canvasWidth * (151 / 1688));
         height = Math.round(canvasHeight * (149 / 1063));
+      } else if (fieldKey === "stamp") {
+        width = Math.round(canvasWidth * (350 / 1688));
+        height = Math.round(canvasHeight * (300 / 1063));
       } else {
         width = Math.round(canvasWidth * 0.25);
         height = Math.round(canvasHeight * 0.1);

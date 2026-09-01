@@ -327,8 +327,9 @@ function PrintPage() {
     };
   }, [residentPhotoPath]);
 
-  // Signed URLs for tenant-assets (logo + signature) and credential-templates
+  // Signed URLs for tenant-assets (logo + stamp + signature) and credential-templates
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [stampUrl, setStampUrl] = useState<string | null>(null);
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -340,6 +341,19 @@ function PrintPage() {
           .createSignedUrl(s.logo_url, 900);
         if (!cancelled) setLogoUrl(data?.signedUrl ?? null);
       } else if (!cancelled) setLogoUrl(null);
+      // stamp_url ("የወረዳ ማህተም / Woreda Seal", set in Settings > Official
+      // Images) is a separate image from supervisor_signature_url below
+      // ("የፈራሚ ማህተም / Signature Stamp" -- despite the English label, that
+      // one is the signature) -- easy to conflate since both settings-page
+      // labels use "stamp". woreda.revenue.$paymentId.receipt.tsx already
+      // renders this same field on receipts; this route was fetching it
+      // into settingsQuery without ever resolving or rendering it.
+      if (s?.stamp_url) {
+        const { data } = await supabase.storage
+          .from("tenant-assets")
+          .createSignedUrl(s.stamp_url, 900);
+        if (!cancelled) setStampUrl(data?.signedUrl ?? null);
+      } else if (!cancelled) setStampUrl(null);
       if (s?.supervisor_signature_url) {
         const { data } = await supabase.storage
           .from("tenant-assets")
@@ -915,6 +929,7 @@ function PrintPage() {
                 fields={frontFields}
                 values={fieldValues}
                 photoUrl={photoUrl}
+                stampUrl={stampUrl}
                 signatureUrl={signatureUrl}
                 qrPayload={null}
                 credentialNumber={cred?.credential_number ?? null}
@@ -942,6 +957,7 @@ function PrintPage() {
                 fields={backFields}
                 values={fieldValues}
                 photoUrl={photoUrl}
+                stampUrl={stampUrl}
                 signatureUrl={signatureUrl}
                 qrPayload={cred.qr_payload as string | null}
                 credentialNumber={cred?.credential_number ?? null}
@@ -972,6 +988,7 @@ function PrintPage() {
               fields={frontFields}
               values={fieldValues}
               photoUrl={photoUrl}
+              stampUrl={stampUrl}
               signatureUrl={signatureUrl}
               qrPayload={null}
               credentialNumber={cred?.credential_number ?? null}
@@ -984,6 +1001,7 @@ function PrintPage() {
               fields={backFields}
               values={fieldValues}
               photoUrl={photoUrl}
+              stampUrl={stampUrl}
               signatureUrl={signatureUrl}
               qrPayload={cred.qr_payload as string | null}
               credentialNumber={cred?.credential_number ?? null}
@@ -1375,6 +1393,7 @@ function PrintableCard({
   fields,
   values,
   photoUrl,
+  stampUrl,
   signatureUrl,
   qrPayload,
   credentialNumber,
@@ -1385,6 +1404,7 @@ function PrintableCard({
   fields: TemplateField[];
   values: Record<string, string>;
   photoUrl: string | null;
+  stampUrl: string | null;
   signatureUrl: string | null;
   qrPayload: string | null;
   credentialNumber: string | null;
@@ -1509,16 +1529,64 @@ function PrintableCard({
               </div>
             );
           }
+          if (f.field_key === "stamp") {
+            // Sourced from woreda_settings.stamp_url -- "የወረዳ ማህተም / Woreda
+            // Seal" in Settings > Official Images. Distinct from signatureUrl
+            // above despite that field's own "Signature Stamp" English
+            // label -- that one is the supervisor's signature, this is the
+            // official round seal. Same rendering woreda.revenue.$paymentId.receipt.tsx
+            // already uses for the seal on printed receipts.
+            return (
+              <div
+                key={f.field_key}
+                style={{
+                  ...common,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {stampUrl && (
+                  <img
+                    src={stampUrl}
+                    alt=""
+                    style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                  />
+                )}
+              </div>
+            );
+          }
           if (f.field_key === "qr_code") {
             // f.width/f.height are canvas-design units, not CSS pixels — the
             // container itself is now sized to the card's true physical width
             // (see PrintableCard), so the QR has to be computed in the same
             // physical units or it re-creates the same oversize-and-clip bug
             // that "5.63in" caused for the whole card.
+            //
+            // qrSizePx sets the canvas's *intrinsic* bitmap resolution only —
+            // it deliberately does NOT also decide the QR's on-screen size.
+            // A <canvas> displays at its width/height attributes unless CSS
+            // overrides them, and every other field here is percentage-sized
+            // against the same physical-mm-based parent (see `common`
+            // above); a QR canvas left at a fixed pixel size was the one
+            // exception, so it held a constant CSS size while its box scaled
+            // with the container. On the true print surface the box is
+            // ~98.7px physical CSS pixels wide and the fixed bitmap covered
+            // ~90% of it as intended, but previewMode's box is capped at
+            // "min(100%, 640px)" — whatever width that resolves to on a
+            // given screen, from ~195px up to 640px-equivalent — so the same
+            // fixed bitmap could look like a small QR adrift in whitespace
+            // on one viewport and nearly fill its box on a narrower one.
+            // Two people opening this same page on different window widths
+            // would see two different QR sizes on an otherwise identical
+            // card. Sizing the canvas at 90% via CSS instead keeps the same
+            // visual margin the print surface already has, but makes it
+            // track the box's actual rendered size everywhere, matching the
+            // print output at any preview width instead of racing it.
             const mmPerCanvasUnit = CARD_WIDTH_MM / canvasW;
             const fieldWidthMm = Number(f.width) * mmPerCanvasUnit;
             const fieldHeightMm = Number(f.height) * mmPerCanvasUnit;
-            const qrSizePx = mmToPx(Math.min(fieldWidthMm, fieldHeightMm) * 0.9);
+            const qrSizePx = mmToPx(Math.min(fieldWidthMm, fieldHeightMm));
             return (
               <div
                 key={f.field_key}
@@ -1536,6 +1604,7 @@ function PrintableCard({
                       value={credentialVerifyUrl(qrPayload)}
                       size={qrSizePx}
                       level="L"
+                      style={{ width: "90%", height: "90%" }}
                     />
                   </QRBoundary>
                 ) : null}
