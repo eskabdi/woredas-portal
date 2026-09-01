@@ -29,16 +29,33 @@ interface RequestBody {
   woredaId: string;
 }
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+// F10 (docs/rbac-security-forensic-review.md): "*" admitted cross-origin
+// requests from any page unconditionally. Harmless given the bearer-token
+// (not cookie) auth model -- CORS can't leak or forge that token to a third
+// party -- but inconsistent with the narrow, explicit allow-list this app
+// already applies to Supabase Auth redirect URLs. SITE_URL is the same
+// project-wide secret F2 introduced (for the invite functions); localhost:5173
+// covers local dev against the real project (this repo has no staging one).
+const ALLOWED_ORIGINS = new Set(
+  [Deno.env.get("SITE_URL"), "http://localhost:5173"]
+    .filter((o): o is string => !!o)
+    .map((o) => o.trim().replace(/\/+$/, "")),
+);
 
-function json(status: number, body: unknown): Response {
+function corsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get("Origin") ?? "";
+  return {
+    "Access-Control-Allow-Origin": ALLOWED_ORIGINS.has(origin) ? origin : "",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    Vary: "Origin",
+  };
+}
+
+function json(req: Request, status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+    headers: { ...corsHeaders(req), "Content-Type": "application/json" },
   });
 }
 
@@ -71,30 +88,30 @@ function compactDate(d: string | null | undefined): string {
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS });
-  if (req.method !== "POST") return json(405, { error: "Method not allowed" });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(req) });
+  if (req.method !== "POST") return json(req, 405, { error: "Method not allowed" });
 
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const PRIVATE_KEY_PEM = Deno.env.get("HARARI_EC_PRIVATE_KEY");
-    if (!PRIVATE_KEY_PEM) return json(500, { error: "Signing key not configured" });
+    if (!PRIVATE_KEY_PEM) return json(req, 500, { error: "Signing key not configured" });
 
     const authHeader = req.headers.get("Authorization") ?? "";
     const jwt = authHeader.replace(/^Bearer\s+/i, "").trim();
-    if (!jwt) return json(401, { error: "Missing authorization" });
+    if (!jwt) return json(req, 401, { error: "Missing authorization" });
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
     const { data: userData, error: userErr } = await admin.auth.getUser(jwt);
-    if (userErr || !userData?.user) return json(401, { error: "Invalid session" });
+    if (userErr || !userData?.user) return json(req, 401, { error: "Invalid session" });
     const callerId = userData.user.id;
 
     const body = (await req.json()) as RequestBody;
     if (!body?.credentialId || !body.woredaId) {
-      return json(400, { error: "Missing fields" });
+      return json(req, 400, { error: "Missing fields" });
     }
 
     // Woreda match check
@@ -103,10 +120,10 @@ Deno.serve(async (req: Request) => {
       .select("woreda_id, role")
       .eq("user_id", callerId)
       .maybeSingle();
-    if (auErr) return json(500, { error: "User lookup failed" });
-    if (!appUser) return json(403, { error: "User not registered" });
+    if (auErr) return json(req, 500, { error: "User lookup failed" });
+    if (!appUser) return json(req, 403, { error: "User not registered" });
     if (appUser.role !== "super_admin" && appUser.woreda_id !== body.woredaId) {
-      return json(403, { error: "Woreda mismatch" });
+      return json(req, 403, { error: "Woreda mismatch" });
     }
 
     // Fetch credential, verify preconditions
@@ -117,13 +134,16 @@ Deno.serve(async (req: Request) => {
       )
       .eq("credential_id", body.credentialId)
       .maybeSingle();
-    if (credErr) return json(500, { error: "Credential lookup failed" });
-    if (!cred) return json(404, { error: "Credential not found" });
-    if (cred.woreda_id !== body.woredaId) return json(403, { error: "Credential woreda mismatch" });
+    if (credErr) return json(req, 500, { error: "Credential lookup failed" });
+    if (!cred) return json(req, 404, { error: "Credential not found" });
+    if (cred.woreda_id !== body.woredaId)
+      return json(req, 403, { error: "Credential woreda mismatch" });
     if (cred.status !== "ready_to_print") {
-      return json(409, { error: `Credential status is ${cred.status}, expected ready_to_print` });
+      return json(req, 409, {
+        error: `Credential status is ${cred.status}, expected ready_to_print`,
+      });
     }
-    if (cred.qr_payload) return json(409, { error: "Credential already signed" });
+    if (cred.qr_payload) return json(req, 409, { error: "Credential already signed" });
 
     // SECURITY: every field in the signed payload is read from the database.
     // The request supplies only which credential to sign.
@@ -132,8 +152,8 @@ Deno.serve(async (req: Request) => {
       .select("resident_number, full_name, sex, date_of_birth, current_household_id")
       .eq("resident_id", cred.resident_id)
       .maybeSingle();
-    if (resErr) return json(500, { error: "Resident lookup failed" });
-    if (!resident) return json(404, { error: "Resident not found" });
+    if (resErr) return json(req, 500, { error: "Resident lookup failed" });
+    if (!resident) return json(req, 404, { error: "Resident not found" });
 
     const { data: kebeleRow } = await admin
       .from("kebele")
@@ -213,7 +233,7 @@ Deno.serve(async (req: Request) => {
       .from("residence_credential")
       .update({ qr_payload: token })
       .eq("credential_id", body.credentialId);
-    if (updErr) return json(500, { error: `Failed to store token: ${updErr.message}` });
+    if (updErr) return json(req, 500, { error: `Failed to store token: ${updErr.message}` });
 
     await admin.from("audit_log").insert({
       woreda_id: body.woredaId,
@@ -225,8 +245,8 @@ Deno.serve(async (req: Request) => {
       action_at: new Date().toISOString(),
     });
 
-    return json(200, { success: true, token });
+    return json(req, 200, { success: true, token });
   } catch (e) {
-    return json(500, { error: (e as Error).message });
+    return json(req, 500, { error: (e as Error).message });
   }
 });
