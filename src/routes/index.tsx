@@ -1,6 +1,7 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAuthState } from "@/hooks/useAuthBootstrap";
 import { useAuthStore } from "@/stores/authStore";
 import { parseAuthRedirect } from "@/lib/authRedirect";
 
@@ -18,23 +19,37 @@ function Loading() {
 }
 
 /**
- * The classic hash-fragment invite flow (`#access_token=…`) is consumed
- * automatically by supabase-js's own `detectSessionInUrl` before this
- * component ever renders -- nothing to do here for that shape, and the
- * status==='pending' branch below already routes it to /set-password.
+ * The classic hash-fragment invite/recovery flow (`#access_token=…`) is
+ * consumed automatically by supabase-js's own `detectSessionInUrl` before
+ * this component ever renders -- nothing to do here for that shape, and the
+ * status==='pending' branch below already routes an invite to /set-password.
  *
  * What supabase-js does NOT handle automatically is the other shape GoTrue
- * can send an invite link in: `?token_hash=…&type=invite` (what Supabase's
- * dashboard email templates use when they link straight to the site URL
- * instead of routing through GoTrue's own /verify redirect), and its
- * rejection counterpart `?error=…&error_description=…` (expired or
- * already-used link). Neither was handled before this fix -- both silently
- * fell through to `!role` and landed on /login with no explanation, which
- * is indistinguishable from "nothing happened" to whoever clicked the link.
+ * can send these links in: `?token_hash=…&type=invite` or `type=recovery`
+ * (what Supabase's dashboard email templates use when they link straight to
+ * the site URL instead of routing through GoTrue's own /verify redirect),
+ * and its rejection counterpart `?error=…&error_description=…` (expired or
+ * already-used link). None of these were handled before this fix -- all
+ * silently fell through to `!role` and landed on /login with no
+ * explanation, which is indistinguishable from "nothing happened" to
+ * whoever clicked the link.
+ *
+ * For `recovery` specifically (F12,
+ * docs/rbac-security-forensic-review.md): the store is populated explicitly
+ * here via fetchAuthState()/setAuth(), the same "don't trust the ambient
+ * listener for a time-sensitive transition" pattern set-password.tsx already
+ * uses -- whether verifyOtp's resulting session change surfaces through
+ * onAuthStateChange as PASSWORD_RECOVERY or SIGNED_IN isn't something this
+ * app's listener (useAuthBootstrap.ts) needs to special-case if this handler
+ * never depends on it firing at all.
  */
-function useInviteTokenHandler() {
+function useAuthLinkHandler() {
+  const setAuth = useAuthStore((s) => s.setAuth);
   const [state, setState] = useState<
-    { kind: "checking" } | { kind: "settled" } | { kind: "error"; description: string }
+    | { kind: "checking" }
+    | { kind: "settled" }
+    | { kind: "recovery-settled" }
+    | { kind: "error"; description: string }
   >({ kind: "checking" });
 
   useEffect(() => {
@@ -54,10 +69,27 @@ function useInviteTokenHandler() {
       return;
     }
 
+    if (outcome.kind === "recovery") {
+      supabase.auth
+        .verifyOtp({ token_hash: outcome.tokenHash, type: "recovery" })
+        .then(async ({ data, error }) => {
+          if (error || !data.session?.user) {
+            setState({ kind: "error", description: error?.message ?? "Recovery link invalid" });
+            return;
+          }
+          const { appUser, consolePermissions, permissions } = await fetchAuthState(
+            data.session.user.id,
+          );
+          setAuth(data.session.user, appUser, consolePermissions, permissions);
+          setState({ kind: "recovery-settled" });
+        });
+      return;
+    }
+
     supabase.auth.verifyOtp({ token_hash: outcome.tokenHash, type: "invite" }).then(({ error }) => {
       setState(error ? { kind: "error", description: error.message } : { kind: "settled" });
     });
-  }, []);
+  }, [setAuth]);
 
   return state;
 }
@@ -87,13 +119,19 @@ function InvalidLinkCard({ description }: { description: string }) {
 }
 
 function IndexRedirect() {
-  const tokenState = useInviteTokenHandler();
+  const tokenState = useAuthLinkHandler();
   const isLoading = useAuthStore((s) => s.isLoading);
   const role = useAuthStore((s) => s.role);
   const status = useAuthStore((s) => s.appUser?.status);
 
   if (tokenState.kind === "checking") return <Loading />;
   if (tokenState.kind === "error") return <InvalidLinkCard description={tokenState.description} />;
+
+  // A recovery link's user is already active -- send them straight to
+  // /set-password rather than through the pending/active branching below,
+  // which would otherwise route an active user directly to their dashboard
+  // and skip the "choose a new password" step entirely.
+  if (tokenState.kind === "recovery-settled") return <Navigate to="/set-password" />;
 
   if (isLoading) return <Loading />;
 

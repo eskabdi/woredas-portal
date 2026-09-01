@@ -43,7 +43,7 @@ ordering.
 | 1     | F13 — Vitest test harness                                                                          | done                    |
 | 2     | P0 — F1 (edge function errors), F5 (permission upsert)                                             | done                    |
 | 3     | P1 — F4 (backfill/seeding), F6 (row-verification), F7 (`current_permissions()`)                    | done                    |
-| 4     | P2 — F3 (per-user overrides), F8 (single source of truth), F9 (localization), F12 (password reset) | F3 done, rest pending   |
+| 4     | P2 — F3 (per-user overrides), F8 (single source of truth), F9 (localization), F12 (password reset) | done                    |
 | 5     | P3 — F10 (CORS allow-list), access review (`updated_by`)                                           | pending                 |
 
 ## Open Decisions D1/D2 — resolution
@@ -154,6 +154,40 @@ strictly worse than the English-only label or message it would replace. Both
 files carry an explicit "do not add Amharic here without native-speaker
 review" comment at the top so this stays a deliberate, visible gap rather
 than a silently abandoned one.
+
+## F12 implementation notes
+
+- `src/lib/authRedirect.ts`: `AuthRedirectOutcome` gains a `recovery` kind,
+  parsed the same way as `invite` (`token_hash` + `type=recovery`) -- the
+  same dashboard-template link shape PR #22's invite fix already had to
+  handle for the identical reason (the classic hash-fragment flow is caught
+  automatically by supabase-js; this shape isn't).
+- `src/routes/index.tsx`: `useInviteTokenHandler` renamed
+  `useAuthLinkHandler` (it now handles both link kinds) and calls
+  `verifyOtp({ type: "recovery" })`, then explicitly runs
+  `fetchAuthState()`/`setAuth()` itself rather than trusting the ambient
+  `onAuthStateChange` listener to catch the resulting session change --
+  deliberately sidesteps the question of whether that emits
+  `PASSWORD_RECOVERY` or `SIGNED_IN`, since this handler never depends on it
+  either way. A new `recovery-settled` state forces `/set-password`
+  regardless of the (already-active) user's status, instead of falling
+  through the existing pending/active dashboard-routing branches.
+- `src/routes/login.tsx`: a "Forgot your password?" toggle replaces the old
+  "contact your administrator" text, calling
+  `supabase.auth.resetPasswordForEmail()`. The UI shows the same
+  confirmation regardless of whether the call succeeds or the address is
+  registered -- branching on that result would recreate, client-side,
+  exactly the email-enumeration exposure the report's own "Out of Scope"
+  section flags as unassessed for this app's auth endpoints.
+- `set-password.tsx` needed **no changes**: it already only checks for a
+  session (`!user`) and calls `updateUser({ password })` +
+  best-effort `activate-invited-user` (a no-op for an already-active
+  account, since that function only ever touches `pending` rows) — the same
+  code path now correctly serves both invite and recovery sessions.
+
+Regression lock: `src/lib/__tests__/authRedirect.test.ts` covers all six
+outcome shapes, including the new `recovery` one and precedence against an
+`error` in the same URL.
 
 ## F6 codebase-wide row-verification audit
 
