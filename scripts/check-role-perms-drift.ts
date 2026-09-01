@@ -16,13 +16,21 @@
  * `CREATE OR REPLACE FUNCTION default_role_perms(...)`; this script's job is
  * only to catch the case where someone did one but not the other.
  *
- * role_permission's own seed/backfill data isn't compared here: since
- * 00000000000015_permission_matrix_backfill.sql (F4), a trigger derives every
- * tenant's role_permission rows from default_role_perms() itself (both for
- * existing tenants, backfilled once, and for every future one, via the
- * woreda-insert trigger) -- so once this check confirms permissions.ts and
- * default_role_perms() agree, the seed data can no longer drift independently
- * of either.
+ * role_permission's own seed/backfill data (supabase/seed.sql) is
+ * deliberately NOT compared against default_role_perms() here, and correctly
+ * so: role_permission is a per-tenant override of the default matrix, so
+ * seed.sql's explicit values are allowed to differ from default_role_perms()
+ * for its own reference tenants -- that divergence is the feature, not drift.
+ * (An earlier version of this comment claimed seed.sql "can no longer drift
+ * independently of either" once this check passes; that was wrong, and
+ * tenant-isolation-review's Finding 1 is the reason why: seed.sql's
+ * `INSERT ... ON CONFLICT DO NOTHING` role_permission rows were silently
+ * losing to 00000000000015's woreda-insert trigger, which runs first and
+ * pre-populates every cell from default_role_perms() -- so seed.sql's own
+ * intended values for the 18 cells where it deliberately customizes away
+ * from the default never actually landed. Fixed by switching those inserts
+ * to `ON CONFLICT ... DO UPDATE SET is_granted = EXCLUDED.is_granted`, so
+ * seed.sql's explicit values always win, as intended.)
  *
  * Run: bun run scripts/check-role-perms-drift.ts
  */

@@ -10,8 +10,12 @@ export interface UserPermissionOverrideRow {
 // `as never`/untyped-client pattern already used elsewhere in this codebase
 // for pre-typegen tables (console_role, id_card_template_field_draft).
 // Regenerate types.ts post-deploy and these casts go away.
+interface DeleteSelectBuilder extends PromiseLike<{ data: unknown[] | null; error: unknown }> {
+  maybeSingle: () => Promise<{ data: unknown; error: unknown }>;
+}
 interface DeleteBuilder extends Promise<{ error: unknown }> {
   eq: (col: string, val: string) => DeleteBuilder;
+  select: (cols: string) => DeleteSelectBuilder;
 }
 interface UpsertBuilder extends Promise<{ data: unknown; error: unknown }> {
   select: (cols: string) => {
@@ -62,17 +66,31 @@ export async function upsertUserOverride(
     .maybeSingle();
 }
 
-export async function clearUserOverride(userId: string, permissionKey: string) {
+/** Same F6 house rule as the upsert above, in the direction that matters
+ * more here: an admin who believes a grant/deny was just cleared, when RLS
+ * (e.g. the target-role exclusion added for tenant-isolation-review Finding
+ * 3) silently filtered the delete, would otherwise go on believing the
+ * override no longer applies while it still does. */
+export async function clearUserOverride(
+  userId: string,
+  permissionKey: string,
+): Promise<{ data: unknown; error: unknown }> {
   return db
     .from("user_permission_override")
     .delete()
     .eq("user_id", userId)
-    .eq("permission_key", permissionKey);
+    .eq("permission_key", permissionKey)
+    .select("user_id, permission_key")
+    .maybeSingle();
 }
 
 /** Used by the role-change flow (D2(c)): an admin reviewing a role change
  * can explicitly clear every override for that user rather than have them
- * silently persist under the new role. */
-export async function clearAllUserOverrides(userId: string) {
-  return db.from("user_permission_override").delete().eq("user_id", userId);
+ * silently persist under the new role. Row-verified for the same reason as
+ * clearUserOverride -- callers only invoke this when overrides are known to
+ * exist, so an empty result means the delete didn't reach them. */
+export async function clearAllUserOverrides(
+  userId: string,
+): Promise<{ data: unknown[] | null; error: unknown }> {
+  return db.from("user_permission_override").delete().eq("user_id", userId).select("user_id");
 }

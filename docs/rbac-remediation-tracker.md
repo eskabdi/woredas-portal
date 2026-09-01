@@ -45,6 +45,7 @@ ordering.
 | 3     | P1 — F4 (backfill/seeding), F6 (row-verification), F7 (`current_permissions()`)                    | done                    |
 | 4     | P2 — F3 (per-user overrides), F8 (single source of truth), F9 (localization), F12 (password reset) | done                    |
 | 5     | P3 — F10 (CORS allow-list), access review (`updated_by`)                                           | done                    |
+| 6     | Internal review pass on the whole diff (`tenant-isolation-review`, `portal-conventions-review`, `secret-sweep`) before deploy | done |
 
 ## Open Decisions D1/D2 — resolution
 
@@ -318,3 +319,146 @@ and `admin.credential-template.tsx` (`id_card_template`,
 editing their own tenant's/platform's configuration row doesn't share the
 identity-scoped RLS-exclusion race F6 is about. Left as a general
 observation for whoever next touches those screens, not remediated here.
+
+## Phase 6 — internal review pass before deploy
+
+Per this repo's own `review` skill: before the final deploy, the whole branch
+diff (`origin/main...HEAD`) was dispatched to `tenant-isolation-review`,
+`portal-conventions-review`, and `secret-sweep`. Every actionable finding
+below was fixed and verified live; the rest are documented as deliberate,
+already-acknowledged gaps rather than silently dropped.
+
+### `tenant-isolation-review` findings
+
+**Finding 1 (High) — `seed.sql` vs. `default_role_perms()` divergence, direction
+was backwards.** `role_permission`'s 972 seed rows used
+`ON CONFLICT DO NOTHING`. `00000000000015_permission_matrix_backfill.sql`'s
+`seed_role_permission_for_new_woreda()` trigger fires on `seed.sql`'s own
+`INSERT INTO woreda` statements (which run before `seed.sql`'s
+`role_permission` inserts), pre-populating every cell from
+`default_role_perms()`. `DO NOTHING` meant that trigger-inserted row always
+won, so `seed.sql`'s own explicit values — the tenant-level customizations it
+exists to specify — silently never landed for any cell where they disagreed
+with the pure default. Verified an 18-row disagreement exists this way:
+`credential.verify` is `false` in `seed.sql` but `true` in
+`default_role_perms()` for `finance_clerk`/`auditor`/`viewer`. Fixed by
+switching all 972 inserts to
+`ON CONFLICT (woreda_id, role_name, permission_key) DO UPDATE SET is_granted = EXCLUDED.is_granted`,
+so `seed.sql`'s explicit values always win over the trigger's blanket
+default, as intended. **No live-database action was needed**: queried
+`role_permission` directly and confirmed every existing tenant already has
+`credential.verify = false` for these three roles, matching `seed.sql`'s
+intended value — the fix protects future fresh deploys from drifting to the
+wrong (`true`) value, it doesn't correct anything already wrong in
+production. Also corrected a stale claim in
+`scripts/check-role-perms-drift.ts`'s own header comment, which asserted
+`seed.sql` "can no longer drift independently of" `default_role_perms()` —
+false, and this finding is why: `role_permission` is a per-tenant override
+table by design, so `seed.sql` is *supposed* to be able to diverge from the
+platform default. A drift check that enforced equality here would flag
+legitimate tenant customization as a bug, so none was added; the comment now
+explains the actual (asymmetric, one-directional) relationship instead.
+
+**Finding 2 (High) — `role_permission_insert_tenant_admin` had no locked-key
+exclusion.** The baseline's `UPDATE` policy on `role_permission` excludes
+`credential.approve`/`civil.approve`/`tenant.manage`; the `INSERT` policy
+right below it never did. F5's `upsertRolePermission()` can route through
+`INSERT` when no row exists yet for a given `(woreda, role, key)` triple, so
+this was a live bypass of the lock, not a theoretical one. Fixed in
+`00000000000019_override_hardening.sql` by adding the same exclusion to the
+`INSERT` policy's `WITH CHECK`. Verified live: `pg_policies` shows the new
+`WITH CHECK` clause matches the `UPDATE` policy's.
+
+**Finding 3 (High) — no target-role restriction on `user_permission_override`
+writes, and its CHECK constraint didn't cover the platform-level locked
+keys.** `app_user_tenant_admin_write` already excludes `role = 'tenant_admin'`
+targets for exactly this reason (a tenant admin must not be able to edit
+another tenant admin, let alone a super admin); the override table's write
+policies never mirrored it, so a tenant admin could override permissions for
+a peer tenant admin or, in principle, a super admin. Fixed by adding
+`user_permission_override_target_role_ok(_user_id)` (a `SECURITY DEFINER`
+helper checking the target's `app_user.role`) to the `INSERT`/`UPDATE`/
+`DELETE` policies, and extending the CHECK constraint's locked-key list with
+`platform.manage`/`tenant.create` (no `role_permission` row ever grants
+these at the tenant level, but the override table is a separate surface that
+could have). Verified live: a `platform.manage` insert attempt raises the
+CHECK violation by name (`user_permission_override_no_locked_keys`).
+
+**Finding 4 (Medium) — `user_permission_override.woreda_id` went stale on a
+tenant move.** The BEFORE INSERT/UPDATE trigger from migration 17 sets
+`woreda_id` once, but nothing re-ran it when `app_user.woreda_id` changed
+later, so a person moved between tenants kept override rows pointing at
+their old tenant. Fixed with the reviewer's own recommended (safest) option:
+`app_user_clear_overrides_on_woreda_change`, an `AFTER UPDATE OF woreda_id ON
+app_user` trigger that deletes every `user_permission_override` row for that
+user when their tenant changes — a person moving tenants should not carry
+the previous tenant's per-user grants forward. Verified live in a
+rolled-back transaction: inserted an override, changed the user's
+`woreda_id`, confirmed the override row count dropped to zero.
+
+**Finding 5 (Medium) — `updated_by` columns were plain client-writable, not
+server-enforced (schema half); no `audit_log` insert on override changes
+(client half).** `role_permission.updated_by` (added in
+`00000000000018_role_permission_audit_trail.sql`) and
+`user_permission_override.updated_by` were both ordinary columns the client
+could set to anything. Fixed the schema half by adding
+`force_actor_columns('updated_by')` triggers to both tables — the same
+pattern already used on 14 other tables in the baseline (`audit_log`,
+`payment`, etc.) — so the column is overwritten server-side from `auth.uid()`
+whenever a caller supplies a non-null value for it; verified live via
+`pg_trigger`. Fixed the client half by adding `audit_log` inserts, gated on a
+confirmed write (never on `error === null` alone, per the F6 house rule), to
+`UserPermissionOverridesDialog`'s `setOverride()` (both the grant/deny path
+and the clear-to-default path) and to `ChangeRoleDialog`'s "clear all
+overrides" checkbox action.
+
+**Lower-severity — `user_permission_override_select_same_woreda` was broader
+than needed.** It allowed any authenticated user in the same tenant to read
+every override row, not just the two roles that can act on them plus the
+affected user themselves. Tightened to
+`is_super_admin() OR is_tenant_admin() OR user_id = auth.uid()` in the same
+migration.
+
+**Lower-severity — `clearUserOverride`/`clearAllUserOverrides` weren't
+row-verified, in the dangerous direction.** An admin clearing an override
+that RLS silently filtered (e.g. exactly the Finding 3 target-role exclusion
+just added) would believe the grant/deny no longer applied while it still
+did. Fixed by chaining `.select(...)` on both delete calls in
+`src/lib/userPermissionOverrides.ts` and treating an empty result as a
+failure (`ROW_VERIFICATION_FAILURE_MESSAGE`) at both call sites in
+`UsersRolesTab.tsx`.
+
+**Finding 6 (High) — `login.tsx`'s active-user sign-in path dropped
+`permissions`.** `fetchAuthState()` returns `{ appUser, consolePermissions,
+permissions }`; the non-active-user branch passed all three to `setAuth()`,
+but the active-user branch (the one every normal sign-in takes) only passed
+`appUser`/`consolePermissions`, silently defeating F7 on the path that
+matters. One-line fix: added `permissions` to that `setAuth()` call.
+
+Migration `00000000000019_override_hardening.sql` (Findings 2-5 plus the two
+lower-severity items) was applied live via the Management API, dry-run
+verified in a rolled-back transaction first, then confirmed post-apply via
+`pg_policies`, `pg_constraint`, and `pg_trigger` queries and one functional
+test in a rolled-back transaction (the woreda-move deletion, Finding 4).
+
+### `portal-conventions-review` findings
+
+**Fixed.** `ChangeRoleDialog`'s "clear all overrides" checkbox was a
+hand-rolled `<input type="checkbox">` instead of the existing shadcn
+`Checkbox` primitive already used elsewhere in this file — replaced with
+`<Checkbox checked={...} onCheckedChange={...} />`.
+
+**Acknowledged, not fixed.** The new dialogs this phase added
+(`ChangeRoleDialog`'s override notice, `UserPermissionOverridesDialog`) are
+English-only, where the rest of the woreda-facing settings UI is
+bilingual Amharic/English. Per this codebase's own discipline (never
+fabricate Amharic translations without native-speaker review —
+`src/config/permissionLabels.ts` and `src/lib/errorMessages.ts` earlier in
+this same remediation were held to the identical standard), this is left as
+a documented gap for a native speaker to close in a follow-up, not
+silently "fixed" with invented copy.
+
+### `secret-sweep`
+
+Clean — no deploy token or other credential reached the working tree, the
+staged diff, or any commit on this branch.

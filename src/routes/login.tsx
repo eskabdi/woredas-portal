@@ -103,7 +103,7 @@ function LoginPage() {
       return;
     }
 
-    setAuth(data.user, appUser, consolePermissions);
+    setAuth(data.user, appUser, consolePermissions, permissions);
     supabase.functions.invoke("record-login", { body: {} }).catch(() => {});
 
     if (appUser.role === "super_admin") {

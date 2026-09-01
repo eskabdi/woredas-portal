@@ -403,6 +403,8 @@ export function UsersRolesTab() {
 
       <ChangeRoleDialog
         user={changeUser}
+        woredaId={woredaId}
+        callerId={callerId ?? null}
         onClose={() => setChangeUser(null)}
         onConfirm={changeRole}
       />
@@ -410,6 +412,7 @@ export function UsersRolesTab() {
       <UserPermissionOverridesDialog
         user={permissionsUser}
         woredaId={woredaId}
+        callerId={callerId ?? null}
         onClose={() => setPermissionsUser(null)}
       />
 
@@ -768,10 +771,14 @@ function InviteDialog({
 
 function ChangeRoleDialog({
   user,
+  woredaId,
+  callerId,
   onClose,
   onConfirm,
 }: {
   user: AppUserRow | null;
+  woredaId: string | null;
+  callerId: string | null;
   onClose: () => void;
   onConfirm: (u: AppUserRow, role: string) => Promise<void>;
 }) {
@@ -858,8 +865,22 @@ function ChangeRoleDialog({
               setSubmitting(true);
               await onConfirm(current, role);
               if (clearOverrides) {
-                const { error } = await clearAllUserOverrides(current.user_id);
-                if (error) toast.error("Role changed, but clearing overrides failed. Try again.");
+                const { data, error } = await clearAllUserOverrides(current.user_id);
+                if (error || !data?.length) {
+                  toast.error(
+                    error
+                      ? "Role changed, but clearing overrides failed. Try again."
+                      : ROW_VERIFICATION_FAILURE_MESSAGE,
+                  );
+                } else if (woredaId) {
+                  await supabase.from("audit_log").insert({
+                    actor_user_id: callerId,
+                    woreda_id: woredaId,
+                    entity_name: "user_permission_override",
+                    action_type: "USER_PERMISSION_OVERRIDES_CLEARED",
+                    new_value_json: { user_id: current.user_id, count: data.length },
+                  });
+                }
               }
               setSubmitting(false);
               setClearOverrides(false);
@@ -877,10 +898,12 @@ function ChangeRoleDialog({
 function UserPermissionOverridesDialog({
   user,
   woredaId,
+  callerId,
   onClose,
 }: {
   user: AppUserRow | null;
   woredaId: string | null;
+  callerId: string | null;
   onClose: () => void;
 }) {
   const qc = useQueryClient();
@@ -929,12 +952,35 @@ function UserPermissionOverridesDialog({
     if (!user) return;
     setPending((p) => new Set(p).add(key));
     if (value === "default") {
-      const { error } = await clearUserOverride(user.user_id, key);
+      const { data, error } = await clearUserOverride(user.user_id, key);
       if (error) toast.error("Failed to clear override");
+      else if (!data) toast.error(ROW_VERIFICATION_FAILURE_MESSAGE);
+      else if (woredaId) {
+        await supabase.from("audit_log").insert({
+          actor_user_id: callerId,
+          woreda_id: woredaId,
+          entity_name: "user_permission_override",
+          action_type: "USER_PERMISSION_OVERRIDE_CLEARED",
+          new_value_json: { user_id: user.user_id, permission_key: key },
+        });
+      }
     } else {
       const { data, error } = await upsertUserOverride(user.user_id, key, value === "grant");
       if (error) toast.error("Failed to save override");
       else if (!data) toast.error(ROW_VERIFICATION_FAILURE_MESSAGE);
+      else if (woredaId) {
+        await supabase.from("audit_log").insert({
+          actor_user_id: callerId,
+          woreda_id: woredaId,
+          entity_name: "user_permission_override",
+          action_type: "USER_PERMISSION_OVERRIDE_SET",
+          new_value_json: {
+            user_id: user.user_id,
+            permission_key: key,
+            is_granted: value === "grant",
+          },
+        });
+      }
     }
     await qc.invalidateQueries({ queryKey: ["user_permission_override", user.user_id] });
     setPending((p) => {
