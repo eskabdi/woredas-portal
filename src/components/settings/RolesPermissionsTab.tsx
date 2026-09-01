@@ -7,7 +7,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
-import { ROLE_PERMISSIONS, type Role } from "@/config/permissions";
+import { P, ROLE_PERMISSIONS, type Role } from "@/config/permissions";
+
+const ALL_PERMISSION_KEYS: string[] = Object.values(P);
 
 const EDITABLE_ROLES: { key: Role; am: string; en: string }[] = [
   { key: "registry_clerk", am: "የመዝገብ ሰራተኛ", en: "Registry Clerk" },
@@ -93,9 +95,13 @@ export function RolesPermissionsTab() {
   }, [rows]);
 
   const permissionKeys = useMemo(() => {
-    const keys = Array.from(matrix.keys());
-    keys.sort();
-    return keys;
+    // Enumerate the full permission catalog, not just what's seeded for this
+    // woreda — a permission added to the catalog after seeding must still
+    // appear here (with the "default" indicator) rather than being silently
+    // dropped from the matrix.
+    const keys = new Set<string>(ALL_PERMISSION_KEYS);
+    for (const k of matrix.keys()) keys.add(k);
+    return Array.from(keys).sort();
   }, [matrix]);
 
   // Group by resource prefix
@@ -118,10 +124,10 @@ export function RolesPermissionsTab() {
     setPending((p) => new Set(p).add(cellId));
     const { error } = await supabase
       .from("role_permission")
-      .update({ is_granted: next })
-      .eq("woreda_id", woredaId)
-      .eq("role_name", role)
-      .eq("permission_key", key);
+      .upsert(
+        { woreda_id: woredaId, role_name: role, permission_key: key, is_granted: next },
+        { onConflict: "woreda_id,role_name,permission_key" },
+      );
     if (error) {
       toast.error(error.message);
     } else {
@@ -204,16 +210,24 @@ export function RolesPermissionsTab() {
                           </div>
                         </td>
                         {EDITABLE_ROLES.map((r) => {
-                          const checked = rolesMap.get(r.key) ?? false;
+                          const isSeeded = rolesMap.has(r.key);
+                          const checked = isSeeded
+                            ? (rolesMap.get(r.key) ?? false)
+                            : (ROLE_PERMISSIONS[r.key] as string[]).includes(key);
                           const cellId = `${r.key}:${key}`;
                           const isPending = pending.has(cellId);
                           const cell = (
-                            <div className="flex justify-center">
+                            <div className="flex flex-col items-center gap-0.5">
                               <Checkbox
                                 checked={checked}
                                 disabled={locked || isPending}
                                 onCheckedChange={(v) => toggle(r.key, key, Boolean(v))}
                               />
+                              {!isSeeded && (
+                                <span className="text-[9px] leading-none text-slate-400">
+                                  ነባሪ / default
+                                </span>
+                              )}
                             </div>
                           );
                           return (
@@ -227,6 +241,19 @@ export function RolesPermissionsTab() {
                                     </span>
                                     <span className="ml-1 text-xs text-slate-300">
                                       / System-locked
+                                    </span>
+                                  </TooltipContent>
+                                </Tooltip>
+                              ) : !isSeeded ? (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>{cell}</TooltipTrigger>
+                                  <TooltipContent>
+                                    <span className="font-noto-ethiopic">
+                                      ይህ ፍቃድ ገና አልተቀመጠም — ነባሪ ዋጋ ታይቷል
+                                    </span>
+                                    <span className="ml-1 text-xs text-slate-300">
+                                      / Not yet saved for this tenant — showing the code default.
+                                      Toggling will save an explicit override.
                                     </span>
                                   </TooltipContent>
                                 </Tooltip>
