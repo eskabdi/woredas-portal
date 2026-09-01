@@ -303,7 +303,7 @@ function SettingsPage() {
                   placeholder={woreda?.woreda_name_am ?? ""}
                 />
               </Field>
-              <Field labelAm="የወረዳ ሙሉ ስም" labelEn="Full Name of Woreda (Eng)">
+              <Field labelAm="የወረዳ ሙሉ ስም (እንግ)" labelEn="Full Name of Woreda (Eng)">
                 <Input
                   {...form.register("woreda_name_display_en")}
                   placeholder={woreda?.woreda_name_en ?? ""}
@@ -312,7 +312,7 @@ function SettingsPage() {
               <Field labelAm="የወረዳው አጭር ስም (አማ)" labelEn="Short Name of Woreda">
                 <Input {...form.register("woreda_name_short")} />
               </Field>
-              <Field labelAm="የወረዳው አጭር ስም" labelEn="Short Name of Woreda (Eng)">
+              <Field labelAm="የወረዳው አጭር ስም (እንግ)" labelEn="Short Name of Woreda (Eng)">
                 <Input {...form.register("woreda_name_short_en")} />
               </Field>
               <Field labelAm="የወረዳ ስም (ሐረሪ)" labelEn="Woreda Name (Harari)">
