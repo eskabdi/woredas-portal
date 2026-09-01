@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { upsertRolePermission } from "@/lib/rolePermissions";
 import { useAuthStore } from "@/stores/authStore";
 import { ROLE_PERMISSIONS, type Role } from "@/config/permissions";
+import { PERMISSION_ACTION_LABELS } from "@/config/permissionLabels";
 
 const EDITABLE_ROLES: { key: Role; am: string; en: string }[] = [
   { key: "registry_clerk", am: "የመዝገብ ሰራተኛ", en: "Registry Clerk" },
@@ -216,7 +217,19 @@ export function RolesPermissionsTab() {
                           <div className="flex items-center gap-1.5">
                             {locked && <Lock className="h-3 w-3 text-amber-600" />}
                             <span>{key}</span>
-                            <span className="text-slate-400">— {PERMISSION_LABELS[key] ?? ""}</span>
+                            {PERMISSION_ACTION_LABELS[key] ? (
+                              <span className="text-slate-400">
+                                —{" "}
+                                <span className="font-noto-ethiopic">
+                                  {PERMISSION_ACTION_LABELS[key].am}
+                                </span>{" "}
+                                / {PERMISSION_ACTION_LABELS[key].en}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">
+                                — {PERMISSION_LABELS[key] ?? ""}
+                              </span>
+                            )}
                           </div>
                         </td>
                         {EDITABLE_ROLES.map((r) => {

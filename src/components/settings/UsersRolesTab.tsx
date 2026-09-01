@@ -62,6 +62,7 @@ import {
   type WebpOptions,
 } from "@/utils/imageCompression";
 import { GROUP_LABELS, LOCKED_KEYS, PERMISSION_LABELS } from "./RolesPermissionsTab";
+import { PERMISSION_ACTION_LABELS } from "@/config/permissionLabels";
 
 const EDITABLE_ROLES = [
   { key: "registry_clerk", am: "የመዝገብ ሰራተኛ", en: "Registry Clerk" },
@@ -989,7 +990,17 @@ function UserPermissionOverridesDialog({
                       >
                         <div className="font-mono text-xs text-slate-700">
                           {key}{" "}
-                          <span className="text-slate-400">— {PERMISSION_LABELS[key] ?? ""}</span>
+                          {PERMISSION_ACTION_LABELS[key] ? (
+                            <span className="text-slate-400">
+                              —{" "}
+                              <span className="font-noto-ethiopic">
+                                {PERMISSION_ACTION_LABELS[key].am}
+                              </span>{" "}
+                              / {PERMISSION_ACTION_LABELS[key].en}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">— {PERMISSION_LABELS[key] ?? ""}</span>
+                          )}
                           <span className="ml-2 text-[10px] text-slate-400">
                             (default: {defaultGranted ? "granted" : "not granted"})
                           </span>

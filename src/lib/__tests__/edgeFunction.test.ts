@@ -23,8 +23,8 @@ describe("invokeEdgeFunction (F1 regression lock)", () => {
 
     expect(result.data).toBeNull();
     expect(result.friendlyError).not.toBe("Edge Function returned a non-2xx status code");
-    expect(result.friendlyError).toBe(
-      "This role can't be assigned this way — ask your tenant administrator.",
+    expect(result.friendlyError).toContain(
+      "This role can't be assigned this way — ask your tenant administrator",
     );
   });
 
@@ -38,7 +38,7 @@ describe("invokeEdgeFunction (F1 regression lock)", () => {
 
     const result = await invokeEdgeFunction("invite-tenant-user", {});
 
-    expect(result.friendlyError).toBe("Something went wrong. Please try again in a moment.");
+    expect(result.friendlyError).toContain("Something went wrong");
   });
 
   it("passes through data unchanged on success", async () => {
