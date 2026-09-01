@@ -144,16 +144,17 @@ the report itself already drafted and captioned as reviewed-pending:
   (including the generic fallback) made bilingual; every other entry stays
   English-only.
 
-Not done: Amharic for the other ~34 permission keys or ~25 error strings.
-The report's own caveat is explicit that even its eight+five examples are
-"illustrative -- written for this review, not by a native speaker -- and
-must be reviewed by one before any of it ships." Generating additional
-Amharic myself, with no native speaker able to check tone or correctness,
-risks shipping actively wrong text to the exact users this fix exists for --
+**Update:** the system owner, a native Amharic speaker, has reviewed and
+approved these thirteen strings (2026-09-01) -- they are final copy, not
+placeholder text. Both files' header comments were updated accordingly.
+
+Still not done: Amharic for the other ~34 permission keys or ~25 error
+strings. Generating additional Amharic without the same review risks
+shipping actively wrong text to the exact users this fix exists for --
 strictly worse than the English-only label or message it would replace. Both
-files carry an explicit "do not add Amharic here without native-speaker
-review" comment at the top so this stays a deliberate, visible gap rather
-than a silently abandoned one.
+files still carry an explicit "do not add a new entry without the same
+native-speaker review" comment at the top so this stays a deliberate,
+visible gap rather than a silently abandoned one.
 
 ## F12 implementation notes
 

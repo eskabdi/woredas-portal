@@ -5,15 +5,16 @@
  * Deliberately a single flat lookup consulted only by `translateError()`, so
  * F9 could swap values for bilingual copy without touching
  * `invokeEdgeFunction()` or any of its six call sites -- which is exactly
- * what happened below, for five entries only. Those five are the report's
- * own §3.4 example table, copied verbatim; the report is explicit that even
- * those are "illustrative -- written for this review, not by a native
- * speaker -- and must be reviewed by one before any of it ships." Every
- * other entry stays English-only on purpose: generating Amharic for the
- * rest myself, with no one able to check it, risks shipping actively wrong
- * text to the exact Amharic-speaking users this fix exists for.
+ * what happened below, for five entries. Those five are the report's own
+ * §3.4 example table; the Amharic has since been reviewed and approved by a
+ * native Amharic speaker (the system owner) and is final copy, not
+ * placeholder text. Every other entry stays English-only on purpose:
+ * generating Amharic for the rest without the same review risks shipping
+ * actively wrong text to the exact Amharic-speaking users this fix exists
+ * for.
  *
- * DO NOT add Amharic to another entry here without native-speaker review.
+ * DO NOT add Amharic to another entry here without the same native-speaker
+ * review.
  */
 
 const GENERIC_FALLBACK =
