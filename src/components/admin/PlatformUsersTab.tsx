@@ -55,6 +55,8 @@ import { TableEmptyRow, TableErrorRow, TableSkeletonRows } from "@/components/co
 import { exportRowsToCsv, exportRowsToPdf, type TableColumn } from "@/utils/tableExport";
 
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFunction } from "@/lib/edgeFunction";
+import { ROW_VERIFICATION_FAILURE_MESSAGE } from "@/lib/rowVerification";
 import { useAuthStore } from "@/stores/authStore";
 import { CP } from "@/config/permissions";
 
@@ -258,11 +260,14 @@ export function PlatformUsersTab() {
   ).length;
 
   async function suspend(u: AdminUserRow) {
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from("app_user")
       .update({ status: "suspended" })
-      .eq("user_id", u.user_id);
+      .eq("user_id", u.user_id)
+      .select("user_id")
+      .maybeSingle();
     if (error) return toast.error(error.message);
+    if (!updated) return toast.error(ROW_VERIFICATION_FAILURE_MESSAGE);
     await supabase.from("audit_log").insert({
       actor_user_id: callerId ?? null,
       entity_name: "app_user",
@@ -275,11 +280,14 @@ export function PlatformUsersTab() {
   }
 
   async function reactivate(u: AdminUserRow) {
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from("app_user")
       .update({ status: "active" })
-      .eq("user_id", u.user_id);
+      .eq("user_id", u.user_id)
+      .select("user_id")
+      .maybeSingle();
     if (error) return toast.error(error.message);
+    if (!updated) return toast.error(ROW_VERIFICATION_FAILURE_MESSAGE);
     await supabase.from("audit_log").insert({
       actor_user_id: callerId ?? null,
       entity_name: "app_user",
@@ -292,12 +300,12 @@ export function PlatformUsersTab() {
   }
 
   async function resendInvite(u: AdminUserRow) {
-    const { data, error } = await supabase.functions.invoke("resend-platform-invite", {
-      body: { email: u.username.includes("@") ? u.username : `${u.username}`, user_id: u.user_id },
+    const { friendlyError } = await invokeEdgeFunction("resend-platform-invite", {
+      email: u.username.includes("@") ? u.username : `${u.username}`,
+      user_id: u.user_id,
     });
-    const payload = data as { success?: boolean; error?: string } | null;
-    if (error || payload?.error) {
-      toast.error(payload?.error ?? error?.message ?? "Failed to resend invite");
+    if (friendlyError) {
+      toast.error(friendlyError);
       return;
     }
     toast.success("ግብዣ ተልኳል / Invitation resent");
@@ -630,15 +638,17 @@ function InviteAdminDialog({
     };
     if (role === "tenant_admin") body.woredaId = woredaId;
 
-    const { data, error } = await supabase.functions.invoke("invite-platform-admin", { body });
+    const { data, friendlyError } = await invokeEdgeFunction<{ warning?: string | null }>(
+      "invite-platform-admin",
+      body,
+    );
     setSubmitting(false);
-    const payload = data as { success?: boolean; warning?: string | null; error?: string } | null;
-    if (error || payload?.error) {
-      toast.error(payload?.error ?? error?.message ?? "Failed to send invitation");
+    if (friendlyError) {
+      toast.error(friendlyError);
       return;
     }
     toast.success("ግብዣ ተልኳል / Invitation sent");
-    if (payload?.warning) toast.warning(payload.warning);
+    if (data?.warning) toast.warning(data.warning);
     setFullName("");
     setEmail("");
     setRole("tenant_admin");
@@ -772,11 +782,14 @@ function UserDetailDialog({
       return;
     }
     const nextStatus = checked ? "active" : "suspended";
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from("app_user")
       .update({ status: nextStatus })
-      .eq("user_id", user.user_id);
+      .eq("user_id", user.user_id)
+      .select("user_id")
+      .maybeSingle();
     if (error) return toast.error(error.message);
+    if (!updated) return toast.error(ROW_VERIFICATION_FAILURE_MESSAGE);
     await supabase.from("audit_log").insert({
       actor_user_id: callerId ?? null,
       entity_name: "app_user",
@@ -805,12 +818,15 @@ function UserDetailDialog({
     // without clearing it would fail the CHECK and surface a raw Postgres
     // error instead of succeeding.
     const nextConsoleRoleId = role === "super_admin" ? user.console_role_id : null;
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from("app_user")
       .update({ role, woreda_id: nextWoredaId, console_role_id: nextConsoleRoleId } as never)
-      .eq("user_id", user.user_id);
+      .eq("user_id", user.user_id)
+      .select("user_id")
+      .maybeSingle();
     setSaving(false);
     if (error) return toast.error(error.message);
+    if (!updated) return toast.error(ROW_VERIFICATION_FAILURE_MESSAGE);
     await supabase.from("audit_log").insert({
       actor_user_id: callerId ?? null,
       // Scoped to the tenant the user is being assigned into (or was in, if
@@ -835,11 +851,14 @@ function UserDetailDialog({
 
   async function setConsoleRole(nextConsoleRoleId: string | null) {
     if (!user) return;
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from("app_user")
       .update({ console_role_id: nextConsoleRoleId } as never)
-      .eq("user_id", user.user_id);
+      .eq("user_id", user.user_id)
+      .select("user_id")
+      .maybeSingle();
     if (error) return toast.error(error.message);
+    if (!updated) return toast.error(ROW_VERIFICATION_FAILURE_MESSAGE);
     await supabase.from("audit_log").insert({
       actor_user_id: callerId ?? null,
       entity_name: "app_user",

@@ -6,8 +6,11 @@ import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
+import { upsertRolePermission } from "@/lib/rolePermissions";
+import { ROW_VERIFICATION_FAILURE_MESSAGE } from "@/lib/rowVerification";
 import { useAuthStore } from "@/stores/authStore";
 import { ROLE_PERMISSIONS, type Role } from "@/config/permissions";
+import { PERMISSION_ACTION_LABELS } from "@/config/permissionLabels";
 
 const EDITABLE_ROLES: { key: Role; am: string; en: string }[] = [
   { key: "registry_clerk", am: "የመዝገብ ሰራተኛ", en: "Registry Clerk" },
@@ -18,9 +21,9 @@ const EDITABLE_ROLES: { key: Role; am: string; en: string }[] = [
   { key: "viewer", am: "ተመልካች", en: "Viewer" },
 ];
 
-const LOCKED_KEYS = new Set(["credential.approve", "civil.approve", "tenant.manage"]);
+export const LOCKED_KEYS = new Set(["credential.approve", "civil.approve", "tenant.manage"]);
 
-const GROUP_LABELS: Record<string, { am: string; en: string }> = {
+export const GROUP_LABELS: Record<string, { am: string; en: string }> = {
   resident: { am: "ነዋሪ", en: "Resident" },
   household: { am: "ቤተሰብ", en: "Household" },
   credential: { am: "መታወቂያ", en: "Credential" },
@@ -32,9 +35,14 @@ const GROUP_LABELS: Record<string, { am: string; en: string }> = {
   tenant: { am: "ወረዳ", en: "Tenant" },
   user: { am: "ተጠቃሚ", en: "User" },
   platform: { am: "መድረክ", en: "Platform" },
+  rental: { am: "የኪራይ ቤት", en: "Rental Houses" },
+  revenue: { am: "ገቢ", en: "Revenue" },
+  service: { am: "አገልግሎት ጥያቄ", en: "Service Requests" },
+  complaint: { am: "ቅሬታ", en: "Complaints" },
+  approval: { am: "ማጽደቅ", en: "Approvals" },
 };
 
-const PERMISSION_LABELS: Record<string, string> = {
+export const PERMISSION_LABELS: Record<string, string> = {
   "resident.create": "Create",
   "resident.read": "Read",
   "resident.update": "Update",
@@ -62,6 +70,21 @@ const PERMISSION_LABELS: Record<string, string> = {
   "tenant.create": "Create",
   "user.manage": "Manage",
   "platform.manage": "Manage",
+  "rental.view": "View",
+  "rental.create": "Create",
+  "rental.approve": "Approve",
+  "rental.vacate": "Vacate",
+  "rental.report": "Report",
+  "revenue.view": "View",
+  "revenue.collect": "Collect",
+  "revenue.receipt_reprint": "Reprint Receipt",
+  "service.create": "Create",
+  "service.read": "Read",
+  "service.verify": "Verify",
+  "service.approve": "Approve",
+  "service.issue": "Issue",
+  "complaint.manage": "Manage",
+  "approval.queue.view": "View Queue",
 };
 
 export function RolesPermissionsTab() {
@@ -116,14 +139,19 @@ export function RolesPermissionsTab() {
     if (LOCKED_KEYS.has(key)) return;
     const cellId = `${role}:${key}`;
     setPending((p) => new Set(p).add(cellId));
-    const { error } = await supabase
-      .from("role_permission")
-      .update({ is_granted: next })
-      .eq("woreda_id", woredaId)
-      .eq("role_name", role)
-      .eq("permission_key", key);
+    const { data: written, error } = await upsertRolePermission(
+      woredaId,
+      role,
+      key,
+      next,
+      userId ?? null,
+    );
     if (error) {
       toast.error(error.message);
+    } else if (!written) {
+      // Access review (report §3.1): a silently-filtered upsert must not log
+      // an audit_log row for a change that never happened.
+      toast.error(ROW_VERIFICATION_FAILURE_MESSAGE);
     } else {
       await supabase.from("audit_log").insert({
         actor_user_id: userId ?? null,
@@ -200,7 +228,19 @@ export function RolesPermissionsTab() {
                           <div className="flex items-center gap-1.5">
                             {locked && <Lock className="h-3 w-3 text-amber-600" />}
                             <span>{key}</span>
-                            <span className="text-slate-400">— {PERMISSION_LABELS[key] ?? ""}</span>
+                            {PERMISSION_ACTION_LABELS[key] ? (
+                              <span className="text-slate-400">
+                                —{" "}
+                                <span className="font-noto-ethiopic">
+                                  {PERMISSION_ACTION_LABELS[key].am}
+                                </span>{" "}
+                                / {PERMISSION_ACTION_LABELS[key].en}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">
+                                — {PERMISSION_LABELS[key] ?? ""}
+                              </span>
+                            )}
                           </div>
                         </td>
                         {EDITABLE_ROLES.map((r) => {

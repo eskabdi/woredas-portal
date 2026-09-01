@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { PageHeader } from "@/components/common/PageHeader";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFunction } from "@/lib/edgeFunction";
 import { CP } from "@/config/permissions";
 import {
   ConsolePermissionGate,
@@ -149,20 +150,18 @@ function ProvisionPage() {
       if (modErr) throw modErr;
 
       // 2. Invoke invite function
-      const { data, error } = await supabase.functions.invoke("invite-platform-admin", {
-        body: {
+      const { data, friendlyError } = await invokeEdgeFunction<{ warning?: string | null }>(
+        "invite-platform-admin",
+        {
           email: email.trim(),
           full_name: fullName.trim(),
           role: "tenant_admin",
           woredaId,
         },
-      });
-      const payload = data as { success?: boolean; warning?: string | null; error?: string } | null;
-      if (error || payload?.error) {
-        throw new Error(payload?.error ?? error?.message ?? "Failed to send invitation");
-      }
+      );
+      if (friendlyError) throw new Error(friendlyError);
       toast.success("ግብዣ ተልኳል / Invitation sent");
-      if (payload?.warning) toast.warning(payload.warning);
+      if (data?.warning) toast.warning(data.warning);
       navigate({ to: "/admin/tenants" });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");

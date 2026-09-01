@@ -1,6 +1,6 @@
 /**
- * Parses the two shapes Supabase's GoTrue server can put on an auth email
- * link's landing URL, once the classic hash-fragment flow (`#access_token=…`,
+ * Parses the shapes Supabase's GoTrue server can put on an auth email link's
+ * landing URL, once the classic hash-fragment flow (`#access_token=…`,
  * handled automatically by supabase-js's `detectSessionInUrl`) is ruled out:
  *
  *  - a rejected link: `error` / `error_description` in the query or the hash
@@ -13,17 +13,19 @@
  *    app called `verifyOtp()` for this shape before, so a project or
  *    template configured this way silently never established a session --
  *    the invite always resolved to "not signed in" and landed on /login.
- *
- * Only `type=invite` is handled here on purpose: this app has no
- * self-service password-reset flow (login.tsx points users at their
- * administrator instead), so a `type=recovery` link isn't something this
- * app currently sends or is prepared to route once verified. Widening this
- * to other types is a separate feature, not this fix.
+ *  - a `token_hash` + `type=recovery` link -- the same dashboard-template
+ *    shape, for a self-service password reset (F12,
+ *    docs/rbac-security-forensic-review.md). Distinguished from `invite` so
+ *    the caller can route an already-active user straight to /set-password
+ *    without the invite flow's `status === 'pending'` assumption applying.
  *
  * Pure function -- no `window` access -- so it doesn't need a browser to test.
  */
 export type AuthRedirectOutcome =
-  { kind: "none" } | { kind: "invite"; tokenHash: string } | { kind: "error"; description: string };
+  | { kind: "none" }
+  | { kind: "invite"; tokenHash: string }
+  | { kind: "recovery"; tokenHash: string }
+  | { kind: "error"; description: string };
 
 export function parseAuthRedirect(search: string, hash: string): AuthRedirectOutcome {
   const params = new URLSearchParams(search);
@@ -39,6 +41,7 @@ export function parseAuthRedirect(search: string, hash: string): AuthRedirectOut
   const tokenHash = params.get("token_hash");
   const type = params.get("type");
   if (tokenHash && type === "invite") return { kind: "invite", tokenHash };
+  if (tokenHash && type === "recovery") return { kind: "recovery", tokenHash };
 
   return { kind: "none" };
 }

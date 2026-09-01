@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFunction } from "@/lib/edgeFunction";
 import { useAuthStore } from "@/stores/authStore";
 import { fetchAppUser } from "@/hooks/useAuthBootstrap";
 import { getCurrentEthiopianDate } from "@/utils/ethiopianCalendar";
@@ -126,11 +127,7 @@ function SetPasswordPage() {
     // Best-effort: the password is already set regardless of whether this
     // succeeds. Non-fatal on error -- falls through to the existing "contact
     // an administrator" messaging below if activation didn't happen.
-    try {
-      await supabase.functions.invoke("activate-invited-user", { body: {} });
-    } catch {
-      // ignore -- see comment above
-    }
+    await invokeEdgeFunction("activate-invited-user", {});
     // Explicitly refetch rather than trusting the ambient USER_UPDATED
     // listener in useAuthBootstrap.ts, which defers via setTimeout(0) and
     // isn't guaranteed to have landed before the `done` branch below reads

@@ -1,15 +1,32 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+// F10 (docs/rbac-security-forensic-review.md): "*" admitted cross-origin
+// requests from any page unconditionally. Harmless given the bearer-token
+// (not cookie) auth model -- CORS can't leak or forge that token to a third
+// party -- but inconsistent with the narrow, explicit allow-list this app
+// already applies to Supabase Auth redirect URLs. SITE_URL is the same
+// secret F2 introduced; localhost:5173 covers local dev against the real
+// project (this repo has no staging project).
+const ALLOWED_ORIGINS = new Set(
+  [Deno.env.get("SITE_URL"), "http://localhost:5173"]
+    .filter((o): o is string => !!o)
+    .map((o) => o.trim().replace(/\/+$/, "")),
+);
 
-function json(status: number, body: unknown): Response {
+function corsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get("Origin") ?? "";
+  return {
+    "Access-Control-Allow-Origin": ALLOWED_ORIGINS.has(origin) ? origin : "",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    Vary: "Origin",
+  };
+}
+
+function json(req: Request, status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+    headers: { ...corsHeaders(req), "Content-Type": "application/json" },
   });
 }
 
@@ -25,12 +42,12 @@ function json(status: number, body: unknown): Response {
 // deliberately left untouched, since reactivating those stays an
 // administrator action by design.
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: CORS_HEADERS });
-  if (req.method !== "POST") return json(405, { error: "Method not allowed" });
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders(req) });
+  if (req.method !== "POST") return json(req, 405, { error: "Method not allowed" });
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) return json(401, { error: "Missing authorization header" });
+    if (!authHeader) return json(req, 401, { error: "Missing authorization header" });
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -42,7 +59,7 @@ Deno.serve(async (req) => {
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
     const { data: userData, error: userErr } = await userClient.auth.getUser();
-    if (userErr || !userData.user) return json(401, { error: "Unauthorized" });
+    if (userErr || !userData.user) return json(req, 401, { error: "Unauthorized" });
     const callerId = userData.user.id;
 
     const { data: caller, error: callerErr } = await admin
@@ -50,12 +67,12 @@ Deno.serve(async (req) => {
       .select("status, woreda_id")
       .eq("user_id", callerId)
       .maybeSingle();
-    if (callerErr || !caller) return json(404, { error: "No app_user profile found" });
+    if (callerErr || !caller) return json(req, 404, { error: "No app_user profile found" });
 
     if (caller.status !== "pending") {
       // Nothing to do -- already active, or suspended/inactive (which this
       // function must never touch). Report the true status either way.
-      return json(200, { success: true, status: caller.status });
+      return json(req, 200, { success: true, status: caller.status });
     }
 
     const { error: updateErr } = await admin
@@ -63,7 +80,7 @@ Deno.serve(async (req) => {
       .update({ status: "active" })
       .eq("user_id", callerId)
       .eq("status", "pending");
-    if (updateErr) return json(500, { error: updateErr.message });
+    if (updateErr) return json(req, 500, { error: updateErr.message });
 
     await admin.from("audit_log").insert({
       actor_user_id: callerId,
@@ -74,8 +91,8 @@ Deno.serve(async (req) => {
       new_value_json: { status: "active", method: "self_service_password_set" },
     });
 
-    return json(200, { success: true, status: "active" });
+    return json(req, 200, { success: true, status: "active" });
   } catch (e) {
-    return json(500, { error: e instanceof Error ? e.message : "Internal error" });
+    return json(req, 500, { error: e instanceof Error ? e.message : "Internal error" });
   }
 });
