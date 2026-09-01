@@ -200,6 +200,23 @@ touches `pending` rows — `suspended`/`inactive` stay untouched, so
 reactivating a suspended or deactivated account is still an administrator
 action, same as before.
 
+### House rule: every admin-facing mutation verifies what it actually changed
+
+Any `.update()` or `.insert()` in an admin-facing flow that isn't immediately
+followed by a full page reload must chain `.select(...).maybeSingle()` (or
+otherwise inspect the returned row/count) and treat an empty result as a
+failure with its own message — never infer success from `error === null`
+alone. PostgREST returns `error: null` whether a write's `WHERE` clause
+matched one row or zero, so a bare `.update()` filtered by an id that RLS
+silently excludes (a stale row in a second tab, a race with another admin
+acting on the same target, the target no longer matching the policy's scope)
+is a no-op that still looks like success. `supabase/functions/record-login/index.ts:52-59`
+is the canonical example — it chains `.select("user_id").maybeSingle()` after
+its update and returns a `404` when nothing comes back. See
+`docs/rbac-security-forensic-review.md`, F5/F6, for the two places this was
+missing and got fixed, and the audit of every other admin mutation in the
+codebase for the same pattern.
+
 ### Module gating is a third, separate axis
 
 `tenant_module_config` enables/disables whole modules per tenant

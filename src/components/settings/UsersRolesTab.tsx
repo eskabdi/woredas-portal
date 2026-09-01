@@ -46,6 +46,7 @@ import {
 } from "@/components/common/TablePagination";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeEdgeFunction } from "@/lib/edgeFunction";
+import { ROW_VERIFICATION_FAILURE_MESSAGE } from "@/lib/rowVerification";
 import { useAuthStore } from "@/stores/authStore";
 import {
   toWebp,
@@ -163,12 +164,18 @@ export function UsersRolesTab() {
       toast.error("Invalid role");
       return;
     }
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from("app_user")
       .update({ role: newRole })
-      .eq("user_id", user.user_id);
+      .eq("user_id", user.user_id)
+      .select("user_id")
+      .maybeSingle();
     if (error) {
       toast.error(error.message);
+      return;
+    }
+    if (!updated) {
+      toast.error(ROW_VERIFICATION_FAILURE_MESSAGE);
       return;
     }
     await supabase.from("audit_log").insert({
@@ -184,11 +191,18 @@ export function UsersRolesTab() {
   }
 
   async function suspendUserAction(user: AppUserRow) {
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from("app_user")
       .update({ status: "suspended" })
-      .eq("user_id", user.user_id);
+      .eq("user_id", user.user_id)
+      .select("user_id")
+      .maybeSingle();
     if (error) return toast.error(error.message);
+    if (!updated) {
+      return toast.error(
+        "This user could no longer be found, or you may no longer have permission for this — refresh and try again.",
+      );
+    }
     await supabase.from("audit_log").insert({
       actor_user_id: callerId ?? null,
       woreda_id: woredaId,
