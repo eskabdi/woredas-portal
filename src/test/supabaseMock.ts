@@ -11,6 +11,7 @@ export interface QueryBuilderMock extends PromiseLike<{ data: unknown; error: un
   update: ReturnType<typeof vi.fn>;
   upsert: ReturnType<typeof vi.fn>;
   insert: ReturnType<typeof vi.fn>;
+  delete: ReturnType<typeof vi.fn>;
   select: ReturnType<typeof vi.fn>;
   maybeSingle: ReturnType<typeof vi.fn>;
   single: ReturnType<typeof vi.fn>;
@@ -31,6 +32,7 @@ export function createQueryBuilderMock(
     update: vi.fn(() => builder),
     upsert: vi.fn(() => builder),
     insert: vi.fn(() => builder),
+    delete: vi.fn(() => builder),
     select: vi.fn(() => builder),
     maybeSingle: vi.fn(() => builder),
     single: vi.fn(() => builder),

@@ -43,7 +43,7 @@ ordering.
 | 1     | F13 — Vitest test harness                                                                          | done                    |
 | 2     | P0 — F1 (edge function errors), F5 (permission upsert)                                             | done                    |
 | 3     | P1 — F4 (backfill/seeding), F6 (row-verification), F7 (`current_permissions()`)                    | done                    |
-| 4     | P2 — F3 (per-user overrides), F8 (single source of truth), F9 (localization), F12 (password reset) | pending, gated on D1/D2 |
+| 4     | P2 — F3 (per-user overrides), F8 (single source of truth), F9 (localization), F12 (password reset) | F3 done, rest pending   |
 | 5     | P3 — F10 (CORS allow-list), access review (`updated_by`)                                           | pending                 |
 
 ## Open Decisions D1/D2 — resolution
@@ -66,6 +66,39 @@ explicitly, adopting the report's own recommendations:
 
 This resolution is recorded here, not silently assumed in the migration or the
 report itself.
+
+## F3 implementation notes
+
+- Schema: `supabase/migrations/00000000000017_user_permission_overrides.sql` —
+  `user_permission_override` table per the report's §3.1 sketch, a
+  `woreda_id`-derivation trigger closing the same cross-tenant spoofing path
+  F11 traced and closed for `app_user` directly, RLS mirroring
+  `role_permission`'s tenant-admin-writes-own-tenant pattern, and both
+  `user_has_perm()` and `current_permissions()` rewritten with the D1(a)
+  precedence link at the front of their existing `COALESCE` chain. A CHECK
+  constraint excludes the same three `LOCKED_KEYS` `RolesPermissionsTab`
+  already treats as system-locked, so a per-user override can't become a back
+  door around that lock. Verified live: D1(a) precedence (a user-level grant
+  overriding an explicit tenant-level deny) and the woreda-derivation trigger
+  both confirmed correct in a rolled-back transaction against the real
+  database.
+- Client: a "Permissions" action (disabled for `tenant_admin`/`super_admin` —
+  overrides are scoped to the six editable roles only, matching the report's
+  own motivating example of restricting one person below their role) opens
+  `UserPermissionOverridesDialog` in `UsersRolesTab.tsx`, a per-key
+  Default/Grant/Deny control grouped the same way as `RolesPermissionsTab`.
+  `ChangeRoleDialog` now fetches and surfaces the target user's existing
+  overrides (D2(c)) with an explicit, unchecked-by-default "clear all
+  overrides" confirmation, so they persist through a role change unless an
+  admin deliberately clears them.
+- Opportunistic fix bundled in: `RolesPermissionsTab.tsx`'s `PERMISSION_LABELS`
+  and `GROUP_LABELS` predate F4's five permission keys entirely — after F4's
+  backfill, the matrix already rendered all 42 keys, but the 15 new ones
+  showed with a blank row label and an unlabeled/raw-prefix group heading.
+  Not a numbered finding in the report; filled in while touching this file
+  for F3's shared constants export, since leaving it would have made the new
+  "Permissions" dialog (which reuses these same maps) inconsistently labeled
+  too.
 
 ## F6 codebase-wide row-verification audit
 

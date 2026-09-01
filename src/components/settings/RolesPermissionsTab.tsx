@@ -19,9 +19,9 @@ const EDITABLE_ROLES: { key: Role; am: string; en: string }[] = [
   { key: "viewer", am: "ተመልካች", en: "Viewer" },
 ];
 
-const LOCKED_KEYS = new Set(["credential.approve", "civil.approve", "tenant.manage"]);
+export const LOCKED_KEYS = new Set(["credential.approve", "civil.approve", "tenant.manage"]);
 
-const GROUP_LABELS: Record<string, { am: string; en: string }> = {
+export const GROUP_LABELS: Record<string, { am: string; en: string }> = {
   resident: { am: "ነዋሪ", en: "Resident" },
   household: { am: "ቤተሰብ", en: "Household" },
   credential: { am: "መታወቂያ", en: "Credential" },
@@ -33,9 +33,14 @@ const GROUP_LABELS: Record<string, { am: string; en: string }> = {
   tenant: { am: "ወረዳ", en: "Tenant" },
   user: { am: "ተጠቃሚ", en: "User" },
   platform: { am: "መድረክ", en: "Platform" },
+  rental: { am: "የኪራይ ቤት", en: "Rental Houses" },
+  revenue: { am: "ገቢ", en: "Revenue" },
+  service: { am: "አገልግሎት ጥያቄ", en: "Service Requests" },
+  complaint: { am: "ቅሬታ", en: "Complaints" },
+  approval: { am: "ማጽደቅ", en: "Approvals" },
 };
 
-const PERMISSION_LABELS: Record<string, string> = {
+export const PERMISSION_LABELS: Record<string, string> = {
   "resident.create": "Create",
   "resident.read": "Read",
   "resident.update": "Update",
@@ -63,6 +68,21 @@ const PERMISSION_LABELS: Record<string, string> = {
   "tenant.create": "Create",
   "user.manage": "Manage",
   "platform.manage": "Manage",
+  "rental.view": "View",
+  "rental.create": "Create",
+  "rental.approve": "Approve",
+  "rental.vacate": "Vacate",
+  "rental.report": "Report",
+  "revenue.view": "View",
+  "revenue.collect": "Collect",
+  "revenue.receipt_reprint": "Reprint Receipt",
+  "service.create": "Create",
+  "service.read": "Read",
+  "service.verify": "Verify",
+  "service.approve": "Approve",
+  "service.issue": "Issue",
+  "complaint.manage": "Manage",
+  "approval.queue.view": "View Queue",
 };
 
 export function RolesPermissionsTab() {
