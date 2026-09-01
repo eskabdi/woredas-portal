@@ -10,12 +10,13 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.15"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
       app_user: {
         Row: {
+          console_role_id: string | null
           created_at: string
           department: string | null
           full_name: string
@@ -34,6 +35,7 @@ export type Database = {
           woreda_id: string | null
         }
         Insert: {
+          console_role_id?: string | null
           created_at?: string
           department?: string | null
           full_name: string
@@ -52,6 +54,7 @@ export type Database = {
           woreda_id?: string | null
         }
         Update: {
+          console_role_id?: string | null
           created_at?: string
           department?: string | null
           full_name?: string
@@ -70,6 +73,13 @@ export type Database = {
           woreda_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "app_user_console_role_id_fkey"
+            columns: ["console_role_id"]
+            isOneToOne: false
+            referencedRelation: "console_role"
+            referencedColumns: ["console_role_id"]
+          },
           {
             foreignKeyName: "app_user_invited_by_user_id_fkey"
             columns: ["invited_by_user_id"]
@@ -144,6 +154,73 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "woreda"
             referencedColumns: ["woreda_id"]
+          },
+        ]
+      }
+      console_role: {
+        Row: {
+          console_role_id: string
+          created_at: string
+          description: string | null
+          is_active: boolean
+          name: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          console_role_id?: string
+          created_at?: string
+          description?: string | null
+          is_active?: boolean
+          name: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          console_role_id?: string
+          created_at?: string
+          description?: string | null
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "console_role_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "app_user"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      console_role_permission: {
+        Row: {
+          console_role_id: string
+          is_granted: boolean
+          permission_key: string
+          updated_at: string
+        }
+        Insert: {
+          console_role_id: string
+          is_granted?: boolean
+          permission_key: string
+          updated_at?: string
+        }
+        Update: {
+          console_role_id?: string
+          is_granted?: boolean
+          permission_key?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "console_role_permission_console_role_id_fkey"
+            columns: ["console_role_id"]
+            isOneToOne: false
+            referencedRelation: "console_role"
+            referencedColumns: ["console_role_id"]
           },
         ]
       }
@@ -783,21 +860,21 @@ export type Database = {
       id_card_template: {
         Row: {
           background_image_url: string | null
-          status: string
+          is_published: boolean
           template_type: string
           updated_at: string
           updated_by: string | null
         }
         Insert: {
           background_image_url?: string | null
-          status?: string
+          is_published?: boolean
           template_type: string
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
           background_image_url?: string | null
-          status?: string
+          is_published?: boolean
           template_type?: string
           updated_at?: string
           updated_by?: string | null
@@ -813,6 +890,75 @@ export type Database = {
         ]
       }
       id_card_template_field: {
+        Row: {
+          binding_mode: string
+          canvas_height: number
+          canvas_width: number
+          color: string
+          field_key: string
+          field_type: string
+          font_family: string
+          font_size: number | null
+          font_style: string
+          font_weight: string | null
+          height: number
+          static_value: string | null
+          template_field_id: string
+          template_type: string
+          text_align: string
+          text_decoration: string
+          width: number
+          x: number
+          y: number
+          z_index: number
+        }
+        Insert: {
+          binding_mode?: string
+          canvas_height?: number
+          canvas_width?: number
+          color?: string
+          field_key: string
+          field_type?: string
+          font_family?: string
+          font_size?: number | null
+          font_style?: string
+          font_weight?: string | null
+          height: number
+          static_value?: string | null
+          template_field_id?: string
+          template_type: string
+          text_align?: string
+          text_decoration?: string
+          width: number
+          x: number
+          y: number
+          z_index?: number
+        }
+        Update: {
+          binding_mode?: string
+          canvas_height?: number
+          canvas_width?: number
+          color?: string
+          field_key?: string
+          field_type?: string
+          font_family?: string
+          font_size?: number | null
+          font_style?: string
+          font_weight?: string | null
+          height?: number
+          static_value?: string | null
+          template_field_id?: string
+          template_type?: string
+          text_align?: string
+          text_decoration?: string
+          width?: number
+          x?: number
+          y?: number
+          z_index?: number
+        }
+        Relationships: []
+      }
+      id_card_template_field_draft: {
         Row: {
           binding_mode: string
           canvas_height: number
@@ -1094,6 +1240,7 @@ export type Database = {
           receipt_id: string
           receipt_number: string
           total_amount: number
+          verification_token: string | null
           woreda_id: string
         }
         Insert: {
@@ -1105,6 +1252,7 @@ export type Database = {
           receipt_id?: string
           receipt_number: string
           total_amount: number
+          verification_token?: string | null
           woreda_id: string
         }
         Update: {
@@ -1116,6 +1264,7 @@ export type Database = {
           receipt_id?: string
           receipt_number?: string
           total_amount?: number
+          verification_token?: string | null
           woreda_id?: string
         }
         Relationships: [
@@ -1850,6 +1999,7 @@ export type Database = {
           permission_key: string
           role_name: string
           updated_at: string
+          updated_by: string | null
           woreda_id: string
         }
         Insert: {
@@ -1858,6 +2008,7 @@ export type Database = {
           permission_key: string
           role_name: string
           updated_at?: string
+          updated_by?: string | null
           woreda_id: string
         }
         Update: {
@@ -1866,9 +2017,17 @@ export type Database = {
           permission_key?: string
           role_name?: string
           updated_at?: string
+          updated_by?: string | null
           woreda_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "role_permission_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "app_user"
+            referencedColumns: ["user_id"]
+          },
           {
             foreignKeyName: "role_permission_woreda_id_fkey"
             columns: ["woreda_id"]
@@ -2321,6 +2480,58 @@ export type Database = {
           },
         ]
       }
+      user_permission_override: {
+        Row: {
+          created_at: string
+          is_granted: boolean
+          permission_key: string
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+          woreda_id: string
+        }
+        Insert: {
+          created_at?: string
+          is_granted: boolean
+          permission_key: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+          woreda_id: string
+        }
+        Update: {
+          created_at?: string
+          is_granted?: boolean
+          permission_key?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+          woreda_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_permission_override_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "app_user"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "user_permission_override_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "app_user"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "user_permission_override_woreda_id_fkey"
+            columns: ["woreda_id"]
+            isOneToOne: false
+            referencedRelation: "woreda"
+            referencedColumns: ["woreda_id"]
+          },
+        ]
+      }
       vital_event: {
         Row: {
           approval_decision_at: string | null
@@ -2538,6 +2749,8 @@ export type Database = {
           woreda_name_display_en: string | null
           woreda_name_display_har: string | null
           woreda_name_display_om: string | null
+          woreda_name_short: string | null
+          woreda_name_short_en: string | null
         }
         Insert: {
           address_line?: string | null
@@ -2555,6 +2768,8 @@ export type Database = {
           woreda_name_display_en?: string | null
           woreda_name_display_har?: string | null
           woreda_name_display_om?: string | null
+          woreda_name_short?: string | null
+          woreda_name_short_en?: string | null
         }
         Update: {
           address_line?: string | null
@@ -2572,6 +2787,8 @@ export type Database = {
           woreda_name_display_en?: string | null
           woreda_name_display_har?: string | null
           woreda_name_display_om?: string | null
+          woreda_name_short?: string | null
+          woreda_name_short_en?: string | null
         }
         Relationships: [
           {
@@ -2659,8 +2876,12 @@ export type Database = {
       }
     }
     Functions: {
+      current_console_permissions: { Args: never; Returns: string[] }
+      current_permissions: { Args: never; Returns: string[] }
       default_role_perms: { Args: { _role: string }; Returns: string[] }
+      discard_id_card_template_draft: { Args: never; Returns: undefined }
       gen_letter_verification_token: { Args: never; Returns: string }
+      gen_receipt_verification_token: { Args: never; Returns: string }
       get_credential_live_status: {
         Args: { _credential_number: string }
         Returns: string
@@ -2670,9 +2891,15 @@ export type Database = {
       is_super_admin: { Args: never; Returns: boolean }
       is_tenant_admin: { Args: never; Returns: boolean }
       luhn_check_digit: { Args: { _digits: string }; Returns: number }
+      publish_id_card_template: { Args: never; Returns: undefined }
       storage_path_woreda_id: { Args: { object_name: string }; Returns: string }
       user_has_any_perm: { Args: { _perms: string[] }; Returns: boolean }
+      user_has_console_perm: { Args: { _perm: string }; Returns: boolean }
       user_has_perm: { Args: { _perm: string }; Returns: boolean }
+      user_permission_override_target_role_ok: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
       verify_credential_token: {
         Args: { _credential_digits: string }
         Returns: {
@@ -2685,6 +2912,23 @@ export type Database = {
           photo_path: string
           resident_full_name: string
           status: string
+          woreda_name_am: string
+          woreda_name_en: string
+        }[]
+      }
+      verify_receipt: {
+        Args: { _token: string }
+        Returns: {
+          channel: string
+          kebele_name_am: string
+          kebele_name_en: string
+          paid_by_full_name: string
+          paid_by_full_name_am: string
+          payment_type: string
+          printed_at: string
+          receipt_date: string
+          receipt_number: string
+          total_amount: number
           woreda_name_am: string
           woreda_name_en: string
         }[]
