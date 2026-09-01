@@ -181,7 +181,7 @@ function ResidentProfilePrintPage() {
         <div className="grid grid-cols-[132px_1fr] items-start gap-6">
           <div className="h-[164px] w-[132px] border border-slate-300 bg-slate-100">
             {photoUrl ? (
-              <img src={photoUrl} alt="" className="h-full w-full object-cover grayscale" />
+              <img src={photoUrl} alt="" className="h-full w-full object-cover" />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-[10px] text-slate-400">
                 ፎቶ · Photo

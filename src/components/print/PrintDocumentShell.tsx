@@ -116,7 +116,7 @@ export function PrintDocumentShell({
           <div className="flex items-start gap-3.5">
             <div className="h-14 w-14 flex-none border border-slate-300">
               {logoDataUrl ? (
-                <img src={logoDataUrl} alt="" className="h-full w-full object-contain grayscale" />
+                <img src={logoDataUrl} alt="" className="h-full w-full object-contain" />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-[9px] text-slate-400">
                   Logo
