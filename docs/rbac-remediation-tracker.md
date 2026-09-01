@@ -42,7 +42,7 @@ ordering.
 | 0     | Commit the report + this tracker                                                                   | done                    |
 | 1     | F13 — Vitest test harness                                                                          | done                    |
 | 2     | P0 — F1 (edge function errors), F5 (permission upsert)                                             | done                    |
-| 3     | P1 — F4 (backfill/seeding), F6 (row-verification), F7 (`current_permissions()`)                    | pending                 |
+| 3     | P1 — F4 (backfill/seeding), F6 (row-verification), F7 (`current_permissions()`)                    | done                    |
 | 4     | P2 — F3 (per-user overrides), F8 (single source of truth), F9 (localization), F12 (password reset) | pending, gated on D1/D2 |
 | 5     | P3 — F10 (CORS allow-list), access review (`updated_by`)                                           | pending                 |
 
@@ -69,6 +69,40 @@ report itself.
 
 ## F6 codebase-wide row-verification audit
 
-(Filled in during Phase 3 — the full list of `.update(`/`.insert(` call sites
-in admin-facing flows found missing a row-count/returned-row check, beyond the
-two the report names directly.)
+Grepped every `.update(` call site in the codebase and classified each by
+whether it mutates another account's identity/role/permission state (the
+specific RLS-exclusion race F6 describes — a policy scoped to the caller's own
+tenant or excluding certain target roles silently filtering the row) versus
+ordinary tenant-scoped data entry on a record the acting user already owns
+within their own tenant (residents, households, credentials, civil events,
+service requests, rental houses, revenue, fee schedules, service-type catalog
+entries) — the latter carries a materially different, much lower risk profile
+and fixing it would expand this finding into an app-wide refactor the report
+never claimed was needed. Fixed the former; left the latter as future
+correctness hardening, not part of F6.
+
+**Fixed** (added `.select(...).maybeSingle()` + a "row not found" toast,
+matching `changeRole()`/`suspendUserAction()` and `record-login/index.ts`):
+
+- `src/components/settings/UsersRolesTab.tsx` — `changeRole()`,
+  `suspendUserAction()` (the two the report names directly)
+- `src/components/admin/PlatformUsersTab.tsx` — `suspend()`, `reactivate()`,
+  `toggleActive()`, `saveRoleChange()`, `setConsoleRole()` — five more
+  instances of the identical anti-pattern on the platform-admin console's own
+  user-management screen
+- `src/routes/admin.console-roles.tsx` — `toggleActive()` (console role
+  enable/disable) and the role name/description `save()` — both mutate
+  `console_role`, a platform-level, `is_super_admin()`-gated table
+
+**Already correct, no action needed:** `admin.console-roles.tsx`'s
+`toggleGrant()` (the `console_role_permission` matrix) already uses
+`.upsert()` with an explicit code comment citing this exact anti-pattern —
+someone fixed this one independently before this remediation pass.
+
+**Not fixed, out of scope for F6:** `.update()` sites in
+`woreda.settings.woreda-configuration.tsx` (`service_type`, `fee_schedule`)
+and `admin.credential-template.tsx` (`id_card_template`,
+`id_card_template_field_draft`) — a tenant admin or platform super_admin
+editing their own tenant's/platform's configuration row doesn't share the
+identity-scoped RLS-exclusion race F6 is about. Left as a general
+observation for whoever next touches those screens, not remediated here.
