@@ -44,7 +44,7 @@ ordering.
 | 2     | P0 — F1 (edge function errors), F5 (permission upsert)                                             | done                    |
 | 3     | P1 — F4 (backfill/seeding), F6 (row-verification), F7 (`current_permissions()`)                    | done                    |
 | 4     | P2 — F3 (per-user overrides), F8 (single source of truth), F9 (localization), F12 (password reset) | done                    |
-| 5     | P3 — F10 (CORS allow-list), access review (`updated_by`)                                           | pending                 |
+| 5     | P3 — F10 (CORS allow-list), access review (`updated_by`)                                           | done                    |
 
 ## Open Decisions D1/D2 — resolution
 
@@ -188,6 +188,36 @@ than a silently abandoned one.
 Regression lock: `src/lib/__tests__/authRedirect.test.ts` covers all six
 outcome shapes, including the new `recovery` one and precedence against an
 `error` in the same URL.
+
+## Phase 5 (F10 + access review) implementation notes
+
+**F10 — CORS allow-list.** All six Edge Functions replaced their static
+`"Access-Control-Allow-Origin": "*"` with a per-request `corsHeaders(req)`
+that reflects the request's `Origin` only if it's in an allow-list
+(`SITE_URL` -- the same project-wide secret F2 introduced -- plus
+`http://localhost:5173`, since this repo has no staging project and local
+dev calls these functions directly against the real one). No shared module
+between functions exists in this repo (each is deployed as a single
+standalone file), so the same ~15-line helper is duplicated identically
+across all six rather than introducing a new shared-code convention for one
+low-severity finding. Every `json()` helper's call sites were threaded
+`req` as an explicit first argument (mechanical, ~70 call sites across the
+six files) so each response's CORS headers reflect that specific request.
+Deployed and verified live: an allow-listed origin gets its own value
+reflected back, a third-party origin gets no
+`Access-Control-Allow-Origin` header at all (browsers block reading the
+response), and every function still boots and authenticates correctly
+(401, not a crash) after the refactor.
+
+**Access review — `updated_by`.** `role_permission` gains an `updated_by
+uuid REFERENCES app_user(user_id)` column
+(`00000000000018_role_permission_audit_trail.sql`), and
+`upsertRolePermission()` (F5) now takes the caller's id and chains
+`.select().maybeSingle()` so `RolesPermissionsTab.toggle()` can gate its
+`audit_log` insert on a confirmed written row rather than `error === null`
+alone -- closing the audit trail's own version of F5's bug (a
+silently-filtered upsert could previously still log a change that never
+happened).
 
 ## F6 codebase-wide row-verification audit
 

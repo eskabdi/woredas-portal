@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { upsertRolePermission } from "@/lib/rolePermissions";
+import { ROW_VERIFICATION_FAILURE_MESSAGE } from "@/lib/rowVerification";
 import { useAuthStore } from "@/stores/authStore";
 import { ROLE_PERMISSIONS, type Role } from "@/config/permissions";
 import { PERMISSION_ACTION_LABELS } from "@/config/permissionLabels";
@@ -138,9 +139,19 @@ export function RolesPermissionsTab() {
     if (LOCKED_KEYS.has(key)) return;
     const cellId = `${role}:${key}`;
     setPending((p) => new Set(p).add(cellId));
-    const { error } = await upsertRolePermission(woredaId, role, key, next);
+    const { data: written, error } = await upsertRolePermission(
+      woredaId,
+      role,
+      key,
+      next,
+      userId ?? null,
+    );
     if (error) {
       toast.error(error.message);
+    } else if (!written) {
+      // Access review (report §3.1): a silently-filtered upsert must not log
+      // an audit_log row for a change that never happened.
+      toast.error(ROW_VERIFICATION_FAILURE_MESSAGE);
     } else {
       await supabase.from("audit_log").insert({
         actor_user_id: userId ?? null,
