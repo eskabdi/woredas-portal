@@ -100,6 +100,37 @@ report itself.
   "Permissions" dialog (which reuses these same maps) inconsistently labeled
   too.
 
+## F8 implementation notes
+
+`scripts/check-role-perms-drift.ts` is a **drift check**, not a generator that
+rewrites SQL: this repo's migrations are forward-only (CLAUDE.md), and
+`default_role_perms()` lives in the already-applied baseline migration, which
+is never edited after the fact. Auto-generating and overwriting that file
+would violate that rule for no real benefit. Instead the script parses the
+*last* `CREATE OR REPLACE FUNCTION default_role_perms` definition across all
+migrations concatenated in order (matching Postgres's own semantics — a later
+migration's redefinition wins), and fails CI the moment its per-role key sets
+stop matching `permissions.ts`'s `ROLE_PERMISSIONS` — the actual failure mode
+this finding is about: someone updates one copy and forgets the other, the way
+`role_permission`'s seed data already had (F4).
+
+`role_permission`'s own seed/backfill data — the report's third copy — isn't
+compared here on purpose: since F4's migration, a trigger derives every
+tenant's `role_permission` rows directly from `default_role_perms()`, for
+existing tenants (one-time backfill) and every future one (the `woreda`-insert
+trigger) alike. Once this check confirms `permissions.ts` and
+`default_role_perms()` agree, the seed data can no longer drift independently
+of either — the third copy stopped being independently hand-maintained the
+moment F4 landed, so a separate seed-data check would only be checking a
+downstream consequence, not a fourth source of truth.
+
+Wired into `.github/workflows/ci.yml` as `bun run check:role-perms-drift`.
+Regression lock: `scripts/__tests__/check-role-perms-drift.test.ts` (parser
+correctness, including picking the *last* definition when more than one
+exists); the check's actual real-world behavior was also sanity-tested by
+temporarily introducing a real mismatch into `permissions.ts` and confirming
+the script caught it before reverting.
+
 ## F6 codebase-wide row-verification audit
 
 Grepped every `.update(` call site in the codebase and classified each by

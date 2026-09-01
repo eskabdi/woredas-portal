@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "check:role-perms-drift": "bun run scripts/check-role-perms-drift.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
