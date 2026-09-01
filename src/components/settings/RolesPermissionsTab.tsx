@@ -9,7 +9,36 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
 import { P, ROLE_PERMISSIONS, type Role } from "@/config/permissions";
 
-const ALL_PERMISSION_KEYS: string[] = Object.values(P);
+// The full permission catalog — the same source a drift-check between
+// permissions.ts and seed.sql would use. The matrix's row list is built
+// from this, not from whatever role_permission rows happen to be seeded
+// for the tenant, so a permission added here shows up immediately instead
+// of silently waiting on a seed backfill (this was F4 in the review).
+const ALL_PERMISSION_KEYS: string[] = Object.values(P).sort();
+
+const GROUPED_PERMISSION_KEYS: [string, string[]][] = (() => {
+  const g = new Map<string, string[]>();
+  for (const k of ALL_PERMISSION_KEYS) {
+    const prefix = k.split(".")[0];
+    if (!g.has(prefix)) g.set(prefix, []);
+    g.get(prefix)!.push(k);
+  }
+  return Array.from(g.entries());
+})();
+
+// default_role_perms() (baseline migration) is SQL, with no client-callable
+// equivalent over PostgREST — ROLE_PERMISSIONS below is the TS copy of the
+// same catalog data user_has_perm() falls back to, so it's what the client
+// falls back to as well when a (role, permission) pair has no seeded row.
+function resolveGrant(
+  rolesMap: Map<string, boolean> | undefined,
+  role: Role,
+  key: string,
+): { checked: boolean; isSeeded: boolean } {
+  const seededValue = rolesMap?.get(role);
+  if (seededValue !== undefined) return { checked: seededValue, isSeeded: true };
+  return { checked: (ROLE_PERMISSIONS[role] as string[]).includes(key), isSeeded: false };
+}
 
 const EDITABLE_ROLES: { key: Role; am: string; en: string }[] = [
   { key: "registry_clerk", am: "የመዝገብ ሰራተኛ", en: "Registry Clerk" },
@@ -94,27 +123,6 @@ export function RolesPermissionsTab() {
     return map;
   }, [rows]);
 
-  const permissionKeys = useMemo(() => {
-    // Enumerate the full permission catalog, not just what's seeded for this
-    // woreda — a permission added to the catalog after seeding must still
-    // appear here (with the "default" indicator) rather than being silently
-    // dropped from the matrix.
-    const keys = new Set<string>(ALL_PERMISSION_KEYS);
-    for (const k of matrix.keys()) keys.add(k);
-    return Array.from(keys).sort();
-  }, [matrix]);
-
-  // Group by resource prefix
-  const grouped = useMemo(() => {
-    const g = new Map<string, string[]>();
-    for (const k of permissionKeys) {
-      const prefix = k.split(".")[0];
-      if (!g.has(prefix)) g.set(prefix, []);
-      g.get(prefix)!.push(k);
-    }
-    return Array.from(g.entries());
-  }, [permissionKeys]);
-
   const [pending, setPending] = useState<Set<string>>(new Set());
 
   async function toggle(role: string, key: string, next: boolean) {
@@ -182,7 +190,7 @@ export function RolesPermissionsTab() {
               </tr>
             </thead>
             <tbody>
-              {grouped.map(([prefix, keys]) => (
+              {GROUPED_PERMISSION_KEYS.map(([prefix, keys]) => (
                 <>
                   <tr key={`h-${prefix}`} className="bg-slate-100">
                     <td
@@ -210,10 +218,7 @@ export function RolesPermissionsTab() {
                           </div>
                         </td>
                         {EDITABLE_ROLES.map((r) => {
-                          const isSeeded = rolesMap.has(r.key);
-                          const checked = isSeeded
-                            ? (rolesMap.get(r.key) ?? false)
-                            : (ROLE_PERMISSIONS[r.key] as string[]).includes(key);
+                          const { checked, isSeeded } = resolveGrant(rolesMap, r.key, key);
                           const cellId = `${r.key}:${key}`;
                           const isPending = pending.has(cellId);
                           const cell = (
