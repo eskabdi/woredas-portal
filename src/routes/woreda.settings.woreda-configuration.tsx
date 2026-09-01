@@ -82,6 +82,8 @@ export const Route = createFileRoute("/woreda/settings/woreda-configuration")({
 const profileSchema = z.object({
   woreda_name_display: z.string().trim().max(200).optional().or(z.literal("")),
   woreda_name_display_en: z.string().trim().max(200).optional().or(z.literal("")),
+  woreda_name_short: z.string().trim().max(200).optional().or(z.literal("")),
+  woreda_name_short_en: z.string().trim().max(200).optional().or(z.literal("")),
   woreda_name_display_har: z.string().trim().max(200).optional().or(z.literal("")),
   woreda_name_display_om: z.string().trim().max(200).optional().or(z.literal("")),
   contact_phone: z
@@ -181,6 +183,8 @@ function SettingsPage() {
     defaultValues: {
       woreda_name_display: "",
       woreda_name_display_en: "",
+      woreda_name_short: "",
+      woreda_name_short_en: "",
       woreda_name_display_har: "",
       woreda_name_display_om: "",
       contact_phone: "",
@@ -199,6 +203,8 @@ function SettingsPage() {
     form.reset({
       woreda_name_display: s.woreda_name_display ?? "",
       woreda_name_display_en: s.woreda_name_display_en ?? "",
+      woreda_name_short: s.woreda_name_short ?? "",
+      woreda_name_short_en: s.woreda_name_short_en ?? "",
       woreda_name_display_har: s.woreda_name_display_har ?? "",
       woreda_name_display_om: s.woreda_name_display_om ?? "",
       contact_phone: stripPhonePrefix(s.contact_phone),
@@ -221,6 +227,8 @@ function SettingsPage() {
         woreda_id: woredaId,
         woreda_name_display: values.woreda_name_display || null,
         woreda_name_display_en: values.woreda_name_display_en || null,
+        woreda_name_short: values.woreda_name_short || null,
+        woreda_name_short_en: values.woreda_name_short_en || null,
         woreda_name_display_har: values.woreda_name_display_har || null,
         woreda_name_display_om: values.woreda_name_display_om || null,
         contact_phone: values.contact_phone ? `+251${values.contact_phone}` : null,
@@ -289,17 +297,23 @@ function SettingsPage() {
           <Card className="p-6">
             <SectionTitle titleAm="መሰረታዊ መረጃ" titleEn="General Info" />
             <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-              <Field labelAm="የወረዳ ስም (አማርኛ)" labelEn="Woreda Name (Amharic)">
+              <Field labelAm="የወረዳ ሙሉ ስም (አማ)" labelEn="Full Name of Woreda">
                 <Input
                   {...form.register("woreda_name_display")}
                   placeholder={woreda?.woreda_name_am ?? ""}
                 />
               </Field>
-              <Field labelAm="የወረዳ ስም (እንግሊዝኛ)" labelEn="Woreda Name (English)">
+              <Field labelAm="የወረዳ ሙሉ ስም (እንግ)" labelEn="Full Name of Woreda (Eng)">
                 <Input
                   {...form.register("woreda_name_display_en")}
                   placeholder={woreda?.woreda_name_en ?? ""}
                 />
+              </Field>
+              <Field labelAm="የወረዳው አጭር ስም (አማ)" labelEn="Short Name of Woreda">
+                <Input {...form.register("woreda_name_short")} />
+              </Field>
+              <Field labelAm="የወረዳው አጭር ስም (እንግ)" labelEn="Short Name of Woreda (Eng)">
+                <Input {...form.register("woreda_name_short_en")} />
               </Field>
               <Field labelAm="የወረዳ ስም (ሐረሪ)" labelEn="Woreda Name (Harari)">
                 <Input {...form.register("woreda_name_display_har")} />

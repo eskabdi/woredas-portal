@@ -103,6 +103,8 @@ interface CardWoredaSettings {
   woreda_name_display_en?: string | null;
   woreda_name_display_har?: string | null;
   woreda_name_display_om?: string | null;
+  woreda_name_short?: string | null;
+  woreda_name_short_en?: string | null;
 }
 
 interface CardKebele {
@@ -256,7 +258,7 @@ function PrintPage() {
       const { data, error } = await supabase
         .from("woreda_settings")
         .select(
-          "logo_url, stamp_url, supervisor_signature_url, woreda_name_display, woreda_name_display_en, woreda_name_display_har, woreda_name_display_om",
+          "logo_url, stamp_url, supervisor_signature_url, woreda_name_display, woreda_name_display_en, woreda_name_display_har, woreda_name_display_om, woreda_name_short, woreda_name_short_en",
         )
         .eq("woreda_id", woredaId!)
         .maybeSingle();
@@ -1307,6 +1309,11 @@ function buildFieldValues(
     // value just renders blank rather than falling back to anything.
     woreda_name_har: settings?.woreda_name_display_har ?? "",
     woreda_name_om: settings?.woreda_name_display_om ?? "",
+    // Same settings-only-override pattern as har/om above: short-form names
+    // (Settings > Woreda Profile > "Short Name of Woreda") have no raw
+    // registry counterpart to fall back to either.
+    woreda_name_short: settings?.woreda_name_short ?? "",
+    woreda_name_short_en: settings?.woreda_name_short_en ?? "",
     // Kebeles are identified on the printed card by their 2-digit number,
     // not their name -- kebele_name_am/en still exist for other UI, but the
     // card field intentionally prints only the number.
