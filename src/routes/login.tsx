@@ -74,7 +74,7 @@ function LoginPage() {
     // populating the store with an empty consolePermissions list that a
     // restricted-role super_admin would see as "denied everywhere" until the
     // ambient USER_UPDATED listener happens to correct it later.
-    const { appUser, consolePermissions } = await fetchAuthState(data.user.id);
+    const { appUser, consolePermissions, permissions } = await fetchAuthState(data.user.id);
 
     if (!appUser) {
       setSubmitError("Your account is not provisioned in the system. Contact your administrator.");
@@ -87,7 +87,7 @@ function LoginPage() {
     // status column, so anything else lands on a dashboard where every query
     // returns empty and nothing explains why.
     if (appUser.status !== "active") {
-      setAuth(data.user, appUser, consolePermissions);
+      setAuth(data.user, appUser, consolePermissions, permissions);
       setIsSubmitting(false);
       if (appUser.status === "pending") {
         // Fire-and-forget: last_login_at is a nice-to-have, must never block
