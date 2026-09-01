@@ -355,11 +355,22 @@ function PrintPage() {
 
   const [frontBgUrl, setFrontBgUrl] = useState<string | null>(null);
   const [backBgUrl, setBackBgUrl] = useState<string | null>(null);
+  // frontBgUrl/backBgUrl start out null the same way whether a background is
+  // still being signed or genuinely isn't configured for this template side
+  // -- rendering (the Preview pane and the "I verify..."/Print gate) used to
+  // key off that null and fall back to CardFront/CardBack's small, padded
+  // QR before the real signed URL arrived, then swap to PrintableCard's
+  // template-sized QR a moment later. Two people opening this page and
+  // screenshotting a beat apart would see two different QR sizes on what is
+  // otherwise the identical card. bgUrlsResolved distinguishes "haven't
+  // checked yet" from "checked, no background" so callers can wait for the
+  // real answer instead of racing it.
+  const [bgUrlsResolved, setBgUrlsResolved] = useState(false);
   useEffect(() => {
+    if (!templateBgQuery.data) return; // id_card_template itself still loading
     let cancelled = false;
     async function load() {
-      const rows = templateBgQuery.data ?? [];
-      for (const r of rows) {
+      for (const r of templateBgQuery.data!) {
         if (!r.background_image_url) continue;
         const { data } = await supabase.storage
           .from("credential-templates")
@@ -368,6 +379,7 @@ function PrintPage() {
         if (r.template_type === "card_front") setFrontBgUrl(data?.signedUrl ?? null);
         if (r.template_type === "card_back") setBackBgUrl(data?.signedUrl ?? null);
       }
+      if (!cancelled) setBgUrlsResolved(true);
     }
     load();
     return () => {
@@ -530,7 +542,12 @@ function PrintPage() {
     }
   };
 
-  const queryError = reqQuery.error || credQuery.error || templateQuery.error || woredaQuery.error;
+  const queryError =
+    reqQuery.error ||
+    credQuery.error ||
+    templateQuery.error ||
+    woredaQuery.error ||
+    templateBgQuery.error;
   if (queryError) {
     return (
       <ErrorPanel
@@ -543,7 +560,13 @@ function PrintPage() {
     );
   }
 
-  if (reqQuery.isLoading || credQuery.isLoading || templateQuery.isLoading) {
+  if (
+    reqQuery.isLoading ||
+    credQuery.isLoading ||
+    templateQuery.isLoading ||
+    templateBgQuery.isLoading ||
+    !bgUrlsResolved
+  ) {
     return (
       <div className="space-y-4 p-6">
         <Skeleton className="h-10 w-96" />
