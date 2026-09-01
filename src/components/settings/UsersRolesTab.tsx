@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -831,10 +832,9 @@ function ChangeRoleDialog({
               carry over unchanged after this role change.
             </p>
             <label className="mt-2 flex items-center gap-2 text-xs">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={clearOverrides}
-                onChange={(e) => setClearOverrides(e.target.checked)}
+                onCheckedChange={(v) => setClearOverrides(Boolean(v))}
               />
               Clear all overrides for this person as part of this change
             </label>

@@ -24,15 +24,6 @@ const loginSchema = z.object({
 });
 type LoginInput = z.infer<typeof loginSchema>;
 
-// Deliberately NOT window.location.origin -- same reasoning as
-// CREDENTIAL_VERIFY_ORIGIN (src/config/credentialCryptoConfig.ts): a reset
-// link generated from a laptop on localhost would otherwise carry a link
-// nobody else can open, discovered only once a real user has already
-// received it. Override per environment with VITE_PUBLIC_SITE_URL.
-const PUBLIC_SITE_ORIGIN = (
-  import.meta.env.VITE_PUBLIC_SITE_URL || "https://woredas-portal.vercel.app"
-).replace(/\/+$/, "");
-
 function LoginPage() {
   const navigate = useNavigate();
   const role = useAuthStore((s) => s.role);
@@ -40,10 +31,6 @@ function LoginPage() {
   const setAuth = useAuthStore((s) => s.setAuth);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [mode, setMode] = useState<"signin" | "reset">("signin");
-  const [resetEmail, setResetEmail] = useState("");
-  const [resetSubmitting, setResetSubmitting] = useState(false);
-  const [resetSent, setResetSent] = useState(false);
 
   const {
     register,
@@ -126,25 +113,6 @@ function LoginPage() {
     }
   };
 
-  // F12 (docs/rbac-security-forensic-review.md): the only self-service path
-  // before this was "contact your administrator to be re-invited" -- every
-  // locked-out user became an admin ticket. The recovery link itself lands
-  // on "/" and is handled by index.tsx's useAuthLinkHandler.
-  const onResetSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setResetSubmitting(true);
-    // Deliberately ignore { error } here: branching the UI on whether
-    // resetPasswordForEmail succeeded would recreate, client-side, exactly
-    // the email-enumeration surface the report's own "Out of Scope" section
-    // flags as unassessed for this app's auth endpoints -- show the same
-    // confirmation regardless of whether the address is registered.
-    await supabase.auth.resetPasswordForEmail(resetEmail, {
-      redirectTo: `${PUBLIC_SITE_ORIGIN}/`,
-    });
-    setResetSubmitting(false);
-    setResetSent(true);
-  };
-
   return (
     <div className="relative min-h-screen bg-slate-50 px-4 py-12">
       <div className="absolute right-4 top-4">
@@ -164,110 +132,55 @@ function LoginPage() {
 
           <div className="my-6 border-t border-slate-200" />
 
-          {mode === "signin" ? (
-            <>
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                <div>
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    autoComplete="email"
-                    {...register("email")}
-                    className="mt-1"
-                  />
-                  {errors.email && (
-                    <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    autoComplete="current-password"
-                    {...register("password")}
-                    className="mt-1"
-                  />
-                  {errors.password && (
-                    <p className="mt-1 text-xs text-red-600">{errors.password.message}</p>
-                  )}
-                </div>
-
-                {submitError && (
-                  <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                    {submitError}
-                  </div>
-                )}
-
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full bg-blue-700 text-white hover:bg-blue-800"
-                >
-                  {isSubmitting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <span className="font-noto-ethiopic">ግባ / Sign In</span>
-                  )}
-                </Button>
-              </form>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setMode("reset");
-                  setResetSent(false);
-                }}
-                className="mt-4 block w-full text-center text-sm text-blue-700 hover:underline"
-              >
-                Forgot your password?
-              </button>
-            </>
-          ) : resetSent ? (
-            <div className="space-y-4 text-center">
-              <p className="text-sm text-slate-700">
-                If an account exists for that email, a password reset link has been sent. Check your
-                inbox — the link expires after a short time and can only be used once.
-              </p>
-              <Button variant="outline" className="w-full" onClick={() => setMode("signin")}>
-                Back to sign in
-              </Button>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                {...register("email")}
+                className="mt-1"
+              />
+              {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>}
             </div>
-          ) : (
-            <form onSubmit={onResetSubmit} className="space-y-4">
-              <p className="text-sm text-slate-500">
-                Enter your email and we&apos;ll send you a link to set a new password.
-              </p>
-              <div>
-                <Label htmlFor="reset-email">Email</Label>
-                <Input
-                  id="reset-email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={resetEmail}
-                  onChange={(e) => setResetEmail(e.target.value)}
-                  className="mt-1"
-                />
+
+            <div>
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                {...register("password")}
+                className="mt-1"
+              />
+              {errors.password && (
+                <p className="mt-1 text-xs text-red-600">{errors.password.message}</p>
+              )}
+            </div>
+
+            {submitError && (
+              <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                {submitError}
               </div>
-              <Button
-                type="submit"
-                disabled={resetSubmitting}
-                className="w-full bg-blue-700 text-white hover:bg-blue-800"
-              >
-                {resetSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send reset link"}
-              </Button>
-              <button
-                type="button"
-                onClick={() => setMode("signin")}
-                className="block w-full text-center text-sm text-slate-500 hover:underline"
-              >
-                Back to sign in
-              </button>
-            </form>
-          )}
+            )}
+
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full bg-blue-700 text-white hover:bg-blue-800"
+            >
+              {isSubmitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <span className="font-noto-ethiopic">ግባ / Sign In</span>
+              )}
+            </Button>
+          </form>
+
+          <p className="mt-4 text-center text-sm text-slate-500">
+            Forgot your password? Contact your administrator.
+          </p>
         </div>
       </div>
     </div>

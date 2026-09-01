@@ -19,6 +19,7 @@ import {
   MessageSquareWarning,
   Inbox,
   UserCog,
+  KeyRound,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -29,6 +30,7 @@ import { getCurrentEthiopianDate } from "@/utils/ethiopianCalendar";
 import { useWoredaInfo } from "@/hooks/useWoredaInfo";
 import { useWoredaLogo } from "@/hooks/useWoredaLogo";
 import { useTenantModules } from "@/hooks/useTenantModules";
+import { ChangePasswordDialog } from "@/components/common/ChangePasswordDialog";
 
 const ICON_MAP: Record<string, LucideIcon> = {
   LayoutDashboard,
@@ -68,6 +70,7 @@ export function WoredaShell({ children }: { children: React.ReactNode }) {
   const { data: logoUrl } = useWoredaLogo();
   const { data: enabledModules } = useTenantModules();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   const visibleNav = NAV_PERMISSION_MAP.filter((item) => {
     if (item.permission !== null && !hasPermission(item.permission)) return false;
@@ -195,6 +198,18 @@ export function WoredaShell({ children }: { children: React.ReactNode }) {
                 <div className="absolute right-0 mt-2 w-48 rounded-md border border-slate-200 bg-white py-1 shadow-lg">
                   <button
                     type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setChangePasswordOpen(true);
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                  >
+                    <KeyRound className="h-4 w-4" />
+                    <span className="font-noto-ethiopic">የይለፍ ቃል ቀይር</span>
+                    <span className="text-xs text-slate-400">/ Change Password</span>
+                  </button>
+                  <button
+                    type="button"
                     onClick={handleSignOut}
                     className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
                   >
@@ -216,6 +231,8 @@ export function WoredaShell({ children }: { children: React.ReactNode }) {
           {children}
         </motion.main>
       </div>
+
+      <ChangePasswordDialog open={changePasswordOpen} onOpenChange={setChangePasswordOpen} />
     </div>
   );
 }

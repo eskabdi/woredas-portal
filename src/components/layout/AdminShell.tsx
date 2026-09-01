@@ -7,6 +7,7 @@ import {
   ScrollText,
   CreditCard,
   LogOut,
+  KeyRound,
   type LucideIcon,
 } from "lucide-react";
 import { useState } from "react";
@@ -14,6 +15,7 @@ import { useState } from "react";
 import { ADMIN_NAV } from "@/config/permissions";
 import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/integrations/supabase/client";
+import { ChangePasswordDialog } from "@/components/common/ChangePasswordDialog";
 
 const ICON_MAP: Record<string, LucideIcon> = {
   LayoutDashboard,
@@ -29,6 +31,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const hasConsolePermission = useAuthStore((s) => s.hasConsolePermission);
   const currentPath = useRouterState({ select: (r) => r.location.pathname });
   const [menuOpen, setMenuOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   const visibleNav = ADMIN_NAV.filter((item) => {
     if (item.consolePermission === null) return true;
@@ -94,6 +97,17 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               <div className="absolute right-0 mt-2 w-48 rounded-md border border-slate-200 bg-white py-1 shadow-lg">
                 <button
                   type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setChangePasswordOpen(true);
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                >
+                  <KeyRound className="h-4 w-4" />
+                  Change Password
+                </button>
+                <button
+                  type="button"
                   onClick={handleSignOut}
                   className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
                 >
@@ -113,6 +127,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           {children}
         </motion.main>
       </div>
+
+      <ChangePasswordDialog open={changePasswordOpen} onOpenChange={setChangePasswordOpen} />
     </div>
   );
 }
