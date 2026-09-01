@@ -373,6 +373,17 @@ for those; the wrapper inspects 5xx JSON responses, recovers the real error via
 `src/lib/error-capture.ts` and renders a readable error page. If SSR errors
 start showing as opaque JSON, this is the file.
 
+The same wrapper also applies `withSecurityHeaders` (`src/lib/security-headers.ts`)
+to every document response, success or error path alike — HSTS, a CSP scoped to
+the exact origins the app actually uses (Google Fonts, OSM tiles, the Supabase
+project, `data:`/`blob:` for QR/barcode/WebP), `X-Frame-Options: SAMEORIGIN`,
+`Permissions-Policy` (camera/geolocation to self only), and the usual
+nosniff/referrer-policy pair. `docs/security-hardening.md` maps these against
+what a Cloudflare-style WAF/DDoS/TLS product would otherwise cover and is
+explicit about what still has to be clicked in the Vercel/Supabase dashboards
+rather than shipped as code — read it before assuming a hardening gap needs a
+repo change.
+
 Vite plugin order matters (Tailwind → TanStack Start → nitro (build only) →
 React), and `react`/`@tanstack/react-query` are deduped because two copies
 break hooks. Don't pin a nitro preset — see the Vercel section.
@@ -421,6 +432,12 @@ do not push, rewrite history or rotate credentials.
   pointing local dev at the real Supabase project (there is no staging
   project), reusing a saved browser session, and driving Playwright under
   `xvfb` against real data. Use it before reporting a change as verified.
+- **`document-designs`** — manages the four printable-document layouts (Resident
+  Profile, Household Profile, Kebele Rental House Occupant Profile, Service
+  Request Letter) as Claude Design Canvas `.dc.html` files: bilingual
+  Amharic/English fieldsets, letterhead, document numbering, verification-code
+  footers. Use it when a printed document's layout or field set needs to
+  change — it's the design source `pdf-print-pipeline`'s components render.
 
 The `review` and `doctor` skills exist for the same underlying reason: this repo
 has no test suite and `tsc --noEmit` stays clean through most of the bugs that
@@ -542,6 +559,23 @@ Invited accounts land on `/set-password`; the three invite Edge Functions
 (`invite-tenant-user`, `invite-platform-admin`, `resend-platform-invite`) are
 what generate those links, so a redirect problem is usually in the function's
 request body rather than in the client.
+
+GoTrue can deliver an invite in two different shapes, and only one of them is
+handled automatically. The classic hash-fragment flow (`#access_token=...`) is
+consumed by supabase-js's own `detectSessionInUrl` before any app code runs.
+The other shape — `?token_hash=...&type=invite` (what the dashboard's email
+template sends when it links straight to the site URL instead of routing
+through GoTrue's `/verify` redirect) — is not; nothing calls `verifyOtp()` for
+it on its own. `src/lib/authRedirect.ts` (`parseAuthRedirect`) parses both that
+shape and GoTrue's rejection shape (`?error=...&error_description=...`, an
+expired or already-used link) out of the URL, and `src/routes/index.tsx` calls
+it before its existing role/status redirect: a `token_hash` triggers
+`verifyOtp({ type: "invite" })`, an error shows an explicit "this link is no
+longer valid" card. Before this existed, both shapes silently fell through to
+`!role` and landed on `/login` with no signal that anything had gone wrong —
+if an invite link "does nothing," check which shape the project's email
+template is actually sending before assuming the allow-list or `redirectTo` is
+the problem.
 
 ### Edge Functions are a separate deploy artifact
 
