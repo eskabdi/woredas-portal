@@ -5,10 +5,14 @@
  * Deliberately a single flat lookup consulted only by `translateError()`, so
  * F9 could swap values for bilingual copy without touching
  * `invokeEdgeFunction()` or any of its six call sites -- which is exactly
- * what happened below, for five entries. Those five are the report's own
- * §3.4 example table; the Amharic has since been reviewed and approved by a
- * native Amharic speaker (the system owner) and is final copy, not
- * placeholder text. Every other entry stays English-only on purpose:
+ * what happened below, for four entries (Forbidden, "Cannot provision this
+ * role through tenant self-service.", "Missing required fields", "User
+ * already registered"). Those four are the report's own §3.4 example table;
+ * the Amharic has since been reviewed and approved by a native Amharic
+ * speaker (the system owner) and is final copy, not placeholder text.
+ * GENERIC_FALLBACK below also carries reviewed Amharic, but it's a separate
+ * constant, not a fifth lookup entry. Every other entry stays English-only
+ * on purpose:
  * generating Amharic for the rest without the same review risks shipping
  * actively wrong text to the exact Amharic-speaking users this fix exists
  * for.
@@ -59,6 +63,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   "Signing key not configured": "The credential signing key is not configured. Contact support.",
   "User not registered": "Your account isn't registered in this system.",
   "Woreda mismatch": "This account doesn't belong to this woreda.",
+  "User lookup failed": "Could not look up your account. Please try again.",
   "Credential lookup failed": "Could not look up this credential. Please try again.",
   "Credential not found": "This credential could not be found.",
   "Credential woreda mismatch": "This credential doesn't belong to this woreda.",

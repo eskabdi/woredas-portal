@@ -75,12 +75,26 @@ Deno.serve(async (req) => {
       return json(req, 200, { success: true, status: caller.status });
     }
 
-    const { error: updateErr } = await admin
+    // Row-verified per the CLAUDE.md house rule (record-login is the
+    // canonical example): two concurrent calls for the same user (a
+    // double-submitted form, a retried request, the same invite link open
+    // in two tabs) would otherwise both see `error === null` from the
+    // `.update()` even though only the first one actually matched a row --
+    // the second's WHERE clause (status = 'pending') matches zero rows once
+    // the first has already flipped it to active, and PostgREST doesn't
+    // distinguish that from a real update. Without this check the second
+    // call falls straight through to the audit_log insert below, recording
+    // a second, false "ACTIVATED" event for a state change that didn't
+    // happen.
+    const { data: updated, error: updateErr } = await admin
       .from("app_user")
       .update({ status: "active" })
       .eq("user_id", callerId)
-      .eq("status", "pending");
+      .eq("status", "pending")
+      .select("user_id")
+      .maybeSingle();
     if (updateErr) return json(req, 500, { error: updateErr.message });
+    if (!updated) return json(req, 200, { success: true, status: "active" });
 
     await admin.from("audit_log").insert({
       actor_user_id: callerId,

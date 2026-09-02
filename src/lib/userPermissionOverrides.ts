@@ -50,16 +50,28 @@ export async function fetchUserOverrides(userId: string): Promise<UserPermission
 /** Per the F6 house rule: verifies the write actually matched/created a row
  * (`.select().maybeSingle()`) rather than trusting `error === null` alone --
  * a stale target user, or a tenant boundary the RLS policy excludes, would
- * otherwise silently no-op while this still reported success. */
+ * otherwise silently no-op while this still reported success.
+ *
+ * `updatedBy` mirrors upsertRolePermission's own parameter: force_actor_columns()
+ * (00000000000019_override_hardening.sql's trg_force_actor on this table)
+ * only overwrites `updated_by` when the incoming value is already non-NULL,
+ * so omitting it here left every override's `updated_by` permanently NULL
+ * despite the trigger existing specifically to make this column trustworthy. */
 export async function upsertUserOverride(
   userId: string,
   permissionKey: string,
   isGranted: boolean,
+  updatedBy: string | null,
 ): Promise<{ data: unknown; error: unknown }> {
   return db
     .from("user_permission_override")
     .upsert(
-      { user_id: userId, permission_key: permissionKey, is_granted: isGranted },
+      {
+        user_id: userId,
+        permission_key: permissionKey,
+        is_granted: isGranted,
+        updated_by: updatedBy,
+      },
       { onConflict: "user_id,permission_key" },
     )
     .select("user_id, permission_key")

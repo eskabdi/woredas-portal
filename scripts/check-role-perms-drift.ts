@@ -57,9 +57,14 @@ export function parseDefaultRolePerms(sql: string): Record<string, Set<string>> 
   // Matches from the CREATE statement through the *pair* of `$function$`
   // dollar-quote delimiters (opening, then body, then closing) -- capturing
   // group 1 is the body between them, i.e. the actual CASE/WHEN statement.
+  // Case-insensitive: Postgres treats `create or replace function` and
+  // `CREATE OR REPLACE FUNCTION` identically, so a future migration written
+  // in lowercase would otherwise never match here, silently falling back to
+  // stale data from an earlier migration -- exactly the F8 divergence this
+  // script exists to catch, now hidden behind a passing CI run.
   const functionBodies = [
     ...sql.matchAll(
-      /CREATE OR REPLACE FUNCTION public\.default_role_perms[\s\S]*?AS \$function\$([\s\S]*?)\$function\$/g,
+      /CREATE OR REPLACE FUNCTION public\.default_role_perms[\s\S]*?AS \$function\$([\s\S]*?)\$function\$/gi,
     ),
   ];
   if (functionBodies.length === 0) {
@@ -68,7 +73,7 @@ export function parseDefaultRolePerms(sql: string): Record<string, Set<string>> 
   const body = functionBodies[functionBodies.length - 1][1];
 
   const result: Record<string, Set<string>> = {};
-  for (const match of body.matchAll(/WHEN\s+'(\w+)'\s+THEN\s+ARRAY\[([^\]]*)\]/g)) {
+  for (const match of body.matchAll(/WHEN\s+'(\w+)'\s+THEN\s+ARRAY\[([^\]]*)\]/gi)) {
     const [, role, contents] = match;
     const keys = contents
       .split(",")

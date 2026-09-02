@@ -142,6 +142,14 @@ function errorMessage(e: unknown, fallback: string): string {
   return fallback;
 }
 
+/** Per the CLAUDE.md house rule: PostgREST returns `error: null` whether a
+ * write's WHERE clause matched a row or zero, so an update/delete filtered
+ * by an id that RLS silently excludes (a stale row in a second tab, a race
+ * with another admin, a revoked permission) is a no-op that still looks
+ * like success without this check. */
+const ROW_VERIFY_FAILED =
+  "ይህ ንጥል አልተገኘም ወይም ፈቃድ የለዎትም — ገጹን አድስ አድርገው ይሞክሩ / This item could no longer be found, or you may no longer have permission — refresh and try again.";
+
 /* ---------- Page ---------- */
 
 function SettingsPage() {
@@ -241,10 +249,13 @@ function SettingsPage() {
         updated_by: userId ?? null,
         updated_at: new Date().toISOString(),
       };
-      const { error } = await supabase
+      const { data: saved, error } = await supabase
         .from("woreda_settings")
-        .upsert(payload, { onConflict: "woreda_id" });
+        .upsert(payload, { onConflict: "woreda_id" })
+        .select("woreda_id")
+        .maybeSingle();
       if (error) throw error;
+      if (!saved) throw new Error(ROW_VERIFY_FAILED);
 
       // woreda_id was previously omitted here -- audit_log_tenant_insert's
       // WITH CHECK is `woreda_id = get_user_woreda_id()`, and NULL = uuid
@@ -796,11 +807,14 @@ function ServiceTypeCatalogTab({
   const deleteConfirmed = async () => {
     if (!deleting) return;
     try {
-      const { error } = await supabase
+      const { data: deleted, error } = await supabase
         .from("service_type")
         .delete()
-        .eq("service_type_id", deleting.service_type_id);
+        .eq("service_type_id", deleting.service_type_id)
+        .select("service_type_id")
+        .maybeSingle();
       if (error) throw error;
+      if (!deleted) throw new Error(ROW_VERIFY_FAILED);
       const { error: auditError } = await supabase.from("audit_log").insert({
         woreda_id: woredaId,
         actor_user_id: actorUserId,
@@ -1024,7 +1038,7 @@ function ServiceTypeDialog({
     setSaving(true);
     try {
       if (isEdit && initial) {
-        const { error } = await supabase
+        const { data: updated, error } = await supabase
           .from("service_type")
           .update({
             name_am: values.name_am,
@@ -1034,8 +1048,11 @@ function ServiceTypeDialog({
             requires_approval: values.requires_approval,
             is_active: values.is_active,
           })
-          .eq("service_type_id", initial.service_type_id);
+          .eq("service_type_id", initial.service_type_id)
+          .select("service_type_id")
+          .maybeSingle();
         if (error) throw error;
+        if (!updated) throw new Error(ROW_VERIFY_FAILED);
         const { error: auditError } = await supabase.from("audit_log").insert({
           woreda_id: woredaId,
           actor_user_id: actorUserId,
@@ -1325,6 +1342,7 @@ function FeeDialog({
   onSaved: () => void;
 }) {
   const isEdit = !!initial;
+  const actorUserId = useAuthStore((s) => s.user?.id ?? null);
   const [saving, setSaving] = useState(false);
   const form = useForm<FeeForm>({
     resolver: zodResolver(feeSchema),
@@ -1341,7 +1359,7 @@ function FeeDialog({
     setSaving(true);
     try {
       if (isEdit && initial) {
-        const { error } = await supabase
+        const { data: updated, error } = await supabase
           .from("fee_schedule")
           .update({
             standard_fee: values.standard_fee,
@@ -1349,14 +1367,25 @@ function FeeDialog({
             status: values.status,
             service_type: values.service_type,
           })
-          .eq("fee_schedule_id", initial.fee_schedule_id);
+          .eq("fee_schedule_id", initial.fee_schedule_id)
+          .select("fee_schedule_id")
+          .maybeSingle();
         if (error) throw error;
-        await supabase.from("audit_log").insert({
+        if (!updated) throw new Error(ROW_VERIFY_FAILED);
+        // woreda_id was previously omitted here -- same audit_log_tenant_insert
+        // WITH CHECK gap fixed for the settings save above (NULL = uuid isn't
+        // true, so RLS silently rejected the row) -- and the insert's error
+        // was discarded outright rather than checked, so no fee-schedule
+        // change has ever produced an audit trail.
+        const { error: auditError } = await supabase.from("audit_log").insert({
+          woreda_id: woredaId,
+          actor_user_id: actorUserId,
           entity_name: "fee_schedule",
           entity_id: initial.fee_schedule_id,
           action_type: "FEE_SCHEDULE_UPDATED",
           new_value_json: values as never,
         });
+        if (auditError) throw auditError;
       } else {
         const { data, error } = await supabase
           .from("fee_schedule")
@@ -1364,12 +1393,15 @@ function FeeDialog({
           .select("fee_schedule_id")
           .single();
         if (error) throw error;
-        await supabase.from("audit_log").insert({
+        const { error: auditError } = await supabase.from("audit_log").insert({
+          woreda_id: woredaId,
+          actor_user_id: actorUserId,
           entity_name: "fee_schedule",
           entity_id: data.fee_schedule_id,
-          action_type: "FEE_SCHEDULE_UPDATED",
+          action_type: "FEE_SCHEDULE_CREATED",
           new_value_json: values as never,
         });
+        if (auditError) throw auditError;
       }
       toast.success("ክፍያው ተስተካክሏል / Fee updated");
       onSaved();
