@@ -27,6 +27,12 @@ const RESIDENCY_STATUS_LABEL: Record<string, string> = {
   active: "ንቁ / Active",
   inactive: "ኢ-ንቁ / Inactive",
   moved_out: "ወጥቷል / Moved Out",
+  // resident.residency_status's own DB CHECK only allows active/suspended/
+  // deceased (00000000000000_baseline.sql) -- a resident can be suspended
+  // (woreda.residents.index.tsx sets residency_status='suspended' without
+  // touching active_flag) while still active_flag=true, so 'suspended' is a
+  // real, reachable value here, not a hypothetical one.
+  suspended: "ታግዷል / Suspended",
   deceased: "ሞቷል / Deceased",
 };
 const EVENT_TYPE_LABEL: Record<string, string> = {
@@ -84,10 +90,16 @@ const AGE_GROUPS = [
   "36–60 ዓመት / 36–60 years",
   "60+ ዓመት / 60+ years",
 ];
-function ageGroup(dob: string | null | undefined): string | null {
-  if (!dob) return null;
+// Every other breakdown added alongside this one (ethnicity/religion/
+// education/occupation/houseType) falls back to a visible "—" bucket for a
+// missing value; a missing date_of_birth silently dropped the resident from
+// this chart entirely instead, so the bars summed to less than the report's
+// own totalResidents with nothing to explain the gap.
+const AGE_GROUP_UNKNOWN = "ያልታወቀ / Unknown";
+function ageGroup(dob: string | null | undefined): string {
+  if (!dob) return AGE_GROUP_UNKNOWN;
   const birth = new Date(dob);
-  if (Number.isNaN(birth.getTime())) return null;
+  if (Number.isNaN(birth.getTime())) return AGE_GROUP_UNKNOWN;
   const now = new Date();
   let age = now.getFullYear() - birth.getFullYear();
   const m = now.getMonth() - birth.getMonth();
@@ -455,13 +467,19 @@ export function useReportsAggregate({
       residentsByHouseType: count(d.residents, (r) => HOUSE_TYPE_LABEL[r.houseType] ?? r.houseType),
       // Fixed chronological order (not count()'s descending-by-value sort) --
       // every bracket is shown even at zero, so the report always has all 4.
+      // The Unknown bucket (missing/unparseable date_of_birth) is appended
+      // only when non-empty, so a woreda with complete DOB data doesn't grow
+      // a permanent zero-count row.
       residentsByAgeGroup: (() => {
         const counts = new Map<string, number>();
         d.residents.forEach((r) => {
           const g = ageGroup(r.dateOfBirth);
-          if (g) counts.set(g, (counts.get(g) ?? 0) + 1);
+          counts.set(g, (counts.get(g) ?? 0) + 1);
         });
-        return AGE_GROUPS.map((name) => ({ name, value: counts.get(name) ?? 0 }));
+        const rows = AGE_GROUPS.map((name) => ({ name, value: counts.get(name) ?? 0 }));
+        const unknown = counts.get(AGE_GROUP_UNKNOWN) ?? 0;
+        if (unknown > 0) rows.push({ name: AGE_GROUP_UNKNOWN, value: unknown });
+        return rows;
       })(),
       householdsByKebele: count(d.households, (h) => h.kebele),
       // credentialsByStatus and paymentsByType are intentionally left as raw

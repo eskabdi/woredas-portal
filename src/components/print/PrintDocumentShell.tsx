@@ -315,6 +315,10 @@ export function DocDataTable({
  * isn't a color-function workaround. It's a categorical palette: Tailwind's
  * scale doesn't give 8 easily-distinguishable hues without picking across
  * several color families, so the segments are enumerated directly instead. */
+// 9 entries, not 8 -- the ethnicity breakdown (ETHNICITY_OPTIONS in
+// residentConstants.ts) has 9 possible categories, and CHART_COLORS[i %
+// CHART_COLORS.length] wrapping after 8 would reuse a color between two
+// distinct ethnicities with no legend to disambiguate.
 const CHART_COLORS = [
   "#1e40af",
   "#0891b2",
@@ -324,6 +328,7 @@ const CHART_COLORS = [
   "#7c3aed",
   "#0f766e",
   "#c026d3",
+  "#65a30d",
 ];
 
 /** Horizontal bar chart for a Label/Count breakdown -- rows are expected
