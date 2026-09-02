@@ -135,7 +135,11 @@ Deno.serve(async (req: Request) => {
       .eq("user_id", callerId)
       .maybeSingle();
     if (auErr) return json(req, 500, { error: "User lookup failed" });
-    if (!appUser || appUser.status !== "active") return json(req, 403, { error: "Forbidden" });
+    if (!appUser) return json(req, 403, { error: "User not registered" });
+    // Kept distinct from "not registered": a pending/suspended account is a
+    // status problem, not a permission problem, and errorMessages.ts's
+    // "Forbidden" copy tells the user the wrong thing if the two collapse.
+    if (appUser.status !== "active") return json(req, 403, { error: "Account is not active" });
     if (appUser.role !== "super_admin" && appUser.woreda_id !== body.woredaId) {
       return json(req, 403, { error: "Woreda mismatch" });
     }
@@ -250,15 +254,24 @@ Deno.serve(async (req: Request) => {
     );
     const token = `${payloadB64}.${base64UrlEncodeBytes(sig)}`;
 
-    // Persist token
-    const { error: updErr } = await admin
+    // Persist token. The qr_payload IS NULL guard here (not just the earlier
+    // read at line ~168) makes this a compare-and-swap: two concurrent calls
+    // for the same credential (two tabs, a client double-invoke) can both
+    // pass the earlier check, but only the first write matches zero rows for
+    // the second, so it doesn't silently clobber an already-signed token or
+    // write a duplicate audit row.
+    const { data: updated, error: updErr } = await admin
       .from("residence_credential")
       .update({ qr_payload: token })
-      .eq("credential_id", body.credentialId);
+      .eq("credential_id", body.credentialId)
+      .is("qr_payload", null)
+      .select("credential_id")
+      .maybeSingle();
     if (updErr) return json(req, 500, { error: `Failed to store token: ${updErr.message}` });
+    if (!updated) return json(req, 409, { error: "Credential already signed" });
 
     await admin.from("audit_log").insert({
-      woreda_id: body.woredaId,
+      woreda_id: cred.woreda_id,
       actor_user_id: callerId,
       entity_name: "residence_credential",
       entity_id: body.credentialId,

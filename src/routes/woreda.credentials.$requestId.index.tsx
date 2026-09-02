@@ -1751,6 +1751,8 @@ function CredentialReadinessCard({
   const queryClient = useQueryClient();
   const [signing, setSigning] = useState(false);
   const [signError, setSignError] = useState<string | null>(null);
+  const hasPermission = useAuthStore((s) => s.hasPermission);
+  const canSign = hasPermission(P.CREDENTIAL_PRINT);
 
   const credQuery = useQuery({
     queryKey: ["residence-credential-row", credentialRowId],
@@ -1790,7 +1792,13 @@ function CredentialReadinessCard({
   useEffect(() => {
     let cancelled = false;
     async function run() {
-      if (!cred || !wor || !needsSigning || signing) return;
+      // canSign gates this the same way P.CREDENTIAL_PRINT gates the actual
+      // print route -- this card mounts for anyone with CREDENTIAL_READ
+      // (supervisor, finance_clerk, auditor, viewer included), and the sign
+      // call now enforces credential.print server-side, so an unprivileged
+      // viewer must not even attempt it: the credential stays correctly
+      // unsigned until someone who can print opens this page.
+      if (!cred || !wor || !needsSigning || signing || !canSign) return;
       setSigning(true);
       setSignError(null);
       try {
@@ -1815,7 +1823,7 @@ function CredentialReadinessCard({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cred?.credential_id, cred?.qr_payload, wor?.woreda_name_en]);
+  }, [cred?.credential_id, cred?.qr_payload, wor?.woreda_name_en, canSign]);
 
   const retry = () => {
     setSignError(null);
@@ -1886,6 +1894,18 @@ function CredentialReadinessCard({
                   <RotateCcw className="mr-2 h-3.5 w-3.5" />
                   Retry
                 </Button>
+              </div>
+            </div>
+          </div>
+        ) : !canSign ? (
+          <div className="flex items-center gap-3 rounded-md border border-amber-200 bg-amber-50 p-4">
+            <ShieldCheck className="h-5 w-5 shrink-0 text-amber-600" />
+            <div>
+              <div className="font-noto-ethiopic text-sm font-semibold text-amber-900">
+                ማስረጃ ፈራሚ ባለሙያ በመጠበቅ ላይ
+              </div>
+              <div className="text-xs text-amber-800">
+                / Awaiting an operator with credential-print permission to open this request
               </div>
             </div>
           </div>

@@ -62,6 +62,9 @@ const ERROR_MESSAGES: Record<string, string> = {
   // Credential signing
   "Signing key not configured": "The credential signing key is not configured. Contact support.",
   "User not registered": "Your account isn't registered in this system.",
+  "Account is not active": "Your account isn't active yet. Ask your administrator to activate it.",
+  "Forbidden: requires credential.print":
+    "You don't have permission to prepare a credential for printing.",
   "Woreda mismatch": "This account doesn't belong to this woreda.",
   "User lookup failed": "Could not look up your account. Please try again.",
   "Credential lookup failed": "Could not look up this credential. Please try again.",
