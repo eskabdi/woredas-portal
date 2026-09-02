@@ -74,6 +74,44 @@ function findValue(rows: { name: string; value: number }[], name: string): numbe
   return rows.find((r) => r.name === name)?.value ?? 0;
 }
 
+/** Which chart (if any) accompanies each report section's table, matching
+ * the report designs: a kebele/type breakdown reads as a horizontal bar,
+ * a 2-3-way sex/status/channel split reads as a donut with a legend. Keyed
+ * by report type + the section's titleEn (the stable identifier
+ * useReportsAggregate's tabSections already gives each section). */
+const SECTION_CHART: Record<ReportType, Record<string, "bar" | "donut" | undefined>> = {
+  population: {
+    "Residents by kebele": "bar",
+    "Residents by sex": "donut",
+    "Residents by residency status": "donut",
+    "Residents by ethnicity": "bar",
+    "Residents by religion": "bar",
+    "Residents by age group": "bar",
+    "Residents by education": "bar",
+    "Residents by occupation": "bar",
+    "Residents by house type": "bar",
+    "Households by kebele": "bar",
+  },
+  credentials: {
+    "Credentials by status": "donut",
+    "Credentials by type": "bar",
+  },
+  civil: {
+    "Vital events by type": "donut",
+  },
+  revenue: {
+    "Revenue by payment type": "bar",
+    "Revenue by channel": "donut",
+  },
+  rental: {
+    "Rental houses by occupancy": "donut",
+  },
+  services: {
+    "Service requests by status": "bar",
+    "Service requests by type": "donut",
+  },
+};
+
 function ReportPrintPage() {
   const { reportType } = Route.useParams();
   const { start, end, kebeleId } = Route.useSearch();
@@ -110,12 +148,12 @@ function ReportPrintPage() {
           {
             labelAm: "ወንድ",
             labelEn: "Male",
-            value: findValue(agg.residentsBySex, "male").toLocaleString(),
+            value: findValue(agg.residentsBySex, "ወንድ / Male").toLocaleString(),
           },
           {
             labelAm: "ሴት",
             labelEn: "Female",
-            value: findValue(agg.residentsBySex, "female").toLocaleString(),
+            value: findValue(agg.residentsBySex, "ሴት / Female").toLocaleString(),
           },
         ];
       case "credentials":
@@ -181,7 +219,7 @@ function ReportPrintPage() {
           {
             labelAm: "የተያዙ",
             labelEn: "Occupied",
-            value: findValue(agg.rentalByStatus, "occupied").toLocaleString(),
+            value: findValue(agg.rentalByStatus, "ተይዟል / Occupied").toLocaleString(),
           },
           { labelAm: "የተከፈለ", labelEn: "Paid", value: agg.rentalPaid.toLocaleString() },
           {
@@ -231,6 +269,7 @@ function ReportPrintPage() {
       docNumber={docNumber}
       dateEth={formatEthiopianDate(now)}
       dateGreg={now.toLocaleDateString("en-GB")}
+      largeTitle
       footer={
         <>
           <DocRecordFooter
@@ -261,10 +300,8 @@ function ReportPrintPage() {
             titleAm={sec.titleAm}
             titleEn={sec.titleEn}
           >
-            {type === "services" && sec.titleEn === "Service requests by status" && (
-              <DocBarChart rows={sec.rows} />
-            )}
-            {type === "services" && sec.titleEn === "Service requests by type" && (
+            {SECTION_CHART[type][sec.titleEn] === "bar" && <DocBarChart rows={sec.rows} />}
+            {SECTION_CHART[type][sec.titleEn] === "donut" && (
               <DocDonutChart rows={sec.rows} centerLabelAm="ጠቅላላ" centerLabelEn="Total" />
             )}
             <DocDataTable rows={sec.rows} valueLabel={sec.valueLabel} />

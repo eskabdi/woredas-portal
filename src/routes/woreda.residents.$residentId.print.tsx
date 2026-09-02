@@ -78,7 +78,7 @@ function ResidentProfilePrintPage() {
         .select(
           `*,
            household:current_household_id (
-             household_id, house_number, house_type,
+             household_id, house_number, house_type, address_line,
              kebele:kebele_id ( kebele_number, kebele_name_am, kebele_name_en )
            )`,
         )
@@ -237,6 +237,12 @@ function ResidentProfilePrintPage() {
             labelAm="የቤት ቁጥር"
             labelEn="House Number"
             value={household?.house_number ?? "—"}
+          />
+          <DocField
+            labelAm="አድራሻ"
+            labelEn="Address"
+            value={household?.address_line || "—"}
+            span={3}
           />
         </DocFieldGrid>
       </DocSection>

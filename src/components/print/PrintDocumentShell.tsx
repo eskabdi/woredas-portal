@@ -30,6 +30,11 @@ export interface PrintDocumentShellProps {
   docNumber: string;
   dateEth: string;
   dateGreg: string;
+  /** Reports (woreda.reports.$reportType.print.tsx) use a larger woreda-name
+   * title than the profile/letter documents -- matches the report designs'
+   * 32px title vs the profile designs' 25px one. Defaults to the smaller
+   * size so every other print route keeps its current look. */
+  largeTitle?: boolean;
   children: ReactNode;
   footer?: ReactNode;
 }
@@ -55,6 +60,7 @@ export function PrintDocumentShell({
   docNumber,
   dateEth,
   dateGreg,
+  largeTitle,
   children,
   footer,
 }: PrintDocumentShellProps) {
@@ -130,7 +136,9 @@ export function PrintDocumentShell({
               <div className="text-[9px] uppercase tracking-wide text-slate-500">
                 {REGIONAL_HEADER_EN}
               </div>
-              <h1 className="font-noto-ethiopic mt-1.5 text-xl font-bold text-slate-900">
+              <h1
+                className={`font-noto-ethiopic mt-1.5 font-bold text-slate-900 ${largeTitle ? "text-[32px]" : "text-xl"}`}
+              >
                 {woredaNameAm}
               </h1>
               <div className="mt-0.5 text-xs text-slate-600">{woredaNameEn}</div>
@@ -307,6 +315,10 @@ export function DocDataTable({
  * isn't a color-function workaround. It's a categorical palette: Tailwind's
  * scale doesn't give 8 easily-distinguishable hues without picking across
  * several color families, so the segments are enumerated directly instead. */
+// 9 entries, not 8 -- the ethnicity breakdown (ETHNICITY_OPTIONS in
+// residentConstants.ts) has 9 possible categories, and CHART_COLORS[i %
+// CHART_COLORS.length] wrapping after 8 would reuse a color between two
+// distinct ethnicities with no legend to disambiguate.
 const CHART_COLORS = [
   "#1e40af",
   "#0891b2",
@@ -316,6 +328,7 @@ const CHART_COLORS = [
   "#7c3aed",
   "#0f766e",
   "#c026d3",
+  "#65a30d",
 ];
 
 /** Horizontal bar chart for a Label/Count breakdown -- rows are expected
