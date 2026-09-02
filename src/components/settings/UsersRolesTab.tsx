@@ -169,10 +169,14 @@ export function UsersRolesTab() {
     qc.invalidateQueries({ queryKey: ["app_user_list", woredaId] });
   }
 
-  async function changeRole(user: AppUserRow, newRole: string): Promise<void> {
+  // Returns whether the role actually changed -- ChangeRoleDialog's "clear
+  // all overrides" checkbox must not fire when this update was rejected or
+  // RLS-filtered, or a failed role change and a successful override wipe
+  // would compound into the opposite of both things the admin asked for.
+  async function changeRole(user: AppUserRow, newRole: string): Promise<boolean> {
     if (!EDITABLE_ROLES.find((r) => r.key === newRole)) {
       toast.error("Invalid role");
-      return;
+      return false;
     }
     const { data: updated, error } = await supabase
       .from("app_user")
@@ -182,11 +186,11 @@ export function UsersRolesTab() {
       .maybeSingle();
     if (error) {
       toast.error(error.message);
-      return;
+      return false;
     }
     if (!updated) {
       toast.error(ROW_VERIFICATION_FAILURE_MESSAGE);
-      return;
+      return false;
     }
     await supabase.from("audit_log").insert({
       actor_user_id: callerId ?? null,
@@ -198,6 +202,7 @@ export function UsersRolesTab() {
     });
     toast.success("ሚና ተቀይሯል / Role updated");
     await refresh();
+    return true;
   }
 
   async function suspendUserAction(user: AppUserRow) {
@@ -780,12 +785,26 @@ function ChangeRoleDialog({
   woredaId: string | null;
   callerId: string | null;
   onClose: () => void;
-  onConfirm: (u: AppUserRow, role: string) => Promise<void>;
+  onConfirm: (u: AppUserRow, role: string) => Promise<boolean>;
 }) {
   const [role, setRole] = useState<string>(user?.role ?? "registry_clerk");
   const [clearOverrides, setClearOverrides] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const current = user;
+  const qc = useQueryClient();
+
+  // The dialog is mounted unconditionally by the parent (open/close is
+  // `open={!!current}` below, not a conditional render), so useState's
+  // initializer above only ever runs once, on the very first mount when
+  // `user` was still null. Without this effect, every subsequent "Change
+  // Role" open reuses whatever `role` was left over from the previous
+  // person's dialog instead of the newly-selected user's actual role.
+  useEffect(() => {
+    if (current) {
+      setRole(current.role);
+      setClearOverrides(false);
+    }
+  }, [current]);
 
   // D2(c) (docs/rbac-security-forensic-review.md, "Open Decisions"): overrides
   // persist across a role change by default -- surfaced here so the admin
@@ -863,8 +882,8 @@ function ChangeRoleDialog({
             onClick={async () => {
               if (!current) return;
               setSubmitting(true);
-              await onConfirm(current, role);
-              if (clearOverrides) {
+              const roleChanged = await onConfirm(current, role);
+              if (roleChanged && clearOverrides) {
                 const { data, error } = await clearAllUserOverrides(current.user_id);
                 if (error || !data?.length) {
                   toast.error(
@@ -872,14 +891,17 @@ function ChangeRoleDialog({
                       ? "Role changed, but clearing overrides failed. Try again."
                       : ROW_VERIFICATION_FAILURE_MESSAGE,
                   );
-                } else if (woredaId) {
-                  await supabase.from("audit_log").insert({
-                    actor_user_id: callerId,
-                    woreda_id: woredaId,
-                    entity_name: "user_permission_override",
-                    action_type: "USER_PERMISSION_OVERRIDES_CLEARED",
-                    new_value_json: { user_id: current.user_id, count: data.length },
-                  });
+                } else {
+                  qc.invalidateQueries({ queryKey: ["user_permission_override", current.user_id] });
+                  if (woredaId) {
+                    await supabase.from("audit_log").insert({
+                      actor_user_id: callerId,
+                      woreda_id: woredaId,
+                      entity_name: "user_permission_override",
+                      action_type: "USER_PERMISSION_OVERRIDES_CLEARED",
+                      new_value_json: { user_id: current.user_id, count: data.length },
+                    });
+                  }
                 }
               }
               setSubmitting(false);
@@ -965,7 +987,12 @@ function UserPermissionOverridesDialog({
         });
       }
     } else {
-      const { data, error } = await upsertUserOverride(user.user_id, key, value === "grant");
+      const { data, error } = await upsertUserOverride(
+        user.user_id,
+        key,
+        value === "grant",
+        callerId ?? null,
+      );
       if (error) toast.error("Failed to save override");
       else if (!data) toast.error(ROW_VERIFICATION_FAILURE_MESSAGE);
       else if (woredaId) {
@@ -1092,7 +1119,7 @@ function AssignRoleDialog({
   open: boolean;
   onOpenChange: (o: boolean) => void;
   users: AppUserRow[];
-  onConfirm: (u: AppUserRow, role: string) => Promise<void>;
+  onConfirm: (u: AppUserRow, role: string) => Promise<boolean>;
 }) {
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<AppUserRow | null>(null);

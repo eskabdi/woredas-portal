@@ -144,10 +144,21 @@ function ProvisionPage() {
         module_key: m.key,
         is_enabled: modules[m.key] ?? true,
       }));
-      const { error: modErr } = await supabase
+      // Row-verified per the CLAUDE.md house rule: a missing
+      // tenant_module_config row means enabled, so a write this wizard
+      // reports as successful but that RLS silently filtered would leave a
+      // module the operator explicitly disabled live for the tenant, with
+      // no error anywhere to explain why.
+      const { data: savedModules, error: modErr } = await supabase
         .from("tenant_module_config")
-        .upsert(rows, { onConflict: "woreda_id,module_key" });
+        .upsert(rows, { onConflict: "woreda_id,module_key" })
+        .select("woreda_id, module_key");
       if (modErr) throw modErr;
+      if ((savedModules?.length ?? 0) !== MODULES.length) {
+        throw new Error(
+          "የሞጁል ቅንብር አልተረጋገጠም — እንደገና ይሞክሩ / Could not confirm module settings were saved — please try again.",
+        );
+      }
 
       // 2. Invoke invite function
       const { data, friendlyError } = await invokeEdgeFunction<{ warning?: string | null }>(

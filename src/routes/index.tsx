@@ -127,11 +127,26 @@ function IndexRedirect() {
   if (tokenState.kind === "checking") return <Loading />;
   if (tokenState.kind === "error") return <InvalidLinkCard description={tokenState.description} />;
 
-  // A recovery link's user is already active -- send them straight to
-  // /set-password rather than through the pending/active branching below,
+  // A recovery link's user is normally already active -- send them straight
+  // to /set-password rather than through the pending/active branching below,
   // which would otherwise route an active user directly to their dashboard
   // and skip the "choose a new password" step entirely.
-  if (tokenState.kind === "recovery-settled") return <Navigate to="/set-password" />;
+  //
+  // But this handler runs before isLoading/status are otherwise checked, so
+  // without this guard a type=recovery link generated for a suspended or
+  // deactivated account (CLAUDE.md notes this path stays reachable if an
+  // administrator ever sends one manually from the Supabase dashboard) would
+  // let that account set a brand-new password and reach /set-password --
+  // exactly the capability the ordinary login-time status gate a few lines
+  // below (`status !== "active"` -> /login) exists to deny. Mirrors that
+  // same gate rather than forcing a sign-out: an already-live session for a
+  // non-active account is the existing, accepted behavior on this route.
+  if (tokenState.kind === "recovery-settled") {
+    if (status && status !== "active" && status !== "pending") {
+      return <Navigate to="/login" />;
+    }
+    return <Navigate to="/set-password" />;
+  }
 
   if (isLoading) return <Loading />;
 

@@ -36,11 +36,16 @@ describe("userPermissionOverrides (F3)", () => {
     const builder = createQueryBuilderMock({ data: { user_id: "u1" }, error: null });
     fromMock.mockReturnValue(builder);
 
-    const { error } = await upsertUserOverride("u1", "rental.approve", true);
+    const { error } = await upsertUserOverride("u1", "rental.approve", true, "admin1");
 
     expect(error).toBeNull();
     const [payload, opts] = builder.upsert.mock.calls[0];
-    expect(payload).toEqual({ user_id: "u1", permission_key: "rental.approve", is_granted: true });
+    expect(payload).toEqual({
+      user_id: "u1",
+      permission_key: "rental.approve",
+      is_granted: true,
+      updated_by: "admin1",
+    });
     expect(payload).not.toHaveProperty("woreda_id");
     expect(opts).toEqual({ onConflict: "user_id,permission_key" });
   });
@@ -49,7 +54,7 @@ describe("userPermissionOverrides (F3)", () => {
     const builder = createQueryBuilderMock({ data: null, error: null });
     fromMock.mockReturnValue(builder);
 
-    const { data, error } = await upsertUserOverride("u1", "rental.approve", true);
+    const { data, error } = await upsertUserOverride("u1", "rental.approve", true, "admin1");
 
     expect(error).toBeNull();
     expect(data).toBeNull();

@@ -5,7 +5,10 @@
 -- Apply AFTER supabase/migrations/00000000000000_baseline.sql. Re-runnable:
 -- every other table's statements use ON CONFLICT DO NOTHING.
 --
--- 1165 rows across nine tables. role_permission is the one that matters most:
+-- 1202 rows across ten tables (woreda, woreda_settings, kebele, service_type,
+-- fee_schedule, tenant_module_config, role_permission, id_card_template,
+-- id_card_template_field, id_card_template_field_draft). role_permission is
+-- the one that matters most:
 -- without its rows no role resolves any permission, and every sign-in fails
 -- in a way that looks like broken auth rather than missing data.
 -- super_admin and tenant_admin are absent by design — those are decided by

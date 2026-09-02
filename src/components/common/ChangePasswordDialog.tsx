@@ -45,11 +45,11 @@ export function ChangePasswordDialog({
     e.preventDefault();
     setError(null);
     if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
+      setError("የይለፍ ቃል ቢያንስ 8 ፊደላት ሊኖረው ይገባል / Password must be at least 8 characters.");
       return;
     }
     if (password !== confirm) {
-      setError("Passwords do not match.");
+      setError("የይለፍ ቃላት አይመሳሰሉም / Passwords do not match.");
       return;
     }
     setSubmitting(true);
@@ -68,6 +68,12 @@ export function ChangePasswordDialog({
     <Dialog
       open={open}
       onOpenChange={(o) => {
+        // Guards Escape/overlay-click too, not just the Cancel button --
+        // otherwise either one still closes the dialog while updateUser()
+        // is in flight, and a subsequent success toast fires after the user
+        // already believes they cancelled, with no way to tell from the
+        // closed dialog that the password was, in fact, changed.
+        if (!o && submitting) return;
         if (!o) reset();
         onOpenChange(o);
       }}
@@ -81,7 +87,10 @@ export function ChangePasswordDialog({
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="new-password">New password</Label>
+            <Label htmlFor="new-password">
+              <span className="font-noto-ethiopic">አዲስ የይለፍ ቃል</span>
+              <span className="ml-1 text-slate-500">/ New password</span>
+            </Label>
             <Input
               id="new-password"
               type="password"
@@ -92,7 +101,10 @@ export function ChangePasswordDialog({
             />
           </div>
           <div>
-            <Label htmlFor="confirm-password">Confirm new password</Label>
+            <Label htmlFor="confirm-password">
+              <span className="font-noto-ethiopic">የይለፍ ቃል አረጋግጥ</span>
+              <span className="ml-1 text-slate-500">/ Confirm new password</span>
+            </Label>
             <Input
               id="confirm-password"
               type="password"
@@ -111,15 +123,24 @@ export function ChangePasswordDialog({
             <Button
               type="button"
               variant="outline"
+              disabled={submitting}
               onClick={() => {
                 reset();
                 onOpenChange(false);
               }}
             >
-              Cancel
+              <span className="font-noto-ethiopic">ይቅር</span>
+              <span className="ml-1">/ Cancel</span>
             </Button>
             <Button type="submit" disabled={submitting} className="bg-blue-700 hover:bg-blue-800">
-              {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+              {submitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <span className="font-noto-ethiopic">አስቀምጥ</span>
+                  <span className="ml-1">/ Save</span>
+                </>
+              )}
             </Button>
           </DialogFooter>
         </form>
