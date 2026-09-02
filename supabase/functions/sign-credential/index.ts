@@ -93,6 +93,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
     const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const PRIVATE_KEY_PEM = Deno.env.get("HARARI_EC_PRIVATE_KEY");
     if (!PRIVATE_KEY_PEM) return json(req, 500, { error: "Signing key not configured" });
@@ -104,6 +105,13 @@ Deno.serve(async (req: Request) => {
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
+    // Carries the caller's own JWT so auth.uid() inside user_has_perm()
+    // resolves to the actual caller, not this function's service-role
+    // identity -- same pattern as invite-platform-admin's
+    // user_has_console_perm() check.
+    const userClient = createClient(SUPABASE_URL, ANON_KEY, {
+      global: { headers: { Authorization: authHeader } },
+    });
 
     const { data: userData, error: userErr } = await admin.auth.getUser(jwt);
     if (userErr || !userData?.user) return json(req, 401, { error: "Invalid session" });
@@ -114,16 +122,30 @@ Deno.serve(async (req: Request) => {
       return json(req, 400, { error: "Missing fields" });
     }
 
-    // Woreda match check
+    // This function runs as service-role and bypasses RLS entirely, so
+    // user_has_perm()'s usual RLS backstop does not apply here -- status and
+    // permission both have to be checked by hand, same as every other
+    // privileged Edge Function in this repo (invite-tenant-user,
+    // invite-platform-admin, resend-platform-invite). A suspended or pending
+    // account's JWT is still live, and signing is a state-mutating action
+    // that finalizes a legally significant credential.
     const { data: appUser, error: auErr } = await admin
       .from("app_user")
-      .select("woreda_id, role")
+      .select("woreda_id, role, status")
       .eq("user_id", callerId)
       .maybeSingle();
     if (auErr) return json(req, 500, { error: "User lookup failed" });
-    if (!appUser) return json(req, 403, { error: "User not registered" });
+    if (!appUser || appUser.status !== "active") return json(req, 403, { error: "Forbidden" });
     if (appUser.role !== "super_admin" && appUser.woreda_id !== body.woredaId) {
       return json(req, 403, { error: "Woreda mismatch" });
+    }
+    if (appUser.role !== "super_admin") {
+      const { data: canPrint, error: permErr } = await userClient.rpc("user_has_perm", {
+        _perm: "credential.print",
+      });
+      if (permErr || !canPrint) {
+        return json(req, 403, { error: "Forbidden: requires credential.print" });
+      }
     }
 
     // Fetch credential, verify preconditions
