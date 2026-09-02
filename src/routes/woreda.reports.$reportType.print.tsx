@@ -142,12 +142,12 @@ function ReportPrintPage() {
           {
             labelAm: "ወንድ",
             labelEn: "Male",
-            value: findValue(agg.residentsBySex, "male").toLocaleString(),
+            value: findValue(agg.residentsBySex, "ወንድ / Male").toLocaleString(),
           },
           {
             labelAm: "ሴት",
             labelEn: "Female",
-            value: findValue(agg.residentsBySex, "female").toLocaleString(),
+            value: findValue(agg.residentsBySex, "ሴት / Female").toLocaleString(),
           },
         ];
       case "credentials":
@@ -213,7 +213,7 @@ function ReportPrintPage() {
           {
             labelAm: "የተያዙ",
             labelEn: "Occupied",
-            value: findValue(agg.rentalByStatus, "occupied").toLocaleString(),
+            value: findValue(agg.rentalByStatus, "ተይዟል / Occupied").toLocaleString(),
           },
           { labelAm: "የተከፈለ", labelEn: "Paid", value: agg.rentalPaid.toLocaleString() },
           {

@@ -4,6 +4,47 @@ import { supabase } from "@/integrations/supabase/client";
 import type { ReportSection } from "@/utils/reportExport";
 import { serviceStatusLabel } from "@/lib/serviceConstants";
 
+/** Bilingual labels for report breakdown rows -- mirrors labels that already
+ * exist elsewhere in the app for the same real column values (so a printed
+ * report's row names never disagree with the equivalent on-screen filter),
+ * rather than inventing new Amharic copy. Sources: sex/residency_status from
+ * woreda.residents.index.tsx's filter options, event_type from
+ * woreda.civil.index.tsx's EVENT_TYPE_LABEL, occupancy_status and channel
+ * from the Rental/Revenue report designs (Modernist .dc.html export), and
+ * credential_type from woreda.credentials.index.tsx's CRED_TYPE_LABEL. Each
+ * `?? raw` fallback matches serviceStatusLabel's pattern above. */
+const SEX_LABEL: Record<string, string> = {
+  male: "ወንድ / Male",
+  female: "ሴት / Female",
+};
+const RESIDENCY_STATUS_LABEL: Record<string, string> = {
+  active: "ንቁ / Active",
+  inactive: "ኢ-ንቁ / Inactive",
+  moved_out: "ወጥቷል / Moved Out",
+  deceased: "ሞቷል / Deceased",
+};
+const EVENT_TYPE_LABEL: Record<string, string> = {
+  birth: "ልደት / Birth",
+  death: "ሞት / Death",
+  marriage: "ጋብቻ / Marriage",
+  divorce: "ፍቺ / Divorce",
+};
+const OCCUPANCY_STATUS_LABEL: Record<string, string> = {
+  vacant: "ክፍት / Vacant",
+  occupied: "ተይዟል / Occupied",
+  under_maintenance: "በጥገና ላይ / Under Maintenance",
+};
+const CHANNEL_LABEL: Record<string, string> = {
+  cash: "ጥሬ ገንዘብ / Cash",
+  bank: "የባንክ ዝውውር / Bank Transfer",
+  mobile: "የሞባይል ገንዘብ / Mobile Money",
+};
+const CREDENTIAL_TYPE_LABEL: Record<string, string> = {
+  card: "ካርድ / Card",
+  certificate: "ሰርተፍኬት / Certificate",
+  both: "ሁለቱም / Both",
+};
+
 export interface ReportData {
   residents: { kebele: string; sex: string; status: string; created_at: string }[];
   households: { kebele: string; occupancy: string }[];
@@ -321,15 +362,23 @@ export function useReportsAggregate({
 
     return {
       residentsByKebele: count(d.residents, (r) => r.kebele),
-      residentsBySex: count(d.residents, (r) => r.sex),
-      residentsByStatus: count(d.residents, (r) => r.status),
+      residentsBySex: count(d.residents, (r) => SEX_LABEL[r.sex] ?? r.sex),
+      residentsByStatus: count(d.residents, (r) => RESIDENCY_STATUS_LABEL[r.status] ?? r.status),
       householdsByKebele: count(d.households, (h) => h.kebele),
+      // credentialsByStatus and paymentsByType are intentionally left as raw
+      // values below -- residence_credential.status (ready_to_print/printed/
+      // active/expired/revoked/replaced) and payment_type (service_fee/
+      // house_rent/penalty/credential_fee/rental_rent) have no existing
+      // bilingual label anywhere in the app to safely reuse, and the design
+      // export's categories for both don't correspond to these real enum
+      // values -- inventing Amharic financial/legal terminology here risks
+      // being wrong on a printed government document.
       credentialsByStatus: count(d.credentials, (c) => c.status),
-      credentialsByType: count(d.credentials, (c) => c.type),
-      eventsByType: count(d.events, (e) => e.type),
+      credentialsByType: count(d.credentials, (c) => CREDENTIAL_TYPE_LABEL[c.type] ?? c.type),
+      eventsByType: count(d.events, (e) => EVENT_TYPE_LABEL[e.type] ?? e.type),
       paymentsByType: sumBy((p) => p.type),
-      paymentsByChannel: sumBy((p) => p.channel),
-      rentalByStatus: count(d.rental, (r) => r.status),
+      paymentsByChannel: sumBy((p) => CHANNEL_LABEL[p.channel] ?? p.channel),
+      rentalByStatus: count(d.rental, (r) => OCCUPANCY_STATUS_LABEL[r.status] ?? r.status),
       rentalByPaymentStatus: [
         { name: "የተከፈለ / Paid", value: rentalPaid },
         { name: "ያልተከፈለ / Due (Uncollected)", value: rentalDue },
