@@ -283,11 +283,13 @@ generic message *before* the response body is read — the function's own
 specific rejection reason was previously invisible to every caller (F1).
 `src/lib/edgeFunction.ts` (`invokeEdgeFunction()`) reads `error.context` to
 recover the real JSON body and runs it through `src/lib/errorMessages.ts`
-(`translateError()`), a flat string-to-friendly-copy lookup. Only five entries
+(`translateError()`), a flat string-to-friendly-copy lookup. Only four entries
 in that lookup have Amharic (the report's own reviewed example set,
-native-speaker-approved) — do not add Amharic to another entry without the
-same review; everything else stays English-only on purpose rather than
-shipping unreviewed machine translation to Amharic-speaking users.
+native-speaker-approved; the file's own header comment says "five," counting
+`GENERIC_FALLBACK` — a separate constant, not a lookup entry) — do not add
+Amharic to another entry without the same review; everything else stays
+English-only on purpose rather than shipping unreviewed machine translation
+to Amharic-speaking users.
 
 ### Edge Function CORS is an explicit allow-list
 
