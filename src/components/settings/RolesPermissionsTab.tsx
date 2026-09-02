@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Lock } from "lucide-react";
@@ -216,8 +216,8 @@ export function RolesPermissionsTab() {
             </thead>
             <tbody>
               {grouped.map(([prefix, keys]) => (
-                <>
-                  <tr key={`h-${prefix}`} className="bg-slate-100">
+                <Fragment key={prefix}>
+                  <tr className="bg-slate-100">
                     <td
                       colSpan={EDITABLE_ROLES.length + 2}
                       className="px-4 py-2 text-xs font-semibold text-slate-700"
@@ -295,7 +295,7 @@ export function RolesPermissionsTab() {
                       </tr>
                     );
                   })}
-                </>
+                </Fragment>
               ))}
             </tbody>
           </table>
