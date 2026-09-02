@@ -84,6 +84,12 @@ const SECTION_CHART: Record<ReportType, Record<string, "bar" | "donut" | undefin
     "Residents by kebele": "bar",
     "Residents by sex": "donut",
     "Residents by residency status": "donut",
+    "Residents by ethnicity": "bar",
+    "Residents by religion": "bar",
+    "Residents by age group": "bar",
+    "Residents by education": "bar",
+    "Residents by occupation": "bar",
+    "Residents by house type": "bar",
     "Households by kebele": "bar",
   },
   credentials: {

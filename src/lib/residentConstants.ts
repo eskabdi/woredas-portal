@@ -31,6 +31,7 @@ export const EDUCATION_OPTIONS = [
 export const OCCUPATION_OPTIONS = [
   { value: "Employed", am: "ተቀጣሪ", en: "Employed" },
   { value: "SelfEmployed", am: "ራስ ሰራተኛ", en: "Self-employed" },
+  { value: "Business", am: "ንግድ", en: "Business" },
   { value: "Unemployed", am: "ስራ አጥ", en: "Unemployed" },
   { value: "Student", am: "ተማሪ", en: "Student" },
   { value: "Retired", am: "ጡረተኛ", en: "Retired" },

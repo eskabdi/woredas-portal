@@ -3,6 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { ReportSection } from "@/utils/reportExport";
 import { serviceStatusLabel } from "@/lib/serviceConstants";
+import {
+  ETHNICITY_OPTIONS,
+  RELIGION_OPTIONS,
+  EDUCATION_OPTIONS,
+  OCCUPATION_OPTIONS,
+} from "@/lib/residentConstants";
 
 /** Bilingual labels for report breakdown rows -- mirrors labels that already
  * exist elsewhere in the app for the same real column values (so a printed
@@ -44,9 +50,67 @@ const CREDENTIAL_TYPE_LABEL: Record<string, string> = {
   certificate: "ሰርተፍኬት / Certificate",
   both: "ሁለቱም / Both",
 };
+/** Mirrors HOUSE_TYPE_LABEL already duplicated identically in
+ * woreda.households.$householdId.print.tsx and
+ * woreda.residents.$residentId.print.tsx. */
+const HOUSE_TYPE_LABEL: Record<string, string> = {
+  private: "የግል / Private",
+  kebele: "የቀበሌ / Kebele",
+  rental: "የኪራይ / Rental",
+  government: "የመንግስት / Government",
+  rented_by_private: "ኪራይ በግለሰብ / Rented by Private",
+  other: "ሌላ / Other",
+};
+/** ETHNICITY_OPTIONS/RELIGION_OPTIONS/EDUCATION_OPTIONS store am/en pairs
+ * keyed by the same `value` written to resident.ethnicity/religion and
+ * resident.work_info.education_level -- same optionLabel lookup pattern
+ * already used in woreda.residents.$residentId.print.tsx, built once here
+ * as plain Record maps instead of a find() per row. */
+function labelMap(options: readonly { value: string; am: string; en: string }[]) {
+  const m: Record<string, string> = {};
+  for (const o of options) m[o.value] = `${o.am} / ${o.en}`;
+  return m;
+}
+const ETHNICITY_LABEL = labelMap(ETHNICITY_OPTIONS);
+const RELIGION_LABEL = labelMap(RELIGION_OPTIONS);
+const EDUCATION_LABEL = labelMap(EDUCATION_OPTIONS);
+const OCCUPATION_LABEL = labelMap(OCCUPATION_OPTIONS);
+
+/** Fixed chronological order for the age-group breakdown -- count() sorts by
+ * descending value, which would otherwise shuffle brackets out of age order. */
+const AGE_GROUPS = [
+  "0–17 ዓመት / 0–17 years",
+  "18–35 ዓመት / 18–35 years",
+  "36–60 ዓመት / 36–60 years",
+  "60+ ዓመት / 60+ years",
+];
+function ageGroup(dob: string | null | undefined): string | null {
+  if (!dob) return null;
+  const birth = new Date(dob);
+  if (Number.isNaN(birth.getTime())) return null;
+  const now = new Date();
+  let age = now.getFullYear() - birth.getFullYear();
+  const m = now.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
+  if (age < 18) return AGE_GROUPS[0];
+  if (age < 36) return AGE_GROUPS[1];
+  if (age < 61) return AGE_GROUPS[2];
+  return AGE_GROUPS[3];
+}
 
 export interface ReportData {
-  residents: { kebele: string; sex: string; status: string; created_at: string }[];
+  residents: {
+    kebele: string;
+    sex: string;
+    status: string;
+    ethnicity: string;
+    religion: string;
+    education: string;
+    occupation: string;
+    houseType: string;
+    dateOfBirth: string | null;
+    created_at: string;
+  }[];
   households: { kebele: string; occupancy: string }[];
   credentials: { status: string; type: string; created_at: string }[];
   events: { type: string; status: string; event_date: string }[];
@@ -94,7 +158,7 @@ export function useReportsAggregate({
         supabase
           .from("resident")
           .select(
-            "sex, residency_status, active_flag, created_at, household:current_household_id ( kebele_id, kebele:kebele_id ( kebele_name_am, kebele_number ) )",
+            "sex, residency_status, active_flag, created_at, ethnicity, religion, date_of_birth, work_info, household:current_household_id ( kebele_id, house_type, kebele:kebele_id ( kebele_name_am, kebele_number ) )",
           )
           .eq("woreda_id", woredaId!)
           .limit(5000),
@@ -162,8 +226,13 @@ export function useReportsAggregate({
               residency_status: string;
               active_flag: boolean;
               created_at: string;
+              ethnicity: string | null;
+              religion: string | null;
+              date_of_birth: string | null;
+              work_info: { education_level?: string; occupation_status?: string } | null;
               household: {
                 kebele_id: string | null;
+                house_type: string | null;
                 kebele: { kebele_name_am: string | null; kebele_number: number | null } | null;
               } | null;
             };
@@ -172,6 +241,12 @@ export function useReportsAggregate({
               kebele: kebeleLabel(row.household?.kebele ?? null),
               sex: row.sex ?? "—",
               status: row.active_flag ? row.residency_status : "inactive",
+              ethnicity: row.ethnicity ?? "—",
+              religion: row.religion ?? "—",
+              education: row.work_info?.education_level ?? "—",
+              occupation: row.work_info?.occupation_status ?? "—",
+              houseType: row.household?.house_type ?? "—",
+              dateOfBirth: row.date_of_birth,
               created_at: row.created_at,
             };
           }),
@@ -312,6 +387,12 @@ export function useReportsAggregate({
         residentsByKebele: [],
         residentsBySex: [],
         residentsByStatus: [],
+        residentsByEthnicity: [],
+        residentsByReligion: [],
+        residentsByEducation: [],
+        residentsByOccupation: [],
+        residentsByHouseType: [],
+        residentsByAgeGroup: [],
         householdsByKebele: [],
         credentialsByStatus: [],
         credentialsByType: [],
@@ -364,6 +445,24 @@ export function useReportsAggregate({
       residentsByKebele: count(d.residents, (r) => r.kebele),
       residentsBySex: count(d.residents, (r) => SEX_LABEL[r.sex] ?? r.sex),
       residentsByStatus: count(d.residents, (r) => RESIDENCY_STATUS_LABEL[r.status] ?? r.status),
+      residentsByEthnicity: count(d.residents, (r) => ETHNICITY_LABEL[r.ethnicity] ?? r.ethnicity),
+      residentsByReligion: count(d.residents, (r) => RELIGION_LABEL[r.religion] ?? r.religion),
+      residentsByEducation: count(d.residents, (r) => EDUCATION_LABEL[r.education] ?? r.education),
+      residentsByOccupation: count(
+        d.residents,
+        (r) => OCCUPATION_LABEL[r.occupation] ?? r.occupation,
+      ),
+      residentsByHouseType: count(d.residents, (r) => HOUSE_TYPE_LABEL[r.houseType] ?? r.houseType),
+      // Fixed chronological order (not count()'s descending-by-value sort) --
+      // every bracket is shown even at zero, so the report always has all 4.
+      residentsByAgeGroup: (() => {
+        const counts = new Map<string, number>();
+        d.residents.forEach((r) => {
+          const g = ageGroup(r.dateOfBirth);
+          if (g) counts.set(g, (counts.get(g) ?? 0) + 1);
+        });
+        return AGE_GROUPS.map((name) => ({ name, value: counts.get(name) ?? 0 }));
+      })(),
       householdsByKebele: count(d.households, (h) => h.kebele),
       // credentialsByStatus and paymentsByType are intentionally left as raw
       // values below -- residence_credential.status (ready_to_print/printed/
@@ -416,6 +515,36 @@ export function useReportsAggregate({
             titleAm: "ነዋሪዎች በሁኔታ",
             titleEn: "Residents by residency status",
             rows: agg.residentsByStatus,
+          },
+          {
+            titleAm: "ነዋሪዎች በብሔር",
+            titleEn: "Residents by ethnicity",
+            rows: agg.residentsByEthnicity,
+          },
+          {
+            titleAm: "ነዋሪዎች በሃይማኖት",
+            titleEn: "Residents by religion",
+            rows: agg.residentsByReligion,
+          },
+          {
+            titleAm: "ነዋሪዎች በዕድሜ ክልል",
+            titleEn: "Residents by age group",
+            rows: agg.residentsByAgeGroup,
+          },
+          {
+            titleAm: "ነዋሪዎች በትምህርት ደረጃ",
+            titleEn: "Residents by education",
+            rows: agg.residentsByEducation,
+          },
+          {
+            titleAm: "ነዋሪዎች በሙያ",
+            titleEn: "Residents by occupation",
+            rows: agg.residentsByOccupation,
+          },
+          {
+            titleAm: "ነዋሪዎች በቤት ዓይነት",
+            titleEn: "Residents by house type",
+            rows: agg.residentsByHouseType,
           },
           { titleAm: "ቤተሰቦች በቀበሌ", titleEn: "Households by kebele", rows: agg.householdsByKebele },
         ],
