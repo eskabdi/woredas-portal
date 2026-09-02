@@ -14,6 +14,7 @@ import {
 import { TableSkeletonRows, TableEmptyRow, TableErrorRow } from "@/components/common/TableStates";
 import { exportRowsToCsv, exportRowsToPdf, type TableColumn } from "@/utils/tableExport";
 import { useReportBranding } from "@/hooks/useReportBranding";
+import { formatEthiopianDateShort } from "@/utils/ethiopianCalendar";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -198,7 +199,10 @@ function HouseholdsListPage() {
     { header: "አባላት / Members", value: (h) => h.member_count?.[0]?.count ?? 0 },
     { header: "የቤት አይነት / House Type", value: (h) => h.house_type },
     { header: "ሁኔታ / Status", value: (h) => h.occupancy_status },
-    { header: "የተሻሻለበት / Updated", value: (h) => new Date(h.updated_at).toLocaleDateString() },
+    {
+      header: "የተሻሻለበት / Updated",
+      value: (h) => formatEthiopianDateShort(new Date(h.updated_at)),
+    },
   ];
 
   const fetchAllHouseholdsForExport = async () => {
@@ -457,7 +461,7 @@ function HouseholdsListPage() {
                       <StatusChip status={h.occupancy_status} />
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-500">
-                      {new Date(h.updated_at).toLocaleDateString()}
+                      {formatEthiopianDateShort(new Date(h.updated_at))}
                     </td>
                     <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                       <RowActions

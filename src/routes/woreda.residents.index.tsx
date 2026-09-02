@@ -54,7 +54,7 @@ import { PermissionGate } from "@/components/common/PermissionGate";
 import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/integrations/supabase/client";
 import { P } from "@/config/permissions";
-import { formatEthiopianDateShortOnly } from "@/utils/ethiopianCalendar";
+import { formatEthiopianDateShortOnly, formatEthiopianDateShort } from "@/utils/ethiopianCalendar";
 
 type SexFilter = "all" | "male" | "female";
 type StatusFilter = "all" | "active" | "inactive" | "deceased" | "moved_out";
@@ -196,7 +196,7 @@ function ResidentsListPage() {
     { header: "ጾታ / Sex", value: (r) => r.sex },
     {
       header: "የልደት ቀን / DOB",
-      value: (r) => (r.date_of_birth ? new Date(r.date_of_birth).toLocaleDateString() : ""),
+      value: (r) => formatEthiopianDateShortOnly(r.date_of_birth ?? "", ""),
     },
     {
       header: "ቀበሌ / Kebele",
@@ -208,7 +208,10 @@ function ResidentsListPage() {
       },
     },
     { header: "ሁኔታ / Status", value: (r) => r.residency_status },
-    { header: "የተሻሻለበት / Updated", value: (r) => new Date(r.updated_at).toLocaleDateString() },
+    {
+      header: "የተሻሻለበት / Updated",
+      value: (r) => formatEthiopianDateShort(new Date(r.updated_at)),
+    },
   ];
 
   const fetchAllResidentsForExport = async () => {
@@ -460,7 +463,7 @@ function ResidentsListPage() {
                       <StatusChip status={r.residency_status} />
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-500">
-                      {new Date(r.updated_at).toLocaleDateString()}
+                      {formatEthiopianDateShort(new Date(r.updated_at))}
                     </td>
                     <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                       <RowActions

@@ -32,6 +32,7 @@ import {
 } from "@/components/common/TableToolbar";
 import { exportRowsToCsv, exportRowsToPdf, type TableColumn } from "@/utils/tableExport";
 import { useReportBranding } from "@/hooks/useReportBranding";
+import { formatEthiopianDateShortOnly } from "@/utils/ethiopianCalendar";
 
 const EVENT_TYPES = [
   { value: "all", label: "ሁሉም / All" },
@@ -193,7 +194,7 @@ function CivilListPage() {
     { header: "Subject (En)", value: (r) => subjectName(r).en },
     {
       header: "የክስተት ቀን / Event Date",
-      value: (r) => (r.event_date ? new Date(r.event_date).toLocaleDateString() : "—"),
+      value: (r) => formatEthiopianDateShortOnly(r.event_date ?? ""),
     },
     { header: "ሁኔታ / Status", value: (r) => r.status },
   ];
@@ -391,7 +392,7 @@ function CivilListPage() {
                     {sub.en && <div className="text-xs text-slate-500">{sub.en}</div>}
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-500">
-                    {r.event_date ? new Date(r.event_date).toLocaleDateString() : "—"}
+                    {formatEthiopianDateShortOnly(r.event_date ?? "")}
                   </td>
                   <td className="px-4 py-3">
                     <StatusChip status={r.status} />

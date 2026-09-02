@@ -93,6 +93,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
     const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const PRIVATE_KEY_PEM = Deno.env.get("HARARI_EC_PRIVATE_KEY");
     if (!PRIVATE_KEY_PEM) return json(req, 500, { error: "Signing key not configured" });
@@ -104,6 +105,13 @@ Deno.serve(async (req: Request) => {
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
+    // Carries the caller's own JWT so auth.uid() inside user_has_perm()
+    // resolves to the actual caller, not this function's service-role
+    // identity -- same pattern as invite-platform-admin's
+    // user_has_console_perm() check.
+    const userClient = createClient(SUPABASE_URL, ANON_KEY, {
+      global: { headers: { Authorization: authHeader } },
+    });
 
     const { data: userData, error: userErr } = await admin.auth.getUser(jwt);
     if (userErr || !userData?.user) return json(req, 401, { error: "Invalid session" });
@@ -114,16 +122,34 @@ Deno.serve(async (req: Request) => {
       return json(req, 400, { error: "Missing fields" });
     }
 
-    // Woreda match check
+    // This function runs as service-role and bypasses RLS entirely, so
+    // user_has_perm()'s usual RLS backstop does not apply here -- status and
+    // permission both have to be checked by hand, same as every other
+    // privileged Edge Function in this repo (invite-tenant-user,
+    // invite-platform-admin, resend-platform-invite). A suspended or pending
+    // account's JWT is still live, and signing is a state-mutating action
+    // that finalizes a legally significant credential.
     const { data: appUser, error: auErr } = await admin
       .from("app_user")
-      .select("woreda_id, role")
+      .select("woreda_id, role, status")
       .eq("user_id", callerId)
       .maybeSingle();
     if (auErr) return json(req, 500, { error: "User lookup failed" });
     if (!appUser) return json(req, 403, { error: "User not registered" });
+    // Kept distinct from "not registered": a pending/suspended account is a
+    // status problem, not a permission problem, and errorMessages.ts's
+    // "Forbidden" copy tells the user the wrong thing if the two collapse.
+    if (appUser.status !== "active") return json(req, 403, { error: "Account is not active" });
     if (appUser.role !== "super_admin" && appUser.woreda_id !== body.woredaId) {
       return json(req, 403, { error: "Woreda mismatch" });
+    }
+    if (appUser.role !== "super_admin") {
+      const { data: canPrint, error: permErr } = await userClient.rpc("user_has_perm", {
+        _perm: "credential.print",
+      });
+      if (permErr || !canPrint) {
+        return json(req, 403, { error: "Forbidden: requires credential.print" });
+      }
     }
 
     // Fetch credential, verify preconditions
@@ -228,15 +254,24 @@ Deno.serve(async (req: Request) => {
     );
     const token = `${payloadB64}.${base64UrlEncodeBytes(sig)}`;
 
-    // Persist token
-    const { error: updErr } = await admin
+    // Persist token. The qr_payload IS NULL guard here (not just the earlier
+    // read at line ~168) makes this a compare-and-swap: two concurrent calls
+    // for the same credential (two tabs, a client double-invoke) can both
+    // pass the earlier check, but only the first write matches zero rows for
+    // the second, so it doesn't silently clobber an already-signed token or
+    // write a duplicate audit row.
+    const { data: updated, error: updErr } = await admin
       .from("residence_credential")
       .update({ qr_payload: token })
-      .eq("credential_id", body.credentialId);
+      .eq("credential_id", body.credentialId)
+      .is("qr_payload", null)
+      .select("credential_id")
+      .maybeSingle();
     if (updErr) return json(req, 500, { error: `Failed to store token: ${updErr.message}` });
+    if (!updated) return json(req, 409, { error: "Credential already signed" });
 
     await admin.from("audit_log").insert({
-      woreda_id: body.woredaId,
+      woreda_id: cred.woreda_id,
       actor_user_id: callerId,
       entity_name: "residence_credential",
       entity_id: body.credentialId,

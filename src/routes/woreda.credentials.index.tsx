@@ -26,6 +26,7 @@ import {
 } from "@/components/common/TableToolbar";
 import { exportRowsToCsv, exportRowsToPdf, type TableColumn } from "@/utils/tableExport";
 import { useReportBranding } from "@/hooks/useReportBranding";
+import { formatEthiopianDateShort } from "@/utils/ethiopianCalendar";
 
 const REQUEST_TYPES: { value: string; label: string }[] = [
   { value: "all", label: "ሁሉም / All" },
@@ -226,10 +227,7 @@ function CredentialsListPage() {
     },
     {
       header: "የቀረበበት ቀን / Submitted",
-      value: (r) =>
-        r.submitted_at
-          ? new Date(r.submitted_at).toLocaleDateString()
-          : new Date(r.created_at).toLocaleDateString(),
+      value: (r) => formatEthiopianDateShort(new Date(r.submitted_at ?? r.created_at)),
     },
   ];
 
@@ -445,9 +443,7 @@ function CredentialsListPage() {
                     />
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-500">
-                    {r.submitted_at
-                      ? new Date(r.submitted_at).toLocaleDateString()
-                      : new Date(r.created_at).toLocaleDateString()}
+                    {formatEthiopianDateShort(new Date(r.submitted_at ?? r.created_at))}
                   </td>
                 </tr>
               );

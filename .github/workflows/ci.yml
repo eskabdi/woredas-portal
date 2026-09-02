@@ -13,7 +13,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
+      # SHA-pinned rather than @v2: a moved tag on a third-party action runs
+      # arbitrary code in this job with no corresponding change in this repo
+      # to bisect against (the tj-actions/changed-files compromise, Mar 2025,
+      # was exactly this). Points at the current v2.2.0 release.
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           # Pinned rather than "latest" -- a new Bun release changing install
           # resolution or test-runner defaults between two PRs' CI runs would
