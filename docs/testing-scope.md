@@ -14,7 +14,7 @@ expects; it is deliberately honest about what it cannot yet provide — see
 | Public letter verification             | `/verify/letter/:token`                                                                                                                      | None (anonymous)                                           |
 | Edge Functions (6)                     | `sign-credential`, `invite-tenant-user`, `invite-platform-admin`, `resend-platform-invite`, `activate-invited-user`, `record-login`          | Bearer JWT, see `docs/api-security.md`                     |
 | Public RPCs (2)                        | `verify_credential_token`, `verify_service_letter`                                                                                           | None (anonymous)                                           |
-| PostgREST data API                     | Auto-generated REST over all 41 RLS-protected tables                                                                                         | Bearer JWT (anon key + session)                            |
+| PostgREST data API                     | Auto-generated REST over all 42 RLS-protected tables                                                                                         | Bearer JWT (anon key + session)                            |
 
 ## Test credentials
 
@@ -58,6 +58,16 @@ between the security-hardening review and an actual audit pass:
       rate limits — they have no bespoke DB-side limiter (see the INSA
       remediation plan, Phase B item 12, for why that's deferred rather than
       unaddressed).
+- [ ] After any deploy that touches an Edge Function, confirm the
+      Postgres-backed limiter (`rate_limit_bucket` / `rate_limit_hit()`,
+      `supabase/functions/_shared/rateLimit.ts`) is actually live on the
+      three invite functions — trip it (repeat a request past the
+      per-function budget) and confirm a `429`, or grep the function logs
+      for `rate_limit_hit failed (failing open)`. The limiter fails open on
+      any RPC error (migration not applied, stale PostgREST schema cache,
+      wrong client), which is the right default for an internal-staff app
+      but makes an inert limiter indistinguishable from a working one
+      without this check.
 - [ ] Re-run `curl -sSI` against the deployed site to confirm security
       headers survive the platform after any deploy (`docs/security-hardening.md`'s
       verification snippet).

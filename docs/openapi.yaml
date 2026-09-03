@@ -7,7 +7,7 @@ info:
     the primary data API is PostgREST's own auto-generated REST layer over
     every RLS-protected table (available at `{SUPABASE_URL}/rest/v1/`,
     documented by Supabase's own tooling — introspect it directly rather
-    than hand-duplicating 41 tables' worth of schema here; see
+    than hand-duplicating 42 tables' worth of schema here; see
     `docs/erd.md` for the data model it exposes).
 
     This spec covers the six hand-written Edge Functions, which are the

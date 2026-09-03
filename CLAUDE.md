@@ -202,7 +202,7 @@ client resolves the same chain a query's RLS ultimately enforces:
    (`00000000000015_permission_matrix_backfill.sql`) that pre-fills every cell
    from `default_role_perms()` on woreda insert.
 3. `user_permission_override` (`00000000000017_user_permission_overrides.sql`,
-   hardened further in `00000000000019`) — a per-*user* grant/deny that wins
+   hardened further in `00000000000019`) — a per-_user_ grant/deny that wins
    in both directions over the tenant-level default (Open Decision D1(a) in
    `docs/rbac-remediation-tracker.md`). `woreda_id` is never sent by the
    client; a `BEFORE INSERT/UPDATE` trigger re-derives it from the target
@@ -227,7 +227,7 @@ Two independent gates still have to both be right:
    reading `hasPermission` off the auth store (backed by `current_permissions()`).
 2. Database-side: `user_has_perm()` gates what a query can actually return.
 
-Adding a *new permission* (not a per-tenant/per-user override — those are data,
+Adding a _new permission_ (not a per-tenant/per-user override — those are data,
 not code) still means editing `ROLE_PERMISSIONS` _and_ adding a migration that
 updates `default_role_perms()` — the drift check catches divergence, but
 `role_permission`'s own seed data is deliberately allowed to differ from the
@@ -260,7 +260,7 @@ an admin re-invite. The system owner's product call (see "F12 implementation
 notes" in `docs/rbac-remediation-tracker.md`) deliberately kept it that way —
 `src/routes/login.tsx` still shows a static "Forgot your password? Contact
 your administrator." message, not an interactive reset request. What actually
-shipped as self-service is the *different*, more common case: an
+shipped as self-service is the _different_, more common case: an
 already-signed-in user changing a password they still remember, via
 `src/components/common/ChangePasswordDialog.tsx` (`supabase.auth.updateUser({
 password })` against the live session — no token or email round-trip),
@@ -279,7 +279,7 @@ Supabase dashboard). Don't take its presence as evidence of an in-app
 ### Edge Function errors reach the user's screen, translated
 
 `supabase.functions.invoke()` throws `FunctionsHttpError` with a hardcoded
-generic message *before* the response body is read — the function's own
+generic message _before_ the response body is read — the function's own
 specific rejection reason was previously invisible to every caller (F1).
 `src/lib/edgeFunction.ts` (`invokeEdgeFunction()`) reads `error.context` to
 recover the real JSON body and runs it through `src/lib/errorMessages.ts`
@@ -708,11 +708,11 @@ curl -X POST "https://api.supabase.com/v1/projects/$REF/functions/deploy?slug=$F
   -F 'file=@index.ts;type=application/typescript'
 ```
 
-**This command is only valid for a function with no local imports.** Five of
-the six functions (`sign-credential`, `invite-tenant-user`,
-`invite-platform-admin`, `resend-platform-invite`, `activate-invited-user`;
-`record-login` imports only `_shared/response.ts`) import from
-`../_shared/*.ts`, which this single-`file=@` form never uploads — the
+**This command is only valid for a function with no local imports.** All six
+functions now import from `../_shared/*.ts` (`sign-credential`,
+`invite-tenant-user`, `invite-platform-admin`, `resend-platform-invite`,
+`activate-invited-user` import several shared modules; `record-login` only
+`_shared/response.ts`), which this single-`file=@` form never uploads — the
 function deploys, then 500s at import resolution on its first invocation.
 Get the CLI path working (proxy config, a different network path, a
 non-sandboxed shell) rather than hand-rolling a multi-file `curl` for this;

@@ -1,13 +1,15 @@
 # Entity Relationship Diagram
 
 INSA Enforcer Phase 1.3. Built directly from every migration under
-`supabase/migrations/` (the baseline dump plus 21 incremental migrations) —
-**41 tables**, not the 36 in the baseline alone: `console_role`,
-`console_role_permission`, `user_permission_override`, `resident_document`
-and `id_card_template_field_draft` were all added afterward and are real,
-live tables the baseline-only count misses.
+`supabase/migrations/` (the baseline dump plus 22 incremental migrations) —
+**42 tables**, not the 36 in the baseline alone: `console_role`,
+`console_role_permission`, `user_permission_override`, `resident_document`,
+`id_card_template_field_draft` and `rate_limit_bucket` were all added
+afterward and are real, live tables the baseline-only count misses.
+`rate_limit_bucket` is an infra-support table, not a domain one — see
+"Sequence / counter tables" below for where it's documented.
 
-**Freshness:** this is a snapshot as of migration `00000000000021`, hand-built
+**Freshness:** this is a snapshot as of migration `00000000000022`, hand-built
 from the migrations, with no CI check behind it (unlike
 [`docs/permissions-matrix.md`](./permissions-matrix.md), which regenerates
 itself). Regenerate by re-reading `supabase/migrations/*.sql` after any schema
@@ -109,18 +111,18 @@ erDiagram
     }
 ```
 
-| Table                      | Purpose                                                                                                         | Key constraints                                                                                                                                                 |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `woreda`                   | Tenant root                                                                                                     | `status` enum (`active`/`inactive`/`suspended`); `woreda_code` and `woreda_numeric_code` both unique                                                            |
-| `woreda_settings`          | Per-tenant config: fees, branding, `contact_phone`/`contact_email` 🔒, resident-number format string            | 1:1 with `woreda`                                                                                                                                               |
-| `kebele`                   | Sub-woreda geographic unit, reference data                                                                      | unique `(woreda_id, kebele_number)`                                                                                                                             |
-| `tenant_module_config`     | Per-tenant module on/off (`credentials`, `revenue`, `services`, …) — **absence of a row means enabled**         | PK `(woreda_id, module_key)`                                                                                                                                    |
-| `app_user`                 | Staff account, 1:1 with `auth.users`                                                                            | `role` enum (8 values); `status` enum incl. `pending`; `console_role_id` nullable FK, `CHECK` restricts it to `role = 'super_admin'`                            |
-| `role_permission`          | Per-tenant override of the compiled default permission matrix                                                   | PK `(woreda_id, role_name, permission_key)`; `role_name` CHECK excludes `super_admin`/`tenant_admin`                                                            |
-| `console_role`             | Named, admin-defined roles scoping what an individual `super_admin` can do under `/admin` (2nd permission axis) | `console_role_id IS NULL` on `app_user` means **unrestricted** super admin — the load-bearing default                                                           |
-| `console_role_permission`  | Grants for a `console_role`, keyed against a fixed 5-value `CHECK`, not a lookup table                          | PK `(console_role_id, permission_key)`                                                                                                                          |
-| `user_permission_override` | Per-_user_ grant/deny, wins in both directions over `role_permission`                                           | `CHECK` locks 3 keys (`credential.approve`, `civil.approve`, `tenant.manage`) from ever being overridden; `woreda_id` is trigger-derived, never client-supplied |
-| `audit_log`                | Generic before/after audit trail, polymorphic `(entity_name, entity_id)`                                        | insert-only by convention (not DB-enforced); `source_ip` column exists but is unpopulated by any current Edge Function                                          |
+| Table                      | Purpose                                                                                                         | Key constraints                                                                                                                                                                                                                           |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `woreda`                   | Tenant root                                                                                                     | `status` enum (`active`/`inactive`/`suspended`); `woreda_code` and `woreda_numeric_code` both unique                                                                                                                                      |
+| `woreda_settings`          | Per-tenant config: fees, branding, `contact_phone`/`contact_email` 🔒, resident-number format string            | 1:1 with `woreda`                                                                                                                                                                                                                         |
+| `kebele`                   | Sub-woreda geographic unit, reference data                                                                      | unique `(woreda_id, kebele_number)`                                                                                                                                                                                                       |
+| `tenant_module_config`     | Per-tenant module on/off (`credentials`, `revenue`, `services`, …) — **absence of a row means enabled**         | PK `(woreda_id, module_key)`                                                                                                                                                                                                              |
+| `app_user`                 | Staff account, 1:1 with `auth.users`                                                                            | `role` enum (8 values); `status` enum incl. `pending`; `console_role_id` nullable FK, `CHECK` restricts it to `role = 'super_admin'`                                                                                                      |
+| `role_permission`          | Per-tenant override of the compiled default permission matrix                                                   | PK `(woreda_id, role_name, permission_key)`; `role_name` CHECK excludes `super_admin`/`tenant_admin`                                                                                                                                      |
+| `console_role`             | Named, admin-defined roles scoping what an individual `super_admin` can do under `/admin` (2nd permission axis) | `console_role_id IS NULL` on `app_user` means **unrestricted** super admin — the load-bearing default                                                                                                                                     |
+| `console_role_permission`  | Grants for a `console_role`, keyed against a fixed 5-value `CHECK`, not a lookup table                          | PK `(console_role_id, permission_key)`                                                                                                                                                                                                    |
+| `user_permission_override` | Per-_user_ grant/deny, wins in both directions over `role_permission`                                           | `CHECK` locks 3 keys (`credential.approve`, `civil.approve`, `tenant.manage`) from ever being overridden; `woreda_id` is trigger-derived, never client-supplied                                                                           |
+| `audit_log`                | Generic before/after audit trail, polymorphic `(entity_name, entity_id)`                                        | insert-only by convention (not DB-enforced); `source_ip` populated by 5 of 6 Edge Functions since INSA remediation Phase B (best-effort, request-header-derived — see `supabase/functions/_shared/clientIp.ts`, never a security control) |
 
 🔒 = PII field. No 🔒 fields in this domain are encrypted at rest; RLS
 tenant-scoping is the current control (see `docs/security-functionality.md`).
@@ -424,6 +426,14 @@ not optional for a view meant to sit behind RLS.
 `INSERT ... ON CONFLICT DO UPDATE ... RETURNING` inside each domain's
 `assign_*_number()` trigger. Listed once here rather than repeated in every
 domain table above.
+
+`rate_limit_bucket` (`00000000000022_rate_limit.sql`, INSA remediation
+Phase B) is the same fixed-window-counter shape —
+`(bucket_key, window_start) -> request_count`, incremented the same
+`INSERT ... ON CONFLICT DO UPDATE ... RETURNING` way inside
+`rate_limit_hit()` — but is platform infrastructure, not tenant data: no
+`woreda_id`, deny-all RLS, `EXECUTE` on its one function granted only to
+`service_role`. Not part of any domain group above.
 
 ---
 

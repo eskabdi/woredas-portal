@@ -26,9 +26,9 @@ flowchart TB
         direction TB
         PostgREST["PostgREST — auto-generated REST over Postgres<br/>every table RLS-enabled"]
         Auth["GoTrue (Auth) — JWT issuance, invite/recovery email links"]
-        Storage["Storage — 8 buckets, all private, signed-URL reads only"]
+        Storage["Storage — 9 buckets, all private, signed-URL reads only"]
         Functions["6 Edge Functions (Deno) — service-role, own CORS allow-list,<br/>each re-checks caller identity + authorization in code"]
-        DB[("Postgres — 41 tables, RLS on every one,<br/>SECURITY DEFINER helper functions")]
+        DB[("Postgres — 42 tables, RLS on every one,<br/>SECURITY DEFINER helper functions")]
         PostgREST --> DB
         Functions --> DB
         Auth --> DB
@@ -76,17 +76,17 @@ flowchart TB
 
 ## What sits where
 
-| Concern                              | Layer                                                                                            |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------ |
-| TLS termination, cert renewal        | Vercel edge (auto-provisioned)                                                                   |
-| DDoS mitigation (L3/L4)              | Vercel edge (always on) + Supabase                                                               |
-| WAF (managed OWASP ruleset)          | Vercel Firewall — dashboard opt-in, not a repo change (see `docs/security-hardening.md`)         |
-| Security response headers            | `src/lib/security-headers.ts`, applied in `src/server.ts`                                        |
-| Authentication (session issuance)    | Supabase Auth (GoTrue) — JWT, `localStorage`-persisted client-side, bearer-header transport      |
-| Authorization (row-level)            | Postgres RLS policies, keyed off `app_user.role`/`status` and the permission-override chain      |
-| Authorization (Edge Function-level)  | In-function checks against the caller's own JWT — see `docs/api-security.md`                     |
-| File storage                         | Supabase Storage — 8 private buckets, tenant-prefixed paths, signed-URL reads only               |
-| Public, unauthenticated verification | Two RPCs (`verify_credential_token`, `verify_service_letter`) called directly by the anon client |
+| Concern                              | Layer                                                                                                                           |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| TLS termination, cert renewal        | Vercel edge (auto-provisioned)                                                                                                  |
+| DDoS mitigation (L3/L4)              | Vercel edge (always on) + Supabase                                                                                              |
+| WAF (managed OWASP ruleset)          | Vercel Firewall — dashboard opt-in, not a repo change (see `docs/security-hardening.md`)                                        |
+| Security response headers            | `src/lib/security-headers.ts`, applied in `src/server.ts`                                                                       |
+| Authentication (session issuance)    | Supabase Auth (GoTrue) — JWT, `localStorage`-persisted client-side, bearer-header transport                                     |
+| Authorization (row-level)            | Postgres RLS policies, keyed off `app_user.role`/`status` and the permission-override chain                                     |
+| Authorization (Edge Function-level)  | In-function checks against the caller's own JWT — see `docs/api-security.md`                                                    |
+| File storage                         | Supabase Storage — 9 private buckets (8 tenant-prefixed, plus the platform-level `credential-templates`), signed-URL reads only |
+| Public, unauthenticated verification | Two RPCs (`verify_credential_token`, `verify_service_letter`) called directly by the anon client                                |
 
 ## Related documents
 

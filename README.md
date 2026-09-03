@@ -80,7 +80,7 @@ Six woreda tenants. Seed these into the database:
 ## SUPABASE DATABASE SCHEMA
 
 > **Superseded.** This was the Phase 1 scaffold spec (9 tables) and is stale
-> — the live schema has 41 tables across 7 domains, with materially different
+> — the live schema has 42 tables across 7 domains, with materially different
 > constraints (e.g. `payment` gained a `service_request_id` FK and a
 > mutual-exclusivity check the sample below never had). See
 > [`docs/erd.md`](docs/erd.md) for the current, accurate schema and
