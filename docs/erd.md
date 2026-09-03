@@ -9,7 +9,19 @@ afterward and are real, live tables the baseline-only count misses.
 `rate_limit_bucket` is an infra-support table, not a domain one — see
 "Sequence / counter tables" below for where it's documented.
 
-**Freshness:** this is a snapshot as of migration `00000000000022`, hand-built
+**Encrypted companion columns:** migration `00000000000023` (INSA remediation
+Phase C) adds a `*_enc bytea` column beside each PII/financial column in scope
+— `resident.phone_number`/`.email`, `household.phone_number`/`.email`,
+`service_request.applicant_phone`, `payment.amount`,
+`rental_occupancy.rent_amount`, `rental_occupancy_request.rent_amount` — plus
+`resident.phone_number_blind_index` for exact-match phone lookup, and a
+`*_decrypted` view per table. They are omitted from the per-domain tables below
+to keep them readable; the plaintext columns shown remain authoritative until
+that migration's stage 4 retires them. See
+[`docs/security-functionality.md`](./security-functionality.md#encryption-at-rest)
+for the key model, the rollout stages and the phone-search tradeoff.
+
+**Freshness:** this is a snapshot as of migration `00000000000023`, hand-built
 from the migrations, with no CI check behind it (unlike
 [`docs/permissions-matrix.md`](./permissions-matrix.md), which regenerates
 itself). Regenerate by re-reading `supabase/migrations/*.sql` after any schema

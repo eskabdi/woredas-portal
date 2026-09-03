@@ -102,6 +102,76 @@ enforced end to end, Vercel auto-provisions and renews certificates, and
 `Strict-Transport-Security` (2 years, `includeSubDomains`) is set on every
 response by `src/lib/security-headers.ts`.
 
+## Encryption at rest
+
+INSA Enforcer 1.3 / 3.9. Implemented by
+`supabase/migrations/00000000000023_pii_encryption.sql` (Phase C of the
+remediation plan). **Currently at stage 1 of 4 — see "Rollout status" below
+before assuming a given column is actually encrypted.**
+
+**Scope.** `resident.phone_number`, `resident.email`, `household.phone_number`,
+`household.email`, `service_request.applicant_phone` (PII), and
+`payment.amount`, `rental_occupancy.rent_amount`,
+`rental_occupancy_request.rent_amount` (financial). Each gains a `*_enc bytea`
+companion column; the plaintext column stays authoritative until stage 4.
+
+**Cipher and keys.** AES-256 via pgcrypto's `pgp_sym_encrypt`. The root key is
+a Supabase Vault secret named `pii_root_key`, created by hand and never
+committed — the same discipline `CLAUDE.md` applies to the deploy tokens and
+`HARARI_EC_PRIVATE_KEY`. **Losing it means losing the ciphertext; it is not
+recoverable from a database backup.**
+
+**Keys are derived per tenant** — `hmac(woreda_id, root_key, 'sha256')` — which
+is what makes it safe to expose `decrypt_pii_text()` to `authenticated` at all.
+The decrypting views must be `security_invoker = on` so the underlying table's
+RLS still gates every row (the lesson of
+`00000000000006_view_security_invoker.sql`), and under invoker semantics the
+caller necessarily holds `EXECUTE` on the decrypt function. A per-tenant key
+plus an explicit tenant check in that function means the exposed primitive is
+not generic: another woreda's ciphertext is rejected by the check, and passing
+your own `woreda_id` to bypass the check derives the wrong key and fails to
+decrypt. A stolen dump plus one compromised staff account therefore exposes one
+tenant, not the platform.
+
+**What this does and does not protect.** It closes the stolen-dump/backup case:
+Vault's root key is held outside the database, so a dump yields ciphertext
+alone. It deliberately does **not** protect against a compromised staff session
+reading its own tenant's data — that user can already read that PII
+legitimately. RLS remains the tenant boundary; this sits under it.
+
+**Search tradeoff — a real, user-visible behaviour change.** A randomized
+ciphertext cannot be searched, so `resident.phone_number` also carries a
+deterministic `phone_number_blind_index` (HMAC under the same per-tenant key,
+over a normalized number). This makes **exact-match** phone lookup work and
+partial/substring lookup impossible: the residents list page's current
+`.ilike` "starts with 091…" search cannot survive the cutover, and a staff
+member typing a partial number will get zero results rather than a filtered
+list. That is a deliberate accepted cost, not an oversight — it is called out
+here, in the migration header, and in the remediation plan.
+
+Numbers are normalized before hashing so the formats staff actually type fold
+together — `0911223344`, `+251 91 122 3344`, `251911223344` and `911223344` all
+index as the 9-digit national significant number. Anything unrecognisable is
+indexed as its own digit string. Getting this rule wrong fails _silently_ (the
+resident simply is not found), which is why it is pinned explicitly in
+`normalize_phone()` and covered by the dry run.
+
+**Rollout status.**
+
+| Stage | What                                                                         | State                                                        |
+| ----- | ---------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| 1     | Columns, crypto functions, sync triggers, decrypting views                   | **Written, dry-run verified, not yet applied to production** |
+| 2     | Create the Vault secret, backfill existing rows                              | Not started                                                  |
+| 3     | Move read paths onto the `*_decrypted` views, call site by call site         | Not started                                                  |
+| 4     | Drop plaintext columns and sync triggers (separate migration, after burn-in) | Not started                                                  |
+
+Stage 1 is inert by design: until the Vault secret exists, `encrypt_pii_*()`
+returns NULL and the sync triggers write NULL rather than raising, so applying
+the migration cannot break live writes. `pii_encryption_status()` reports
+whether the key is present and how far the backfill has got — check it rather
+than assuming. `./scripts/run-phase-c-dryrun.sh <ref>` re-runs the full
+20-check verification inside a rolled-back transaction.
+
 ## Logging
 
 **What is logged:**
