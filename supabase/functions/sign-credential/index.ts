@@ -1,5 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+import { corsHeaders, json, safeError } from "../_shared/response.ts";
+import { getClientIp } from "../_shared/clientIp.ts";
+
 /**
  * Compact signed credential payload.
  *
@@ -27,36 +30,6 @@ interface CompactPayload {
 interface RequestBody {
   credentialId: string;
   woredaId: string;
-}
-
-// F10 (docs/rbac-security-forensic-review.md): "*" admitted cross-origin
-// requests from any page unconditionally. Harmless given the bearer-token
-// (not cookie) auth model -- CORS can't leak or forge that token to a third
-// party -- but inconsistent with the narrow, explicit allow-list this app
-// already applies to Supabase Auth redirect URLs. SITE_URL is the same
-// project-wide secret F2 introduced (for the invite functions); localhost:5173
-// covers local dev against the real project (this repo has no staging one).
-const ALLOWED_ORIGINS = new Set(
-  [Deno.env.get("SITE_URL"), "http://localhost:5173"]
-    .filter((o): o is string => !!o)
-    .map((o) => o.trim().replace(/\/+$/, "")),
-);
-
-function corsHeaders(req: Request): Record<string, string> {
-  const origin = req.headers.get("Origin") ?? "";
-  return {
-    "Access-Control-Allow-Origin": ALLOWED_ORIGINS.has(origin) ? origin : "",
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    Vary: "Origin",
-  };
-}
-
-function json(req: Request, status: number, body: unknown): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders(req), "Content-Type": "application/json" },
-  });
 }
 
 function base64UrlEncodeBytes(bytes: Uint8Array): string {
@@ -134,7 +107,8 @@ Deno.serve(async (req: Request) => {
       .select("woreda_id, role, status")
       .eq("user_id", callerId)
       .maybeSingle();
-    if (auErr) return json(req, 500, { error: "User lookup failed" });
+    if (auErr)
+      return safeError(req, "sign-credential: app_user lookup", auErr, "User lookup failed", 500);
     if (!appUser) return json(req, 403, { error: "User not registered" });
     // Kept distinct from "not registered": a pending/suspended account is a
     // status problem, not a permission problem, and errorMessages.ts's
@@ -160,14 +134,23 @@ Deno.serve(async (req: Request) => {
       )
       .eq("credential_id", body.credentialId)
       .maybeSingle();
-    if (credErr) return json(req, 500, { error: "Credential lookup failed" });
+    if (credErr)
+      return safeError(
+        req,
+        "sign-credential: credential lookup",
+        credErr,
+        "Credential lookup failed",
+        500,
+      );
     if (!cred) return json(req, 404, { error: "Credential not found" });
     if (cred.woreda_id !== body.woredaId)
       return json(req, 403, { error: "Credential woreda mismatch" });
     if (cred.status !== "ready_to_print") {
-      return json(req, 409, {
-        error: `Credential status is ${cred.status}, expected ready_to_print`,
-      });
+      // Fixed string on purpose -- the response used to echo the row's own
+      // status enum value, a (mild) internal-state disclosure to any direct
+      // caller (INSA 3.6's borderline case). The specific status is still
+      // visible to authorized users in the UI itself.
+      return json(req, 409, { error: "Credential is not ready to print" });
     }
     if (cred.qr_payload) return json(req, 409, { error: "Credential already signed" });
 
@@ -178,7 +161,14 @@ Deno.serve(async (req: Request) => {
       .select("resident_number, full_name, sex, date_of_birth, current_household_id")
       .eq("resident_id", cred.resident_id)
       .maybeSingle();
-    if (resErr) return json(req, 500, { error: "Resident lookup failed" });
+    if (resErr)
+      return safeError(
+        req,
+        "sign-credential: resident lookup",
+        resErr,
+        "Resident lookup failed",
+        500,
+      );
     if (!resident) return json(req, 404, { error: "Resident not found" });
 
     const { data: kebeleRow } = await admin
@@ -267,7 +257,14 @@ Deno.serve(async (req: Request) => {
       .is("qr_payload", null)
       .select("credential_id")
       .maybeSingle();
-    if (updErr) return json(req, 500, { error: `Failed to store token: ${updErr.message}` });
+    if (updErr)
+      return safeError(
+        req,
+        "sign-credential: store token",
+        updErr,
+        "Failed to save the signed credential",
+        500,
+      );
     if (!updated) return json(req, 409, { error: "Credential already signed" });
 
     await admin.from("audit_log").insert({
@@ -278,10 +275,11 @@ Deno.serve(async (req: Request) => {
       action_type: "QR_SIGNED",
       new_value_json: { credential_number: cred.credential_number },
       action_at: new Date().toISOString(),
+      source_ip: getClientIp(req),
     });
 
     return json(req, 200, { success: true, token });
   } catch (e) {
-    return json(req, 500, { error: (e as Error).message });
+    return safeError(req, "sign-credential: unhandled", e, "Credential signing failed", 500);
   }
 });

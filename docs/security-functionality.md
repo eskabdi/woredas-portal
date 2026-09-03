@@ -78,14 +78,22 @@ approach.
 - **Session regeneration**: handled entirely by Supabase Auth's own
   refresh-token rotation (`autoRefreshToken`); this app does not implement
   its own token-regeneration logic.
-- **Idle/inactivity timeout**: `TODO — Phase B of the INSA remediation
-plan.` As of this document, no client-side inactivity timeout exists —
-  a signed-in tab stays authenticated indefinitely as long as token refresh
-  keeps succeeding. Phase B adds a 20-minute-warning / 25-minute-forced
-  sign-out idle timer (`src/hooks/useIdleTimeout.ts`, wired into
-  `WoredaShell.tsx`/`AdminShell.tsx`); this section will be filled in with
-  the shipped behavior once that phase lands rather than describing code
-  that doesn't exist yet.
+- **Idle/inactivity timeout** (shipped in INSA remediation Phase B): 20
+  idle minutes shows a warning toast with a "stay signed in" action, 25
+  idle minutes forces sign-out — within the Enforcer's 15–30 minute band.
+  Implemented by `src/hooks/useIdleTimeout.ts` (constants in
+  `src/config/idleTimeout.ts`), mounted once per portal in
+  `WoredaShell.tsx`/`AdminShell.tsx`, reusing each shell's existing
+  sign-out path. Mechanics worth knowing: activity is an absolute
+  timestamp checked on a 15-second interval (so a laptop waking from
+  sleep past the limit is caught immediately, where a long `setTimeout`
+  would never have fired), reading with scroll/wheel counts as activity
+  (capture-phase listeners — the shells' scroll containers don't bubble),
+  and the last-activity timestamp is shared across tabs via
+  `localStorage`, so an idle background tab cannot end a session someone
+  is actively using in another tab (supabase-js broadcasts sign-out to
+  every tab). Timeout length is compiled-in for v1; a per-tenant
+  `woreda_settings` value remains a future enhancement.
 
 ## Encryption in transit
 
@@ -125,17 +133,30 @@ response by `src/lib/security-headers.ts`.
   variables at call time, never printed; see CLAUDE.md's credential-hygiene
   rules, which this section follows for logging the same way that document's
   rules govern deploy tokens.
-- `audit_log.source_ip` — the column exists but is currently unpopulated by
-  any Edge Function (tracked as part of Phase B's rate-limiting work, which
-  needs a client-IP helper for the same purpose).
+- Raw driver/exception text in HTTP response bodies — since Phase B, every
+  Edge Function error path routes through `safeError()`
+  (`supabase/functions/_shared/response.ts`), which logs the real error
+  server-side (Supabase captures function logs) and returns only a fixed
+  string from the client-side translation table.
 
-**Gap being closed**: three Edge Functions currently return raw
-driver/exception error text (e.g. a Postgres error message) in their JSON
-response body rather than a fixed generic string — this is a response-body
-disclosure, not a _logging_ issue (nothing extra is written to a log because
-of it), and is tracked as INSA finding 3.6, remediated in Phase B of the
-INSA remediation plan (`supabase/functions/_shared/response.ts`'s
-`safeError()` helper).
+One logging addition from Phase B: `audit_log.source_ip` — a column that
+existed since the baseline but was never written — is now populated
+best-effort by all five audit-writing Edge Functions via
+`_shared/clientIp.ts`. It is informational only (forwarded-for headers are
+spoofable by a direct caller), which is also why the rate limiter below
+keys on the verified caller identity, never on IP.
+
+**Gap closed (INSA finding 3.6, Phase B)**: fourteen error paths across the
+six Edge Functions used to interpolate raw driver/exception text (Postgres
+error messages, GoTrue rejections, caught `.message` strings) into their
+JSON response bodies, plus one 409 that echoed a status enum value. All now
+return fixed strings via `safeError()`; the one deliberately-preserved
+distinction is GoTrue's duplicate-email rejection, mapped to the existing
+reviewed `"User already registered"` copy so an admin can still tell "this
+person already has an account" apart from "sending failed". The three
+invite functions additionally answer `429 Too many requests` past a
+per-caller budget (20 or 10 calls per 10 minutes, keyed by verified
+`user_id` against `rate_limit_bucket` — migration `00000000000022`).
 
 ## Related documents
 

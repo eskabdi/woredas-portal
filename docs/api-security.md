@@ -42,7 +42,16 @@ a repo-wide search for webhook handling.
 
 ## Rate limiting
 
-Not yet applied per-endpoint (INSA Phase 5.9, tracked as a Partial finding);
-see the operator checklist in [`docs/testing-scope.md`](./testing-scope.md)
-for the interim posture on the two Public RPCs above and the
-Supabase-dashboard-level Auth rate limits that remain a manual step.
+Applied in INSA remediation Phase B to the three abuse-prone Private
+endpoints — `invite-tenant-user` (20/10 min), `invite-platform-admin` and
+`resend-platform-invite` (10/10 min each) — keyed by the **verified caller
+`user_id`** (never IP or anything request-supplied) against a fixed-window
+Postgres counter (`rate_limit_bucket` + `rate_limit_hit()`, migration
+`00000000000022`; helper `supabase/functions/_shared/rateLimit.ts`). The
+limiter fails open with a server-side log: a broken counter must never
+take invites down for an internal-staff app.
+
+Deliberately not covered: the two Public RPCs above (they rely on
+Supabase's project-wide API rate limits — an accepted, documented gap) and
+Supabase Auth's own sign-in/OTP limits (a dashboard setting). Both remain
+on the operator checklist in [`docs/testing-scope.md`](./testing-scope.md).

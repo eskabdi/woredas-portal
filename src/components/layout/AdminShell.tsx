@@ -16,6 +16,7 @@ import { ADMIN_NAV } from "@/config/permissions";
 import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/integrations/supabase/client";
 import { ChangePasswordDialog } from "@/components/common/ChangePasswordDialog";
+import { useIdleTimeout } from "@/hooks/useIdleTimeout";
 
 const ICON_MAP: Record<string, LucideIcon> = {
   LayoutDashboard,
@@ -45,6 +46,16 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
     navigate({ to: "/login" });
   };
+
+  // INSA Phase 3 session management: warn at 20 idle minutes, force
+  // sign-out at 25 (src/config/idleTimeout.ts). English-only copy -- the
+  // admin console is English by convention.
+  useIdleTimeout({
+    onTimeout: handleSignOut,
+    warningMessage: "You'll be signed out soon due to inactivity",
+    staySignedInLabel: "Stay signed in",
+    signedOutMessage: "Signed out due to inactivity",
+  });
 
   return (
     <div className="flex min-h-screen bg-slate-100">

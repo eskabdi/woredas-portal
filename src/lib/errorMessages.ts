@@ -58,6 +58,16 @@ const ERROR_MESSAGES: Record<string, string> = {
   "No app_user profile found": "This user's profile could not be found.",
   "User already registered": "ይህ ኢሜይል ቀድሞ ተመዝግቧል / This email is already registered",
   "Failed to send invitation": "Failed to send the invitation. Please try again.",
+  "Failed to resend invitation": "Failed to resend the invitation. Please try again.",
+  "Invite sent but profile setup failed":
+    "The invite email was sent, but profile setup failed. Ask an administrator to check this user.",
+  "Failed to activate account":
+    "Could not activate your account. Please try again, or contact your administrator.",
+  "Failed to record login": "Could not record your login time.",
+
+  // Rate limiting (INSA Phase B): the invite functions answer 429 with this
+  // fixed string once a caller exhausts their per-user budget.
+  "Too many requests": "Too many requests — please wait a few minutes and try again.",
 
   // Credential signing
   "Signing key not configured": "The credential signing key is not configured. Contact support.",
@@ -71,15 +81,21 @@ const ERROR_MESSAGES: Record<string, string> = {
   "Credential not found": "This credential could not be found.",
   "Credential woreda mismatch": "This credential doesn't belong to this woreda.",
   "Credential already signed": "This credential has already been signed.",
+  "Credential is not ready to print": "This credential is not ready to print.",
+  "Failed to save the signed credential": "Could not save the signed credential. Please try again.",
+  "Credential signing failed": "Credential signing failed. Please try again.",
   "Resident lookup failed": "Could not look up this resident. Please try again.",
   "Resident not found": "This resident could not be found.",
 
   // Deploy/config issues -- not user-actionable, but shouldn't leak raw text
   "SITE_URL is not configured": "The server is misconfigured. Contact support.",
 
-  // A user should never see either of these verbatim (F1's own root cause)
+  // A user should never see these verbatim (F1's own root cause; "Internal
+  // error" is Phase B's fixed catch-all for genuinely unexpected exceptions,
+  // where generic copy is the only honest copy)
   "Method not allowed": GENERIC_FALLBACK,
   "Edge Function returned a non-2xx status code": GENERIC_FALLBACK,
+  "Internal error": GENERIC_FALLBACK,
 };
 
 /** Translates a raw Edge Function/GoTrue error string into user-facing copy. */

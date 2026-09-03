@@ -19,13 +19,11 @@ info:
     and re-checks authorization by hand — see `docs/api-security.md` for the
     categorization and rationale.
 
-    **Snapshot note:** the error response bodies below reflect this
-    codebase's behavior as of the INSA remediation Phase A pass. Finding
-    3.6 in the compliance audit (raw driver error text in several of these
-    responses) is addressed by Phase B of the same remediation plan — once
-    that ships, several `error` strings below become fixed generic
-    messages instead of interpolated database errors. Re-generate the
-    affected examples at that point rather than trusting them indefinitely.
+    Since INSA remediation Phase B, every error body is a FIXED string —
+    no response ever carries raw database/GoTrue/exception text (the real
+    error is logged server-side by `_shared/response.ts`'s `safeError()`).
+    The three invite endpoints also enforce a per-caller rate limit and
+    answer `429` past it.
 servers:
   - url: "{SUPABASE_URL}/functions/v1"
     variables:
@@ -82,11 +80,22 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/ErrorBody" }
           example: { error: "Method not allowed" }
-    ServerError:
-      description: Unexpected failure. Logged server-side; see `docs/api-security.md`.
+    TooManyRequests:
+      description: >
+        Per-caller rate limit exceeded (fixed-window counter keyed by the
+        verified caller user_id — see `docs/api-security.md`). Wait and retry.
       content:
         application/json:
           schema: { $ref: "#/components/schemas/ErrorBody" }
+          example: { error: "Too many requests" }
+    ServerError:
+      description: >
+        Unexpected failure. The body is a fixed generic string; the real
+        error is logged server-side only. See `docs/api-security.md`.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorBody" }
+          example: { error: "Internal error" }
 paths:
   /sign-credential:
     post:
@@ -143,7 +152,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorBody" }
-              example: { error: "Credential status is draft, expected ready_to_print" }
+              example: { error: "Credential is not ready to print" }
         "500": { $ref: "#/components/responses/ServerError" }
 
   /invite-tenant-user:
@@ -193,6 +202,7 @@ paths:
         "401": { $ref: "#/components/responses/MissingAuth" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
         "500": { $ref: "#/components/responses/ServerError" }
 
   /invite-platform-admin:
@@ -249,6 +259,7 @@ paths:
                   error: "Forbidden: inviting a new super_admin requires console.console_users.manage.",
                 }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
         "500": { $ref: "#/components/responses/ServerError" }
 
   /resend-platform-invite:
@@ -291,6 +302,7 @@ paths:
               example:
                 { error: "Forbidden: only an active super_admin can resend platform invites." }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
         "500": { $ref: "#/components/responses/ServerError" }
 
   /activate-invited-user:
