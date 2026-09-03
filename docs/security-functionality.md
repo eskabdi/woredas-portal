@@ -133,11 +133,27 @@ your own `woreda_id` to bypass the check derives the wrong key and fails to
 decrypt. A stolen dump plus one compromised staff account therefore exposes one
 tenant, not the platform.
 
-**What this does and does not protect.** It closes the stolen-dump/backup case:
-Vault's root key is held outside the database, so a dump yields ciphertext
-alone. It deliberately does **not** protect against a compromised staff session
-reading its own tenant's data — that user can already read that PII
-legitimately. RLS remains the tenant boundary; this sits under it.
+**What this does and does not protect — and its real scope.** It closes the
+stolen-dump/backup case for the columns actually covered:
+`resident.phone_number`/`.email`, `household.phone_number`/`.email`,
+`service_request.applicant_phone`, `payment.amount`,
+`rental_occupancy.rent_amount`, `rental_occupancy_request.rent_amount`.
+Vault's root key is held outside the database, so a dump yields ciphertext for
+those fields — **not "the database's PII" as a whole**. Left plaintext on the
+same rows: `resident.national_id_no` (a stronger identifier than the phone
+number that _is_ encrypted), `full_name`, `date_of_birth`, `father_name`,
+`mother_full_name`, `birth_place`, `work_info`, `former_residence`;
+`household.address_line`, `gps_lat`/`gps_lng`, and — a genuine scope
+oversight, not a deliberate exclusion — `household.rent_amount` (unlike
+`rental_occupancy.rent_amount`, which is in scope); `service_request`'s
+`applicant_name`, `details`, `incident_place`, `fee_amount`; and
+`issued_letter_html`, which renders a resident's name and address into stored
+HTML. A stolen dump still yields near-complete civil-registration PII per
+resident; this migration materially narrows what it exposes for the
+highest-sensitivity contact and financial fields, it does not make a dump
+safe to lose. It also deliberately does **not** protect against a compromised
+staff session reading its own tenant's data — that user can already read that
+PII legitimately. RLS remains the tenant boundary; this sits under it.
 
 **Search tradeoff — a real, user-visible behaviour change.** A randomized
 ciphertext cannot be searched, so `resident.phone_number` also carries a
@@ -163,14 +179,15 @@ resident simply is not found), which is why it is pinned explicitly in
 | 1     | Columns, crypto functions, sync triggers, decrypting views                   | **Written, dry-run verified, not yet applied to production** |
 | 2     | Create the Vault secret, backfill existing rows                              | Not started                                                  |
 | 3     | Move read paths onto the `*_decrypted` views, call site by call site         | Not started                                                  |
-| 4     | Drop plaintext columns and sync triggers (separate migration, after burn-in) | Not started                                                  |
+| 4     | Drop plaintext columns (separate migration, after burn-in) — the amount>0 guard's stage-4 mechanism is a genuinely open decision, not yet resolved | Not started |
 
 Stage 1 is inert by design: until the Vault secret exists, `encrypt_pii_*()`
 returns NULL and the sync triggers write NULL rather than raising, so applying
-the migration cannot break live writes. `pii_encryption_status()` reports
+the migration cannot break live writes. `pii_encryption_status()` (callable by
+`service_role` and, indirectly, by an operator with database access) reports
 whether the key is present and how far the backfill has got — check it rather
 than assuming. `./scripts/run-phase-c-dryrun.sh <ref>` re-runs the full
-20-check verification inside a rolled-back transaction.
+verification suite inside a rolled-back transaction.
 
 ## Logging
 
