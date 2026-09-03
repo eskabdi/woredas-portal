@@ -51,3 +51,4 @@ docs/*.render.html
 *.njsproj
 *.sln
 *.sw?
+.env*

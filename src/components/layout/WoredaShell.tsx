@@ -30,6 +30,7 @@ import { getCurrentEthiopianDate } from "@/utils/ethiopianCalendar";
 import { useWoredaInfo } from "@/hooks/useWoredaInfo";
 import { useWoredaLogo } from "@/hooks/useWoredaLogo";
 import { useTenantModules } from "@/hooks/useTenantModules";
+import { useIdleTimeout } from "@/hooks/useIdleTimeout";
 import { ChangePasswordDialog } from "@/components/common/ChangePasswordDialog";
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -84,6 +85,17 @@ export function WoredaShell({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
     navigate({ to: "/login" });
   };
+
+  // INSA Phase 3 session management: warn at 20 idle minutes, force
+  // sign-out at 25 (src/config/idleTimeout.ts). NOTE: this Amharic copy is
+  // new and has NOT had the native-speaker review errorMessages.ts entries
+  // get -- flag it for the system owner before treating it as final.
+  useIdleTimeout({
+    onTimeout: handleSignOut,
+    warningMessage: "እንቅስቃሴ ስለሌለ በቅርቡ ከስርዓቱ ይወጣሉ / You'll be signed out soon due to inactivity",
+    staySignedInLabel: "ልቀጥል / Stay signed in",
+    signedOutMessage: "እንቅስቃሴ ስለሌለ ከስርዓቱ ወጥተዋል / Signed out due to inactivity",
+  });
 
   return (
     <div className="flex min-h-screen bg-slate-50">

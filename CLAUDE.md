@@ -202,7 +202,7 @@ client resolves the same chain a query's RLS ultimately enforces:
    (`00000000000015_permission_matrix_backfill.sql`) that pre-fills every cell
    from `default_role_perms()` on woreda insert.
 3. `user_permission_override` (`00000000000017_user_permission_overrides.sql`,
-   hardened further in `00000000000019`) — a per-*user* grant/deny that wins
+   hardened further in `00000000000019`) — a per-_user_ grant/deny that wins
    in both directions over the tenant-level default (Open Decision D1(a) in
    `docs/rbac-remediation-tracker.md`). `woreda_id` is never sent by the
    client; a `BEFORE INSERT/UPDATE` trigger re-derives it from the target
@@ -227,7 +227,7 @@ Two independent gates still have to both be right:
    reading `hasPermission` off the auth store (backed by `current_permissions()`).
 2. Database-side: `user_has_perm()` gates what a query can actually return.
 
-Adding a *new permission* (not a per-tenant/per-user override — those are data,
+Adding a _new permission_ (not a per-tenant/per-user override — those are data,
 not code) still means editing `ROLE_PERMISSIONS` _and_ adding a migration that
 updates `default_role_perms()` — the drift check catches divergence, but
 `role_permission`'s own seed data is deliberately allowed to differ from the
@@ -260,7 +260,7 @@ an admin re-invite. The system owner's product call (see "F12 implementation
 notes" in `docs/rbac-remediation-tracker.md`) deliberately kept it that way —
 `src/routes/login.tsx` still shows a static "Forgot your password? Contact
 your administrator." message, not an interactive reset request. What actually
-shipped as self-service is the *different*, more common case: an
+shipped as self-service is the _different_, more common case: an
 already-signed-in user changing a password they still remember, via
 `src/components/common/ChangePasswordDialog.tsx` (`supabase.auth.updateUser({
 password })` against the live session — no token or email round-trip),
@@ -279,7 +279,7 @@ Supabase dashboard). Don't take its presence as evidence of an in-app
 ### Edge Function errors reach the user's screen, translated
 
 `supabase.functions.invoke()` throws `FunctionsHttpError` with a hardcoded
-generic message *before* the response body is read — the function's own
+generic message _before_ the response body is read — the function's own
 specific rejection reason was previously invisible to every caller (F1).
 `src/lib/edgeFunction.ts` (`invokeEdgeFunction()`) reads `error.context` to
 recover the real JSON body and runs it through `src/lib/errorMessages.ts`
@@ -688,10 +688,18 @@ project's email template is actually sending before assuming the allow-list or
 control-plane operation: a project `service_role` key cannot do it, only
 `supabase login` or a Personal Access Token.
 
-The CLI's `functions list` and `functions deploy` fail with `TransportError`
-behind the proxy — including via `npx supabase ...` with `SUPABASE_ACCESS_TOKEN`
-set and `HTTPS_PROXY` correctly exported; the CLI simply doesn't route through
-it reliably. The Management API works:
+The CLI's `functions list` and `functions deploy` have been reported to fail
+with `TransportError` behind the proxy in some sandboxes — this is
+environment-dependent, not universal: `npx supabase functions deploy <fn...>
+--use-api --project-ref $REF` (what `scripts/deploy-functions.sh` runs) has
+also deployed cleanly in this same kind of sandboxed container. Try it first;
+it's also the only path that correctly bundles `supabase/functions/_shared/`
+(`response.ts`/`rateLimit.ts`/`clientIp.ts`, added in the INSA remediation's
+Phase B) alongside a function's `index.ts` — confirmed by its own upload log,
+which lists each shared file it pulls in per function.
+
+If the CLI genuinely can't route through the proxy, the Management API works
+as a single-file fallback:
 
 ```bash
 curl -X POST "https://api.supabase.com/v1/projects/$REF/functions/deploy?slug=$FN" \
@@ -699,6 +707,18 @@ curl -X POST "https://api.supabase.com/v1/projects/$REF/functions/deploy?slug=$F
   -F "metadata={\"name\":\"$FN\",\"entrypoint_path\":\"index.ts\",\"verify_jwt\":false};type=application/json" \
   -F 'file=@index.ts;type=application/typescript'
 ```
+
+**This command is only valid for a function with no local imports.** All six
+functions now import from `../_shared/*.ts` (`sign-credential`,
+`invite-tenant-user`, `invite-platform-admin`, `resend-platform-invite`,
+`activate-invited-user` import several shared modules; `record-login` only
+`_shared/response.ts`), which this single-`file=@` form never uploads — the
+function deploys, then 500s at import resolution on its first invocation.
+Get the CLI path working (proxy config, a different network path, a
+non-sandboxed shell) rather than hand-rolling a multi-file `curl` for this;
+the exact multipart shape the Management API expects for a bundle with local
+imports isn't documented here because it hasn't been verified against a raw
+`curl` call, only against what the CLI itself sends.
 
 To tell a deployed function from a missing one, call it unauthenticated. A
 deployed function answers `401` with its own error body; a missing one answers

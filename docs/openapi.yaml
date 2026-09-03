@@ -1,0 +1,369 @@
+openapi: 3.0.3
+info:
+  title: Woredas Portal — Edge Function API
+  version: "1.0.0"
+  description: |
+    INSA Enforcer Phase 5.8. This is **not** the app's whole API surface —
+    the primary data API is PostgREST's own auto-generated REST layer over
+    every RLS-protected table (available at `{SUPABASE_URL}/rest/v1/`,
+    documented by Supabase's own tooling — introspect it directly rather
+    than hand-duplicating 42 tables' worth of schema here; see
+    `docs/erd.md` for the data model it exposes).
+
+    This spec covers the six hand-written Edge Functions, which are the
+    only custom server-side logic in this app (everything else is a direct
+    PostgREST/RPC call from the browser — see `docs/architecture.md`).
+
+    All six run under Supabase's service-role key and bypass RLS, so each
+    independently authenticates the caller (`Authorization: Bearer <JWT>`)
+    and re-checks authorization by hand — see `docs/api-security.md` for the
+    categorization and rationale.
+
+    Since INSA remediation Phase B, every error body is a FIXED string —
+    no response ever carries raw database/GoTrue/exception text (the real
+    error is logged server-side by `_shared/response.ts`'s `safeError()`).
+    The three invite endpoints also enforce a per-caller rate limit and
+    answer `429` past it.
+servers:
+  - url: "{SUPABASE_URL}/functions/v1"
+    variables:
+      SUPABASE_URL:
+        default: https://your-project-ref.supabase.co
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >
+        The caller's own Supabase Auth session token. Every function derives
+        identity from this token (via `auth.getUser()`); none accept an
+        identity supplied any other way.
+  schemas:
+    ErrorBody:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+    SuccessBody:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+      required: [success]
+  responses:
+    MissingAuth:
+      description: No `Authorization` header was sent.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorBody" }
+          example: { error: "Missing authorization header" }
+    Unauthorized:
+      description: The bearer token did not resolve to a valid session.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorBody" }
+          example: { error: "Unauthorized" }
+    Forbidden:
+      description: Authenticated, but the caller lacks the required role/permission/status.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorBody" }
+          example: { error: "Forbidden" }
+    MethodNotAllowed:
+      description: Only `POST` (and `OPTIONS` for CORS preflight) are accepted.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorBody" }
+          example: { error: "Method not allowed" }
+    TooManyRequests:
+      description: >
+        Per-caller rate limit exceeded (fixed-window counter keyed by the
+        verified caller user_id — see `docs/api-security.md`). Wait and retry.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorBody" }
+          example: { error: "Too many requests" }
+    ServerError:
+      description: >
+        Unexpected failure. The body is a fixed generic string; the real
+        error is logged server-side only. See `docs/api-security.md`.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorBody" }
+          example: { error: "Internal error" }
+paths:
+  /sign-credential:
+    post:
+      summary: Sign a ready-to-print credential's QR payload (ES256)
+      description: >
+        Private. Every field in the signed payload is read from the
+        database itself, never from the request — the caller supplies only
+        which credential to sign. Compare-and-swap on `qr_payload IS NULL`
+        so two concurrent calls can't double-sign.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [credentialId, woredaId]
+              properties:
+                credentialId: { type: string, format: uuid }
+                woredaId: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Signed.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessBody"
+                  - type: object
+                    properties:
+                      token: { type: string, description: "payloadB64.signatureB64" }
+              example: { success: true, token: "eyJjIjoiMDEwMTIw...ZXd0.MEUCIQ..." }
+        "400":
+          description: Missing `credentialId`/`woredaId`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorBody" }
+              example: { error: "Missing fields" }
+        "401": { $ref: "#/components/responses/MissingAuth" }
+        "403":
+          description: Not registered, not active, wrong woreda, or missing `credential.print`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorBody" }
+              example: { error: "Forbidden: requires credential.print" }
+        "404":
+          description: Credential or resident not found.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorBody" }
+              example: { error: "Credential not found" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "409":
+          description: Wrong status, or already signed (compare-and-swap lost the race).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorBody" }
+              example: { error: "Credential is not ready to print" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /invite-tenant-user:
+    post:
+      summary: Invite a new staff member into a tenant (non-admin roles only)
+      description: >
+        Private. Caller must be an active `tenant_admin` of the target
+        woreda, or `super_admin`. Cannot self-provision `tenant_admin`/`super_admin`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, full_name, role, woredaId]
+              properties:
+                email: { type: string, format: email }
+                full_name: { type: string }
+                role:
+                  type: string
+                  enum:
+                    [registry_clerk, civil_registrar, finance_clerk, supervisor, auditor, viewer]
+                woredaId: { type: string, format: uuid }
+                department: { type: string, nullable: true }
+                job_title: { type: string, nullable: true }
+                reports_to_user_id: { type: string, format: uuid, nullable: true }
+                signature_path: { type: string, nullable: true }
+                photo_path: { type: string, nullable: true }
+      responses:
+        "200":
+          description: Invited.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessBody"
+                  - type: object
+                    properties:
+                      user_id: { type: string, format: uuid }
+              example: { success: true, user_id: "a1b2c3d4-0000-0000-0000-000000000000" }
+        "400":
+          description: Missing fields, disallowed role, invalid manager, or GoTrue/insert failure.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorBody" }
+              example: { error: "Cannot provision this role through tenant self-service." }
+        "401": { $ref: "#/components/responses/MissingAuth" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /invite-platform-admin:
+    post:
+      summary: Invite a new super_admin or tenant_admin
+      description: >
+        Private. Caller must be an active `super_admin`. Minting a *new*
+        `super_admin` additionally requires the console permission
+        `console.console_users.manage` — an explicit escalation guard.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, full_name, role]
+              properties:
+                email: { type: string, format: email }
+                full_name: { type: string }
+                role: { type: string, enum: [super_admin, tenant_admin] }
+                woredaId:
+                  type: string
+                  format: uuid
+                  nullable: true
+                  description: "Required for tenant_admin; must be omitted for super_admin."
+      responses:
+        "200":
+          description: Invited. `warning` is non-null if the target woreda already has an active tenant_admin.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessBody"
+                  - type: object
+                    properties:
+                      user_id: { type: string, format: uuid }
+                      warning: { type: string, nullable: true }
+              example:
+                { success: true, user_id: "a1b2c3d4-0000-0000-0000-000000000000", warning: null }
+        "400":
+          description: Missing/invalid fields, or GoTrue/insert failure.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorBody" }
+              example: { error: "woredaId is required for tenant_admin role." }
+        "401": { $ref: "#/components/responses/MissingAuth" }
+        "403":
+          description: Not an active super_admin, or (minting a super_admin) missing console.console_users.manage.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorBody" }
+              example:
+                {
+                  error: "Forbidden: inviting a new super_admin requires console.console_users.manage.",
+                }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /resend-platform-invite:
+    post:
+      summary: Resend a platform admin's invite email
+      description: Private. Caller must be an active `super_admin`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+                user_id:
+                  type: string
+                  format: uuid
+                  nullable: true
+                  description: "Optional target check — if given, must already be a super_admin/tenant_admin row."
+      responses:
+        "200":
+          description: Resent.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SuccessBody" }
+              example: { success: true }
+        "400":
+          description: Missing email, target not a platform admin, or GoTrue failure.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorBody" }
+              example: { error: "Target is not a platform admin." }
+        "401": { $ref: "#/components/responses/MissingAuth" }
+        "403":
+          description: Not an active super_admin.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorBody" }
+              example:
+                { error: "Forbidden: only an active super_admin can resend platform invites." }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /activate-invited-user:
+    post:
+      summary: Flip the caller's own pending account to active
+      description: >
+        Private, self-scoped. Called right after `set-password.tsx` sets a
+        new password. Resolves identity from the caller's own JWT only —
+        never a request body — and only ever touches that same row, only
+        while `status = 'pending'`. Suspended/inactive rows are left
+        untouched by design (reactivating those stays an administrator
+        action). Takes no request body beyond the `Authorization` header.
+      requestBody:
+        required: false
+      responses:
+        "200":
+          description: Already resolved, or just activated — either way the true current status is returned.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessBody"
+                  - type: object
+                    properties:
+                      status: { type: string, enum: [active, inactive, suspended] }
+              example: { success: true, status: "active" }
+        "401": { $ref: "#/components/responses/MissingAuth" }
+        "404":
+          description: No `app_user` row for this caller.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorBody" }
+              example: { error: "No app_user profile found" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /record-login:
+    post:
+      summary: Record the caller's own last-login timestamp
+      description: >
+        Private, self-scoped. Called right after a successful
+        `signInWithPassword()` — deliberately not from the ambient
+        `onAuthStateChange` listener, which also fires on tab-visibility
+        session recovery. Writes only `last_login_at` on the caller's own
+        row (resolved from their own JWT). No `audit_log` entry — a row per
+        login would be pure noise. Takes no request body beyond the
+        `Authorization` header.
+      requestBody:
+        required: false
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SuccessBody" }
+              example: { success: true }
+        "401": { $ref: "#/components/responses/MissingAuth" }
+        "404":
+          description: No `app_user` row for this caller.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorBody" }
+              example: { error: "No app_user profile found" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "500": { $ref: "#/components/responses/ServerError" }
