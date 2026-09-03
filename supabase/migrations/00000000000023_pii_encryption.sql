@@ -88,8 +88,14 @@
 --      script, not a migration).
 --   3. Cut read paths over to the *_decrypted views, call site by call site.
 --   4. LATER, SEPARATE MIGRATION, after a production burn-in: drop the
---      plaintext columns and these sync triggers. The payment amount guard
---      below is what keeps `amount > 0` enforced past that point.
+--      plaintext columns and the ENCRYPTION half of these sync triggers.
+--      payment_amount_sync()/rental_occupancy_amount_sync() must NOT simply be
+--      dropped wholesale at that point -- their `amount > 0` / `rent_amount > 0`
+--      RAISE EXCEPTION guard is what keeps that invariant enforced once
+--      payment_amount_check (baseline.sql, on the plaintext column) goes away
+--      with it. Stage 4 replaces each of those two trigger functions with a
+--      narrower one that keeps the RAISE EXCEPTION and drops only the
+--      encrypt_pii_numeric() call -- it does not delete the trigger.
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
@@ -168,6 +174,12 @@ BEGIN
   RETURN digits;
 END;
 $function$;
+
+-- Pure text transform -- no key material, no row access, nothing sensitive to
+-- gate. REVOKEd anyway to match this file's own pattern (every other function
+-- here is explicit about its grants) rather than leaving one silently on the
+-- Postgres default of PUBLIC.
+REVOKE EXECUTE ON FUNCTION public.normalize_phone(text) FROM PUBLIC, anon, authenticated;
 
 -- ----------------------------------------------------------------------------
 -- Internal crypto primitives.
@@ -458,6 +470,13 @@ CREATE TRIGGER service_request_pii_sync_trg
 
 -- Financial columns. The amount guard below is the reason this one is a
 -- separate function per table rather than one generic trigger.
+--
+-- payment_amount_check (baseline.sql) enforces amount > 0 on the plaintext
+-- column and will lapse when that column is dropped in stage 4. Validating
+-- here means the invariant can survive that drop -- but only if stage 4
+-- narrows this function (drops the encrypt_pii_numeric call, keeps the RAISE
+-- EXCEPTION) rather than dropping the trigger outright; see the rollout note
+-- at the top of this file.
 CREATE OR REPLACE FUNCTION public.payment_amount_sync()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -465,10 +484,6 @@ CREATE OR REPLACE FUNCTION public.payment_amount_sync()
  SET search_path TO 'public'
 AS $function$
 BEGIN
-  -- payment_amount_check (baseline.sql) enforces amount > 0 on the plaintext
-  -- column and will lapse when that column is dropped in stage 4. Validating
-  -- here means the invariant survives that drop without a gap, and catches a
-  -- bad value now rather than after the plaintext is gone.
   IF NEW.amount IS NOT NULL AND NEW.amount <= 0 THEN
     RAISE EXCEPTION 'payment.amount must be greater than zero';
   END IF;
@@ -482,6 +497,9 @@ CREATE TRIGGER payment_amount_sync_trg
   BEFORE INSERT OR UPDATE ON public.payment
   FOR EACH ROW EXECUTE FUNCTION public.payment_amount_sync();
 
+-- Same stage-4 note as payment_amount_sync() above: narrow this function
+-- rather than dropping it, so rental_occupancy_rent_amount_check's invariant
+-- survives losing the plaintext column.
 CREATE OR REPLACE FUNCTION public.rental_occupancy_amount_sync()
  RETURNS trigger
  LANGUAGE plpgsql
