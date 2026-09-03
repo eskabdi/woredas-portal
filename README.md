@@ -15,21 +15,12 @@
 
 ---
 
-## TECH STACK — USE EXACTLY THIS
+## TECH STACK
 
-- React 18 + TypeScript (strict mode, `"strict": true` in tsconfig)
-- Vite 5
-- Tailwind CSS + shadcn/ui (full component library)
-- TanStack Query v5 (all server state)
-- Zustand (UI state, auth state)
-- React Hook Form + Zod (all forms)
-- Supabase (PostgreSQL + Auth + Storage + Edge Functions)
-- react-i18next (i18n — Amharic primary for Woreda portal, English for Super Admin)
-- Framer Motion (transitions and micro-interactions only)
-- Recharts (charts and dashboards)
-- Lucide React (icons only — no other icon library)
-- date-fns (date utilities)
-- PWA via Vite PWA plugin (Workbox)
+> **Superseded.** This was the Phase 1 scaffold spec and is stale (React 18,
+> Vite 5, `react-i18next` and a Workbox PWA plugin were never adopted or were
+> since replaced). See [`docs/tech-stack.md`](docs/tech-stack.md) for the
+> actual, current stack with real pinned versions.
 
 ---
 
@@ -71,327 +62,32 @@ Six woreda tenants. Seed these into the database:
 
 ## RBAC — 8 CANONICAL ROLES
 
-Roles are stored as lowercase snake_case strings. Define a TypeScript `Role` union type.
-
-```typescript
-export type Role =
-  | "super_admin"
-  | "tenant_admin"
-  | "civil_registrar"
-  | "registry_clerk"
-  | "finance_clerk"
-  | "supervisor"
-  | "auditor"
-  | "viewer";
-```
-
-Permissions use `resource.action` dot-notation. Define a typed `P` constants object as the sole source of permission values:
-
-```typescript
-export const P = {
-  // Residents
-  RESIDENT_CREATE: "resident.create",
-  RESIDENT_READ: "resident.read",
-  RESIDENT_UPDATE: "resident.update",
-  RESIDENT_DELETE: "resident.delete",
-  // Households
-  HOUSEHOLD_CREATE: "household.create",
-  HOUSEHOLD_READ: "household.read",
-  HOUSEHOLD_UPDATE: "household.update",
-  // Credentials
-  CREDENTIAL_ISSUE: "credential.issue",
-  CREDENTIAL_READ: "credential.read",
-  CREDENTIAL_PRINT: "credential.print",
-  CREDENTIAL_VERIFY: "credential.verify",
-  CREDENTIAL_REVOKE: "credential.revoke",
-  CREDENTIAL_RENEW: "credential.renew",
-  // Civil Events
-  CIVIL_REGISTER: "civil.register",
-  CIVIL_APPROVE: "civil.approve",
-  CIVIL_READ: "civil.read",
-  // Revenue
-  PAYMENT_COLLECT: "payment.collect",
-  PAYMENT_READ: "payment.read",
-  RECEIPT_PRINT: "receipt.print",
-  // Reports
-  REPORT_VIEW: "report.view",
-  REPORT_EXPORT: "report.export",
-  // Audit
-  AUDIT_VIEW: "audit.view",
-  // Tenant Admin
-  TENANT_MANAGE: "tenant.manage",
-  USER_MANAGE: "user.manage",
-  // Super Admin
-  PLATFORM_MANAGE: "platform.manage",
-  TENANT_CREATE: "tenant.create",
-} as const;
-
-export type Permission = (typeof P)[keyof typeof P];
-```
-
-Role-to-permission mapping (store in a `ROLE_PERMISSIONS` map):
-
-```typescript
-export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
-  super_admin: [
-    P.PLATFORM_MANAGE,
-    P.TENANT_CREATE,
-    P.TENANT_MANAGE,
-    P.USER_MANAGE,
-    P.AUDIT_VIEW,
-    P.REPORT_VIEW,
-  ],
-  tenant_admin: [
-    P.RESIDENT_CREATE,
-    P.RESIDENT_READ,
-    P.RESIDENT_UPDATE,
-    P.RESIDENT_DELETE,
-    P.HOUSEHOLD_CREATE,
-    P.HOUSEHOLD_READ,
-    P.HOUSEHOLD_UPDATE,
-    P.CREDENTIAL_ISSUE,
-    P.CREDENTIAL_READ,
-    P.CREDENTIAL_PRINT,
-    P.CREDENTIAL_VERIFY,
-    P.CREDENTIAL_REVOKE,
-    P.CREDENTIAL_RENEW,
-    P.CIVIL_REGISTER,
-    P.CIVIL_APPROVE,
-    P.CIVIL_READ,
-    P.PAYMENT_COLLECT,
-    P.PAYMENT_READ,
-    P.RECEIPT_PRINT,
-    P.REPORT_VIEW,
-    P.REPORT_EXPORT,
-    P.AUDIT_VIEW,
-    P.TENANT_MANAGE,
-    P.USER_MANAGE,
-  ],
-  supervisor: [
-    P.RESIDENT_READ,
-    P.HOUSEHOLD_READ,
-    P.CREDENTIAL_READ,
-    P.CREDENTIAL_VERIFY,
-    P.CREDENTIAL_REVOKE,
-    P.CIVIL_APPROVE,
-    P.CIVIL_READ,
-    P.PAYMENT_READ,
-    P.RECEIPT_PRINT,
-    P.REPORT_VIEW,
-    P.REPORT_EXPORT,
-    P.AUDIT_VIEW,
-  ],
-  civil_registrar: [
-    P.RESIDENT_CREATE,
-    P.RESIDENT_READ,
-    P.RESIDENT_UPDATE,
-    P.HOUSEHOLD_READ,
-    P.CREDENTIAL_ISSUE,
-    P.CREDENTIAL_READ,
-    P.CREDENTIAL_PRINT,
-    P.CREDENTIAL_VERIFY,
-    P.CIVIL_REGISTER,
-    P.CIVIL_READ,
-  ],
-  registry_clerk: [
-    P.RESIDENT_CREATE,
-    P.RESIDENT_READ,
-    P.RESIDENT_UPDATE,
-    P.HOUSEHOLD_CREATE,
-    P.HOUSEHOLD_READ,
-    P.HOUSEHOLD_UPDATE,
-    P.CREDENTIAL_ISSUE,
-    P.CREDENTIAL_READ,
-    P.CREDENTIAL_PRINT,
-    P.CREDENTIAL_VERIFY,
-    P.CIVIL_READ,
-  ],
-  finance_clerk: [
-    P.PAYMENT_COLLECT,
-    P.PAYMENT_READ,
-    P.RECEIPT_PRINT,
-    P.RESIDENT_READ,
-    P.HOUSEHOLD_READ,
-  ],
-  auditor: [
-    P.RESIDENT_READ,
-    P.HOUSEHOLD_READ,
-    P.CREDENTIAL_READ,
-    P.CIVIL_READ,
-    P.PAYMENT_READ,
-    P.REPORT_VIEW,
-    P.AUDIT_VIEW,
-  ],
-  viewer: [P.RESIDENT_READ, P.HOUSEHOLD_READ, P.CREDENTIAL_READ, P.CIVIL_READ, P.PAYMENT_READ],
-};
-```
-
-Navigation visibility is driven by `NAV_PERMISSION_MAP` — sidebar items render only if the user has the required permission. Never show/hide nav based on role name directly.
+> **Superseded.** This was the Phase 1 scaffold spec and is stale — the live
+> `src/config/permissions.ts` has grown to include the rental, revenue,
+> service-request, and approval-queue permission categories plus an entire
+> second permission dimension (`CP.*` console permissions) that this sample
+> never had. See the generated, always-current
+> [`docs/permissions-matrix.md`](docs/permissions-matrix.md) instead —
+> regenerate it with `bun run generate:permissions-doc` after any change to
+> `permissions.ts`, and CI fails (`--check`) if it's ever left stale.
+>
+> Navigation visibility is still driven by `NAV_PERMISSION_MAP`/`ADMIN_NAV` —
+> never show/hide nav based on role name directly — see the same generated
+> doc for the current nav-to-permission mapping.
 
 ---
 
 ## SUPABASE DATABASE SCHEMA
 
-Create these tables via Supabase migrations. All tables include `created_at TIMESTAMPTZ DEFAULT NOW()` and `updated_at TIMESTAMPTZ DEFAULT NOW()`.
-
-### Core Tables
-
-```sql
--- Tenants (woreda organizations)
-CREATE TABLE woreda (
-  woreda_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  woreda_code TEXT NOT NULL UNIQUE,
-  woreda_name_en TEXT NOT NULL,
-  woreda_name_am TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','inactive','suspended')),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Kebeles (geographic subdivision — reference only, no independent workflow)
-CREATE TABLE kebele (
-  kebele_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  woreda_id UUID NOT NULL REFERENCES woreda(woreda_id),
-  kebele_number TEXT NOT NULL,
-  kebele_name_en TEXT NOT NULL,
-  kebele_name_am TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'active',
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(woreda_id, kebele_number)
-);
-
--- Users (linked to Supabase Auth)
-CREATE TABLE app_user (
-  user_id UUID PRIMARY KEY REFERENCES auth.users(id),
-  woreda_id UUID REFERENCES woreda(woreda_id),
-  role TEXT NOT NULL CHECK (role IN ('super_admin','tenant_admin','civil_registrar','registry_clerk','finance_clerk','supervisor','auditor','viewer')),
-  full_name TEXT NOT NULL,
-  username TEXT NOT NULL UNIQUE,
-  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','inactive','suspended')),
-  last_login_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Households
-CREATE TABLE household (
-  household_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  woreda_id UUID NOT NULL REFERENCES woreda(woreda_id),
-  kebele_id UUID NOT NULL REFERENCES kebele(kebele_id),
-  house_number TEXT NOT NULL,
-  house_label TEXT,
-  occupancy_status TEXT NOT NULL DEFAULT 'occupied' CHECK (occupancy_status IN ('occupied','vacant','demolished','transferred')),
-  address_line TEXT,
-  gps_lat DECIMAL(10,8),
-  gps_lng DECIMAL(11,8),
-  active_flag BOOLEAN NOT NULL DEFAULT TRUE,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(kebele_id, house_number)
-);
-
--- Residents
-CREATE TABLE resident (
-  resident_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  woreda_id UUID NOT NULL REFERENCES woreda(woreda_id),
-  resident_number TEXT NOT NULL UNIQUE,
-  full_name TEXT NOT NULL,
-  full_name_am TEXT,
-  sex TEXT NOT NULL CHECK (sex IN ('male','female')),
-  date_of_birth DATE NOT NULL,
-  marital_status TEXT NOT NULL CHECK (marital_status IN ('single','married','divorced','widowed')),
-  current_household_id UUID REFERENCES household(household_id),
-  relation_to_head TEXT,
-  phone_number TEXT,
-  national_id_no TEXT,
-  residency_status TEXT NOT NULL DEFAULT 'active' CHECK (residency_status IN ('active','moved_out','deceased','suspended')),
-  photo_url TEXT,
-  active_flag BOOLEAN NOT NULL DEFAULT TRUE,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Residence Credentials
-CREATE TABLE residence_credential (
-  credential_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  woreda_id UUID NOT NULL REFERENCES woreda(woreda_id),
-  resident_id UUID NOT NULL REFERENCES resident(resident_id),
-  issuing_kebele_id UUID NOT NULL REFERENCES kebele(kebele_id),
-  credential_number TEXT NOT NULL UNIQUE,
-  serial_number TEXT NOT NULL UNIQUE,
-  credential_type TEXT NOT NULL DEFAULT 'card' CHECK (credential_type IN ('card','certificate')),
-  status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','pending_approval','approved','printed','active','expired','suspended','revoked','replaced')),
-  issue_date DATE,
-  expiry_date DATE,
-  reason_for_issue TEXT,
-  reissue_count INT NOT NULL DEFAULT 0,
-  qr_payload TEXT,
-  printed_at TIMESTAMPTZ,
-  revoked_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Credential Status History
-CREATE TABLE credential_status_history (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  credential_id UUID NOT NULL REFERENCES residence_credential(credential_id),
-  old_status TEXT,
-  new_status TEXT NOT NULL,
-  changed_by_user_id UUID REFERENCES app_user(user_id),
-  change_reason TEXT,
-  changed_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Vital Events (Civil Registration)
-CREATE TABLE vital_event (
-  vital_event_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  woreda_id UUID NOT NULL REFERENCES woreda(woreda_id),
-  resident_id UUID REFERENCES resident(resident_id),
-  household_id UUID REFERENCES household(household_id),
-  event_type TEXT NOT NULL CHECK (event_type IN ('birth','death','marriage','divorce')),
-  event_number TEXT NOT NULL,
-  event_date DATE NOT NULL,
-  registration_date DATE,
-  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected','cancelled')),
-  notes TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(woreda_id, event_type, event_number)
-);
-
--- Payments
-CREATE TABLE payment (
-  payment_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  woreda_id UUID NOT NULL REFERENCES woreda(woreda_id),
-  household_id UUID REFERENCES household(household_id),
-  resident_id UUID REFERENCES resident(resident_id),
-  payment_type TEXT NOT NULL CHECK (payment_type IN ('service_fee','house_rent','penalty','credential_fee')),
-  amount DECIMAL(12,2) NOT NULL CHECK (amount > 0),
-  payment_date DATE NOT NULL,
-  channel TEXT NOT NULL DEFAULT 'cash' CHECK (channel IN ('cash','bank','mobile')),
-  reference_no TEXT,
-  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','confirmed','reversed')),
-  posted_by_user_id UUID REFERENCES app_user(user_id),
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Audit Log (immutable)
-CREATE TABLE audit_log (
-  audit_log_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  woreda_id UUID REFERENCES woreda(woreda_id),
-  actor_user_id UUID REFERENCES app_user(user_id),
-  entity_name TEXT NOT NULL,
-  entity_id TEXT,
-  action_type TEXT NOT NULL,
-  old_value_json JSONB,
-  new_value_json JSONB,
-  action_at TIMESTAMPTZ DEFAULT NOW(),
-  source_ip TEXT
-);
-```
-
-Enable Row Level Security on all tables. Create RLS policies scoped by `woreda_id` matching the authenticated user's `woreda_id` from `app_user`. `super_admin` users bypass all RLS policies.
+> **Superseded.** This was the Phase 1 scaffold spec (9 tables) and is stale
+> — the live schema has 41 tables across 7 domains, with materially different
+> constraints (e.g. `payment` gained a `service_request_id` FK and a
+> mutual-exclusivity check the sample below never had). See
+> [`docs/erd.md`](docs/erd.md) for the current, accurate schema and
+> relationships. RLS is still enabled on every table, scoped by `woreda_id`
+> matching the authenticated user's `app_user.woreda_id`; `super_admin`
+> bypasses via explicit `is_super_admin()` checks in each policy, not a
+> blanket RLS bypass.
 
 ---
 

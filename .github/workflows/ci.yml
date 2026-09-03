@@ -36,3 +36,4 @@ jobs:
       - run: npx tsc --noEmit
       - run: bun run test
       - run: bun run check:role-perms-drift
+      - run: bun run scripts/generate-permissions-doc.ts --check
