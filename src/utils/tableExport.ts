@@ -19,8 +19,24 @@ function cell<T>(col: TableColumn<T>, row: T): string {
 
 /* ---------------------------------------------------------------------- CSV */
 
+// CSV formula injection (OWASP): a cell opened by Excel/Sheets/LibreOffice
+// starting with =, +, -, @, tab, or CR is evaluated as a formula, not shown
+// as text. This table exports plenty of values a spreadsheet would treat as
+// numeric-looking (amounts, phone numbers) but every one of them still comes
+// from a TableColumn<T>'s value() as this app's own data -- the actual risk
+// this guards is one field pulled from something request-supplied
+// (audit_log.source_ip, populated from x-forwarded-for by the Edge
+// Functions since INSA remediation Phase B) reaching an export unescaped.
+// The single-quote prefix is the standard mitigation across every major
+// spreadsheet app; it costs a literal leading `'` in tools that don't treat
+// it as a text marker (rare, and still inert, unlike an executed formula).
+const FORMULA_PREFIX = /^[=+\-@\t\r]/;
+
 export function rowsToCsv<T>(columns: TableColumn<T>[], rows: T[]): string {
-  const esc = (s: string) => (/[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s);
+  const esc = (s: string) => {
+    const safe = FORMULA_PREFIX.test(s) ? `'${s}` : s;
+    return /[",\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+  };
   const lines = [columns.map((c) => esc(c.header)).join(",")];
   for (const row of rows) lines.push(columns.map((c) => esc(cell(c, row))).join(","));
   return lines.join("\n");

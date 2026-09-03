@@ -688,10 +688,18 @@ project's email template is actually sending before assuming the allow-list or
 control-plane operation: a project `service_role` key cannot do it, only
 `supabase login` or a Personal Access Token.
 
-The CLI's `functions list` and `functions deploy` fail with `TransportError`
-behind the proxy — including via `npx supabase ...` with `SUPABASE_ACCESS_TOKEN`
-set and `HTTPS_PROXY` correctly exported; the CLI simply doesn't route through
-it reliably. The Management API works:
+The CLI's `functions list` and `functions deploy` have been reported to fail
+with `TransportError` behind the proxy in some sandboxes — this is
+environment-dependent, not universal: `npx supabase functions deploy <fn...>
+--use-api --project-ref $REF` (what `scripts/deploy-functions.sh` runs) has
+also deployed cleanly in this same kind of sandboxed container. Try it first;
+it's also the only path that correctly bundles `supabase/functions/_shared/`
+(`response.ts`/`rateLimit.ts`/`clientIp.ts`, added in the INSA remediation's
+Phase B) alongside a function's `index.ts` — confirmed by its own upload log,
+which lists each shared file it pulls in per function.
+
+If the CLI genuinely can't route through the proxy, the Management API works
+as a single-file fallback:
 
 ```bash
 curl -X POST "https://api.supabase.com/v1/projects/$REF/functions/deploy?slug=$FN" \
@@ -699,6 +707,18 @@ curl -X POST "https://api.supabase.com/v1/projects/$REF/functions/deploy?slug=$F
   -F "metadata={\"name\":\"$FN\",\"entrypoint_path\":\"index.ts\",\"verify_jwt\":false};type=application/json" \
   -F 'file=@index.ts;type=application/typescript'
 ```
+
+**This command is only valid for a function with no local imports.** Five of
+the six functions (`sign-credential`, `invite-tenant-user`,
+`invite-platform-admin`, `resend-platform-invite`, `activate-invited-user`;
+`record-login` imports only `_shared/response.ts`) import from
+`../_shared/*.ts`, which this single-`file=@` form never uploads — the
+function deploys, then 500s at import resolution on its first invocation.
+Get the CLI path working (proxy config, a different network path, a
+non-sandboxed shell) rather than hand-rolling a multi-file `curl` for this;
+the exact multipart shape the Management API expects for a bundle with local
+imports isn't documented here because it hasn't been verified against a raw
+`curl` call, only against what the CLI itself sends.
 
 To tell a deployed function from a missing one, call it unauthenticated. A
 deployed function answers `401` with its own error body; a missing one answers
