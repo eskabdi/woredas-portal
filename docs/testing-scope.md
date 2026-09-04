@@ -18,31 +18,31 @@ expects; it is deliberately honest about what it cannot yet provide — see
 
 ## Test credentials
 
-**Not currently seeded.** The Enforcer expects placeholder Admin/Regular
-User/Guest-equivalent credentials for an audit team, seeded **only in
-staging environments**. This app has no staging project today — deliberately:
-there is only one Supabase project, so local development runs against the
-live production project (see CLAUDE.md's sandboxed-environment notes and
-every Edge Function's own `SITE_URL`/CORS comment, which says as much).
-Provisioning a real staging environment and a matching seeding runbook is
-planned as a later, separate phase of the INSA remediation plan — it needs
-a deliberate go-ahead (a new Supabase + Vercel project, real cost) rather
-than being folded into a documentation-only pass. `supabase/seed-app-users.sql`
-seeds three **real** people's accounts against the production project (a
-super_admin, a tenant_admin, and a pending supervisor) — these are not
-synthetic test identities and must not be treated as such.
+**Not currently seeded, because there is still no staging project to seed
+them into.** This app has one Supabase project — production — so local
+development runs against it directly (see CLAUDE.md's sandboxed-environment
+notes and every Edge Function's own `SITE_URL`/CORS comment, which says as
+much). `supabase/seed-app-users.sql` seeds three **real** people's accounts
+against the production project (a super_admin, a tenant_admin, and a pending
+supervisor) — these are not synthetic test identities and must not be
+treated as such.
 
-Once a staging project exists, seed synthetic accounts there via the real
+The runbook and seeding script are written and ready
+(`docs/staging-runbook.md`, `scripts/seed-staging-users.ts`) — provisioning
+the staging project itself still needs a deliberate go-ahead (a new
+Supabase + Vercel project, real cost), which is why this stays "ready, not
+yet run" rather than closed out. Once that project exists, the runbook's
+step 4 seeds one account per privilege level via the real
 `invite-tenant-user`/`invite-platform-admin` Edge Functions (never raw SQL —
 `seed-app-users.sql` only resolves against pre-existing `auth.users` rows,
-it cannot create an account on its own) — one account per privilege level:
+it cannot create an account on its own):
 
-| Role             | Suggested email (staging only)  | Covers                                     |
-| ---------------- | ------------------------------- | ------------------------------------------ |
-| `super_admin`    | `test-admin@example.com`        | Full platform console                      |
-| `tenant_admin`   | `test-tenant-admin@example.com` | Full per-woreda console                    |
-| `registry_clerk` | `test-clerk@example.com`        | A representative mid-tier operational role |
-| `viewer`         | `test-viewer@example.com`       | Read-only baseline                         |
+| Role             | Email (staging only)                 | Covers                                     |
+| ---------------- | ------------------------------------ | ------------------------------------------ |
+| `super_admin`    | `staging-super-admin@example.com`    | Full platform console                      |
+| `tenant_admin`   | `staging-tenant-admin@example.com`   | Full per-woreda console                    |
+| `registry_clerk` | `staging-registry-clerk@example.com` | A representative mid-tier operational role |
+| `viewer`         | `staging-viewer@example.com`         | Read-only baseline                         |
 
 ## Operator checklist (dashboard actions, not code)
 
