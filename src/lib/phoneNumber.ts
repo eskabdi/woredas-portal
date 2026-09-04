@@ -34,17 +34,23 @@ export function sanitizePhoneDigits(raw: string): string {
 /**
  * Resolves a controlled phone-digits input's next value from its previous
  * value and the raw DOM value after a change event. A single typed character
- * can never legitimately re-trigger the 251/0 prefix-stripping rules above --
- * those only make sense against a whole external value (a paste, or the
- * field starting empty). Calling sanitizePhoneDigits on every keystroke
- * against the full accumulated value is not idempotent: a normal typed
- * sequence that happens to pass through "251" partway through (e.g. the
- * digits right after a stripped leading 0) would get 3 more digits stripped
- * that were never a country code. Only re-run the full sanitizer on a fresh
- * entry (paste, or the field was empty); otherwise just keep it digits-only.
+ * -- the field growing by exactly one digit -- can never legitimately
+ * re-trigger the 251/0 prefix-stripping rules above: those only make sense
+ * against a whole external value (a paste, a select-all-and-retype/paste
+ * correction, or the field starting empty). Calling sanitizePhoneDigits on
+ * every keystroke against the full accumulated value is not idempotent: a
+ * normal typed sequence that happens to pass through "251" partway through
+ * (e.g. the digits right after a stripped leading 0) would get 3 more digits
+ * stripped that were never a country code. Conversely, treating only a
+ * length increase of MORE than one character as "fresh" misses the common
+ * correction path of selecting the existing value and pasting/retyping a
+ * same-length or shorter replacement -- so any change whose length delta
+ * isn't exactly +1 (a delete, a same-length paste-over-selection, a
+ * multi-character paste) re-runs the full sanitizer; only a plain one-digit
+ * append skips it.
  */
 export function applyPhoneDigitsChange(previousValue: string, raw: string): string {
-  const isFreshEntry = previousValue === "" || raw.length - previousValue.length > 1;
+  const isFreshEntry = previousValue === "" || raw.length - previousValue.length !== 1;
   return isFreshEntry ? sanitizePhoneDigits(raw) : raw.replace(/\D/g, "");
 }
 

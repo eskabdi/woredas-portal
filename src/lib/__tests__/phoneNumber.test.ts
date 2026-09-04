@@ -67,6 +67,28 @@ describe("applyPhoneDigitsChange (keystroke-by-keystroke, not just whole-string 
     // field already has content.
     expect(typeKeystrokes("9251123456")).toBe("9251123456");
   });
+
+  it("strips a select-all-and-paste correction, even when the replacement is the same length", () => {
+    // Regression: a length-delta ">1" check only caught pastes that grew
+    // the field. Selecting an existing 9-digit value and pasting a
+    // same-length replacement that still carries a 251/0 prefix produced no
+    // net length change, so the strip never ran and a wrong-but-9-digit
+    // value silently passed validation.
+    expect(applyPhoneDigitsChange("911234567", "251911234")).toBe(sanitizePhoneDigits("251911234"));
+  });
+
+  it("strips a select-all-and-paste correction that makes the field shorter", () => {
+    expect(applyPhoneDigitsChange("911234567", "0912345")).toBe(sanitizePhoneDigits("0912345"));
+  });
+
+  it("leaves a plain backspace delete unaffected", () => {
+    // Deleting the trailing digit re-runs the full sanitizer (any delta
+    // other than +1 does), but a value built up through normal typing can
+    // never itself start with 0/251 -- see the invariant this relies on in
+    // applyPhoneDigitsChange's own doc comment -- so the result is
+    // unchanged either way.
+    expect(applyPhoneDigitsChange("911234567", "91123456")).toBe("91123456");
+  });
 });
 
 describe("isValidPhoneDigits", () => {
