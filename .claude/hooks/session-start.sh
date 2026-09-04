@@ -29,7 +29,7 @@ if [ -n "$BUN" ]; then
   "$BUN" install
 else
   echo "bun not found; falling back to npm (bunfig.toml's release-age guard will not apply)." >&2
-  npm install --no-audit --no-fund
+  npm install --no-audit --no-fund --no-package-lock
 fi
 
 echo "Dependencies ready."

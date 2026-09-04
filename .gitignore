@@ -16,6 +16,11 @@ dist-ssr
 .nitro
 *.local
 
+# bun.lock is the only lockfile this repo's build uses (see CLAUDE.md's
+# Commands section) — never let a local `npm install` reintroduce a second,
+# drifted one.
+package-lock.json
+
 # Environment
 .env
 .env.*

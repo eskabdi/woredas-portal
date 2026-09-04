@@ -41,8 +41,10 @@ ESLint 9 (`typescript-eslint`, `eslint-plugin-react-hooks`, `eslint-plugin-react
 `eslint-plugin-prettier`) · Prettier 3.7 · Vitest 4 + `@testing-library/react` /
 `jest-dom` / `user-event` + `jsdom` 30 · `nitro` (server preset — build-only,
 never pinned in `vite.config.ts`; see CLAUDE.md's Vercel section for why).
-Package manager is **bun** (`bun.lock`, `bunfig.toml`); a `package-lock.json`
-also exists but bun is what CI and Vercel actually build with.
+Package manager is **bun** (`bun.lock`, `bunfig.toml`); the repo carried a
+second, unused `package-lock.json` until it was removed as dependency-scan
+drift (see CLAUDE.md's Commands section). `bun audit` is the dependency-
+vulnerability check this repo's actual build reflects.
 
 ## Third-party integrations: none
 
