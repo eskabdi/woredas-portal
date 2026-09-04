@@ -74,7 +74,13 @@ between the security-hardening review and an actual audit pass:
 
 ## Out of scope for this pass
 
-Dynamic penetration testing, dependency-vulnerability scanning, and load
-testing were not performed as part of the INSA remediation documentation
-pass — this document defines _what_ an audit team would need access to, not
-a completed audit.
+Dynamic penetration testing and load testing were not performed as part of
+the INSA remediation documentation pass — this document defines _what_ an
+audit team would need access to, not a completed audit. Both need a live
+target and should run against the staging project `docs/staging-runbook.md`
+describes, not production.
+
+**Dependency-vulnerability scanning has been run**: `bun audit` against
+`bun.lock` — the lockfile this repo's build actually uses — reports no
+vulnerabilities as of this pass. Re-run `bun audit` after any dependency
+bump; it needs no staging project or other infrastructure.
