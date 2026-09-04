@@ -336,6 +336,10 @@ function ResidentProfilePage() {
     queryClient.invalidateQueries({ queryKey: ["residents"] });
     queryClient.invalidateQueries({ queryKey: ["resident-household-members"] });
     queryClient.invalidateQueries({ queryKey: ["resident-recent-activity", residentId] });
+    // Decrypted contact queries -- otherwise a stale phone/email value could
+    // flash for a beat after an action that touches this resident's household.
+    queryClient.invalidateQueries({ queryKey: ["resident-contact-decrypted", residentId] });
+    queryClient.invalidateQueries({ queryKey: ["resident-tab-household"] });
   };
 
   const handleShare = async () => {

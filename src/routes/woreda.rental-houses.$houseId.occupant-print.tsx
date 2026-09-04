@@ -94,13 +94,17 @@ function RentalOccupantPrintPage() {
     queryKey: ["rental-occupancies-print", houseId, woredaId],
     enabled: !!woredaId && hasPermission(P.RENTAL_VIEW),
     queryFn: async () => {
+      // rent_amount and the embedded resident.phone_number deliberately not
+      // selected -- both are dead here (the render below uses activeContact's
+      // rent_amount_decrypted/phone_number_decrypted instead), and once
+      // stage 4 drops the plaintext columns these would 400.
       const { data, error } = await supabase
         .from("rental_occupancy")
         .select(
-          `occupancy_id, rent_start_date, rent_amount, status, termination_date,
+          `occupancy_id, rent_start_date, status, termination_date,
            resident:resident_id (
              resident_id, resident_number, full_name_am, full_name, sex, date_of_birth,
-             phone_number, birth_place, work_info
+             birth_place, work_info
            )`,
         )
         .eq("rental_house_id", houseId)
@@ -125,7 +129,7 @@ function RentalOccupantPrintPage() {
   // tables. Queried separately from the occupancies query above: that query
   // embeds resident via a FK-derived PostgREST join, which is not guaranteed
   // to resolve through a view the same way it does through the base table.
-  const { data: activeContact } = useQuery({
+  const { data: activeContact, isLoading: activeContactLoading } = useQuery({
     queryKey: [
       "rental-occupant-print-contact-decrypted",
       activeOccupancy?.occupancy_id,
@@ -166,7 +170,7 @@ function RentalOccupantPrintPage() {
     );
   }
 
-  if (housePending || occPending)
+  if (housePending || occPending || activeContactLoading)
     return <div className="py-20 text-center text-sm text-slate-500">Loading…</div>;
   if (!house) return <div className="py-20 text-center text-sm text-slate-500">Not found</div>;
 

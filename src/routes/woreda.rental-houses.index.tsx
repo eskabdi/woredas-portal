@@ -120,8 +120,12 @@ async function decryptHouseRentAmounts(rows: HouseRow[]): Promise<HouseRow[]> {
     ...h,
     active_occupancy: (h.active_occupancy ?? []).map((o) => ({
       ...o,
+      // ?? o.rent_amount, not ?? 0 -- a NULL amount_decrypted for a row
+      // that WAS returned means decryption failed, not that rent is zero;
+      // falling to 0 would also stop toViewRow's own monthly_rent_standard
+      // fallback from ever kicking in (0 isn't nullish).
       rent_amount: amountById.has(o.occupancy_id)
-        ? (amountById.get(o.occupancy_id) ?? 0)
+        ? (amountById.get(o.occupancy_id) ?? o.rent_amount)
         : o.rent_amount,
     })),
   }));

@@ -171,6 +171,9 @@ function EditHouseholdPage() {
       toast.success("ቤተሰቡ ተስተካክሏል / Household updated");
       queryClient.invalidateQueries({ queryKey: ["households"] });
       queryClient.invalidateQueries({ queryKey: ["household", householdId] });
+      // The detail page's decrypted phone/email query -- otherwise a stale
+      // value could flash there for a beat after navigating back to it.
+      queryClient.invalidateQueries({ queryKey: ["household-contact-decrypted", householdId] });
       navigate({ to: "/woreda/households/$householdId", params: { householdId } });
     },
     onError: (e: Error) => toast.error(e.message),

@@ -195,6 +195,10 @@ function PrintPage() {
     queryKey: ["credential-print-request", requestId, woredaId],
     enabled: !!woredaId,
     queryFn: async () => {
+      // resident.phone_number deliberately not selected in the embed below --
+      // it's overwritten by residentContactQuery's phone_number_decrypted
+      // further down, so the raw plaintext value is dead here, and once
+      // stage 4 drops the column this would 400.
       const { data, error } = await supabase
         .from("credential_request")
         .select(
@@ -202,7 +206,7 @@ function PrintPage() {
            approved_by_user_id, payment_id,
            resident:resident_id (
              resident_id, resident_number, national_id_no, full_name, full_name_am,
-             sex, date_of_birth, photo_url, residency_status, active_flag, phone_number
+             sex, date_of_birth, photo_url, residency_status, active_flag
            ),
            household:household_id (
              household_id, house_number,
