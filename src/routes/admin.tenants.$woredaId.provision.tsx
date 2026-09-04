@@ -110,6 +110,7 @@ function ProvisionPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [phoneTouched, setPhoneTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // Initialize modules from DB once
@@ -316,8 +317,12 @@ function ProvisionPage() {
               </div>
               <div>
                 <Label>Phone Number</Label>
-                <PhoneDigitsInput value={phone} onChange={setPhone} />
-                {!isValidPhoneDigits(phone) && (
+                <PhoneDigitsInput
+                  value={phone}
+                  onChange={setPhone}
+                  onBlur={() => setPhoneTouched(true)}
+                />
+                {phoneTouched && !isValidPhoneDigits(phone) && (
                   <p className="mt-1 text-xs text-red-600">{PHONE_DIGITS_ERROR_EN_ONLY}</p>
                 )}
               </div>

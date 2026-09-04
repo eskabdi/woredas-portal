@@ -269,8 +269,11 @@ function MarriageNewPage() {
             >
               <PhoneDigitsInput
                 value={watch("informant_phone") ?? ""}
-                onChange={(digits) =>
-                  setValue("informant_phone", digits, { shouldDirty: true, shouldValidate: true })
+                onChange={(digits) => setValue("informant_phone", digits, { shouldDirty: true })}
+                onBlur={() =>
+                  setValue("informant_phone", watch("informant_phone") ?? "", {
+                    shouldValidate: true,
+                  })
                 }
               />
             </FieldWrap>

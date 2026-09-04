@@ -72,7 +72,13 @@ export function HouseholdFormFields({
   }, [houseType, setValue]);
 
   const handlePhoneChange = (digits: string) => {
-    setValue("phone_digits", digits, { shouldDirty: true, shouldValidate: true });
+    setValue("phone_digits", digits, { shouldDirty: true });
+  };
+  // Validate on blur, not on every keystroke -- an in-progress 9-digit
+  // number is legitimately "too short" for all but its last character, so
+  // live-validating it would flash an error on the very first digit typed.
+  const handlePhoneBlur = () => {
+    setValue("phone_digits", phoneDigits ?? "", { shouldValidate: true });
   };
 
   return (
@@ -279,7 +285,11 @@ export function HouseholdFormFields({
       <Section icon={Phone} titleAm="እውቂያ" titleEn="Contact">
         <Grid>
           <FieldWrap labelAm="ስልክ ቁጥር" labelEn="Phone Number" error={errors.phone_digits?.message}>
-            <PhoneDigitsInput value={phoneDigits ?? ""} onChange={handlePhoneChange} />
+            <PhoneDigitsInput
+              value={phoneDigits ?? ""}
+              onChange={handlePhoneChange}
+              onBlur={handlePhoneBlur}
+            />
           </FieldWrap>
 
           <FieldWrap labelAm="ፖሳቁ" labelEn="PO Box" error={errors.po_box?.message}>

@@ -287,7 +287,13 @@ export function ResidentWizardSteps({
   // ----- Phone -----
   const phoneDigits = watch("phone_digits");
   const handlePhoneChange = (digits: string) => {
-    setValue("phone_digits", digits, { shouldDirty: true, shouldValidate: true });
+    setValue("phone_digits", digits, { shouldDirty: true });
+  };
+  // Validate on blur, not on every keystroke -- an in-progress 9-digit
+  // number is legitimately "too short" for all but its last character, so
+  // live-validating it would flash an error on the very first digit typed.
+  const handlePhoneBlur = () => {
+    setValue("phone_digits", phoneDigits ?? "", { shouldValidate: true });
   };
 
   // ----- Birth-place "same as current" autofill -----
@@ -426,7 +432,11 @@ export function ResidentWizardSteps({
                 labelEn="Phone Number"
                 error={errors.phone_digits?.message}
               >
-                <PhoneDigitsInput value={phoneDigits ?? ""} onChange={handlePhoneChange} />
+                <PhoneDigitsInput
+                  value={phoneDigits ?? ""}
+                  onChange={handlePhoneChange}
+                  onBlur={handlePhoneBlur}
+                />
               </FieldWrap>
               <FieldWrap
                 labelAm="ብሔር"

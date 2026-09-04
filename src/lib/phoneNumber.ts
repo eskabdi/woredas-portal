@@ -31,6 +31,23 @@ export function sanitizePhoneDigits(raw: string): string {
   return v;
 }
 
+/**
+ * Resolves a controlled phone-digits input's next value from its previous
+ * value and the raw DOM value after a change event. A single typed character
+ * can never legitimately re-trigger the 251/0 prefix-stripping rules above --
+ * those only make sense against a whole external value (a paste, or the
+ * field starting empty). Calling sanitizePhoneDigits on every keystroke
+ * against the full accumulated value is not idempotent: a normal typed
+ * sequence that happens to pass through "251" partway through (e.g. the
+ * digits right after a stripped leading 0) would get 3 more digits stripped
+ * that were never a country code. Only re-run the full sanitizer on a fresh
+ * entry (paste, or the field was empty); otherwise just keep it digits-only.
+ */
+export function applyPhoneDigitsChange(previousValue: string, raw: string): string {
+  const isFreshEntry = previousValue === "" || raw.length - previousValue.length > 1;
+  return isFreshEntry ? sanitizePhoneDigits(raw) : raw.replace(/\D/g, "");
+}
+
 /** Empty is valid (every phone field in this app is optional); anything else must be exactly 9 digits. */
 export function isValidPhoneDigits(v: string): boolean {
   return v === "" || /^\d{9}$/.test(v);

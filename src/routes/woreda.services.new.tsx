@@ -20,7 +20,12 @@ import {
 import { FieldWrap, Grid, Section, Select } from "@/components/forms/FormSection";
 import { ResidentSearchPicker } from "@/components/forms/ResidentSearchPicker";
 import { PhoneDigitsInput } from "@/components/forms/PhoneDigitsInput";
-import { isValidPhoneDigits, phoneDigitsToE164, sanitizePhoneDigits } from "@/lib/phoneNumber";
+import {
+  isValidPhoneDigits,
+  phoneDigitsToE164,
+  sanitizePhoneDigits,
+  PHONE_DIGITS_ERROR,
+} from "@/lib/phoneNumber";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
 import { P } from "@/config/permissions";
@@ -162,8 +167,7 @@ function NewServiceRequestPage() {
     if (subject.trim().length < 3) e["subject"] = "ጉዳዩን ያስገቡ / Enter a subject";
     if (details.trim().length < 10)
       e["details"] = "ቢያንስ 10 ፊደል ያስገቡ / Provide at least 10 characters";
-    if (!isValidPhoneDigits(applicantPhone))
-      e["applicantPhone"] = "ልክ 9 አሃዝ መሆን አለበት / Must be exactly 9 digits";
+    if (!isValidPhoneDigits(applicantPhone)) e["applicantPhone"] = PHONE_DIGITS_ERROR;
     setErrors(e);
     return Object.keys(e).length === 0;
   };
