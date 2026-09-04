@@ -97,7 +97,7 @@ function ResidentProfilePrintPage() {
   // household/kebele via a FK-derived PostgREST join, which is not
   // guaranteed to resolve through a view the same way it does through the
   // base table.
-  const { data: contact } = useQuery({
+  const { data: contact, isPending: contactPending } = useQuery({
     queryKey: ["resident-print-contact-decrypted", residentId, woredaId],
     enabled: !!woredaId && hasPermission(P.RESIDENT_READ),
     queryFn: async () => {
@@ -144,7 +144,12 @@ function ResidentProfilePrintPage() {
     );
   }
 
-  if (isPending) return <div className="py-20 text-center text-sm text-slate-500">Loading…</div>;
+  // Waits for the decrypted contact query too -- otherwise the "አትም / Print"
+  // button (PrintDocumentShell's handlePrint screenshots the live DOM on
+  // click, with no readiness check of its own) could be clicked before
+  // contact resolves, baking a blank Phone/Email into the generated PDF.
+  if (isPending || contactPending)
+    return <div className="py-20 text-center text-sm text-slate-500">Loading…</div>;
   if (!r) return <div className="py-20 text-center text-sm text-slate-500">Not found</div>;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

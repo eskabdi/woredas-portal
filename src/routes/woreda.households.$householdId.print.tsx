@@ -92,7 +92,7 @@ function HouseholdProfilePrintPage() {
   // query embeds kebele/head/spouse/alt_head via FK-derived PostgREST joins,
   // which are not guaranteed to resolve through a view the same way they do
   // through the base table.
-  const { data: contact } = useQuery({
+  const { data: contact, isPending: contactPending } = useQuery({
     queryKey: ["household-print-contact-decrypted", householdId, woredaId],
     enabled: !!woredaId && hasPermission(P.HOUSEHOLD_READ),
     queryFn: async () => {
@@ -120,7 +120,12 @@ function HouseholdProfilePrintPage() {
     );
   }
 
-  if (isPending) return <div className="py-20 text-center text-sm text-slate-500">Loading…</div>;
+  // Waits for the decrypted contact query too -- otherwise the "አትም / Print"
+  // button (PrintDocumentShell's handlePrint screenshots the live DOM on
+  // click, with no readiness check of its own) could be clicked before
+  // contact resolves, baking a blank Phone/Email into the generated PDF.
+  if (isPending || contactPending)
+    return <div className="py-20 text-center text-sm text-slate-500">Loading…</div>;
   if (!household) return <div className="py-20 text-center text-sm text-slate-500">Not found</div>;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
