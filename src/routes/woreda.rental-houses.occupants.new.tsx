@@ -290,7 +290,7 @@ function OccupantRegistrationPage() {
       if (!resident) throw new Error("ተከራይ ይምረጡ / Select the occupant");
       if (!houseId) throw new Error("የቤት ቁጥር ይምረጡ / Select the rental house");
       const amt = Number(rentAmount);
-      if (!amt || amt <= 0) throw new Error("ልክ የቤት ኪራይ ያስገቡ / Enter valid rent amount");
+      if (!amt || amt <= 0) throw new Error("ትክክለኛ የቤት ኪራይ ዋጋ ያስገቡ / Enter valid rent amount");
       if (!rentStart) throw new Error("የውል መጀመሪያ ቀን ያስፈልጋል / Contract start required");
 
       const { data, error } = await supabase
@@ -391,7 +391,7 @@ function OccupantRegistrationPage() {
     if (!resident) errs.push("ተከራይ ይምረጡ / Select the occupant");
     if (!houseId) errs.push("የቤት ቁጥር ይምረጡ / Select the rental house");
     if (!Number(rentAmount) || Number(rentAmount) <= 0)
-      errs.push("ልክ የቤት ኪራይ ያስገቡ / Enter a valid rent amount");
+      errs.push("ትክክለኛ የቤት ኪራይ ዋጋ ያስገቡ / Enter a valid rent amount");
     if (!rentStart) errs.push("የውል መጀመሪያ ቀን ያስፈልጋል / Contract start date required");
     if (!isValidPhoneDigits(phone)) errs.push(PHONE_DIGITS_ERROR);
     return errs;
