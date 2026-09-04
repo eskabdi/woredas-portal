@@ -54,6 +54,38 @@ interface RequestRow {
   } | null;
 }
 
+// rental_occupancy_request_decrypted isn't in the generated types yet
+// (00000000000024_rental_occupancy_request_decrypted_view.sql) -- same
+// untyped-client cast pattern already used elsewhere in this codebase for
+// pre-typegen tables. A separate bulk query rather than swapping the list
+// query's `.from()` in place: that query embeds house/resident via
+// FK-derived PostgREST joins, which are not guaranteed to resolve through a
+// view the same way they do through the base table. Overwrites rent_amount
+// in place with the decrypted value so every downstream consumer of
+// RequestRow (sortRows, the table body, CSV/PDF export) stays unchanged.
+async function decryptRentAmounts(rows: RequestRow[]): Promise<RequestRow[]> {
+  const ids = rows.map((r) => r.rental_request_id);
+  if (ids.length === 0) return rows;
+  const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+  const { data, error } = await db
+    .from("rental_occupancy_request_decrypted")
+    .select("rental_request_id, rent_amount_decrypted")
+    .in("rental_request_id", ids);
+  if (error) throw error;
+  const amountById = new Map<string, number | null>(
+    (data ?? []).map((d: { rental_request_id: string; rent_amount_decrypted: number | null }) => [
+      d.rental_request_id,
+      d.rent_amount_decrypted,
+    ]),
+  );
+  return rows.map((r) => ({
+    ...r,
+    rent_amount: amountById.has(r.rental_request_id)
+      ? (amountById.get(r.rental_request_id) ?? null)
+      : r.rent_amount,
+  }));
+}
+
 function TabNav() {
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
   const tabs = [
@@ -201,7 +233,7 @@ function RentalRequestListPage() {
 
       const { data, error } = await query.limit(300);
       if (error) throw error;
-      return data as unknown as RequestRow[];
+      return decryptRentAmounts(data as unknown as RequestRow[]);
     },
   });
 
@@ -262,7 +294,7 @@ function RentalRequestListPage() {
       if (typeFilter) query = query.eq("request_type", typeFilter);
       const { data: allData, error } = await query.range(0, 4999);
       if (error) throw error;
-      let allRows = allData as unknown as RequestRow[];
+      let allRows = await decryptRentAmounts(allData as unknown as RequestRow[]);
       const term = qTerm.toLowerCase();
       if (term) {
         allRows = allRows.filter((r) => {

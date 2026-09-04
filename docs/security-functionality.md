@@ -105,9 +105,10 @@ response by `src/lib/security-headers.ts`.
 ## Encryption at rest
 
 INSA Enforcer 1.3 / 3.9. Implemented by
-`supabase/migrations/00000000000023_pii_encryption.sql` (Phase C of the
-remediation plan). **Currently at stage 1 of 4 — see "Rollout status" below
-before assuming a given column is actually encrypted.**
+`supabase/migrations/00000000000023_pii_encryption.sql` and
+`00000000000024_rental_occupancy_request_decrypted_view.sql` (Phase C of the
+remediation plan). **Stages 1–3 are applied to production and verified live
+— see "Rollout status" below for what stage 4 still leaves plaintext.**
 
 **Scope.** `resident.phone_number`, `resident.email`, `household.phone_number`,
 `household.email`, `service_request.applicant_phone` (PII), and
@@ -174,12 +175,21 @@ resident simply is not found), which is why it is pinned explicitly in
 
 **Rollout status.**
 
-| Stage | What                                                                         | State                                                        |
-| ----- | ---------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| 1     | Columns, crypto functions, sync triggers, decrypting views                   | **Written, dry-run verified, not yet applied to production** |
-| 2     | Create the Vault secret, backfill existing rows                              | Not started                                                  |
-| 3     | Move read paths onto the `*_decrypted` views, call site by call site         | Not started                                                  |
-| 4     | Drop plaintext columns (separate migration, after burn-in) — the amount>0 guard's stage-4 mechanism is a genuinely open decision, not yet resolved | Not started |
+| Stage | What                                                                                                                                               | State                                                                                                                                                                                                                                                           |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | Columns, crypto functions, sync triggers, decrypting views                                                                                         | **Applied to production**                                                                                                                                                                                                                                       |
+| 2     | Create the Vault secret, backfill existing rows                                                                                                    | **Applied to production** — all pre-existing rows backfilled, verified via `pii_encryption_status()`                                                                                                                                                            |
+| 3     | Move read paths onto the `*_decrypted` views, call site by call site                                                                               | **Applied to production** — every application read call site now uses the decrypted view, verified live against production data; `00000000000024_...sql` (a sixth decrypting view, `rental_occupancy_request_decrypted`, closing a gap stage 1 left) is applied |
+| 4     | Drop plaintext columns (separate migration, after burn-in) — the amount>0 guard's stage-4 mechanism is a genuinely open decision, not yet resolved | Not started                                                                                                                                                                                                                                                     |
+
+**Stage 3 notes.** The residents-list phone search (`woreda.residents.index.tsx`)
+changed from `.ilike` substring matching to an exact match against the
+deterministic blind index (`my_phone_blind_index` RPC) — a disclosed,
+intentional UX regression: a staff member searching a partial phone number now
+gets no match on that field (name/resident-number/national-ID search is
+unaffected). `household.rent_amount` remains plaintext-only and unaddressed by
+this stage — it was never brought into stage 1's scope (see the migration's own
+header comment) and has no `_enc` column or decrypted view to cut over to.
 
 Stage 1 is inert by design: until the Vault secret exists, `encrypt_pii_*()`
 returns NULL and the sync triggers write NULL rather than raising, so applying

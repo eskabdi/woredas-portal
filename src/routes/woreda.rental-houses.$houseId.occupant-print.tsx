@@ -111,6 +111,52 @@ function RentalOccupantPrintPage() {
     },
   });
 
+  // Only the active occupancy's rent and resident's phone are ever rendered
+  // below (the history table further down shows name/dates/status only), so
+  // this fetches decrypted values for just that one row rather than every
+  // occupancy in the list.
+  const activeOccupancy = (occupancies ?? []).find((o) => o.status === "active");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const activeResidentId = (activeOccupancy?.resident as any)?.resident_id as string | undefined;
+
+  // rental_occupancy_decrypted / resident_decrypted aren't in the generated
+  // types yet (00000000000023_pii_encryption.sql) -- same untyped-client
+  // cast pattern already used elsewhere in this codebase for pre-typegen
+  // tables. Queried separately from the occupancies query above: that query
+  // embeds resident via a FK-derived PostgREST join, which is not guaranteed
+  // to resolve through a view the same way it does through the base table.
+  const { data: activeContact } = useQuery({
+    queryKey: [
+      "rental-occupant-print-contact-decrypted",
+      activeOccupancy?.occupancy_id,
+      activeResidentId,
+    ],
+    enabled: !!activeOccupancy,
+    queryFn: async () => {
+      const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const [rentRes, residentRes] = await Promise.all([
+        db
+          .from("rental_occupancy_decrypted")
+          .select("rent_amount_decrypted")
+          .eq("occupancy_id", activeOccupancy!.occupancy_id)
+          .maybeSingle(),
+        activeResidentId
+          ? db
+              .from("resident_decrypted")
+              .select("phone_number_decrypted")
+              .eq("resident_id", activeResidentId)
+              .maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
+      ]);
+      if (rentRes.error) throw rentRes.error;
+      if (residentRes.error) throw residentRes.error;
+      return {
+        rent_amount_decrypted: rentRes.data?.rent_amount_decrypted as number | null,
+        phone_number_decrypted: residentRes.data?.phone_number_decrypted as string | null,
+      };
+    },
+  });
+
   if (!hasPermission(P.RENTAL_VIEW)) {
     return (
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-800">
@@ -234,7 +280,12 @@ function RentalOccupantPrintPage() {
               labelEn="Place of Birth"
               value={formatBirthPlace(birthPlace)}
             />
-            <DocField labelAm="ስልክ ቁጥር" labelEn="Phone" value={occupant.phone_number || "—"} mono />
+            <DocField
+              labelAm="ስልክ ቁጥር"
+              labelEn="Phone"
+              value={activeContact?.phone_number_decrypted || "—"}
+              mono
+            />
             <DocField
               labelAm="ሙያ"
               labelEn="Occupation"
@@ -274,7 +325,11 @@ function RentalOccupantPrintPage() {
               <DocField
                 labelAm="የተስማማበት ወርሃዊ ኪራይ"
                 labelEn="Agreed Monthly Rent"
-                value={`ብር ${Number(active.rent_amount).toFixed(2)}`}
+                value={
+                  activeContact?.rent_amount_decrypted != null
+                    ? `ብር ${Number(activeContact.rent_amount_decrypted).toFixed(2)}`
+                    : "—"
+                }
               />
               <DocField
                 labelAm="የተቋረጠበት ቀን"

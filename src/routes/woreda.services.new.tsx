@@ -93,18 +93,34 @@ function NewServiceRequestPage() {
       const { data, error } = await supabase
         .from("resident")
         .select(
-          "resident_id, full_name, full_name_am, phone_number, current_household_id, household:current_household_id(kebele_id)",
+          "resident_id, full_name, full_name_am, current_household_id, household:current_household_id(kebele_id)",
         )
         .eq("resident_id", residentId)
         .maybeSingle();
       if (error) throw error;
-      return data as {
+      if (!data) return null;
+
+      // resident_decrypted isn't in the generated types yet (00000000000023_
+      // pii_encryption.sql) -- same untyped-client cast pattern already used
+      // elsewhere in this codebase for pre-typegen tables. Queried
+      // separately: the select above embeds household via a FK-derived
+      // PostgREST join, which is not guaranteed to resolve through a view
+      // the same way it does through the base table.
+      const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const { data: contact, error: contactError } = await db
+        .from("resident_decrypted")
+        .select("phone_number_decrypted")
+        .eq("resident_id", residentId)
+        .maybeSingle();
+      if (contactError) throw contactError;
+
+      return { ...data, phone_number: contact?.phone_number_decrypted ?? null } as {
         resident_id: string;
         full_name: string | null;
         full_name_am: string | null;
         phone_number: string | null;
         household: { kebele_id: string | null } | null;
-      } | null;
+      };
     },
   });
 

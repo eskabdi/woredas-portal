@@ -56,7 +56,7 @@ interface ResidentMatch {
   full_name_am: string | null;
   full_name: string | null;
   sex: string | null;
-  phone_number: string | null;
+  phone_number_decrypted: string | null;
 }
 
 interface HouseOption {
@@ -232,9 +232,15 @@ function OccupantRegistrationPage() {
     enabled: searchEnabled,
     retry: false,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("resident")
-        .select("resident_id, resident_number, full_name_am, full_name, sex, phone_number")
+      // resident_decrypted isn't in the generated types yet (00000000000023_
+      // pii_encryption.sql) -- same untyped-client cast pattern already used
+      // elsewhere in this codebase for pre-typegen tables.
+      const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const { data, error } = await db
+        .from("resident_decrypted")
+        .select(
+          "resident_id, resident_number, full_name_am, full_name, sex, phone_number_decrypted",
+        )
         .eq("woreda_id", woredaId!)
         .eq("active_flag", true)
         .or(
@@ -253,9 +259,11 @@ function OccupantRegistrationPage() {
   function pickResident(r: ResidentMatch) {
     setResident(r);
     setSex(r.sex ?? "");
-    if (r.phone_number)
+    if (r.phone_number_decrypted)
       setPhone(
-        r.phone_number.startsWith("+") ? r.phone_number : `+251${r.phone_number.replace(/^0/, "")}`,
+        r.phone_number_decrypted.startsWith("+")
+          ? r.phone_number_decrypted
+          : `+251${r.phone_number_decrypted.replace(/^0/, "")}`,
       );
     setSearchOpen(false);
     setResidentSearch("");

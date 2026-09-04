@@ -92,6 +92,41 @@ function TabNav() {
   );
 }
 
+// rental_occupancy_decrypted isn't in the generated types yet
+// (00000000000023_pii_encryption.sql) -- same untyped-client cast pattern
+// already used elsewhere in this codebase for pre-typegen tables. A separate
+// bulk query rather than swapping the house query's `.from()` in place: that
+// query embeds active_occupancy/resident via FK-derived PostgREST joins,
+// which are not guaranteed to resolve through a view the same way they do
+// through the base table. Overwrites rent_amount in place on each embedded
+// occupancy row so toViewRow's existing logic (and sortRows/export below)
+// stays unchanged.
+async function decryptHouseRentAmounts(rows: HouseRow[]): Promise<HouseRow[]> {
+  const ids = rows.flatMap((h) => (h.active_occupancy ?? []).map((o) => o.occupancy_id));
+  if (ids.length === 0) return rows;
+  const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+  const { data, error } = await db
+    .from("rental_occupancy_decrypted")
+    .select("occupancy_id, rent_amount_decrypted")
+    .in("occupancy_id", ids);
+  if (error) throw error;
+  const amountById = new Map<string, number | null>(
+    (data ?? []).map((d: { occupancy_id: string; rent_amount_decrypted: number | null }) => [
+      d.occupancy_id,
+      d.rent_amount_decrypted,
+    ]),
+  );
+  return rows.map((h) => ({
+    ...h,
+    active_occupancy: (h.active_occupancy ?? []).map((o) => ({
+      ...o,
+      rent_amount: amountById.has(o.occupancy_id)
+        ? (amountById.get(o.occupancy_id) ?? 0)
+        : o.rent_amount,
+    })),
+  }));
+}
+
 function toViewRow(h: HouseRow): HouseViewRow {
   const active = (h.active_occupancy ?? []).find(
     (o) => (o as unknown as { status: string }).status === "active",
@@ -162,7 +197,7 @@ function RentalHouseListPage() {
       if (kebeleFilter) query = query.eq("kebele_id", kebeleFilter);
       const { data, error } = await query.limit(200);
       if (error) throw error;
-      return data as unknown as HouseRow[];
+      return decryptHouseRentAmounts(data as unknown as HouseRow[]);
     },
   });
 
@@ -211,11 +246,8 @@ function RentalHouseListPage() {
       if (kebeleFilter) query = query.eq("kebele_id", kebeleFilter);
       const { data: allData, error } = await query.range(0, 4999);
       if (error) throw error;
-      const allRows = sortRows(
-        (allData as unknown as HouseRow[]).map(toViewRow),
-        sort.field,
-        sort.dir,
-      );
+      const decrypted = await decryptHouseRentAmounts(allData as unknown as HouseRow[]);
+      const allRows = sortRows(decrypted.map(toViewRow), sort.field, sort.dir);
       const filterLabel = buildFilterLabel();
       const dateStr = new Date().toISOString().slice(0, 10);
       if (kind === "csv") {

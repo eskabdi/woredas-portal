@@ -133,12 +133,33 @@ function ServiceRequestDetailPage() {
       const { data, error } = await supabase
         .from("service_request")
         .select(
-          "service_request_id, request_number, category, status, priority, subject, purpose, addressed_to, details, applicant_name, applicant_phone, respondent_name, incident_date, incident_place, resolution_notes, return_reason, reject_reason, fee_amount, payment_id, submitted_at, verified_at, approval_decision_at, issued_at, closed_at, resident_id, kebele_id, resident:resident_id(resident_id, resident_number, full_name_am, full_name), kebele:kebele_id(kebele_name_am, kebele_name_en), service_type:service_type_id(name_am, name_en, requires_approval, requires_payment, fee_amount)",
+          "service_request_id, request_number, category, status, priority, subject, purpose, addressed_to, details, applicant_name, respondent_name, incident_date, incident_place, resolution_notes, return_reason, reject_reason, fee_amount, payment_id, submitted_at, verified_at, approval_decision_at, issued_at, closed_at, resident_id, kebele_id, resident:resident_id(resident_id, resident_number, full_name_am, full_name), kebele:kebele_id(kebele_name_am, kebele_name_en), service_type:service_type_id(name_am, name_en, requires_approval, requires_payment, fee_amount)",
         )
         .eq("service_request_id", requestId)
         .maybeSingle();
       if (error) throw error;
-      return data as unknown as Detail | null;
+      if (!data) return null;
+
+      // service_request_decrypted isn't in the generated types yet
+      // (00000000000023_pii_encryption.sql) -- same untyped-client cast
+      // pattern already used elsewhere in this codebase for pre-typegen
+      // tables. Queried separately: the select above embeds resident/kebele/
+      // service_type via FK-derived PostgREST joins, which are not
+      // guaranteed to resolve through a view the same way they do through
+      // the base table. Merged back onto the same `applicant_phone` key so
+      // Detail and every render site below stay unchanged.
+      const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const { data: contact, error: contactError } = await db
+        .from("service_request_decrypted")
+        .select("applicant_phone_decrypted")
+        .eq("service_request_id", requestId)
+        .maybeSingle();
+      if (contactError) throw contactError;
+
+      return {
+        ...data,
+        applicant_phone: contact?.applicant_phone_decrypted ?? null,
+      } as unknown as Detail;
     },
   });
 

@@ -49,6 +49,12 @@ function strField(rec: JsonRec, key: string): string {
   return v === null || v === undefined ? "" : String(v);
 }
 
+// resident_decrypted isn't in the generated types yet (00000000000023_
+// pii_encryption.sql) -- same untyped-client cast pattern already used
+// elsewhere in this codebase for pre-typegen tables (console_role,
+// user_permission_override).
+const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+
 function EditResidentPage() {
   const { residentId } = Route.useParams();
   const navigate = useNavigate();
@@ -63,8 +69,8 @@ function EditResidentPage() {
     queryKey: ["resident", residentId],
     enabled: !!woredaId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("resident")
+      const { data, error } = await db
+        .from("resident_decrypted")
         .select("*")
         .eq("resident_id", residentId)
         .eq("woreda_id", woredaId as string)
@@ -97,7 +103,7 @@ function EditResidentPage() {
     const bp = readJson(r.birth_place);
     const wi = readJson(r.work_info);
     const fr = readJson(r.former_residence);
-    const phone = (r.phone_number as string | null) ?? "";
+    const phone = (r.phone_number_decrypted as string | null) ?? "";
     const phoneDigits = phone.startsWith("+251") ? phone.slice(4) : phone.replace(/\D/g, "");
 
     reset({

@@ -114,7 +114,42 @@ function ResidentsListPage() {
     }
   };
 
-  const buildResidentsQuery = () => {
+  // my_phone_blind_index isn't in the generated types yet (00000000000023_
+  // pii_encryption.sql) -- same untyped-client cast pattern used for
+  // id_card_template_field_draft in admin.credential-template.tsx. db.rpc(...)
+  // must stay a method call on this cast object, never extracted into its
+  // own const -- SupabaseClient#rpc reads `this.rest.rpc(...)` internally,
+  // and an unbound call throws before any request is sent (see that file's
+  // own comment on the same gotcha).
+  const db = supabase as unknown as {
+    rpc: (
+      fn: string,
+      params: Record<string, unknown>,
+    ) => Promise<{ data: unknown; error: { message: string } | null }>;
+  };
+
+  // resident.phone_number is encrypted at rest (00000000000023_
+  // pii_encryption.sql) -- a randomized cipher can't be substring-matched,
+  // so the .ilike search this field used is no longer possible. This
+  // resolves the search term to the deterministic blind index the migration
+  // added instead, which only supports an exact match: my_phone_blind_index
+  // normalizes server-side (see normalize_phone's own comment for the exact
+  // rule) and returns NULL for anything that isn't phone-shaped, so a plain
+  // name/ID search costs one query returning no clause to add, not a broken
+  // filter. Real, disclosed regression: a staff member searching a PARTIAL
+  // phone number now gets no match on that field (the other four fields
+  // below still match on partial input) -- see docs/security-functionality.md.
+  const phoneBlindIndexQuery = useQuery({
+    queryKey: ["resident-search-phone-blind-index", search],
+    enabled: !!search && !!woredaId,
+    queryFn: async () => {
+      const { data, error } = await db.rpc("my_phone_blind_index", { _phone: search });
+      if (error) throw new Error(error.message);
+      return data as string | null;
+    },
+  });
+
+  const buildResidentsQuery = (phoneBlindIndex?: string | null) => {
     let q = supabase
       .from("resident")
       .select(RESIDENT_SELECT, { count: "exact" })
@@ -124,15 +159,14 @@ function ResidentsListPage() {
     if (status !== "all") q = q.eq("residency_status", status);
     if (search) {
       const escaped = search.replace(/[%,]/g, "");
-      q = q.or(
-        [
-          `full_name.ilike.%${escaped}%`,
-          `full_name_am.ilike.%${escaped}%`,
-          `resident_number.ilike.%${escaped}%`,
-          `national_id_no.ilike.%${escaped}%`,
-          `phone_number.ilike.%${escaped}%`,
-        ].join(","),
-      );
+      const clauses = [
+        `full_name.ilike.%${escaped}%`,
+        `full_name_am.ilike.%${escaped}%`,
+        `resident_number.ilike.%${escaped}%`,
+        `national_id_no.ilike.%${escaped}%`,
+      ];
+      if (phoneBlindIndex) clauses.push(`phone_number_blind_index.eq.${phoneBlindIndex}`);
+      q = q.or(clauses.join(","));
     }
     return q
       .order(sortColumn(sort.field), { ascending: sort.dir === "asc" })
@@ -140,10 +174,28 @@ function ResidentsListPage() {
   };
 
   const residentsQuery = useQuery({
-    queryKey: ["residents", woredaId, search, sex, status, kebeleId, page, pageSize, sort.key],
-    enabled: !!woredaId && hasPermission(P.RESIDENT_READ),
+    queryKey: [
+      "residents",
+      woredaId,
+      search,
+      phoneBlindIndexQuery.data,
+      sex,
+      status,
+      kebeleId,
+      page,
+      pageSize,
+      sort.key,
+    ],
+    // Waits for the blind-index lookup above to settle whenever there's a
+    // search term, so the first fetch after typing a phone number doesn't
+    // run without that clause and silently under-match.
+    enabled:
+      !!woredaId && hasPermission(P.RESIDENT_READ) && (!search || !phoneBlindIndexQuery.isPending),
     queryFn: async () => {
-      const q = buildResidentsQuery().range(page * pageSize, page * pageSize + pageSize - 1);
+      const q = buildResidentsQuery(phoneBlindIndexQuery.data).range(
+        page * pageSize,
+        page * pageSize + pageSize - 1,
+      );
 
       const { data, error, count } = await q;
       if (error) throw error;
@@ -215,7 +267,15 @@ function ResidentsListPage() {
   ];
 
   const fetchAllResidentsForExport = async () => {
-    const q = buildResidentsQuery().range(0, 4999);
+    let phoneBlindIndex: string | null = null;
+    if (search) {
+      const { data: hash, error: hashError } = await db.rpc("my_phone_blind_index", {
+        _phone: search,
+      });
+      if (hashError) throw new Error(hashError.message);
+      phoneBlindIndex = hash as string | null;
+    }
+    const q = buildResidentsQuery(phoneBlindIndex).range(0, 4999);
     const { data, error } = await q;
     if (error) throw error;
     let rows = data ?? [];
