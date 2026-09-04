@@ -21,6 +21,7 @@ import {
   type HouseholdFormValues,
 } from "@/lib/householdSchema";
 import { resolveDecryptedField, DECRYPT_UNVERIFIED_WARNING } from "@/lib/decryptedFieldGuard";
+import { sanitizePhoneDigits } from "@/lib/phoneNumber";
 
 export const Route = createFileRoute("/woreda/households/$householdId/edit")({
   ssr: false,
@@ -112,7 +113,7 @@ function EditHouseholdPage() {
       household_head_resident_id: (h.household_head_resident_id as string) ?? "",
       spouse_resident_id: (h.spouse_resident_id as string) ?? "",
       alternate_head_resident_id: (h.alternate_head_resident_id as string) ?? "",
-      phone_digits: phone.startsWith("+251") ? phone.slice(4) : phone.replace(/\D/g, ""),
+      phone_digits: sanitizePhoneDigits(phone),
       po_box: (h.po_box as string) ?? "",
       email: emailField.value ?? "",
       house_type: (h.house_type as HouseholdFormInput["house_type"]) ?? "private",

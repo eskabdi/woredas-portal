@@ -22,6 +22,7 @@ import {
   type ResidentFormValues,
 } from "@/lib/residentSchema";
 import { resolveDecryptedField, DECRYPT_UNVERIFIED_WARNING } from "@/lib/decryptedFieldGuard";
+import { sanitizePhoneDigits } from "@/lib/phoneNumber";
 
 export const Route = createFileRoute("/woreda/residents/$residentId/edit")({
   ssr: false,
@@ -117,7 +118,7 @@ function EditResidentPage() {
     );
     setPhoneUnverified(phoneField.decryptFailed);
     const phone = phoneField.value ?? "";
-    const phoneDigits = phone.startsWith("+251") ? phone.slice(4) : phone.replace(/\D/g, "");
+    const phoneDigits = sanitizePhoneDigits(phone);
 
     reset({
       first_name: (r.first_name as string) ?? "",
