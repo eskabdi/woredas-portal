@@ -89,7 +89,9 @@ if not result:
     sys.exit(1)
 row = result[0]
 count = row["secrets_with_this_name"]
-print(f"==> pii_root_key secret id={row['id']} created_at={row['created_at']}")
+secret_id = row["id"]
+created_at = row["created_at"]
+print(f"==> pii_root_key secret id={secret_id} created_at={created_at}")
 if count == 1:
     print("==> Exactly one secret named pii_root_key exists. Safe to run phase-c-backfill.sh next.")
 else:

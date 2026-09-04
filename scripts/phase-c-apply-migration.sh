@@ -65,6 +65,9 @@ if isinstance(result, dict):
 print("==> Applied. Rollout status right now (key_present should be false -- the")
 print("    Vault secret does not exist yet; run phase-c-create-vault-key.sh next):")
 for row in result:
-    print(f"  {row['column_label']:38s} key_present={row['key_present']!s:5s} "
-          f"plaintext={row['rows_with_plaintext']:>3} encrypted={row['rows_encrypted']:>3}")
+    label = row["column_label"]
+    key_present = row["key_present"]
+    plaintext = row["rows_with_plaintext"]
+    encrypted = row["rows_encrypted"]
+    print(f"  {label:38s} key_present={key_present!s:5s} plaintext={plaintext:>3} encrypted={encrypted:>3}")
 '

@@ -92,8 +92,11 @@ for row in result:
     done = row["rows_with_plaintext"] == row["rows_encrypted"]
     all_done = all_done and done
     mark = "OK " if done else "GAP"
-    print(f"  [{mark}] {row['column_label']:38s} key_present={row['key_present']!s:5s} "
-          f"plaintext={row['rows_with_plaintext']:>3} encrypted={row['rows_encrypted']:>3}")
+    label = row["column_label"]
+    key_present = row["key_present"]
+    plaintext = row["rows_with_plaintext"]
+    encrypted = row["rows_encrypted"]
+    print(f"  [{mark}] {label:38s} key_present={key_present!s:5s} plaintext={plaintext:>3} encrypted={encrypted:>3}")
 if not all_done:
     print()
     print("==> Some rows are still unencrypted -- re-run this script; it is safe to repeat.")
