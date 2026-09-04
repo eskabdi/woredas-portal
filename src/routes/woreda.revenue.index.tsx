@@ -36,6 +36,7 @@ import {
 } from "@/components/common/TableToolbar";
 import { exportRowsToCsv, exportRowsToPdf, type TableColumn } from "@/utils/tableExport";
 import { useReportBranding } from "@/hooks/useReportBranding";
+import { resolveDecryptedField, DECRYPT_UNVERIFIED_WARNING } from "@/lib/decryptedFieldGuard";
 
 export const Route = createFileRoute("/woreda/revenue/")({
   ssr: false,
@@ -525,6 +526,7 @@ function CollectRentalDialog({
 }) {
   const [requestId, setRequestId] = useState("");
   const [amount, setAmount] = useState("");
+  const [amountUnverified, setAmountUnverified] = useState(false);
   const [channel, setChannel] = useState<"cash" | "bank" | "mobile">("cash");
   const [referenceNo, setReferenceNo] = useState("");
 
@@ -573,10 +575,17 @@ function CollectRentalDialog({
             ]),
         );
       }
-      return (data ?? []).map((r) => ({
-        ...r,
-        rent_amount: decryptedRentById.get(r.rental_request_id) ?? r.rent_amount,
-      }));
+      return (data ?? []).map((r) => {
+        const rentField = resolveDecryptedField(
+          decryptedRentById.get(r.rental_request_id) ?? null,
+          r.rent_amount,
+        );
+        return {
+          ...r,
+          rent_amount: rentField.value,
+          rent_amount_decrypt_failed: rentField.decryptFailed,
+        };
+      });
     },
   });
 
@@ -653,6 +662,7 @@ function CollectRentalDialog({
                 setRequestId(e.target.value);
                 const sel = approvedRequests?.find((r) => r.rental_request_id === e.target.value);
                 if (sel?.rent_amount != null) setAmount(String(sel.rent_amount));
+                setAmountUnverified(!!sel?.rent_amount_decrypt_failed);
               }}
               className="mt-1 block h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
             >
@@ -665,6 +675,12 @@ function CollectRentalDialog({
               ))}
             </select>
           </div>
+          {amountUnverified && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              <p className="font-noto-ethiopic">{DECRYPT_UNVERIFIED_WARNING.am}</p>
+              <p>{DECRYPT_UNVERIFIED_WARNING.en}</p>
+            </div>
+          )}
           <div>
             <Label>Amount (ETB)</Label>
             <Input

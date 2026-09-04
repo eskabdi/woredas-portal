@@ -21,6 +21,7 @@ import {
   type ResidentFormInput,
   type ResidentFormValues,
 } from "@/lib/residentSchema";
+import { resolveDecryptedField, DECRYPT_UNVERIFIED_WARNING } from "@/lib/decryptedFieldGuard";
 
 export const Route = createFileRoute("/woreda/residents/$residentId/edit")({
   ssr: false,
@@ -64,6 +65,7 @@ function EditResidentPage() {
   const [step, setStep] = useState(1);
   const [maxReached] = useState(4); // all steps reachable in edit
   const [submitting, setSubmitting] = useState(false);
+  const [phoneUnverified, setPhoneUnverified] = useState(false);
 
   const residentQuery = useQuery({
     queryKey: ["resident", residentId],
@@ -109,7 +111,12 @@ function EditResidentPage() {
     // phone number, and saving overwrites the still-good plaintext with
     // empty/null. At stage 4, once the plaintext column is dropped, this
     // fallback must be replaced by a hard error that blocks the save.
-    const phone = ((r.phone_number_decrypted ?? r.phone_number) as string | null) ?? "";
+    const phoneField = resolveDecryptedField(
+      r.phone_number_decrypted as string | null,
+      r.phone_number as string | null,
+    );
+    setPhoneUnverified(phoneField.decryptFailed);
+    const phone = phoneField.value ?? "";
     const phoneDigits = phone.startsWith("+251") ? phone.slice(4) : phone.replace(/\D/g, "");
 
     reset({
@@ -273,6 +280,13 @@ function EditResidentPage() {
   return (
     <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-6 pb-28">
       <PageHeader icon={UserCircle2} titleAm="ነዋሪ አስተካክል" titleEn="Edit Resident" />
+
+      {phoneUnverified && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          <p className="font-noto-ethiopic">{DECRYPT_UNVERIFIED_WARNING.am}</p>
+          <p>{DECRYPT_UNVERIFIED_WARNING.en}</p>
+        </div>
+      )}
 
       <ResidentWizardSteps
         form={form}
