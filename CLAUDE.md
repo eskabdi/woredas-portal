@@ -74,14 +74,8 @@ is an incident.
 
 ## Commands
 
-Package manager is **bun** (`bun.lock`, `bunfig.toml`). A `package-lock.json` used
-to also exist alongside it; it was removed (INSA Enforcer 6.3 dependency scan) after
-an `npm audit` against it flagged a real advisory (`fast-uri`, pulled in via `ajv@8`,
-an npm-only resolution of `@hookform/resolvers`' _optional_ `ajv` peer dependency that
-bun never installs) that had zero actual exposure — nothing in the build bun/CI/Vercel
-actually run ever touched that path — but the stale file was exactly the kind of drift
-that produces a false-positive-shaped finding on a routine scan. `bun audit` is the
-one dependency-vulnerability check this repo's build actually reflects.
+Package manager is **bun** (`bun.lock`, `bunfig.toml`) — a `package-lock.json` also
+exists but bun is what CI/Vercel actually build with (see the Vercel section below).
 
 ```bash
 bun install
