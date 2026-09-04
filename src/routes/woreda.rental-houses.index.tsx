@@ -101,20 +101,30 @@ function TabNav() {
 // through the base table. Overwrites rent_amount in place on each embedded
 // occupancy row so toViewRow's existing logic (and sortRows/export below)
 // stays unchanged.
+// Batched, not one .in() over every id -- the export path below can call
+// this with up to 5000 rows' worth of occupancy ids, which as a single
+// query string is well past a typical request-line/header-size limit.
+const DECRYPT_BATCH_SIZE = 150;
+
 async function decryptHouseRentAmounts(rows: HouseRow[]): Promise<HouseRow[]> {
   const ids = rows.flatMap((h) => (h.active_occupancy ?? []).map((o) => o.occupancy_id));
   if (ids.length === 0) return rows;
   const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
-  const { data, error } = await db
-    .from("rental_occupancy_decrypted")
-    .select("occupancy_id, rent_amount_decrypted")
-    .in("occupancy_id", ids);
-  if (error) throw error;
+  const batches: { occupancy_id: string; rent_amount_decrypted: number | null }[][] =
+    await Promise.all(
+      Array.from({ length: Math.ceil(ids.length / DECRYPT_BATCH_SIZE) }, (_, i) =>
+        ids.slice(i * DECRYPT_BATCH_SIZE, (i + 1) * DECRYPT_BATCH_SIZE),
+      ).map(async (batch) => {
+        const { data, error } = await db
+          .from("rental_occupancy_decrypted")
+          .select("occupancy_id, rent_amount_decrypted")
+          .in("occupancy_id", batch);
+        if (error) throw error;
+        return data ?? [];
+      }),
+    );
   const amountById = new Map<string, number | null>(
-    (data ?? []).map((d: { occupancy_id: string; rent_amount_decrypted: number | null }) => [
-      d.occupancy_id,
-      d.rent_amount_decrypted,
-    ]),
+    batches.flat().map((d) => [d.occupancy_id, d.rent_amount_decrypted]),
   );
   return rows.map((h) => ({
     ...h,

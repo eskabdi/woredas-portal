@@ -191,6 +191,23 @@ unaffected). `household.rent_amount` remains plaintext-only and unaddressed by
 this stage — it was never brought into stage 1's scope (see the migration's own
 header comment) and has no `_enc` column or decrypted view to cut over to.
 
+**NULL-decrypt fallback policy, by field type.** A decrypt failure (Vault
+secret rotated/absent, corrupt ciphertext) returns NULL, not an error — stage
+1's fail-soft design. What a read call site does with that NULL differs
+deliberately by field type: **financial reads fall back to the still-present
+plaintext column** (`amount_decrypted ?? amount`, consistently across the
+dashboard, revenue, reports and credential-payment call sites) so a decrypt
+failure degrades a number on screen rather than silently reporting zero/wrong
+revenue. **PII text reads on display-only pages fail closed** (render "—"),
+since showing nothing is preferable to a wrong-looking blank field being
+mistaken for "not recorded." **The two edit forms** (resident and household)
+are the one place a NULL decrypt is genuinely destructive rather than
+cosmetic — the form would otherwise pre-fill an empty phone/email, and saving
+overwrites the still-good plaintext with it — so those also fall back to
+plaintext, matching the financial policy. At stage 4, once plaintext columns
+are dropped, every one of these fallbacks needs to become a hard, visible
+error instead: there will be no plaintext left to fall back to.
+
 Stage 1 is inert by design: until the Vault secret exists, `encrypt_pii_*()`
 returns NULL and the sync triggers write NULL rather than raising, so applying
 the migration cannot break live writes. `pii_encryption_status()` (callable by

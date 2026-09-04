@@ -103,7 +103,13 @@ function EditResidentPage() {
     const bp = readJson(r.birth_place);
     const wi = readJson(r.work_info);
     const fr = readJson(r.former_residence);
-    const phone = (r.phone_number_decrypted as string | null) ?? "";
+    // Falls back to the still-present plaintext column if decryption comes
+    // back NULL (fail-soft by design, see 00000000000023_pii_encryption.sql)
+    // -- without this, a decrypt failure pre-fills the form with an empty
+    // phone number, and saving overwrites the still-good plaintext with
+    // empty/null. At stage 4, once the plaintext column is dropped, this
+    // fallback must be replaced by a hard error that blocks the save.
+    const phone = ((r.phone_number_decrypted ?? r.phone_number) as string | null) ?? "";
     const phoneDigits = phone.startsWith("+251") ? phone.slice(4) : phone.replace(/\D/g, "");
 
     reset({

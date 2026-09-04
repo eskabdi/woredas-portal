@@ -213,6 +213,10 @@ export function useReportsAggregate({
           .eq("woreda_id", woredaId!)
           .gte("payment_date", start)
           .lte("payment_date", end)
+          // Stable order (not just a limit) -- above 5000 payments in range,
+          // this and the payment_decrypted query below need to return the
+          // SAME 5000 rows or the merge below silently pairs them wrong.
+          .order("payment_id")
           .limit(5000),
         supabase
           .from("kebele_rental_house")
@@ -235,6 +239,7 @@ export function useReportsAggregate({
           .eq("woreda_id", woredaId!)
           .gte("payment_date", start)
           .lte("payment_date", end)
+          .order("payment_id")
           .limit(5000),
       ]);
 

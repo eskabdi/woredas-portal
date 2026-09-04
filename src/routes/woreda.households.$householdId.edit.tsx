@@ -84,7 +84,13 @@ function EditHouseholdPage() {
   useEffect(() => {
     if (!householdQuery.data) return;
     const h = householdQuery.data;
-    const phone = (h.phone_number_decrypted as string | null) ?? "";
+    // Falls back to the still-present plaintext column if decryption comes
+    // back NULL (fail-soft by design, see 00000000000023_pii_encryption.sql)
+    // -- without this, a decrypt failure pre-fills the form with an empty
+    // phone/email, and saving overwrites the still-good plaintext with
+    // empty/null. At stage 4, once the plaintext columns are dropped, this
+    // fallback must be replaced by a hard error that blocks the save.
+    const phone = ((h.phone_number_decrypted ?? h.phone_number) as string | null) ?? "";
     reset({
       kebele_id: (h.kebele_id as string) ?? "",
       house_number: (h.house_number as string) ?? "",
@@ -97,7 +103,7 @@ function EditHouseholdPage() {
       alternate_head_resident_id: (h.alternate_head_resident_id as string) ?? "",
       phone_digits: phone.startsWith("+251") ? phone.slice(4) : phone.replace(/\D/g, ""),
       po_box: (h.po_box as string) ?? "",
-      email: (h.email_decrypted as string) ?? "",
+      email: ((h.email_decrypted ?? h.email) as string) ?? "",
       house_type: (h.house_type as HouseholdFormInput["house_type"]) ?? "private",
       house_type_other: (h.house_type_other as string) ?? "",
       rent_amount:
@@ -140,9 +146,9 @@ function EditHouseholdPage() {
         household_head_resident_id: old.household_head_resident_id,
         spouse_resident_id: old.spouse_resident_id,
         alternate_head_resident_id: old.alternate_head_resident_id,
-        phone_number: old.phone_number_decrypted,
+        phone_number: old.phone_number_decrypted ?? old.phone_number,
         po_box: old.po_box,
-        email: old.email_decrypted,
+        email: old.email_decrypted ?? old.email,
         house_type: old.house_type,
         house_type_other: old.house_type_other,
         rent_amount: old.rent_amount,

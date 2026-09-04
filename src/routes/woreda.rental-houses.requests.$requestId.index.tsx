@@ -200,7 +200,16 @@ function RentalRequestDetailPage() {
         .maybeSingle();
       if (amtError) throw amtError;
 
-      const merged = { ...data, rent_amount: amt?.rent_amount_decrypted ?? null };
+      // Falls back to the base query's own plaintext rent_amount (data.*
+      // already includes it, per `select("*", ...)` above) if decryption
+      // comes back NULL -- otherwise a decrypt failure blanks the Rent
+      // Amount field and permanently records rent_amount: null on the next
+      // RENTAL_REQUEST_APPROVED audit entry below.
+      const merged = {
+        ...data,
+        rent_amount:
+          amt?.rent_amount_decrypted ?? (data as { rent_amount: number | null }).rent_amount,
+      };
       return merged as unknown as {
         rental_request_id: string;
         request_number: string;
