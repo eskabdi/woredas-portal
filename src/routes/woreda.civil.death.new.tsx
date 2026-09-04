@@ -16,6 +16,8 @@ import { PermissionGate } from "@/components/common/PermissionGate";
 import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/integrations/supabase/client";
 import { P } from "@/config/permissions";
+import { phoneDigitsSchema, phoneDigitsToE164 } from "@/lib/phoneNumber";
+import { PhoneDigitsInput } from "@/components/forms/PhoneDigitsInput";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -39,12 +41,7 @@ const schema = z
       .min(1, "የመረጃ ሰጪ ስም ያስፈልጋል / Informant name required")
       .max(200),
     informant_relation: z.string().trim().max(100).optional().default(""),
-    informant_phone: z
-      .string()
-      .trim()
-      .optional()
-      .default("")
-      .refine((v) => !v || /^\d{9}$/.test(v), "9 አሃዝ / 9 digits"),
+    informant_phone: phoneDigitsSchema(),
   })
   .refine((v) => v.deceased_resident_id || v.deceased_name.trim().length > 0, {
     message: "Select a registered resident or enter the deceased's name",
@@ -119,7 +116,7 @@ function DeathNewPage() {
         informant: {
           name: v.informant_name,
           relation: v.informant_relation || null,
-          phone: v.informant_phone ? `+251${v.informant_phone}` : null,
+          phone: phoneDigitsToE164(v.informant_phone ?? ""),
         },
       };
 
@@ -255,17 +252,15 @@ function DeathNewPage() {
               labelEn="Phone (9 digits after +251)"
               error={errors.informant_phone?.message}
             >
-              <div className="flex">
-                <span className="inline-flex items-center rounded-l-md border border-r-0 border-input bg-slate-50 px-3 text-sm text-slate-600">
-                  +251
-                </span>
-                <Input
-                  className="rounded-l-none"
-                  inputMode="numeric"
-                  maxLength={9}
-                  {...register("informant_phone")}
-                />
-              </div>
+              <PhoneDigitsInput
+                value={watch("informant_phone") ?? ""}
+                onChange={(digits) => setValue("informant_phone", digits, { shouldDirty: true })}
+                onBlur={() =>
+                  setValue("informant_phone", watch("informant_phone") ?? "", {
+                    shouldValidate: true,
+                  })
+                }
+              />
             </FieldWrap>
           </Grid>
         </Section>

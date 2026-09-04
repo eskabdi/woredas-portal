@@ -42,6 +42,13 @@ import { useAuthStore } from "@/stores/authStore";
 import { P } from "@/config/permissions";
 import { Navigate } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
+import { PhoneDigitsInput } from "@/components/forms/PhoneDigitsInput";
+import {
+  isValidPhoneDigits,
+  phoneDigitsToE164,
+  sanitizePhoneDigits,
+  PHONE_DIGITS_ERROR,
+} from "@/lib/phoneNumber";
 
 export const Route = createFileRoute("/woreda/rental-houses/occupants/new")({
   ssr: false,
@@ -150,7 +157,7 @@ function OccupantRegistrationPage() {
   const [resident, setResident] = useState<ResidentMatch | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [sex, setSex] = useState<string>("");
-  const [phone, setPhone] = useState<string>("+251");
+  const [phone, setPhone] = useState<string>("");
 
   // --- Contract
   const [houseId, setHouseId] = useState<string>(houseIdFromSearch ?? "");
@@ -259,12 +266,7 @@ function OccupantRegistrationPage() {
   function pickResident(r: ResidentMatch) {
     setResident(r);
     setSex(r.sex ?? "");
-    if (r.phone_number_decrypted)
-      setPhone(
-        r.phone_number_decrypted.startsWith("+")
-          ? r.phone_number_decrypted
-          : `+251${r.phone_number_decrypted.replace(/^0/, "")}`,
-      );
+    if (r.phone_number_decrypted) setPhone(sanitizePhoneDigits(r.phone_number_decrypted));
     setSearchOpen(false);
     setResidentSearch("");
   }
@@ -288,7 +290,7 @@ function OccupantRegistrationPage() {
       if (!resident) throw new Error("ተከራይ ይምረጡ / Select the occupant");
       if (!houseId) throw new Error("የቤት ቁጥር ይምረጡ / Select the rental house");
       const amt = Number(rentAmount);
-      if (!amt || amt <= 0) throw new Error("ልክ የቤት ኪራይ ያስገቡ / Enter valid rent amount");
+      if (!amt || amt <= 0) throw new Error("ትክክለኛ የቤት ኪራይ ዋጋ ያስገቡ / Enter valid rent amount");
       if (!rentStart) throw new Error("የውል መጀመሪያ ቀን ያስፈልጋል / Contract start required");
 
       const { data, error } = await supabase
@@ -354,7 +356,7 @@ function OccupantRegistrationPage() {
           rent_end_date: rentEnd || null,
           rent_amount: amt,
           payment_frequency: frequency,
-          phone,
+          phone: phoneDigitsToE164(phone),
           sex,
           household_members: members,
           uploads: uploadNames,
@@ -389,10 +391,11 @@ function OccupantRegistrationPage() {
     if (!resident) errs.push("ተከራይ ይምረጡ / Select the occupant");
     if (!houseId) errs.push("የቤት ቁጥር ይምረጡ / Select the rental house");
     if (!Number(rentAmount) || Number(rentAmount) <= 0)
-      errs.push("ልክ የቤት ኪራይ ያስገቡ / Enter a valid rent amount");
+      errs.push("ትክክለኛ የቤት ኪራይ ዋጋ ያስገቡ / Enter a valid rent amount");
     if (!rentStart) errs.push("የውል መጀመሪያ ቀን ያስፈልጋል / Contract start date required");
+    if (!isValidPhoneDigits(phone)) errs.push(PHONE_DIGITS_ERROR);
     return errs;
-  }, [resident, houseId, rentAmount, rentStart]);
+  }, [resident, houseId, rentAmount, rentStart, phone]);
 
   function openConfirm() {
     if (validationErrors.length > 0) {
@@ -644,11 +647,7 @@ function OccupantRegistrationPage() {
               </div>
               <div>
                 <FieldLabel am="ስልክ ቁጥር" en="Phone" />
-                <Input
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+251"
-                />
+                <PhoneDigitsInput value={phone} onChange={setPhone} />
               </div>
             </div>
           </div>

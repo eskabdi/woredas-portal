@@ -22,6 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { EthiopianDateInput } from "@/components/common/EthiopianDateInput";
 import { Section, Grid, FieldWrap, Select } from "@/components/forms/FormSection";
+import { PhoneDigitsInput } from "@/components/forms/PhoneDigitsInput";
 import { supabase } from "@/integrations/supabase/client";
 import { toWebp, storageExtension, PHOTO_WEBP } from "@/utils/imageCompression";
 import { useWoredaInfo } from "@/hooks/useWoredaInfo";
@@ -285,11 +286,14 @@ export function ResidentWizardSteps({
 
   // ----- Phone -----
   const phoneDigits = watch("phone_digits");
-  const handlePhoneChange = (raw: string) => {
-    let v = raw.replace(/\D/g, "");
-    if (v.startsWith("0")) v = v.slice(1);
-    if (v.length > 9) v = v.slice(0, 9);
-    setValue("phone_digits", v, { shouldDirty: true, shouldValidate: false });
+  const handlePhoneChange = (digits: string) => {
+    setValue("phone_digits", digits, { shouldDirty: true });
+  };
+  // Validate on blur, not on every keystroke -- an in-progress 9-digit
+  // number is legitimately "too short" for all but its last character, so
+  // live-validating it would flash an error on the very first digit typed.
+  const handlePhoneBlur = () => {
+    setValue("phone_digits", phoneDigits ?? "", { shouldValidate: true });
   };
 
   // ----- Birth-place "same as current" autofill -----
@@ -428,20 +432,11 @@ export function ResidentWizardSteps({
                 labelEn="Phone Number"
                 error={errors.phone_digits?.message}
               >
-                <div className="flex">
-                  <span className="inline-flex items-center rounded-l-md border border-r-0 border-input bg-slate-100 px-3 text-sm text-slate-700">
-                    +251
-                  </span>
-                  <Input
-                    type="tel"
-                    inputMode="numeric"
-                    className="rounded-l-none"
-                    placeholder="9XXXXXXXX"
-                    value={phoneDigits ?? ""}
-                    onChange={(e) => handlePhoneChange(e.target.value)}
-                    onBlur={(e) => handlePhoneChange(e.target.value)}
-                  />
-                </div>
+                <PhoneDigitsInput
+                  value={phoneDigits ?? ""}
+                  onChange={handlePhoneChange}
+                  onBlur={handlePhoneBlur}
+                />
               </FieldWrap>
               <FieldWrap
                 labelAm="ብሔር"

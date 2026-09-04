@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -20,6 +20,8 @@ import {
   type HouseholdFormInput,
   type HouseholdFormValues,
 } from "@/lib/householdSchema";
+import { resolveDecryptedField, DECRYPT_UNVERIFIED_WARNING } from "@/lib/decryptedFieldGuard";
+import { sanitizePhoneDigits } from "@/lib/phoneNumber";
 
 export const Route = createFileRoute("/woreda/households/$householdId/edit")({
   ssr: false,
@@ -44,6 +46,7 @@ function EditHouseholdPage() {
   const woredaId = useAuthStore((s) => s.woredaId);
   const actorUserId = useAuthStore((s) => s.appUser?.user_id ?? null);
   const queryClient = useQueryClient();
+  const [contactUnverified, setContactUnverified] = useState(false);
 
   const householdQuery = useQuery({
     queryKey: ["household", householdId],
@@ -90,7 +93,16 @@ function EditHouseholdPage() {
     // phone/email, and saving overwrites the still-good plaintext with
     // empty/null. At stage 4, once the plaintext columns are dropped, this
     // fallback must be replaced by a hard error that blocks the save.
-    const phone = ((h.phone_number_decrypted ?? h.phone_number) as string | null) ?? "";
+    const phoneField = resolveDecryptedField(
+      h.phone_number_decrypted as string | null,
+      h.phone_number as string | null,
+    );
+    const emailField = resolveDecryptedField(
+      h.email_decrypted as string | null,
+      h.email as string | null,
+    );
+    setContactUnverified(phoneField.decryptFailed || emailField.decryptFailed);
+    const phone = phoneField.value ?? "";
     reset({
       kebele_id: (h.kebele_id as string) ?? "",
       house_number: (h.house_number as string) ?? "",
@@ -101,9 +113,9 @@ function EditHouseholdPage() {
       household_head_resident_id: (h.household_head_resident_id as string) ?? "",
       spouse_resident_id: (h.spouse_resident_id as string) ?? "",
       alternate_head_resident_id: (h.alternate_head_resident_id as string) ?? "",
-      phone_digits: phone.startsWith("+251") ? phone.slice(4) : phone.replace(/\D/g, ""),
+      phone_digits: sanitizePhoneDigits(phone),
       po_box: (h.po_box as string) ?? "",
-      email: ((h.email_decrypted ?? h.email) as string) ?? "",
+      email: emailField.value ?? "",
       house_type: (h.house_type as HouseholdFormInput["house_type"]) ?? "private",
       house_type_other: (h.house_type_other as string) ?? "",
       rent_amount:
@@ -205,6 +217,13 @@ function EditHouseholdPage() {
   return (
     <div className="mx-auto max-w-4xl pb-24">
       <PageHeader icon={Home} titleAm="ቤተሰብ አስተካክል" titleEn="Edit Household" />
+
+      {contactUnverified && (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          <p className="font-noto-ethiopic">{DECRYPT_UNVERIFIED_WARNING.am}</p>
+          <p>{DECRYPT_UNVERIFIED_WARNING.en}</p>
+        </div>
+      )}
 
       <form
         onSubmit={handleSubmit((v) => updateMutation.mutate(v), onInvalid)}

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { FieldPath } from "react-hook-form";
+import { phoneDigitsSchema, phoneDigitsToE164 } from "@/lib/phoneNumber";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -33,12 +34,7 @@ export const residentSchema = z.object({
     .optional()
     .default("")
     .refine((v) => !v || /^\d{16}$/.test(v), "ልክ 16 አሃዝ መሆን አለበት / Must be exactly 16 digits"),
-  phone_digits: z
-    .string()
-    .trim()
-    .optional()
-    .default("")
-    .refine((v) => !v || /^\d{9}$/.test(v), "ልክ 9 አሃዝ መሆን አለበት / Must be exactly 9 digits"),
+  phone_digits: phoneDigitsSchema(),
 
   // Current residence
   current_household_id: z.string().optional().default(""),
@@ -217,7 +213,7 @@ export function buildResidentPayloadCore(values: ResidentFormValues) {
     .filter(Boolean)
     .join(" ");
 
-  const phone_number = values.phone_digits ? `+251${values.phone_digits}` : null;
+  const phone_number = phoneDigitsToE164(values.phone_digits ?? "");
 
   return {
     first_name: values.first_name,

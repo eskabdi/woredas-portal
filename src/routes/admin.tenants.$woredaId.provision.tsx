@@ -16,6 +16,12 @@ import {
   ConsolePermissionGate,
   InsufficientConsolePermissionNotice,
 } from "@/components/common/ConsolePermissionGate";
+import { PhoneDigitsInput } from "@/components/forms/PhoneDigitsInput";
+import {
+  isValidPhoneDigits,
+  phoneDigitsToE164,
+  PHONE_DIGITS_ERROR_EN_ONLY,
+} from "@/lib/phoneNumber";
 
 export const Route = createFileRoute("/admin/tenants/$woredaId/provision")({
   ssr: false,
@@ -104,6 +110,7 @@ function ProvisionPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [phoneTouched, setPhoneTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // Initialize modules from DB once
@@ -122,17 +129,10 @@ function ProvisionPage() {
     if (step === 3) {
       if (!fullName.trim() || !email.trim()) return false;
       if (!/^\S+@\S+\.\S+$/.test(email)) return false;
+      if (!isValidPhoneDigits(phone)) return false;
     }
     return true;
   };
-
-  function handlePhoneChange(v: string) {
-    let digits = v.replace(/\D/g, "");
-    if (digits.startsWith("251")) digits = digits.slice(3);
-    if (digits.startsWith("0")) digits = digits.slice(1);
-    digits = digits.slice(0, 9);
-    setPhone(digits);
-  }
 
   async function submit() {
     if (!woreda) return;
@@ -317,17 +317,14 @@ function ProvisionPage() {
               </div>
               <div>
                 <Label>Phone Number</Label>
-                <div className="flex">
-                  <span className="inline-flex items-center rounded-l-md border border-r-0 bg-slate-50 px-3 text-sm text-slate-600">
-                    +251
-                  </span>
-                  <Input
-                    className="rounded-l-none"
-                    value={phone}
-                    onChange={(e) => handlePhoneChange(e.target.value)}
-                    placeholder="9XXXXXXXX"
-                  />
-                </div>
+                <PhoneDigitsInput
+                  value={phone}
+                  onChange={setPhone}
+                  onBlur={() => setPhoneTouched(true)}
+                />
+                {phoneTouched && !isValidPhoneDigits(phone) && (
+                  <p className="mt-1 text-xs text-red-600">{PHONE_DIGITS_ERROR_EN_ONLY}</p>
+                )}
               </div>
             </div>
             <div className="rounded-md bg-blue-50 p-3 text-xs">
@@ -361,7 +358,7 @@ function ProvisionPage() {
                 </div>
                 <div className="text-slate-900">{fullName}</div>
                 <div className="text-sm text-slate-600">{email}</div>
-                {phone && <div className="text-sm text-slate-600">+251{phone}</div>}
+                {phone && <div className="text-sm text-slate-600">{phoneDigitsToE164(phone)}</div>}
               </Card>
               <Card className="p-4 md:col-span-2">
                 <div className="mb-2 text-xs font-semibold uppercase text-slate-500">Modules</div>

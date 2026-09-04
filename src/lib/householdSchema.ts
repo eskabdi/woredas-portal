@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { phoneDigitsSchema, phoneDigitsToE164 } from "@/lib/phoneNumber";
 
 export const householdSchema = z
   .object({
@@ -14,12 +15,7 @@ export const householdSchema = z
     spouse_resident_id: z.string().optional().default(""),
     alternate_head_resident_id: z.string().optional().default(""),
 
-    phone_digits: z
-      .string()
-      .trim()
-      .optional()
-      .default("")
-      .refine((v) => !v || /^\d{9}$/.test(v), "ልክ 9 አሃዝ መሆን አለበት / Must be exactly 9 digits"),
+    phone_digits: phoneDigitsSchema(),
     po_box: z.string().trim().max(50).optional().default(""),
     email: z
       .string()
@@ -83,7 +79,7 @@ export function buildHouseholdPayload(
     household_head_resident_id: v.household_head_resident_id || null,
     spouse_resident_id: v.spouse_resident_id || null,
     alternate_head_resident_id: v.alternate_head_resident_id || null,
-    phone_number: v.phone_digits ? `+251${v.phone_digits}` : null,
+    phone_number: phoneDigitsToE164(v.phone_digits ?? ""),
     po_box: v.po_box || null,
     email: v.email || null,
     house_type: v.house_type,

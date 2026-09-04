@@ -19,6 +19,13 @@ import {
 } from "@/components/ui/dialog";
 import { FieldWrap, Grid, Section, Select } from "@/components/forms/FormSection";
 import { ResidentSearchPicker } from "@/components/forms/ResidentSearchPicker";
+import { PhoneDigitsInput } from "@/components/forms/PhoneDigitsInput";
+import {
+  isValidPhoneDigits,
+  phoneDigitsToE164,
+  sanitizePhoneDigits,
+  PHONE_DIGITS_ERROR,
+} from "@/lib/phoneNumber";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
 import { P } from "@/config/permissions";
@@ -128,7 +135,7 @@ function NewServiceRequestPage() {
     const r = residentDetailQuery.data;
     if (!r) return;
     setApplicantName(r.full_name_am || r.full_name || "");
-    setApplicantPhone(r.phone_number || "");
+    setApplicantPhone(sanitizePhoneDigits(r.phone_number || ""));
     setKebeleId(r.household?.kebele_id || "");
   }, [residentDetailQuery.data]);
 
@@ -160,8 +167,7 @@ function NewServiceRequestPage() {
     if (subject.trim().length < 3) e["subject"] = "ጉዳዩን ያስገቡ / Enter a subject";
     if (details.trim().length < 10)
       e["details"] = "ቢያንስ 10 ፊደል ያስገቡ / Provide at least 10 characters";
-    if (applicantPhone && !/^(\+251)?[0-9]{9,10}$/.test(applicantPhone.replace(/\s/g, "")))
-      e["applicantPhone"] = "ትክክለኛ ስልክ ያስገቡ / Enter a valid phone number";
+    if (!isValidPhoneDigits(applicantPhone)) e["applicantPhone"] = PHONE_DIGITS_ERROR;
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -181,7 +187,7 @@ function NewServiceRequestPage() {
           resident_id: residentId || null,
           kebele_id: kebeleId || null,
           applicant_name: applicantName.trim() || null,
-          applicant_phone: applicantPhone.trim() ? normalizePhone(applicantPhone) : null,
+          applicant_phone: phoneDigitsToE164(applicantPhone),
           subject: subject.trim(),
           purpose: purpose.trim() || null,
           addressed_to: addressedTo.trim() || null,
@@ -350,11 +356,7 @@ function NewServiceRequestPage() {
             />
           </FieldWrap>
           <FieldWrap labelAm="ስልክ" labelEn="Phone" error={errors["applicantPhone"]}>
-            <Input
-              value={applicantPhone}
-              onChange={(e) => setApplicantPhone(e.target.value)}
-              placeholder="+251…"
-            />
+            <PhoneDigitsInput value={applicantPhone} onChange={setApplicantPhone} />
           </FieldWrap>
           <FieldWrap labelAm="ቀበሌ" labelEn="Kebele">
             <Select value={kebeleId} onChange={(e) => setKebeleId(e.target.value)}>
@@ -538,11 +540,4 @@ function NewServiceRequestPage() {
       </Dialog>
     </div>
   );
-}
-
-function normalizePhone(v: string) {
-  const digits = v.replace(/[^\d]/g, "");
-  if (v.trim().startsWith("+251")) return `+251${digits.slice(3)}`;
-  if (digits.startsWith("251")) return `+${digits}`;
-  return `+251${digits.replace(/^0/, "")}`;
 }
