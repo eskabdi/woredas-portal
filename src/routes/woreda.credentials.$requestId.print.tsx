@@ -603,7 +603,8 @@ function PrintPage() {
     credQuery.error ||
     templateQuery.error ||
     woredaQuery.error ||
-    templateBgQuery.error;
+    templateBgQuery.error ||
+    residentContactQuery.error;
   if (queryError) {
     return (
       <ErrorPanel
