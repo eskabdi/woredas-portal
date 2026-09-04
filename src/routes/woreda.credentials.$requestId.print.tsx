@@ -195,6 +195,10 @@ function PrintPage() {
     queryKey: ["credential-print-request", requestId, woredaId],
     enabled: !!woredaId,
     queryFn: async () => {
+      // resident.phone_number deliberately not selected in the embed below --
+      // it's overwritten by residentContactQuery's phone_number_decrypted
+      // further down, so the raw plaintext value is dead here, and once
+      // stage 4 drops the column this would 400.
       const { data, error } = await supabase
         .from("credential_request")
         .select(
@@ -202,7 +206,7 @@ function PrintPage() {
            approved_by_user_id, payment_id,
            resident:resident_id (
              resident_id, resident_number, national_id_no, full_name, full_name_am,
-             sex, date_of_birth, photo_url, residency_status, active_flag, phone_number
+             sex, date_of_birth, photo_url, residency_status, active_flag
            ),
            household:household_id (
              household_id, house_number,
@@ -218,6 +222,31 @@ function PrintPage() {
   });
 
   const request = reqQuery.data;
+
+  // resident_decrypted isn't in the generated types yet (00000000000023_
+  // pii_encryption.sql) -- same untyped-client cast pattern already used
+  // elsewhere in this codebase for pre-typegen tables. Queried separately
+  // from reqQuery above rather than swapping that query's `.from()` in
+  // place: that query embeds resident/household/kebele via FK-derived
+  // PostgREST joins, which are not guaranteed to resolve through a view the
+  // same way they do through the base table. phone_number is a real
+  // template-placeable field on the printed card (buildCardValues below), so
+  // this has to resolve to the decrypted value, not the raw ciphertext-
+  // adjacent column.
+  const residentContactQuery = useQuery({
+    queryKey: ["credential-print-resident-contact-decrypted", request?.resident_id],
+    enabled: !!request?.resident_id,
+    queryFn: async () => {
+      const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const { data, error } = await db
+        .from("resident_decrypted")
+        .select("phone_number_decrypted")
+        .eq("resident_id", request!.resident_id!)
+        .maybeSingle();
+      if (error) throw error;
+      return data as { phone_number_decrypted: string | null } | null;
+    },
+  });
 
   const credQuery = useQuery({
     queryKey: ["credential-for-print", request?.credential_id],
@@ -401,8 +430,25 @@ function PrintPage() {
     };
   }, [templateBgQuery.data]);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const resident = request?.resident as any;
+  // phone_number here is overwritten with the decrypted value from
+  // residentContactQuery above (request.resident.phone_number came through
+  // an embed on the credential_request query, not resident_decrypted) so
+  // every downstream consumer of this single `resident` object -- the
+  // template-driven PrintableCard, the CardFront/CardBack preview, and the
+  // checks useMemo below -- gets the real value without threading a second
+  // field through all three. Memoized (not a plain const) because the
+  // object-spread below would otherwise create a new reference every
+  // render, which defeated the checks useMemo's own memoization.
+  const resident = useMemo(() => {
+    if (!request?.resident) return null;
+    /* eslint-disable @typescript-eslint/no-explicit-any -- merging one decrypted
+       field onto an already-untyped (pre-typegen embed) row */
+    return {
+      ...request.resident,
+      phone_number: residentContactQuery.data?.phone_number_decrypted ?? null,
+    } as any;
+    /* eslint-enable @typescript-eslint/no-explicit-any */
+  }, [request?.resident, residentContactQuery.data?.phone_number_decrypted]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const household = request?.household as any;
   const kebele = household?.kebele;
@@ -561,7 +607,8 @@ function PrintPage() {
     credQuery.error ||
     templateQuery.error ||
     woredaQuery.error ||
-    templateBgQuery.error;
+    templateBgQuery.error ||
+    residentContactQuery.error;
   if (queryError) {
     return (
       <ErrorPanel
@@ -579,6 +626,7 @@ function PrintPage() {
     credQuery.isLoading ||
     templateQuery.isLoading ||
     templateBgQuery.isLoading ||
+    residentContactQuery.isLoading ||
     !bgUrlsResolved
   ) {
     return (

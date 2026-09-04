@@ -94,13 +94,17 @@ function RentalOccupantPrintPage() {
     queryKey: ["rental-occupancies-print", houseId, woredaId],
     enabled: !!woredaId && hasPermission(P.RENTAL_VIEW),
     queryFn: async () => {
+      // rent_amount and the embedded resident.phone_number deliberately not
+      // selected -- both are dead here (the render below uses activeContact's
+      // rent_amount_decrypted/phone_number_decrypted instead), and once
+      // stage 4 drops the plaintext columns these would 400.
       const { data, error } = await supabase
         .from("rental_occupancy")
         .select(
-          `occupancy_id, rent_start_date, rent_amount, status, termination_date,
+          `occupancy_id, rent_start_date, status, termination_date,
            resident:resident_id (
              resident_id, resident_number, full_name_am, full_name, sex, date_of_birth,
-             phone_number, birth_place, work_info
+             birth_place, work_info
            )`,
         )
         .eq("rental_house_id", houseId)
@@ -108,6 +112,52 @@ function RentalOccupantPrintPage() {
         .order("rent_start_date", { ascending: false });
       if (error) throw error;
       return data ?? [];
+    },
+  });
+
+  // Only the active occupancy's rent and resident's phone are ever rendered
+  // below (the history table further down shows name/dates/status only), so
+  // this fetches decrypted values for just that one row rather than every
+  // occupancy in the list.
+  const activeOccupancy = (occupancies ?? []).find((o) => o.status === "active");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const activeResidentId = (activeOccupancy?.resident as any)?.resident_id as string | undefined;
+
+  // rental_occupancy_decrypted / resident_decrypted aren't in the generated
+  // types yet (00000000000023_pii_encryption.sql) -- same untyped-client
+  // cast pattern already used elsewhere in this codebase for pre-typegen
+  // tables. Queried separately from the occupancies query above: that query
+  // embeds resident via a FK-derived PostgREST join, which is not guaranteed
+  // to resolve through a view the same way it does through the base table.
+  const { data: activeContact, isLoading: activeContactLoading } = useQuery({
+    queryKey: [
+      "rental-occupant-print-contact-decrypted",
+      activeOccupancy?.occupancy_id,
+      activeResidentId,
+    ],
+    enabled: !!activeOccupancy,
+    queryFn: async () => {
+      const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const [rentRes, residentRes] = await Promise.all([
+        db
+          .from("rental_occupancy_decrypted")
+          .select("rent_amount_decrypted")
+          .eq("occupancy_id", activeOccupancy!.occupancy_id)
+          .maybeSingle(),
+        activeResidentId
+          ? db
+              .from("resident_decrypted")
+              .select("phone_number_decrypted")
+              .eq("resident_id", activeResidentId)
+              .maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
+      ]);
+      if (rentRes.error) throw rentRes.error;
+      if (residentRes.error) throw residentRes.error;
+      return {
+        rent_amount_decrypted: rentRes.data?.rent_amount_decrypted as number | null,
+        phone_number_decrypted: residentRes.data?.phone_number_decrypted as string | null,
+      };
     },
   });
 
@@ -120,7 +170,7 @@ function RentalOccupantPrintPage() {
     );
   }
 
-  if (housePending || occPending)
+  if (housePending || occPending || activeContactLoading)
     return <div className="py-20 text-center text-sm text-slate-500">Loading…</div>;
   if (!house) return <div className="py-20 text-center text-sm text-slate-500">Not found</div>;
 
@@ -234,7 +284,12 @@ function RentalOccupantPrintPage() {
               labelEn="Place of Birth"
               value={formatBirthPlace(birthPlace)}
             />
-            <DocField labelAm="ስልክ ቁጥር" labelEn="Phone" value={occupant.phone_number || "—"} mono />
+            <DocField
+              labelAm="ስልክ ቁጥር"
+              labelEn="Phone"
+              value={activeContact?.phone_number_decrypted || "—"}
+              mono
+            />
             <DocField
               labelAm="ሙያ"
               labelEn="Occupation"
@@ -274,7 +329,11 @@ function RentalOccupantPrintPage() {
               <DocField
                 labelAm="የተስማማበት ወርሃዊ ኪራይ"
                 labelEn="Agreed Monthly Rent"
-                value={`ብር ${Number(active.rent_amount).toFixed(2)}`}
+                value={
+                  activeContact?.rent_amount_decrypted != null
+                    ? `ብር ${Number(activeContact.rent_amount_decrypted).toFixed(2)}`
+                    : "—"
+                }
               />
               <DocField
                 labelAm="የተቋረጠበት ቀን"

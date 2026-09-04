@@ -53,7 +53,12 @@ function ServiceLetterPrintPage() {
       const { data, error } = await supabase
         .from("service_request")
         .select(
-          "request_number, subject, purpose, addressed_to, details, applicant_name, applicant_phone, submitted_at, issued_at, status, verification_token, resident:resident_id(resident_number, full_name_am, full_name, sex, date_of_birth), kebele:kebele_id(kebele_name_am, kebele_name_en), service_type:service_type_id(name_am, name_en, letter_body_template, letter_body_html)",
+          // applicant_phone deliberately not selected -- unused in this letter
+          // (no PHONE token in the template substitution below), and the
+          // decrypted value lives in service_request_decrypted, not this base
+          // table, so there's no reason to pull ciphertext-adjacent plaintext
+          // for a field nothing here renders.
+          "request_number, subject, purpose, addressed_to, details, applicant_name, submitted_at, issued_at, status, verification_token, resident:resident_id(resident_number, full_name_am, full_name, sex, date_of_birth), kebele:kebele_id(kebele_name_am, kebele_name_en), service_type:service_type_id(name_am, name_en, letter_body_template, letter_body_html)",
         )
         .eq("service_request_id", requestId)
         .maybeSingle();

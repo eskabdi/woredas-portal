@@ -49,6 +49,12 @@ function strField(rec: JsonRec, key: string): string {
   return v === null || v === undefined ? "" : String(v);
 }
 
+// resident_decrypted isn't in the generated types yet (00000000000023_
+// pii_encryption.sql) -- same untyped-client cast pattern already used
+// elsewhere in this codebase for pre-typegen tables (console_role,
+// user_permission_override).
+const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+
 function EditResidentPage() {
   const { residentId } = Route.useParams();
   const navigate = useNavigate();
@@ -63,8 +69,8 @@ function EditResidentPage() {
     queryKey: ["resident", residentId],
     enabled: !!woredaId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("resident")
+      const { data, error } = await db
+        .from("resident_decrypted")
         .select("*")
         .eq("resident_id", residentId)
         .eq("woreda_id", woredaId as string)
@@ -97,7 +103,13 @@ function EditResidentPage() {
     const bp = readJson(r.birth_place);
     const wi = readJson(r.work_info);
     const fr = readJson(r.former_residence);
-    const phone = (r.phone_number as string | null) ?? "";
+    // Falls back to the still-present plaintext column if decryption comes
+    // back NULL (fail-soft by design, see 00000000000023_pii_encryption.sql)
+    // -- without this, a decrypt failure pre-fills the form with an empty
+    // phone number, and saving overwrites the still-good plaintext with
+    // empty/null. At stage 4, once the plaintext column is dropped, this
+    // fallback must be replaced by a hard error that blocks the save.
+    const phone = ((r.phone_number_decrypted ?? r.phone_number) as string | null) ?? "";
     const phoneDigits = phone.startsWith("+251") ? phone.slice(4) : phone.replace(/\D/g, "");
 
     reset({

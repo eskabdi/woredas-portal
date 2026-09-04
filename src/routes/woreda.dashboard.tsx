@@ -117,13 +117,25 @@ function WoredaDashboard() {
     queryKey: ["dash", woredaId, "revenue-today"],
     enabled: !!woredaId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("payment")
-        .select("amount")
+      // payment_decrypted isn't in the generated types yet (00000000000023_
+      // pii_encryption.sql) -- same untyped-client cast pattern already used
+      // elsewhere in this codebase for pre-typegen tables.
+      const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const { data, error } = await db
+        .from("payment_decrypted")
+        .select("amount, amount_decrypted")
         .eq("woreda_id", woredaId as string)
         .gte("payment_date", new Date().toISOString().slice(0, 10));
       if (error) throw error;
-      return (data ?? []).reduce((s, r) => s + Number(r.amount), 0);
+      // amount is NOT NULL on the base table -- falling back to it when
+      // amount_decrypted comes back NULL (decrypt_pii_numeric failing, fail-
+      // soft by design) keeps this KPI from silently under-reporting revenue
+      // that /woreda/revenue (which has the same fallback) still shows.
+      return (data ?? []).reduce(
+        (s: number, r: { amount: number; amount_decrypted: number | null }) =>
+          s + Number(r.amount_decrypted ?? r.amount),
+        0,
+      );
     },
   });
 
@@ -183,9 +195,13 @@ function WoredaDashboard() {
       const since = new Date();
       since.setDate(since.getDate() - 29);
       since.setHours(0, 0, 0, 0);
-      const { data, error } = await supabase
-        .from("payment")
-        .select("amount, payment_date")
+      // payment_decrypted isn't in the generated types yet (00000000000023_
+      // pii_encryption.sql) -- same untyped-client cast pattern already used
+      // elsewhere in this codebase for pre-typegen tables.
+      const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const { data, error } = await db
+        .from("payment_decrypted")
+        .select("amount, amount_decrypted, payment_date")
         .eq("woreda_id", woredaId as string)
         .gte("payment_date", since.toISOString().slice(0, 10));
       if (error) throw error;
@@ -196,11 +212,15 @@ function WoredaDashboard() {
         const k = d.toISOString().slice(0, 10);
         buckets.set(k, { day: k.slice(5), amount: 0 });
       }
-      (data ?? []).forEach((r) => {
-        const k = r.payment_date as string;
-        const b = buckets.get(k);
-        if (b) b.amount += Number(r.amount);
-      });
+      // Same fallback as revenueToday above -- a NULL amount_decrypted means
+      // decryption failed, not that the payment was free.
+      (data ?? []).forEach(
+        (r: { payment_date: string; amount: number; amount_decrypted: number | null }) => {
+          const k = r.payment_date;
+          const b = buckets.get(k);
+          if (b) b.amount += Number(r.amount_decrypted ?? r.amount);
+        },
+      );
       return Array.from(buckets.values());
     },
   });

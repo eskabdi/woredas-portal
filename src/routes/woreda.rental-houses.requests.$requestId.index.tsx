@@ -183,7 +183,34 @@ function RentalRequestDetailPage() {
         .eq("woreda_id", woredaId!)
         .single();
       if (error) throw error;
-      return data as unknown as {
+
+      // rental_occupancy_request_decrypted isn't in the generated types yet
+      // (00000000000024_rental_occupancy_request_decrypted_view.sql) -- same
+      // untyped-client cast pattern already used elsewhere in this codebase
+      // for pre-typegen tables. Queried separately: the select above embeds
+      // house/resident via FK-derived PostgREST joins, which are not
+      // guaranteed to resolve through a view the same way they do through
+      // the base table. Merged back onto the same `rent_amount` key so the
+      // inline type below and every render site stay unchanged.
+      const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const { data: amt, error: amtError } = await db
+        .from("rental_occupancy_request_decrypted")
+        .select("rent_amount_decrypted")
+        .eq("rental_request_id", requestId)
+        .maybeSingle();
+      if (amtError) throw amtError;
+
+      // Falls back to the base query's own plaintext rent_amount (data.*
+      // already includes it, per `select("*", ...)` above) if decryption
+      // comes back NULL -- otherwise a decrypt failure blanks the Rent
+      // Amount field and permanently records rent_amount: null on the next
+      // RENTAL_REQUEST_APPROVED audit entry below.
+      const merged = {
+        ...data,
+        rent_amount:
+          amt?.rent_amount_decrypted ?? (data as { rent_amount: number | null }).rent_amount,
+      };
+      return merged as unknown as {
         rental_request_id: string;
         request_number: string;
         request_type: "new_registration" | "termination";

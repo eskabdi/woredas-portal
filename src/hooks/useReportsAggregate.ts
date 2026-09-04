@@ -166,7 +166,19 @@ export function useReportsAggregate({
       const from = `${start}T00:00:00.000Z`;
       const to = `${end}T23:59:59.999Z`;
 
-      const [res, hh, cred, ev, pay, rent, svc] = await Promise.all([
+      // payment_decrypted isn't in the generated types yet (00000000000023_
+      // pii_encryption.sql) -- same untyped-client cast pattern already used
+      // elsewhere in this codebase for pre-typegen tables. Fetched as a
+      // separate query rather than swapping the payment query below's
+      // `.from()` in place: that query embeds household and a two-level
+      // rental_request -> rental_house join via FK-derived PostgREST joins,
+      // which are not guaranteed to resolve through a view the same way they
+      // do through the base table. Same woreda_id/date-range filter as the
+      // payment query so the two row sets line up; merged client-side by
+      // payment_id below.
+      const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+      const [res, hh, cred, ev, pay, rent, svc, payAmt] = await Promise.all([
         supabase
           .from("resident")
           .select(
@@ -196,11 +208,15 @@ export function useReportsAggregate({
         supabase
           .from("payment")
           .select(
-            "payment_type, amount, channel, payment_date, status, household:household_id ( kebele_id ), rental_request:rental_request_id ( rental_house:rental_house_id ( kebele_id, rental_house_id ) )",
+            "payment_id, payment_type, amount, channel, payment_date, status, household:household_id ( kebele_id ), rental_request:rental_request_id ( rental_house:rental_house_id ( kebele_id, rental_house_id ) )",
           )
           .eq("woreda_id", woredaId!)
           .gte("payment_date", start)
           .lte("payment_date", end)
+          // Stable order (not just a limit) -- above 5000 payments in range,
+          // this and the payment_decrypted query below need to return the
+          // SAME 5000 rows or the merge below silently pairs them wrong.
+          .order("payment_id")
           .limit(5000),
         supabase
           .from("kebele_rental_house")
@@ -217,11 +233,32 @@ export function useReportsAggregate({
           .gte("submitted_at", from)
           .lte("submitted_at", to)
           .limit(5000),
+        db
+          .from("payment_decrypted")
+          .select("payment_id, amount_decrypted")
+          .eq("woreda_id", woredaId!)
+          .gte("payment_date", start)
+          .lte("payment_date", end)
+          .order("payment_id")
+          .limit(5000),
       ]);
 
       const firstError =
-        res.error || hh.error || cred.error || ev.error || pay.error || rent.error || svc.error;
+        res.error ||
+        hh.error ||
+        cred.error ||
+        ev.error ||
+        pay.error ||
+        rent.error ||
+        svc.error ||
+        payAmt.error;
       if (firstError) throw firstError;
+
+      const decryptedAmountByPaymentId = new Map<string, number>(
+        ((payAmt.data ?? []) as { payment_id: string; amount_decrypted: number | null }[])
+          .filter((r) => r.amount_decrypted != null)
+          .map((r) => [r.payment_id, r.amount_decrypted as number]),
+      );
 
       const kebeleLabel = (
         k: { kebele_name_am?: string | null; kebele_number?: number | null } | null,
@@ -318,6 +355,7 @@ export function useReportsAggregate({
             .map(
               (p) =>
                 p as unknown as {
+                  payment_id: string;
                   payment_type: string;
                   amount: number;
                   channel: string;
@@ -337,7 +375,7 @@ export function useReportsAggregate({
               _kebeleId:
                 p.household?.kebele_id ?? p.rental_request?.rental_house?.kebele_id ?? null,
               type: p.payment_type,
-              amount: Number(p.amount ?? 0),
+              amount: Number(decryptedAmountByPaymentId.get(p.payment_id) ?? p.amount ?? 0),
               channel: p.channel,
               date: p.payment_date,
               rentalHouseId: p.rental_request?.rental_house?.rental_house_id ?? null,

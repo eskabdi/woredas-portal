@@ -1353,19 +1353,31 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
     queryKey: ["credential-request-payment", request.payment_id],
     enabled: status === "paid" && !!request.payment_id,
     queryFn: async () => {
-      const { data: pay, error: payErr } = await supabase
-        .from("payment")
-        .select("payment_id, amount, channel, payment_date, reference_no")
+      // payment_decrypted isn't in the generated types yet (00000000000023_
+      // pii_encryption.sql) -- same untyped-client cast pattern already used
+      // elsewhere in this codebase for pre-typegen tables.
+      const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const { data: pay, error: payErr } = await db
+        .from("payment_decrypted")
+        .select("payment_id, amount, amount_decrypted, channel, payment_date, reference_no")
         .eq("payment_id", request.payment_id!)
         .maybeSingle();
       if (payErr) throw payErr;
+      // amount is NOT NULL on the base table -- a NULL amount_decrypted here
+      // means decrypt_pii_numeric failed (fail-soft by design, see
+      // 00000000000023_pii_encryption.sql), not that the fee is genuinely
+      // zero. Falling through to the still-present plaintext column matches
+      // revenue.index.tsx:138 and useReportsAggregate.ts:373's own fallback
+      // -- without it, a real payment renders as "Waived" below with no
+      // error shown anywhere.
+      const payNormalized = pay ? { ...pay, amount: pay.amount_decrypted ?? pay.amount } : null;
       const { data: rec, error: recErr } = await supabase
         .from("receipt")
         .select("receipt_id, receipt_number, receipt_date, total_amount, cash_bank_channel")
         .eq("payment_id", request.payment_id!)
         .maybeSingle();
       if (recErr) throw recErr;
-      return { payment: pay, receipt: rec };
+      return { payment: payNormalized, receipt: rec };
     },
   });
 

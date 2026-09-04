@@ -110,6 +110,29 @@ function HouseholdDetailPage() {
     },
   });
 
+  // household_decrypted isn't in the generated types yet (00000000000023_
+  // pii_encryption.sql) -- same untyped-client cast pattern already used
+  // elsewhere in this codebase for pre-typegen tables. Queried separately
+  // from householdQuery above rather than swapping that query's `.from()`
+  // in place: that query embeds kebele/head/spouse/alt_head via FK-derived
+  // PostgREST joins, which are not guaranteed to resolve through a view the
+  // same way they do through the base table.
+  const householdContactQuery = useQuery({
+    queryKey: ["household-contact-decrypted", householdId, woredaId],
+    enabled: !!woredaId,
+    queryFn: async () => {
+      const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const { data, error } = await db
+        .from("household_decrypted")
+        .select("phone_number_decrypted, email_decrypted")
+        .eq("household_id", householdId)
+        .eq("woreda_id", woredaId as string)
+        .single();
+      if (error) throw error;
+      return data as { phone_number_decrypted: string | null; email_decrypted: string | null };
+    },
+  });
+
   const membersQuery = useQuery({
     queryKey: ["household-members", householdId],
     enabled: !!woredaId,
@@ -322,9 +345,19 @@ function HouseholdDetailPage() {
               <CardHeader icon={Phone} titleAm="እውቂያ" titleEn="Contact" />
               <div className="p-5">
                 <dl className="grid grid-cols-3 gap-x-3 gap-y-2 text-sm">
-                  <Row label="Phone" value={(h.phone_number as string) || notRecorded()} mono />
+                  <Row
+                    label="Phone"
+                    value={
+                      (householdContactQuery.data?.phone_number_decrypted as string) ||
+                      notRecorded()
+                    }
+                    mono
+                  />
                   <Row label="PO Box" value={(h.po_box as string) || notRecorded()} />
-                  <Row label="Email" value={(h.email as string) || notRecorded()} />
+                  <Row
+                    label="Email"
+                    value={(householdContactQuery.data?.email_decrypted as string) || notRecorded()}
+                  />
                 </dl>
               </div>
             </Card>

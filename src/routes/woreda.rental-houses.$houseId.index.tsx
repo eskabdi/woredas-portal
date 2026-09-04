@@ -111,7 +111,39 @@ function RentalHouseDetailPage() {
         .eq("woreda_id", woredaId!)
         .order("rent_start_date", { ascending: false });
       if (error) throw error;
-      return data;
+
+      // rental_occupancy_decrypted isn't in the generated types yet
+      // (00000000000023_pii_encryption.sql) -- same untyped-client cast
+      // pattern already used elsewhere in this codebase for pre-typegen
+      // tables. Fetched separately: the select above embeds resident via a
+      // FK-derived PostgREST join, which is not guaranteed to resolve
+      // through a view the same way it does through the base table. Both
+      // the active-occupancy card and the full history table below render
+      // rent_amount, so every row's decrypted value is needed, not just one.
+      const ids = (data ?? []).map((o) => o.occupancy_id);
+      let decryptedRentById = new Map<string, number>();
+      if (ids.length > 0) {
+        const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+        const { data: amounts, error: amountsError } = await db
+          .from("rental_occupancy_decrypted")
+          .select("occupancy_id, rent_amount_decrypted")
+          .in("occupancy_id", ids);
+        if (amountsError) throw amountsError;
+        decryptedRentById = new Map(
+          (amounts ?? [])
+            .filter(
+              (r: { rent_amount_decrypted: number | null }) => r.rent_amount_decrypted != null,
+            )
+            .map((r: { occupancy_id: string; rent_amount_decrypted: number }) => [
+              r.occupancy_id,
+              r.rent_amount_decrypted,
+            ]),
+        );
+      }
+      return (data ?? []).map((o) => ({
+        ...o,
+        rent_amount: decryptedRentById.get(o.occupancy_id) ?? o.rent_amount,
+      }));
     },
   });
 
@@ -119,10 +151,15 @@ function RentalHouseDetailPage() {
     queryKey: ["rental-requests-for-house", houseId],
     enabled: !!woredaId,
     queryFn: async () => {
+      // rent_amount deliberately not selected -- unused in this list (only
+      // request_number/type/resident/status render below); the decrypted
+      // value lives in rental_occupancy_request_decrypted, not this base
+      // table, so there's no reason to pull it for a field nothing here
+      // displays.
       const { data, error } = await supabase
         .from("rental_occupancy_request")
         .select(
-          `rental_request_id, request_number, request_type, status, rent_start_date, rent_amount, created_at,
+          `rental_request_id, request_number, request_type, status, rent_start_date, created_at,
            resident:resident_id ( full_name_am, full_name )`,
         )
         .eq("rental_house_id", houseId)

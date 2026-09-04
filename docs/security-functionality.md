@@ -102,6 +102,120 @@ enforced end to end, Vercel auto-provisions and renews certificates, and
 `Strict-Transport-Security` (2 years, `includeSubDomains`) is set on every
 response by `src/lib/security-headers.ts`.
 
+## Encryption at rest
+
+INSA Enforcer 1.3 / 3.9. Implemented by
+`supabase/migrations/00000000000023_pii_encryption.sql` and
+`00000000000024_rental_occupancy_request_decrypted_view.sql` (Phase C of the
+remediation plan). **Stages 1–3 are applied to production and verified live
+— see "Rollout status" below for what stage 4 still leaves plaintext.**
+
+**Scope.** `resident.phone_number`, `resident.email`, `household.phone_number`,
+`household.email`, `service_request.applicant_phone` (PII), and
+`payment.amount`, `rental_occupancy.rent_amount`,
+`rental_occupancy_request.rent_amount` (financial). Each gains a `*_enc bytea`
+companion column; the plaintext column stays authoritative until stage 4.
+
+**Cipher and keys.** AES-256 via pgcrypto's `pgp_sym_encrypt`. The root key is
+a Supabase Vault secret named `pii_root_key`, created by hand and never
+committed — the same discipline `CLAUDE.md` applies to the deploy tokens and
+`HARARI_EC_PRIVATE_KEY`. **Losing it means losing the ciphertext; it is not
+recoverable from a database backup.**
+
+**Keys are derived per tenant** — `hmac(woreda_id, root_key, 'sha256')` — which
+is what makes it safe to expose `decrypt_pii_text()` to `authenticated` at all.
+The decrypting views must be `security_invoker = on` so the underlying table's
+RLS still gates every row (the lesson of
+`00000000000006_view_security_invoker.sql`), and under invoker semantics the
+caller necessarily holds `EXECUTE` on the decrypt function. A per-tenant key
+plus an explicit tenant check in that function means the exposed primitive is
+not generic: another woreda's ciphertext is rejected by the check, and passing
+your own `woreda_id` to bypass the check derives the wrong key and fails to
+decrypt. A stolen dump plus one compromised staff account therefore exposes one
+tenant, not the platform.
+
+**What this does and does not protect — and its real scope.** It closes the
+stolen-dump/backup case for the columns actually covered:
+`resident.phone_number`/`.email`, `household.phone_number`/`.email`,
+`service_request.applicant_phone`, `payment.amount`,
+`rental_occupancy.rent_amount`, `rental_occupancy_request.rent_amount`.
+Vault's root key is held outside the database, so a dump yields ciphertext for
+those fields — **not "the database's PII" as a whole**. Left plaintext on the
+same rows: `resident.national_id_no` (a stronger identifier than the phone
+number that _is_ encrypted), `full_name`, `date_of_birth`, `father_name`,
+`mother_full_name`, `birth_place`, `work_info`, `former_residence`;
+`household.address_line`, `gps_lat`/`gps_lng`, and — a genuine scope
+oversight, not a deliberate exclusion — `household.rent_amount` (unlike
+`rental_occupancy.rent_amount`, which is in scope); `service_request`'s
+`applicant_name`, `details`, `incident_place`, `fee_amount`; and
+`issued_letter_html`, which renders a resident's name and address into stored
+HTML. A stolen dump still yields near-complete civil-registration PII per
+resident; this migration materially narrows what it exposes for the
+highest-sensitivity contact and financial fields, it does not make a dump
+safe to lose. It also deliberately does **not** protect against a compromised
+staff session reading its own tenant's data — that user can already read that
+PII legitimately. RLS remains the tenant boundary; this sits under it.
+
+**Search tradeoff — a real, user-visible behaviour change.** A randomized
+ciphertext cannot be searched, so `resident.phone_number` also carries a
+deterministic `phone_number_blind_index` (HMAC under the same per-tenant key,
+over a normalized number). This makes **exact-match** phone lookup work and
+partial/substring lookup impossible: the residents list page's current
+`.ilike` "starts with 091…" search cannot survive the cutover, and a staff
+member typing a partial number will get zero results rather than a filtered
+list. That is a deliberate accepted cost, not an oversight — it is called out
+here, in the migration header, and in the remediation plan.
+
+Numbers are normalized before hashing so the formats staff actually type fold
+together — `0911223344`, `+251 91 122 3344`, `251911223344` and `911223344` all
+index as the 9-digit national significant number. Anything unrecognisable is
+indexed as its own digit string. Getting this rule wrong fails _silently_ (the
+resident simply is not found), which is why it is pinned explicitly in
+`normalize_phone()` and covered by the dry run.
+
+**Rollout status.**
+
+| Stage | What                                                                                                                                               | State                                                                                                                                                                                                                                                           |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | Columns, crypto functions, sync triggers, decrypting views                                                                                         | **Applied to production**                                                                                                                                                                                                                                       |
+| 2     | Create the Vault secret, backfill existing rows                                                                                                    | **Applied to production** — all pre-existing rows backfilled, verified via `pii_encryption_status()`                                                                                                                                                            |
+| 3     | Move read paths onto the `*_decrypted` views, call site by call site                                                                               | **Applied to production** — every application read call site now uses the decrypted view, verified live against production data; `00000000000024_...sql` (a sixth decrypting view, `rental_occupancy_request_decrypted`, closing a gap stage 1 left) is applied |
+| 4     | Drop plaintext columns (separate migration, after burn-in) — the amount>0 guard's stage-4 mechanism is a genuinely open decision, not yet resolved | Not started                                                                                                                                                                                                                                                     |
+
+**Stage 3 notes.** The residents-list phone search (`woreda.residents.index.tsx`)
+changed from `.ilike` substring matching to an exact match against the
+deterministic blind index (`my_phone_blind_index` RPC) — a disclosed,
+intentional UX regression: a staff member searching a partial phone number now
+gets no match on that field (name/resident-number/national-ID search is
+unaffected). `household.rent_amount` remains plaintext-only and unaddressed by
+this stage — it was never brought into stage 1's scope (see the migration's own
+header comment) and has no `_enc` column or decrypted view to cut over to.
+
+**NULL-decrypt fallback policy, by field type.** A decrypt failure (Vault
+secret rotated/absent, corrupt ciphertext) returns NULL, not an error — stage
+1's fail-soft design. What a read call site does with that NULL differs
+deliberately by field type: **financial reads fall back to the still-present
+plaintext column** (`amount_decrypted ?? amount`, consistently across the
+dashboard, revenue, reports and credential-payment call sites) so a decrypt
+failure degrades a number on screen rather than silently reporting zero/wrong
+revenue. **PII text reads on display-only pages fail closed** (render "—"),
+since showing nothing is preferable to a wrong-looking blank field being
+mistaken for "not recorded." **The two edit forms** (resident and household)
+are the one place a NULL decrypt is genuinely destructive rather than
+cosmetic — the form would otherwise pre-fill an empty phone/email, and saving
+overwrites the still-good plaintext with it — so those also fall back to
+plaintext, matching the financial policy. At stage 4, once plaintext columns
+are dropped, every one of these fallbacks needs to become a hard, visible
+error instead: there will be no plaintext left to fall back to.
+
+Stage 1 is inert by design: until the Vault secret exists, `encrypt_pii_*()`
+returns NULL and the sync triggers write NULL rather than raising, so applying
+the migration cannot break live writes. `pii_encryption_status()` (callable by
+`service_role` and, indirectly, by an operator with database access) reports
+whether the key is present and how far the backfill has got — check it rather
+than assuming. `./scripts/run-phase-c-dryrun.sh <ref>` re-runs the full
+verification suite inside a rolled-back transaction.
+
 ## Logging
 
 **What is logged:**

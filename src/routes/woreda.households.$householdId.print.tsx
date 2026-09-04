@@ -85,6 +85,32 @@ function HouseholdProfilePrintPage() {
     },
   });
 
+  // household_decrypted isn't in the generated types yet (00000000000023_
+  // pii_encryption.sql) -- same untyped-client cast pattern already used
+  // elsewhere in this codebase for pre-typegen tables. Queried separately
+  // from the query above rather than swapping its `.from()` in place: that
+  // query embeds kebele/head/spouse/alt_head via FK-derived PostgREST joins,
+  // which are not guaranteed to resolve through a view the same way they do
+  // through the base table.
+  const { data: contact, isPending: contactPending } = useQuery({
+    queryKey: ["household-print-contact-decrypted", householdId, woredaId],
+    enabled: !!woredaId && hasPermission(P.HOUSEHOLD_READ),
+    queryFn: async () => {
+      const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const { data, error } = await db
+        .from("household_decrypted")
+        .select("phone_number_decrypted, email_decrypted")
+        .eq("household_id", householdId)
+        .eq("woreda_id", woredaId as string)
+        .maybeSingle();
+      if (error) throw error;
+      return data as {
+        phone_number_decrypted: string | null;
+        email_decrypted: string | null;
+      } | null;
+    },
+  });
+
   if (!hasPermission(P.HOUSEHOLD_READ)) {
     return (
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-800">
@@ -94,7 +120,12 @@ function HouseholdProfilePrintPage() {
     );
   }
 
-  if (isPending) return <div className="py-20 text-center text-sm text-slate-500">Loading…</div>;
+  // Waits for the decrypted contact query too -- otherwise the "አትም / Print"
+  // button (PrintDocumentShell's handlePrint screenshots the live DOM on
+  // click, with no readiness check of its own) could be clicked before
+  // contact resolves, baking a blank Phone/Email into the generated PDF.
+  if (isPending || contactPending)
+    return <div className="py-20 text-center text-sm text-slate-500">Loading…</div>;
   if (!household) return <div className="py-20 text-center text-sm text-slate-500">Not found</div>;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -156,8 +187,13 @@ function HouseholdProfilePrintPage() {
             labelEn="Kebele"
             value={kebele?.kebele_number != null ? String(kebele.kebele_number) : "—"}
           />
-          <DocField labelAm="ስልክ ቁጥር" labelEn="Phone" value={h.phone_number || "—"} mono />
-          <DocField labelAm="ኢሜይል" labelEn="Email" value={h.email || "—"} />
+          <DocField
+            labelAm="ስልክ ቁጥር"
+            labelEn="Phone"
+            value={contact?.phone_number_decrypted || "—"}
+            mono
+          />
+          <DocField labelAm="ኢሜይል" labelEn="Email" value={contact?.email_decrypted || "—"} />
           <DocField labelAm="አድራሻ" labelEn="Address" value={h.address_line || "—"} span={3} />
         </DocFieldGrid>
       </DocSection>

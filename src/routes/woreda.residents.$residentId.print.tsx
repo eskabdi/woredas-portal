@@ -90,6 +90,32 @@ function ResidentProfilePrintPage() {
     },
   });
 
+  // resident_decrypted isn't in the generated types yet (00000000000023_
+  // pii_encryption.sql) -- same untyped-client cast pattern already used
+  // elsewhere in this codebase for pre-typegen tables. Queried separately
+  // rather than swapping the query above in place: that query embeds
+  // household/kebele via a FK-derived PostgREST join, which is not
+  // guaranteed to resolve through a view the same way it does through the
+  // base table.
+  const { data: contact, isPending: contactPending } = useQuery({
+    queryKey: ["resident-print-contact-decrypted", residentId, woredaId],
+    enabled: !!woredaId && hasPermission(P.RESIDENT_READ),
+    queryFn: async () => {
+      const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const { data, error } = await db
+        .from("resident_decrypted")
+        .select("phone_number_decrypted, email_decrypted")
+        .eq("resident_id", residentId)
+        .eq("woreda_id", woredaId as string)
+        .maybeSingle();
+      if (error) throw error;
+      return data as {
+        phone_number_decrypted: string | null;
+        email_decrypted: string | null;
+      } | null;
+    },
+  });
+
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -118,7 +144,12 @@ function ResidentProfilePrintPage() {
     );
   }
 
-  if (isPending) return <div className="py-20 text-center text-sm text-slate-500">Loading…</div>;
+  // Waits for the decrypted contact query too -- otherwise the "አትም / Print"
+  // button (PrintDocumentShell's handlePrint screenshots the live DOM on
+  // click, with no readiness check of its own) could be clicked before
+  // contact resolves, baking a blank Phone/Email into the generated PDF.
+  if (isPending || contactPending)
+    return <div className="py-20 text-center text-sm text-slate-500">Loading…</div>;
   if (!r) return <div className="py-20 text-center text-sm text-slate-500">Not found</div>;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -220,8 +251,13 @@ function ResidentProfilePrintPage() {
 
       <DocSection number="02" titleAm="አድራሻ" titleEn="Contact & Residence">
         <DocFieldGrid>
-          <DocField labelAm="ስልክ ቁጥር" labelEn="Phone" value={r.phone_number || "—"} mono />
-          <DocField labelAm="ኢሜይል" labelEn="Email" value={r.email || "—"} />
+          <DocField
+            labelAm="ስልክ ቁጥር"
+            labelEn="Phone"
+            value={contact?.phone_number_decrypted || "—"}
+            mono
+          />
+          <DocField labelAm="ኢሜይል" labelEn="Email" value={contact?.email_decrypted || "—"} />
           <DocField
             labelAm="የቤት ዓይነት"
             labelEn="House Type"
