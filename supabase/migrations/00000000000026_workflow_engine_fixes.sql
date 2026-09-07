@@ -183,19 +183,49 @@ END $sec$;
 GRANT SELECT ON public.approval_queue_v TO authenticated;
 GRANT SELECT ON public.approval_queue_v TO service_role;
 
--- Drop the anon grant the baseline created. Nothing unauthenticated reads this
--- view -- its only consumer is src/routes/woreda.approvals.tsx, which runs
--- authenticated -- and the grant is what turns a lost reloption from "a bug"
--- into "an unauthenticated dump of four modules across every tenant". It is not
--- exploitable today (every base-table policy is TO authenticated, so anon
--- matches no policy and reads zero rows) but there is no reason to keep the
--- amplifier attached to a surface nobody uses.
+-- Drop the anon grants the baseline created on the two views that carry them.
 --
--- NOTE for whoever reads this next: household_member_roster is ALSO granted to
--- anon and carries resident names and dates of birth. It is untouched here
--- because this migration does not otherwise modify it, but it is the same
--- latent hazard and worth revoking separately.
-REVOKE SELECT ON public.approval_queue_v FROM anon;
+-- Context, so this is not later "corrected" back: the baseline grants ALL
+-- privileges to anon on all 38 public objects. For TABLES that is Supabase's
+-- normal posture -- anon holds the grant and RLS is the gate, and every table
+-- here has RLS enabled. Revoking those would fight the convention for no gain.
+--
+-- VIEWS are the exception, and that is why these two are treated differently.
+-- RLS does not apply to a view; it applies to the view's BASE tables, and only
+-- when security_invoker is on. So for a view the containment is a single
+-- reloption -- one that CREATE OR REPLACE silently drops, as this very
+-- migration nearly proved. Keeping anon grants on top of that means one
+-- forgotten WITH clause is the difference between a bug and a disclosure.
+-- Neither view has any unauthenticated consumer; both were checked before this
+-- was written.
+--
+--   approval_queue_v is a UNION and therefore read-only (is_updatable = NO).
+--   Losing security_invoker there exposes every tenant's service requests,
+--   credential requests, vital events and rental occupancy requests to read.
+--
+--   household_member_roster is a simple view over `resident` and IS
+--   auto-updatable (is_insertable_into = YES, is_updatable = YES), and anon
+--   holds INSERT, UPDATE and DELETE on it as well as SELECT. It exposes
+--   full_name_am, full_name, date_of_birth, sex, relation_to_head and
+--   residency_status. Losing security_invoker there is not just an
+--   unauthenticated read of resident PII across every tenant -- it is an
+--   unauthenticated WRITE path into the resident table. It has zero consumers
+--   anywhere in the app, backend included, so every privilege goes.
+--
+-- The six *_decrypted views from migrations 23/24 already hold no anon grant
+-- (verified against the live project); nothing to do for them.
+-- REVOKE ALL, not REVOKE SELECT: the baseline granted anon DELETE, INSERT,
+-- SELECT and UPDATE on both views, so revoking SELECT alone would have left
+-- three write privileges attached and looked like it had worked. The
+-- verification below is what caught that.
+--
+-- `authenticated` keeps its grants here. That is a different trust boundary --
+-- a signed-in staff member whose reads and writes are scoped by the base
+-- tables' RLS -- and narrowing it is not part of this change. Worth noting for
+-- later though: household_member_roster is auto-updatable, so authenticated's
+-- INSERT/UPDATE/DELETE on it is a write path into `resident` that no code uses.
+REVOKE ALL ON public.approval_queue_v FROM anon;
+REVOKE ALL ON public.household_member_roster FROM anon;
 
 -- ---------------------------------------------------------------------------
 -- 2. enforce_workflow_transition() -- revoked_by_user_id is append-only too

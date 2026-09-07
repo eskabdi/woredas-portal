@@ -262,3 +262,54 @@ regression tests (`scripts/__tests__/check-role-perms-drift.test.ts`). The other
 fourteen findings remain outside what any gate in this repo can see — which is
 the same argument `docs/rbac-security-forensic-review.md` makes for the review
 chain existing at all.
+
+---
+
+## 7. Deploy ordering: migrations and frontend are not independent
+
+Discovered while preparing the live apply. **Migrations 25+26 and the frontend
+cannot be deployed independently — each breaks the other's counterpart.**
+
+The seeded FSM does **not** contain the transitions the currently-deployed
+frontend writes:
+
+| Deployed UI action | Writes                                 | Seeded? |
+| ------------------ | -------------------------------------- | ------- |
+| Verification Pass  | `under_review -> pending_approval`     | **No**  |
+| Approval Approve   | `pending_approval -> awaiting_payment` | **No**  |
+
+That is by design — decision D-2 made `verified` and `approved` real stops — but
+it means:
+
+- **Migration first, old frontend still live:** Pass and Approve raise. The core
+  approval flow stops until the new frontend deploys. Nothing is corrupted; users
+  see an error toast.
+- **Frontend first, old database still live:** the new print flow writes
+  `printing` to `residence_credential`, which is absent from the old CHECK
+  constraint (migration 25 is what adds it). The write fails **after** the job
+  has gone to the printer — producing a physical card the database believes was
+  never printed. That is precisely the failure mode the two-phase print step was
+  built to eliminate.
+
+**Order: migrations first, frontend immediately after.** The frontend-first
+window has a physical-world consequence that the migration-first window does
+not — an error toast on Pass is recoverable in a way a printed-but-unrecorded
+card is not. Both migrations go in **one transaction** (see
+`scripts/apply-workflow-migrations.sh`); 25 alone is a broken state, since it is
+26 that fixes the `approved` dead end, the hidden approval-queue rows and the
+green verdict on a card still at the printer.
+
+Keep the gap short and prefer off-hours. Requests sitting mid-approval when the
+migration lands are not stuck — the new UI walks them through `verified` and
+`approved` normally once it is live.
+
+### The apply path
+
+`scripts/apply-workflow-migrations.sh <ref> [--dry-run]` is the committed,
+reviewable path, and `.claude/settings.json` allows exactly that script rather
+than pre-approving arbitrary SQL against the project. It strips both migrations'
+own `BEGIN`/`COMMIT` and wraps the concatenation in one transaction, so
+`--dry-run` genuinely rolls back — leaving an inner `COMMIT` in place would
+commit migration 25 for real before the wrapper's `ROLLBACK` was ever reached.
+The dry run and the apply send byte-identical SQL apart from the closing
+keyword, so what was rehearsed is what runs.
