@@ -1,4 +1,9 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(./scripts/apply-workflow-migrations.sh:*)"
+    ]
+  },
   "hooks": {
     "SessionStart": [
       {

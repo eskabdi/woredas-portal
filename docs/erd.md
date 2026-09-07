@@ -1,13 +1,18 @@
 # Entity Relationship Diagram
 
 INSA Enforcer Phase 1.3. Built directly from every migration under
-`supabase/migrations/` (the baseline dump plus 22 incremental migrations) —
-**42 tables**, not the 36 in the baseline alone: `console_role`,
+`supabase/migrations/` (the baseline dump plus 25 incremental migrations) —
+**43 tables**, not the 36 in the baseline alone: `console_role`,
 `console_role_permission`, `user_permission_override`, `resident_document`,
-`id_card_template_field_draft` and `rate_limit_bucket` were all added
-afterward and are real, live tables the baseline-only count misses.
-`rate_limit_bucket` is an infra-support table, not a domain one — see
+`id_card_template_field_draft`, `rate_limit_bucket` and `workflow_transition`
+were all added afterward and are real, live tables the baseline-only count
+misses. `rate_limit_bucket` is an infra-support table, not a domain one — see
 "Sequence / counter tables" below for where it's documented.
+`workflow_transition` (migration `00000000000025`) is the platform-level
+status-machine reference table: it deliberately carries **no `woreda_id`**,
+because which transitions are legal is fixed for the platform — a tenant may
+change who holds a permission but can never remove a gate. It is therefore not
+part of the per-tenant domain model below.
 
 **Encrypted companion columns:** migration `00000000000023` (INSA remediation
 Phase C) adds a `*_enc bytea` column beside each PII/financial column in scope

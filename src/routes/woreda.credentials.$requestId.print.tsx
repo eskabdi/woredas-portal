@@ -520,39 +520,49 @@ function PrintPage() {
     setBusy(true);
     try {
       const nowIso = new Date().toISOString();
-      const { data: credRow, error: credErr } = await supabase
-        .from("residence_credential")
-        .update({ status: "printed", printed_at: nowIso })
-        .eq("credential_id", cred.credential_id)
-        .select("credential_id")
-        .maybeSingle();
-      if (credErr) throw credErr;
-      if (!credRow) throw new Error("Credential not updated");
 
-      await supabase.from("credential_status_history").insert({
-        credential_id: cred.credential_id,
-        old_status: "printing",
-        new_status: "printed",
-        changed_by_user_id: actorUserId,
-        change_reason: "Officer confirmed the card printed correctly",
-      });
+      // Two independent writes with no shared transaction: if the second one
+      // fails the step must stay resumable, so each is skipped when its row is
+      // already at the target. Without this a partial success left the
+      // credential `printed` and the request `paid`, which hid the confirm
+      // panel and stranded the request with no path forward.
+      if (cred.status === "printing") {
+        const { data: credRow, error: credErr } = await supabase
+          .from("residence_credential")
+          .update({ status: "printed", printed_at: nowIso })
+          .eq("credential_id", cred.credential_id)
+          .select("credential_id")
+          .maybeSingle();
+        if (credErr) throw credErr;
+        if (!credRow) throw new Error("Credential not updated");
 
-      const { data: reqRow, error: reqErr } = await supabase
-        .from("credential_request")
-        .update({ status: "printed" })
-        .eq("credential_request_id", request.credential_request_id)
-        .select("credential_request_id")
-        .maybeSingle();
-      if (reqErr) throw reqErr;
-      if (!reqRow) throw new Error("Request not updated");
+        await supabase.from("credential_status_history").insert({
+          credential_id: cred.credential_id,
+          old_status: "printing",
+          new_status: "printed",
+          changed_by_user_id: actorUserId,
+          change_reason: "Officer confirmed the card printed correctly",
+        });
+      }
 
-      await supabase.from("credential_request_status_history").insert({
-        credential_request_id: request.credential_request_id,
-        old_status: "paid",
-        new_status: "printed",
-        changed_by_user_id: actorUserId,
-        change_reason: "Officer confirmed the card printed correctly",
-      });
+      if (request.status === "paid") {
+        const { data: reqRow, error: reqErr } = await supabase
+          .from("credential_request")
+          .update({ status: "printed" })
+          .eq("credential_request_id", request.credential_request_id)
+          .select("credential_request_id")
+          .maybeSingle();
+        if (reqErr) throw reqErr;
+        if (!reqRow) throw new Error("Request not updated");
+
+        await supabase.from("credential_request_status_history").insert({
+          credential_request_id: request.credential_request_id,
+          old_status: "paid",
+          new_status: "printed",
+          changed_by_user_id: actorUserId,
+          change_reason: "Officer confirmed the card printed correctly",
+        });
+      }
 
       toast.success("ህትመቱ ተረጋግጧል / Print confirmed");
       queryClient.invalidateQueries({ queryKey: ["credential-for-print", cred.credential_id] });
@@ -570,6 +580,14 @@ function PrintPage() {
   // printed again on the SAME record -- no new request, no new credential.
   const handlePrintFailed = async () => {
     if (!cred || !request || !actorUserId) return;
+    // Only meaningful while the card is still at the printer. In the recovery
+    // state the panel also covers (credential already `printed`, request still
+    // `paid`) the card physically exists, so `printed -> ready_to_print` is
+    // both wrong and not an FSM-legal transition.
+    if (cred.status !== "printing") {
+      toast.error("ካርዱ አስቀድሞ ታትሟል / This card is already printed — confirm it instead");
+      return;
+    }
     setBusy(true);
     try {
       const { data: credRow, error: credErr } = await supabase
@@ -629,7 +647,15 @@ function PrintPage() {
       // A jammed or misfed printer used to leave the credential at `printed`
       // anyway, spending it and forcing the resident to start a new request.
       // An officer now confirms the physical card before it counts as printed.
-      if (!isReprint && cred.status === "ready_to_print") {
+      // Gate on the credential's own status, NOT on `!isReprint`. A retry
+      // after a failed print is a reprint by definition (a print-log row
+      // already exists), so `!isReprint` skipped the move to `printing` on
+      // exactly the attempt the confirmation step exists for -- the card
+      // stayed at `ready_to_print`, the confirm panel never rendered again,
+      // and the credential could never be completed. `ready_to_print` is the
+      // only FSM-legal source for `printing`, so this check is sufficient on
+      // its own: a genuine reprint of an already-`active` card does not move.
+      if (cred.status === "ready_to_print") {
         const { error: credErr } = await supabase
           .from("residence_credential")
           .update({ status: "printing" })
@@ -955,7 +981,11 @@ function PrintPage() {
               {/* The card has been sent to the printer. Nothing counts as
                   printed until an officer confirms a good card came out --
                   a jam or misfeed must not spend the credential. */}
-              {cred.status === "printing" && (
+              {/* Also renders on the inconsistent pair a partially-failed
+                  confirmation leaves behind (credential `printed`, request
+                  still `paid`) so the officer can finish the step. */}
+              {(cred.status === "printing" ||
+                (cred.status === "printed" && request?.status === "paid")) && (
                 <div className="mb-4 rounded-lg border-2 border-indigo-300 bg-indigo-50 p-4">
                   <div className="font-noto-ethiopic text-sm font-semibold text-indigo-900">
                     ካርዱ በትክክል ታትሟል?
@@ -968,6 +998,22 @@ function PrintPage() {
                     <span className="mt-1 block">
                       / If the card did not come out properly, choose “Not printed”. You can print
                       again on the same credential — the resident does not start over.
+                    </span>
+                    {/* A reprint carries the SAME signed QR and credential number
+                        as the misfeed -- verification reads the credential's
+                        status, not which physical card was scanned. So once the
+                        good card is issued, a surviving reject verifies as
+                        genuine too. Only physical destruction closes that, and
+                        no code here can enforce it. */}
+                    <span className="mt-2 block font-semibold text-indigo-900">
+                      <span className="font-noto-ethiopic">
+                        በአግባቡ ያልታተመውን ካርድ ወዲያውኑ ያጥፉ። ተመሳሳይ የQR ኮድ ስላለው በኋላ እንደ ትክክለኛ ሊታይ ይችላል።
+                      </span>
+                      <span className="mt-1 block">
+                        / Destroy the misprinted card now. It carries the same QR code as the
+                        reprint, so once the good card is issued this one would verify as genuine
+                        too.
+                      </span>
                     </span>
                   </p>
                   <div className="mt-3 flex gap-2">

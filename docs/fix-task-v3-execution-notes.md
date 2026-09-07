@@ -175,3 +175,141 @@ Landing order is unchanged: **1 → 9 (+1b) → 2 → 3 → 4 + 13 → 5 → 6 �
 5. CI gates: `bun run test` · `bun run build` · `npx tsc --noEmit` ·
    `bun run check:role-perms-drift` · `bun run scripts/generate-permissions-doc.ts --check`.
 6. `secret-sweep`, then one PR per task (1+1b together; 4+13 together).
+
+---
+
+## 6. Post-merge code review of Task 1 (2026-09-07)
+
+Task 1 merged as `186706d` without the review chain, because the merge was
+requested directly. The chain was run afterward, before the migration reached
+any database. It found **15 findings**, four of them release-blocking. All were
+reproduced against the repo before being acted on; the fixes ship in
+`00000000000026_workflow_engine_fixes.sql` and the accompanying UI changes.
+
+### Blocking, fixed
+
+| #   | Finding                                                                                                                                                                                                                                                                                                                         | Fix                                                                                    |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| R-1 | `approved` was a dead end. `PaymentCard`'s body was gated on `awaiting_payment` alone, so the fee-raise step inside `handleRecord` — the only writer of that status — was unreachable. Every request approved after Task 1 shipped would have frozen.                                                                           | Card body also renders at `approved`.                                                  |
+| R-2 | A failed print could never be retried to completion. `handlePrint` moved the credential to `printing` only when `!isReprint`, and one print-log row makes `isReprint` permanently true — so the retry stayed at `ready_to_print` and the confirmation panel never reappeared. This defeated the exact feature it was built for. | Gate on `cred.status === "ready_to_print"`, the FSM-legal source, not on `!isReprint`. |
+| R-3 | `approval_queue_v` did not know about `verified` or `approved`, the two resting stops the new FSM introduces — so both work items vanished from `/woreda/approvals`, the single inbox those roles work from.                                                                                                                    | View recreated with both statuses added to the credential arm.                         |
+| R-4 | The public verification page treated `printing` as a fully valid credential. Scanning a card still at the printer — including a failed print's discarded misfeed — returned the green "valid" verdict.                                                                                                                          | `notYetIssued` now covers `printing` as well as `ready_to_print`.                      |
+
+### Non-blocking, also fixed
+
+`revoked_by_user_id` was clearable by a status-preserving PATCH (the clearing
+guard named only the verifier and approver columns, and `force_actor_columns()`
+ignores an explicit null); three mutations inferred success from `error === null`
+against the repo's own house rule, one of them discarding the result entirely;
+a partially-failed print confirmation stranded the request with the confirm
+panel hidden; `verified`/`printing` and four other workflow statuses had no
+Amharic chip labels in an Amharic-first portal; `credential.preview_print` was
+listed twice in three role branches; the enforcement trigger ran on every
+update of both tables; migration 25's header claimed to be ADDITIVE while
+dropping a CHECK constraint and two policies; and `docs/erd.md` still said 42
+tables.
+
+`approval_returned` was retired with no exit — harmless today (zero live rows,
+and nothing writes it any more) but a permanent freeze for any row that reached
+it. Migration 26 seeds one recovery transition out of it and none into it.
+
+### Caught by the security pass, not the code review
+
+The code review's approval-queue fix (R-3) was written as a plain
+`CREATE OR REPLACE VIEW`. That is **not** safe on this view, and the security
+pass caught it before it reached a database:
+
+- `CREATE OR REPLACE VIEW` does **not** preserve `reloptions`. Replacing the
+  view without restating `WITH (security_invoker = on)` resets it to NULL —
+  verified empirically against this project (`before: {security_invoker=on}`,
+  `after: null`).
+- `approval_queue_v` is owned by `postgres`, which carries `rolbypassrls`, and
+  is `GRANT SELECT ... TO anon`.
+
+So the fix as first written would have stopped the view applying the underlying
+tables' RLS and made **every woreda's** service requests, credential requests,
+vital events and rental occupancy requests readable by an unauthenticated
+caller — the top entry on this repo's own severity ladder, introduced by a
+change whose stated purpose was making two statuses visible.
+
+`00000000000006_view_security_invoker.sql` exists because this project already
+lost the option once in exactly this way. Migration 26 now restates the option
+and **asserts it before COMMIT**, so a future replace that forgets the clause
+fails the migration instead of silently opening the view. A negative control
+(the same migration with the clause removed) was confirmed to fail with that
+assertion, and the passing run was confirmed not to disturb
+`household_member_roster`, the other `security_invoker` view.
+
+The lesson generalises: on this project a view replacement is a security change,
+not a cosmetic one.
+
+### Deferred, with reasons
+
+| #    | Finding                                                                                                                                                                                                                                      | Why not now                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R-15 | `log_workflow_transition()` writes a `STATUS_*` audit row for every transition while the app's own handlers still insert their semantic rows (`REQUEST_APPROVED`, `CREDENTIAL_PRINTED`), so one approval click produces three audit entries. | Both halves are load-bearing and neither is simply removable: the trigger row is the guarantee that a **direct PostgREST call** leaves a trail (that is the INV-10 half of F-01), and the app rows carry context the trigger cannot see (reprint reason, printer, waiver). Collapsing them is an audit-model change, not a bug fix, and doing it under deploy pressure risks losing the guarantee that motivated the trigger. Tracked for Task 10, which already reworks the print/handover audit path. |
+
+The one Amharic string this work introduces, `በህትመት ላይ` (`printing`), was
+approved by the system owner on 2026-09-07. Every other label reuses a string
+already reviewed elsewhere in the app.
+
+### What CI could not have caught
+
+`bun run check:role-perms-drift` was structurally blind to the duplicated
+permission: it collapses each role's branch to a `Set` before anything compares
+it. The parser now rejects a key listed twice in one branch, with two
+regression tests (`scripts/__tests__/check-role-perms-drift.test.ts`). The other
+fourteen findings remain outside what any gate in this repo can see — which is
+the same argument `docs/rbac-security-forensic-review.md` makes for the review
+chain existing at all.
+
+---
+
+## 7. Deploy ordering: migrations and frontend are not independent
+
+Discovered while preparing the live apply. **Migrations 25+26 and the frontend
+cannot be deployed independently — each breaks the other's counterpart.**
+
+The seeded FSM does **not** contain the transitions the currently-deployed
+frontend writes:
+
+| Deployed UI action | Writes                                 | Seeded? |
+| ------------------ | -------------------------------------- | ------- |
+| Verification Pass  | `under_review -> pending_approval`     | **No**  |
+| Approval Approve   | `pending_approval -> awaiting_payment` | **No**  |
+
+That is by design — decision D-2 made `verified` and `approved` real stops — but
+it means:
+
+- **Migration first, old frontend still live:** Pass and Approve raise. The core
+  approval flow stops until the new frontend deploys. Nothing is corrupted; users
+  see an error toast.
+- **Frontend first, old database still live:** the new print flow writes
+  `printing` to `residence_credential`, which is absent from the old CHECK
+  constraint (migration 25 is what adds it). The write fails **after** the job
+  has gone to the printer — producing a physical card the database believes was
+  never printed. That is precisely the failure mode the two-phase print step was
+  built to eliminate.
+
+**Order: migrations first, frontend immediately after.** The frontend-first
+window has a physical-world consequence that the migration-first window does
+not — an error toast on Pass is recoverable in a way a printed-but-unrecorded
+card is not. Both migrations go in **one transaction** (see
+`scripts/apply-workflow-migrations.sh`); 25 alone is a broken state, since it is
+26 that fixes the `approved` dead end, the hidden approval-queue rows and the
+green verdict on a card still at the printer.
+
+Keep the gap short and prefer off-hours. Requests sitting mid-approval when the
+migration lands are not stuck — the new UI walks them through `verified` and
+`approved` normally once it is live.
+
+### The apply path
+
+`scripts/apply-workflow-migrations.sh <ref> [--dry-run]` is the committed,
+reviewable path, and `.claude/settings.json` allows exactly that script rather
+than pre-approving arbitrary SQL against the project. It strips both migrations'
+own `BEGIN`/`COMMIT` and wraps the concatenation in one transaction, so
+`--dry-run` genuinely rolls back — leaving an inner `COMMIT` in place would
+commit migration 25 for real before the wrapper's `ROLLBACK` was ever reached.
+The dry run and the apply send byte-identical SQL apart from the closing
+keyword, so what was rehearsed is what runs.
