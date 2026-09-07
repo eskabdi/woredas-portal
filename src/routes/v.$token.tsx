@@ -178,16 +178,25 @@ function CredentialVerificationPage() {
   const registry = data.registry;
   const notFound = !registry && !data.registryError;
 
-  // Enumerated rather than negated: "printed" is a normal state for a card in
-  // someone's wallet, and treating anything-but-active as bad would tell a
-  // holder their valid card had been revoked.
+  // Enumerated rather than negated: treating anything-but-active as bad would
+  // tell a holder their valid card had been revoked.
   const WITHDRAWN = ["revoked", "suspended", "replaced"];
   const withdrawn = !!registry && WITHDRAWN.includes(registry.status);
-  // `printing` counts as not-yet-issued: the card is at the printer and has
-  // not been handed to anyone. The window includes a failed print whose
-  // physical card is a discarded misfeed -- scanning that must never return
-  // the green "valid" verdict.
+
+  // Not yet a physical card in anyone's hands: still at (or heading to) the
+  // printer. The `printing` window includes a failed print whose physical card
+  // is a discarded misfeed -- scanning that must never return a green verdict.
   const notYetIssued = registry?.status === "ready_to_print" || registry?.status === "printing";
+
+  // `printed` is NOT "a card in someone's wallet" -- that was this file's
+  // previous assumption and it is wrong. The workflow spec is explicit that
+  // collection is its own step: `Printed -> (resident collects, officer records
+  // acknowledgment) -> Active` (docs/id-card-workflow.txt:136-139, and Stage 8
+  // at :493-509 with its own collection_date). Until an officer records the
+  // handover, a `printed` card is sitting in the woreda office addressed to
+  // nobody -- so a card lost, misfiled, or taken from the output tray in that
+  // window must not scan as a card in force.
+  const printedNotCollected = registry?.status === "printed";
   const expired = data.expired || registry?.status === "expired";
 
   return (
@@ -211,6 +220,16 @@ function CredentialVerificationPage() {
               <div className="font-noto-ethiopic font-bold text-amber-800">ገና አልተሰጠም</div>
               <div className="text-sm text-amber-700">
                 This card has been prepared but not yet issued to its holder.
+              </div>
+            </div>
+          </div>
+        ) : printedNotCollected ? (
+          <div className="flex items-center gap-3 bg-amber-50 px-5 py-4">
+            <Clock className="h-6 w-6 shrink-0 text-amber-600" />
+            <div>
+              <div className="font-noto-ethiopic font-bold text-amber-800">ታትሟል፤ ገና አልተሰጠም</div>
+              <div className="text-sm text-amber-700">
+                Genuine card, printed but not yet collected by its holder.
               </div>
             </div>
           </div>

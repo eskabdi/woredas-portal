@@ -999,6 +999,22 @@ function PrintPage() {
                       / If the card did not come out properly, choose “Not printed”. You can print
                       again on the same credential — the resident does not start over.
                     </span>
+                    {/* A reprint carries the SAME signed QR and credential number
+                        as the misfeed -- verification reads the credential's
+                        status, not which physical card was scanned. So once the
+                        good card is issued, a surviving reject verifies as
+                        genuine too. Only physical destruction closes that, and
+                        no code here can enforce it. */}
+                    <span className="mt-2 block font-semibold text-indigo-900">
+                      <span className="font-noto-ethiopic">
+                        በአግባቡ ያልታተመውን ካርድ ወዲያውኑ ያጥፉ። ተመሳሳይ የQR ኮድ ስላለው በኋላ እንደ ትክክለኛ ሊታይ ይችላል።
+                      </span>
+                      <span className="mt-1 block">
+                        / Destroy the misprinted card now. It carries the same QR code as the
+                        reprint, so once the good card is issued this one would verify as genuine
+                        too.
+                      </span>
+                    </span>
                   </p>
                   <div className="mt-3 flex gap-2">
                     <Button

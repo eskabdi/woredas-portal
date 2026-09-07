@@ -136,25 +136,66 @@ UNION ALL
      LEFT JOIN kebele_rental_house krh ON krh.rental_house_id = ror.rental_house_id
   WHERE ror.status = ANY (ARRAY['submitted'::text, 'under_review'::text, 'verified'::text, 'pending_approval'::text, 'returned'::text, 'awaiting_payment'::text]);
 
--- Fail the migration rather than commit a view that silently stopped applying
--- RLS. This assertion is cheap and it is the only thing standing between a
--- future CREATE OR REPLACE that forgets the WITH clause and a full cross-tenant
--- disclosure through a view that anon can read.
+-- Belt and braces: make the property hold, do not merely restate it. This is
+-- the same statement 00000000000006_view_security_invoker.sql:38 used to
+-- recover the option last time, and it is a no-op when the WITH clause above
+-- already did the job.
+ALTER VIEW public.approval_queue_v SET (security_invoker = on);
+
+-- Then assert it, across EVERY view that depends on the option -- not just the
+-- one this migration touches. Eight views in this schema carry
+-- security_invoker: approval_queue_v, household_member_roster, and the six
+-- *_decrypted views from migrations 23/24 which read PII. Any of them silently
+-- losing it is the same failure, so the check is cheap to generalise and the
+-- next occurrence gets caught wherever it happens.
+--
+-- The test is string-exact against 'security_invoker=on'. That is deliberate
+-- and fail-closed: a future author writing `security_invoker = true` (which is
+-- functionally identical) aborts the migration rather than passing quietly.
 DO $sec$
-DECLARE opts text[];
+DECLARE
+  v_name text;
+  v_opts text[];
+  v_missing text[] := ARRAY[]::text[];
 BEGIN
-  SELECT c.reloptions INTO opts
-    FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-   WHERE n.nspname = 'public' AND c.relname = 'approval_queue_v';
-  IF opts IS NULL OR NOT ('security_invoker=on' = ANY (opts)) THEN
+  FOREACH v_name IN ARRAY ARRAY[
+    'approval_queue_v', 'household_member_roster', 'resident_decrypted',
+    'household_decrypted', 'payment_decrypted', 'service_request_decrypted',
+    'rental_occupancy_decrypted', 'rental_occupancy_request_decrypted'
+  ] LOOP
+    SELECT c.reloptions INTO v_opts
+      FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+     WHERE n.nspname = 'public' AND c.relname = v_name AND c.relkind = 'v';
+    -- A view that does not exist is skipped, not failed: this migration must
+    -- stay applicable to a project that has not taken migrations 23/24.
+    IF FOUND AND (v_opts IS NULL OR NOT ('security_invoker=on' = ANY (v_opts))) THEN
+      v_missing := v_missing || v_name;
+    END IF;
+  END LOOP;
+
+  IF array_length(v_missing, 1) > 0 THEN
     RAISE EXCEPTION
-      'approval_queue_v lost security_invoker -- it is owned by a rolbypassrls role and granted to anon, so this would expose every tenant''s rows. Restore WITH (security_invoker = on).';
+      'These views lost security_invoker: %. They are owned by a rolbypassrls role, so without it they stop applying the underlying tables'' RLS and return every tenant''s rows. Restore WITH (security_invoker = on).',
+      array_to_string(v_missing, ', ');
   END IF;
 END $sec$;
 
-GRANT SELECT ON public.approval_queue_v TO anon;
 GRANT SELECT ON public.approval_queue_v TO authenticated;
 GRANT SELECT ON public.approval_queue_v TO service_role;
+
+-- Drop the anon grant the baseline created. Nothing unauthenticated reads this
+-- view -- its only consumer is src/routes/woreda.approvals.tsx, which runs
+-- authenticated -- and the grant is what turns a lost reloption from "a bug"
+-- into "an unauthenticated dump of four modules across every tenant". It is not
+-- exploitable today (every base-table policy is TO authenticated, so anon
+-- matches no policy and reads zero rows) but there is no reason to keep the
+-- amplifier attached to a surface nobody uses.
+--
+-- NOTE for whoever reads this next: household_member_roster is ALSO granted to
+-- anon and carries resident names and dates of birth. It is untouched here
+-- because this migration does not otherwise modify it, but it is the same
+-- latent hazard and worth revoking separately.
+REVOKE SELECT ON public.approval_queue_v FROM anon;
 
 -- ---------------------------------------------------------------------------
 -- 2. enforce_workflow_transition() -- revoked_by_user_id is append-only too
@@ -390,6 +431,47 @@ CREATE TRIGGER zz_enforce_workflow_transition
     OR OLD.revoked_by_user_id IS DISTINCT FROM NEW.revoked_by_user_id
   )
   EXECUTE FUNCTION public.enforce_workflow_transition();
+
+-- ---------------------------------------------------------------------------
+-- 4b. Lock the WHEN clauses to the table shape they assume
+--
+-- The clauses above name, per table, exactly the actor columns that table has.
+-- That is correct today but it is coupled to the schema with nothing enforcing
+-- it: if a later migration adds revoked_by_user_id to credential_request, or
+-- verified_by/approved_by to residence_credential, the function's guard for
+-- that column becomes live while the trigger's WHEN clause silently stops it
+-- ever firing -- an append-only guard that exists in the source, does nothing
+-- at runtime, and raises no error anywhere.
+--
+-- This assertion fails loudly at that point instead.
+-- ---------------------------------------------------------------------------
+
+DO $shape$
+DECLARE
+  v_policed CONSTANT text[] := ARRAY['verified_by_user_id','approved_by_user_id','revoked_by_user_id'];
+  v_tbl text;
+  v_actual text[];
+  v_expected text[];
+BEGIN
+  FOREACH v_tbl IN ARRAY ARRAY['credential_request','residence_credential'] LOOP
+    SELECT coalesce(array_agg(column_name::text ORDER BY column_name), ARRAY[]::text[])
+      INTO v_actual
+      FROM information_schema.columns
+     WHERE table_schema = 'public' AND table_name = v_tbl
+       AND column_name = ANY (v_policed);
+
+    v_expected := CASE v_tbl
+      WHEN 'credential_request'   THEN ARRAY['approved_by_user_id','verified_by_user_id']
+      WHEN 'residence_credential' THEN ARRAY['revoked_by_user_id']
+    END;
+
+    IF v_actual IS DISTINCT FROM v_expected THEN
+      RAISE EXCEPTION
+        'Table % now carries actor columns %, but zz_enforce_workflow_transition''s WHEN clause was written for %. Update the WHEN clause or the guard will never fire for the new column.',
+        v_tbl, v_actual, v_expected;
+    END IF;
+  END LOOP;
+END $shape$;
 
 -- ---------------------------------------------------------------------------
 -- 5. Give `approval_returned` an exit

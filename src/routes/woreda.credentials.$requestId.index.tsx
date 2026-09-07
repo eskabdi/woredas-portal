@@ -261,7 +261,13 @@ function CredentialRequestDetailPage() {
 
   const status = request?.status ?? "";
   const isEditable = status === "submitted" || status === "under_review";
-  const isReturned = status === "returned";
+  // `approval_returned` is retired (migration 25 stopped writing it, and
+  // return-from-approval now lands in `returned`), but a legacy or
+  // hand-written row can still be sitting in it. Migration 26 seeds
+  // `approval_returned -> under_review` so such a row is recoverable at the
+  // database; including it here is what makes that recovery actually reachable
+  // by an operator rather than only by a direct PostgREST call.
+  const isReturned = status === "returned" || status === "approval_returned";
 
   // Checklist state
   const savedChecklist = useMemo<Partial<ChecklistState> & Record<string, unknown>>(() => {
@@ -439,7 +445,9 @@ function CredentialRequestDetailPage() {
 
       await supabase.from("credential_request_status_history").insert({
         credential_request_id: request.credential_request_id,
-        old_status: "returned",
+        // Read the status we actually came from -- hardcoding "returned" wrote
+        // a false history row for a request recovered from `approval_returned`.
+        old_status: status,
         new_status: "under_review",
         changed_by_user_id: actorUserId,
         change_reason: "Resubmitted for review",
@@ -2025,16 +2033,27 @@ function IssuanceCard({
       const nowIso = new Date().toISOString();
       const name = recipientName.trim();
 
-      // 1. Activate this credential
-      const { error: credErr } = await supabase
+      // 1. Activate this credential. This is the handover -- the card leaves the
+      // office and enters the resident's hands -- so it must not be inferred
+      // from `error === null`: an RLS-excluded or already-moved row would show a
+      // success toast while the credential silently stayed at `printed`, and
+      // step 4 below would then mark the request `active` on top of it.
+      const { data: credRow, error: credErr } = await supabase
         .from("residence_credential")
         .update({
           status: "active",
           activated_at: nowIso,
           issued_recipient_name: name,
         })
-        .eq("credential_id", credentialRowId);
+        .eq("credential_id", credentialRowId)
+        .select("credential_id")
+        .maybeSingle();
       if (credErr) throw credErr;
+      if (!credRow) {
+        throw new Error(
+          "መታወቂያው ወደ 'ንቁ' አልተቀየረም / The credential was not activated — it may have been changed by someone else",
+        );
+      }
 
       await supabase.from("credential_status_history").insert({
         credential_id: credentialRowId,
