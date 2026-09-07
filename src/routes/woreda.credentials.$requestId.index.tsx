@@ -1077,6 +1077,7 @@ function CredentialRequestDetailPage() {
           <IssuanceCard
             credentialRowId={request.credential_id}
             requestId={request.credential_request_id}
+            requestStatus={status}
             requestType={request.request_type}
             priorCredentialId={request.prior_credential_id}
             residentFullNameAm={resident?.full_name_am ?? ""}
@@ -1932,6 +1933,8 @@ function CredentialReadinessCard({
 interface IssuanceCardProps {
   credentialRowId: string;
   requestId: string;
+  /** The REQUEST's status, not the credential's -- handover writes both rows. */
+  requestStatus: string;
   requestType: string;
   priorCredentialId: string | null;
   residentFullNameAm: string;
@@ -1941,6 +1944,7 @@ interface IssuanceCardProps {
 function IssuanceCard({
   credentialRowId,
   requestId,
+  requestStatus,
   requestType,
   priorCredentialId,
   residentFullNameAm,
@@ -2021,6 +2025,21 @@ function IssuanceCard({
 
   if (credQuery.isLoading || !cred) return null;
   if (cred.status !== "printed" && cred.status !== "active") return null;
+
+  // Also gate on the REQUEST. Handover writes both rows -- the credential
+  // `printed -> active` AND the request `printed -> active` -- and the FSM has
+  // no `paid -> active` on the request. Rendering on the credential alone let
+  // an officer who opened this page (instead of the print page) after a
+  // partially-failed print confirmation drive the credential to `active` while
+  // the request raised, leaving the pair (credential `active`, request `paid`).
+  // That pair is outside the print page's recovery panel, and print.tsx holds
+  // the only writer of `paid -> printed` anywhere in the app -- so the request
+  // froze with no control able to move it, for any role.
+  //
+  // Requiring the request to have reached `printed` means the print step has
+  // completed on BOTH rows before handover is offered; a stalled pair keeps
+  // showing the print page's recovery panel, which is what resolves it.
+  if (requestStatus !== "printed" && requestStatus !== "active") return null;
 
   const isActive = cred.status === "active";
   const nameValid = recipientName.trim().length >= 2;
