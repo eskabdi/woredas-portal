@@ -512,6 +512,95 @@ function PrintPage() {
     pageStyle: `@page { size: ${orientation === "portrait" ? "54mm 85.6mm" : "85.6mm 54mm"}; margin: 0; } @media print { html, body { margin: 0 !important; padding: 0 !important; width: ${orientation === "portrait" ? "54mm" : "85.6mm"}; height: ${orientation === "portrait" ? "85.6mm" : "54mm"}; } * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; } }`,
   });
 
+  // The officer confirms a good card came out of the printer. Only this makes
+  // the credential `printed` and advances the request. Amharic first, per the
+  // woreda portal's convention.
+  const handleConfirmPrinted = async () => {
+    if (!cred || !request || !actorUserId) return;
+    setBusy(true);
+    try {
+      const nowIso = new Date().toISOString();
+      const { data: credRow, error: credErr } = await supabase
+        .from("residence_credential")
+        .update({ status: "printed", printed_at: nowIso })
+        .eq("credential_id", cred.credential_id)
+        .select("credential_id")
+        .maybeSingle();
+      if (credErr) throw credErr;
+      if (!credRow) throw new Error("Credential not updated");
+
+      await supabase.from("credential_status_history").insert({
+        credential_id: cred.credential_id,
+        old_status: "printing",
+        new_status: "printed",
+        changed_by_user_id: actorUserId,
+        change_reason: "Officer confirmed the card printed correctly",
+      });
+
+      const { data: reqRow, error: reqErr } = await supabase
+        .from("credential_request")
+        .update({ status: "printed" })
+        .eq("credential_request_id", request.credential_request_id)
+        .select("credential_request_id")
+        .maybeSingle();
+      if (reqErr) throw reqErr;
+      if (!reqRow) throw new Error("Request not updated");
+
+      await supabase.from("credential_request_status_history").insert({
+        credential_request_id: request.credential_request_id,
+        old_status: "paid",
+        new_status: "printed",
+        changed_by_user_id: actorUserId,
+        change_reason: "Officer confirmed the card printed correctly",
+      });
+
+      toast.success("ህትመቱ ተረጋግጧል / Print confirmed");
+      queryClient.invalidateQueries({ queryKey: ["credential-for-print", cred.credential_id] });
+      queryClient.invalidateQueries({
+        queryKey: ["credential-request", request.credential_request_id],
+      });
+    } catch (e) {
+      toast.error(`Confirm failed: ${(e as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // The print failed. The credential goes back to `ready_to_print` and is
+  // printed again on the SAME record -- no new request, no new credential.
+  const handlePrintFailed = async () => {
+    if (!cred || !request || !actorUserId) return;
+    setBusy(true);
+    try {
+      const { data: credRow, error: credErr } = await supabase
+        .from("residence_credential")
+        .update({ status: "ready_to_print" })
+        .eq("credential_id", cred.credential_id)
+        .select("credential_id")
+        .maybeSingle();
+      if (credErr) throw credErr;
+      if (!credRow) throw new Error("Credential not updated");
+
+      await supabase.from("credential_status_history").insert({
+        credential_id: cred.credential_id,
+        old_status: "printing",
+        new_status: "ready_to_print",
+        changed_by_user_id: actorUserId,
+        change_reason: "Officer reported a failed print; ready to print again",
+      });
+
+      toast.success("ህትመቱ አልተሳካም፤ እንደገና ማተም ይችላሉ / Print failed — you can print again");
+      queryClient.invalidateQueries({ queryKey: ["credential-for-print", cred.credential_id] });
+      queryClient.invalidateQueries({
+        queryKey: ["credential-request", request.credential_request_id],
+      });
+    } catch (e) {
+      toast.error(`Retry failed: ${(e as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const handlePrint = async () => {
     if (!request || !cred || !actorUserId || !woredaId) return;
     if (!allAuthorized || !verified) return;
@@ -536,32 +625,23 @@ function PrintPage() {
       } as any);
       if (logErr) throw logErr;
 
+      // Sending the card to the printer moves it to `printing`, NOT `printed`.
+      // A jammed or misfed printer used to leave the credential at `printed`
+      // anyway, spending it and forcing the resident to start a new request.
+      // An officer now confirms the physical card before it counts as printed.
       if (!isReprint && cred.status === "ready_to_print") {
         const { error: credErr } = await supabase
           .from("residence_credential")
-          .update({ status: "printed", printed_at: nowIso })
+          .update({ status: "printing" })
           .eq("credential_id", cred.credential_id);
         if (credErr) throw credErr;
 
         await supabase.from("credential_status_history").insert({
           credential_id: cred.credential_id,
           old_status: "ready_to_print",
-          new_status: "printed",
+          new_status: "printing",
           changed_by_user_id: actorUserId,
-          change_reason: "Credential printed",
-        });
-
-        await supabase
-          .from("credential_request")
-          .update({ status: "printed" })
-          .eq("credential_request_id", request.credential_request_id);
-
-        await supabase.from("credential_request_status_history").insert({
-          credential_request_id: request.credential_request_id,
-          old_status: "paid",
-          new_status: "printed",
-          changed_by_user_id: actorUserId,
-          change_reason: "Credential printed",
+          change_reason: "Card sent to the printer; awaiting confirmation",
         });
       }
 
@@ -871,6 +951,46 @@ function PrintPage() {
                   </span>
                 </span>
               </label>
+
+              {/* The card has been sent to the printer. Nothing counts as
+                  printed until an officer confirms a good card came out --
+                  a jam or misfeed must not spend the credential. */}
+              {cred.status === "printing" && (
+                <div className="mb-4 rounded-lg border-2 border-indigo-300 bg-indigo-50 p-4">
+                  <div className="font-noto-ethiopic text-sm font-semibold text-indigo-900">
+                    ካርዱ በትክክል ታትሟል?
+                  </div>
+                  <div className="text-xs text-indigo-800/80">/ Did the card print correctly?</div>
+                  <p className="mt-2 text-xs text-indigo-900/80">
+                    <span className="font-noto-ethiopic">
+                      ካርዱ በአግባቡ ካልታተመ &quot;አልታተመም&quot; ይምረጡ፤ በተመሳሳይ መታወቂያ እንደገና ማተም ይችላሉ።
+                    </span>
+                    <span className="mt-1 block">
+                      / If the card did not come out properly, choose “Not printed”. You can print
+                      again on the same credential — the resident does not start over.
+                    </span>
+                  </p>
+                  <div className="mt-3 flex gap-2">
+                    <Button
+                      className="flex-1 bg-emerald-700 hover:bg-emerald-800"
+                      disabled={busy || !canPrint}
+                      onClick={handleConfirmPrinted}
+                    >
+                      <span className="font-noto-ethiopic">በትክክል ታትሟል</span>
+                      <span className="ml-1 text-xs opacity-80">/ Printed correctly</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="flex-1 border-amber-400 text-amber-800 hover:bg-amber-50"
+                      disabled={busy || !canPrint}
+                      onClick={handlePrintFailed}
+                    >
+                      <span className="font-noto-ethiopic">አልታተመም</span>
+                      <span className="ml-1 text-xs opacity-80">/ Not printed</span>
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Button

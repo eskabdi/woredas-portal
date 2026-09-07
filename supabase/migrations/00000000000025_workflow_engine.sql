@@ -41,7 +41,7 @@
 --      Both mirror the shipped UI, so no CHECK constraint changes. Task 10
 --      inserts the `printing` lock state and the preview/confirm split.
 --
--- Permissions: the nine new keys below are granted to exactly the roles that
+-- Permissions: the ten new keys below are granted to exactly the roles that
 -- hold the equivalent coarse permission today, so this migration changes
 -- ENFORCEMENT without changing who can do what. Task 4 refines the grants to
 -- the workflow spec's matrix and adds print_officer.
@@ -116,7 +116,28 @@ COMMENT ON TABLE public.workflow_transition IS
   'Read by enforce_workflow_transition(). No woreda_id: tenants cannot remove a workflow gate.';
 
 -- ---------------------------------------------------------------------------
--- 2. The nine new permission keys
+-- 2. residence_credential gains `printing` (superset extension)
+--
+-- A physical printer that jams or misfeeds used to leave the card at `printed`
+-- anyway, because the print route flipped the status on its own. The credential
+-- was then spent and the resident had to start a new request.
+--
+-- `printing` is the state between "sent to the printer" and "an officer
+-- confirmed a good card came out". From there the officer either confirms
+-- (-> printed) or reports the failure (-> ready_to_print) and prints again on
+-- the SAME credential. Every value legal today stays legal.
+-- ---------------------------------------------------------------------------
+
+ALTER TABLE public.residence_credential
+  DROP CONSTRAINT IF EXISTS residence_credential_status_check;
+ALTER TABLE public.residence_credential
+  ADD CONSTRAINT residence_credential_status_check CHECK ((status = ANY (ARRAY[
+    'ready_to_print'::text, 'printing'::text, 'printed'::text, 'active'::text,
+    'expired'::text, 'suspended'::text, 'revoked'::text, 'replaced'::text
+  ])));
+
+-- ---------------------------------------------------------------------------
+-- 3. The ten new permission keys
 --
 -- user_has_perm() resolves override -> role_permission -> default_role_perms().
 -- An unknown key returns false everywhere, so a transition whose permission is
@@ -140,10 +161,10 @@ CREATE OR REPLACE FUNCTION public.default_role_perms(_role text)
 AS $function$
   SELECT CASE _role
     WHEN 'super_admin' THEN ARRAY['platform.manage','tenant.create','tenant.manage','user.manage','audit.view','report.view']
-    WHEN 'tenant_admin' THEN ARRAY['resident.create','resident.read','resident.update','resident.delete','household.create','household.read','household.update','credential.issue','credential.read','credential.print','credential.verify','credential.revoke','credential.renew','credential.approve','credential.submit','credential.review','credential.resubmit','credential.return','credential.reject','credential.record_payment','credential.confirm_print','credential.activate','credential.suspend','civil.register','civil.approve','civil.read','payment.collect','payment.read','receipt.print','report.view','report.export','audit.view','tenant.manage','user.manage','rental.view','rental.create','rental.approve','rental.vacate','rental.report','revenue.view','revenue.collect','revenue.receipt_reprint','service.create','service.read','service.verify','service.approve','service.issue','complaint.manage','approval.queue.view']
+    WHEN 'tenant_admin' THEN ARRAY['resident.create','resident.read','resident.update','resident.delete','household.create','household.read','household.update','credential.issue','credential.read','credential.print','credential.verify','credential.revoke','credential.renew','credential.approve','credential.submit','credential.review','credential.resubmit','credential.return','credential.reject','credential.record_payment','credential.preview_print','credential.preview_print','credential.confirm_print','credential.activate','credential.suspend','civil.register','civil.approve','civil.read','payment.collect','payment.read','receipt.print','report.view','report.export','audit.view','tenant.manage','user.manage','rental.view','rental.create','rental.approve','rental.vacate','rental.report','revenue.view','revenue.collect','revenue.receipt_reprint','service.create','service.read','service.verify','service.approve','service.issue','complaint.manage','approval.queue.view']
     WHEN 'supervisor' THEN ARRAY['resident.read','household.read','credential.read','credential.verify','credential.revoke','credential.approve','credential.return','credential.reject','credential.suspend','civil.approve','civil.read','payment.read','receipt.print','report.view','report.export','audit.view','rental.view','rental.approve','revenue.view','revenue.receipt_reprint','service.read','service.verify','service.approve','complaint.manage','approval.queue.view']
-    WHEN 'civil_registrar' THEN ARRAY['resident.create','resident.read','resident.update','household.read','credential.issue','credential.read','credential.print','credential.verify','credential.submit','credential.review','credential.resubmit','credential.return','credential.confirm_print','credential.activate','civil.register','civil.read','service.create','service.read','service.issue','approval.queue.view']
-    WHEN 'registry_clerk' THEN ARRAY['resident.create','resident.read','resident.update','household.create','household.read','household.update','credential.issue','credential.read','credential.print','credential.verify','credential.submit','credential.review','credential.resubmit','credential.return','credential.confirm_print','credential.activate','civil.read','rental.view','rental.create','service.create','service.read','service.issue','complaint.manage','approval.queue.view']
+    WHEN 'civil_registrar' THEN ARRAY['resident.create','resident.read','resident.update','household.read','credential.issue','credential.read','credential.print','credential.verify','credential.submit','credential.review','credential.resubmit','credential.return','credential.preview_print','credential.preview_print','credential.confirm_print','credential.activate','civil.register','civil.read','service.create','service.read','service.issue','approval.queue.view']
+    WHEN 'registry_clerk' THEN ARRAY['resident.create','resident.read','resident.update','household.create','household.read','household.update','credential.issue','credential.read','credential.print','credential.verify','credential.submit','credential.review','credential.resubmit','credential.return','credential.preview_print','credential.preview_print','credential.confirm_print','credential.activate','civil.read','rental.view','rental.create','service.create','service.read','service.issue','complaint.manage','approval.queue.view']
     WHEN 'finance_clerk' THEN ARRAY['payment.collect','payment.read','receipt.print','resident.read','household.read','credential.read','credential.verify','credential.record_payment','revenue.view','revenue.collect','revenue.receipt_reprint','service.read','approval.queue.view']
     WHEN 'auditor' THEN ARRAY['resident.read','household.read','credential.read','credential.verify','civil.read','payment.read','report.view','audit.view','rental.view','rental.report','revenue.view','service.read']
     WHEN 'viewer' THEN ARRAY['resident.read','household.read','credential.read','credential.verify','civil.read','payment.read','service.read']
@@ -152,7 +173,7 @@ AS $function$
 $function$;
 
 -- ---------------------------------------------------------------------------
--- 3. The engine
+-- 4. The engine
 --
 -- Reads workflow_transition for the entity under modification. SECURITY
 -- DEFINER so it can read that table regardless of the caller's grants; it
@@ -177,10 +198,34 @@ DECLARE
   v_rule       public.workflow_transition%ROWTYPE;
   v_system_ctx boolean := coalesce(current_setting('app.system_transition', true), '') = 'on';
   v_new        jsonb  := to_jsonb(NEW);
+  v_old        jsonb  := to_jsonb(OLD);
   v_approver   text;
   v_verifier   text;
 BEGIN
-  -- Not a status change: nothing to police.
+  -- ----------------------------------------------------------------------
+  -- Actor columns are append-only. Checked BEFORE the status-change guard
+  -- below, because the bypass this closes is a status-PRESERVING update that
+  -- nulls verified_by_user_id and then approves cleanly on a second call.
+  -- force_actor_columns() only overwrites a non-null incoming value, so a
+  -- caller omitting or nulling the column is not otherwise policed.
+  -- ----------------------------------------------------------------------
+  IF v_new ? 'verified_by_user_id'
+     AND (v_old ->> 'verified_by_user_id') IS NOT NULL
+     AND (v_new ->> 'verified_by_user_id') IS NULL THEN
+    RAISE EXCEPTION
+      'workflow: verified_by_user_id cannot be cleared once recorded'
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+
+  IF v_new ? 'approved_by_user_id'
+     AND (v_old ->> 'approved_by_user_id') IS NOT NULL
+     AND (v_new ->> 'approved_by_user_id') IS NULL THEN
+    RAISE EXCEPTION
+      'workflow: approved_by_user_id cannot be cleared once recorded'
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+
+  -- Not a status change: nothing further to police.
   IF NEW.status IS NOT DISTINCT FROM OLD.status THEN
     RETURN NEW;
   END IF;
@@ -222,17 +267,58 @@ BEGIN
       USING ERRCODE = 'insufficient_privilege';
   END IF;
 
-  -- Maker != checker (INV-05). Both columns are pinned to auth.uid() by
-  -- trg_force_actor, so neither is forgeable; comparing them is therefore
-  -- comparing two real people. Checked on every status change, not only the
-  -- approval one, so a later edit cannot quietly collapse them.
-  IF v_new ? 'approved_by_user_id' AND v_new ? 'verified_by_user_id' THEN
+  -- ----------------------------------------------------------------------
+  -- Maker != checker (INV-05), enforced on the transition INTO `approved`.
+  --
+  -- Scoping it to that one transition rather than every status change is
+  -- deliberate: requests approved before this migration existed were never
+  -- subject to the rule, and freezing them mid-flight would strand real work
+  -- with no remediation path. New approvals carry the full check.
+  --
+  -- Both columns are pinned to auth.uid() by trg_force_actor, so neither is
+  -- forgeable; requiring both to be present closes the "omit the column and
+  -- let NULL short-circuit the comparison" bypass.
+  -- ----------------------------------------------------------------------
+  IF NEW.status = 'approved'
+     AND v_new ? 'approved_by_user_id' AND v_new ? 'verified_by_user_id' THEN
     v_approver := v_new ->> 'approved_by_user_id';
     v_verifier := v_new ->> 'verified_by_user_id';
-    IF v_approver IS NOT NULL AND v_approver = v_verifier THEN
+
+    IF v_approver IS NULL THEN
+      RAISE EXCEPTION
+        'workflow: an approval must record the approver'
+        USING ERRCODE = 'insufficient_privilege';
+    END IF;
+    IF v_verifier IS NULL THEN
+      RAISE EXCEPTION
+        'workflow: an approval requires a recorded verifier'
+        USING ERRCODE = 'insufficient_privilege';
+    END IF;
+    IF v_approver = v_verifier THEN
       RAISE EXCEPTION
         'workflow: the approver and the verifier must be two different people'
         USING ERRCODE = 'insufficient_privilege';
+    END IF;
+  END IF;
+
+  -- ----------------------------------------------------------------------
+  -- `replaced` is a CONSEQUENCE of handing over a newer card, never a verb of
+  -- its own. Without this, any holder of credential.activate -- registry_clerk
+  -- included -- could PATCH an active card to `replaced` and permanently void
+  -- a government ID, reaching the revocation outcome without credential.revoke.
+  -- ----------------------------------------------------------------------
+  IF v_entity = 'residence_credential' AND NEW.status = 'replaced' THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM public.residence_credential rc
+       WHERE rc.resident_id = NEW.resident_id
+         AND rc.woreda_id   = NEW.woreda_id
+         AND rc.credential_id <> NEW.credential_id
+         AND rc.status IN ('printed', 'active')
+         AND rc.created_at > NEW.created_at
+    ) THEN
+      RAISE EXCEPTION
+        'workflow: a credential may only be replaced once its successor has been issued'
+        USING ERRCODE = 'check_violation';
     END IF;
   END IF;
 
@@ -246,7 +332,7 @@ COMMENT ON FUNCTION public.enforce_workflow_transition() IS
   'let one person be both verifier and approver. Closes F-01.';
 
 -- ---------------------------------------------------------------------------
--- 4. The guaranteed audit row, written by the database
+-- 5. The guaranteed audit row, written by the database
 --
 -- The audit_log row is written HERE, not in the app, so it is unconditional:
 -- a status change driven straight through PostgREST leaves the same immutable
@@ -292,7 +378,7 @@ COMMENT ON FUNCTION public.log_workflow_transition() IS
   'the human reason; those stay app-owned until the UI rework in Tasks 12/14 moves them here.';
 
 -- ---------------------------------------------------------------------------
--- 5. Wire the triggers
+-- 6. Wire the triggers
 --
 -- Named with a `z` prefix so they fire after trg_force_actor -- the actor
 -- columns must already be pinned to auth.uid() before maker != checker
@@ -314,13 +400,21 @@ CREATE TRIGGER zz_log_workflow_transition
   AFTER UPDATE ON public.credential_request
   FOR EACH ROW EXECUTE FUNCTION public.log_workflow_transition('credential_request_id');
 
+-- residence_credential is now a policed workflow entity, so its actor column
+-- must be pinned like every other one. Without this a caller could record the
+-- revocation against somebody else.
+DROP TRIGGER IF EXISTS trg_force_actor ON public.residence_credential;
+CREATE TRIGGER trg_force_actor
+  BEFORE INSERT OR UPDATE ON public.residence_credential
+  FOR EACH ROW EXECUTE FUNCTION public.force_actor_columns('revoked_by_user_id');
+
 DROP TRIGGER IF EXISTS zz_log_workflow_transition ON public.residence_credential;
 CREATE TRIGGER zz_log_workflow_transition
   AFTER UPDATE ON public.residence_credential
   FOR EACH ROW EXECUTE FUNCTION public.log_workflow_transition('credential_id');
 
 -- ---------------------------------------------------------------------------
--- 6. Payment gate (INV-06)
+-- 7. Payment gate (INV-06)
 --
 -- Was: fires on NEW.status='paid' from ANY prior status, with no payment row
 -- required. That is half of F-01 -- the half that mints the physical ID.
@@ -388,7 +482,7 @@ END;
 $function$;
 
 -- ---------------------------------------------------------------------------
--- 7. Seed the credential FSM
+-- 8. Seed the credential FSM
 --
 -- Request side mirrors the shipped UI, with `verified` and `approved` restored
 -- as real stops (decision D-2). Credential side carries the full print and
@@ -400,29 +494,46 @@ $function$;
 -- ---------------------------------------------------------------------------
 
 INSERT INTO public.workflow_transition (entity, from_status, to_status, required_permission, is_system, note) VALUES
-  -- credential_request
-  ('credential_request','draft',           'submitted',       'credential.submit',        false,'Stage 1 intake'),
-  ('credential_request','submitted',       'under_review',    'credential.review',        false,'Stage 2 opens verification'),
+  -- credential_request. New requests are INSERTed straight at `submitted`
+  -- (woreda.credentials.new.tsx), so `submitted` -- not `under_review` -- is
+  -- the state the verifier actually opens. Both verification outcomes are
+  -- therefore seeded from `submitted` as well as from `under_review`, which is
+  -- where a resubmitted request lands.
+  ('credential_request','draft',           'submitted',       'credential.submit',        false,'Draft promoted to the queue'),
+  ('credential_request','submitted',       'under_review',    'credential.review',        false,'Verifier claims the request'),
+  ('credential_request','submitted',       'verified',        'credential.review',        false,'Stage 2 checklist passed'),
+  ('credential_request','submitted',       'returned',        'credential.return',        false,'Stage 2 returned to applicant'),
   ('credential_request','under_review',    'verified',        'credential.review',        false,'Stage 2 checklist passed'),
-  ('credential_request','under_review',    'returned',        'credential.return',        false,'Stage 2 return to applicant'),
+  ('credential_request','under_review',    'returned',        'credential.return',        false,'Stage 2 returned to applicant'),
   ('credential_request','returned',        'under_review',    'credential.resubmit',      false,'Corrections resubmitted'),
-  ('credential_request','verified',        'pending_approval','credential.approve',       false,'Stage 3 approver claims it'),
+  -- Stage 3. The approver opens a `verified` request and may approve, return or
+  -- reject it. All three act directly from `verified`; `pending_approval` is the
+  -- claimed state the approve path passes through.
+  ('credential_request','verified',        'pending_approval','credential.approve',       false,'Approver claims the request'),
+  ('credential_request','verified',        'returned',        'credential.return',        false,'Stage 3 return; re-enters verification'),
+  ('credential_request','verified',        'rejected',        'credential.reject',        false,'Stage 3 terminal rejection'),
   ('credential_request','pending_approval','approved',        'credential.approve',       false,'Stage 3 approved'),
   ('credential_request','pending_approval','returned',        'credential.return',        false,'Stage 3 return; re-enters verification'),
   ('credential_request','pending_approval','rejected',        'credential.reject',        false,'Stage 3 terminal rejection'),
   ('credential_request','approved',        'awaiting_payment','credential.record_payment',false,'Stage 4 fee raised'),
   ('credential_request','awaiting_payment','paid',            'credential.record_payment',false,'Stage 4 payment + receipt recorded'),
-  ('credential_request','paid',            'printed',         'credential.confirm_print', false,'Stage 7 print confirmed'),
+  ('credential_request','paid',            'printed',         'credential.confirm_print', false,'Stage 7 print confirmed good'),
   ('credential_request','printed',         'active',          'credential.activate',      false,'Stage 8 handover'),
 
-  -- residence_credential
-  ('residence_credential','ready_to_print','printed',   'credential.confirm_print', false,'Stage 6/7 print confirmed; Task 10 splits out the printing lock state'),
+  -- residence_credential. The print step is two-phase on purpose: a jammed or
+  -- misfed printer must not spend the credential. `printing` means the card
+  -- was sent; only an officer confirming a good card moves it to `printed`,
+  -- and reporting a failure returns it to `ready_to_print` to print again on
+  -- the SAME credential record.
+  ('residence_credential','ready_to_print','printing',  'credential.preview_print', false,'Card sent to the printer'),
+  ('residence_credential','printing',      'printed',   'credential.confirm_print', false,'Officer confirmed a good card'),
+  ('residence_credential','printing',      'ready_to_print','credential.preview_print',false,'Print failed; retry on the same credential'),
   ('residence_credential','printed',       'active',    'credential.activate',      false,'Stage 8 collected by resident'),
   ('residence_credential','active',        'suspended', 'credential.suspend',       false,'Reversible hold'),
   ('residence_credential','active',        'revoked',   'credential.revoke',        false,'Terminal revocation'),
   ('residence_credential','suspended',     'active',    'credential.suspend',       false,'Hold lifted'),
-  ('residence_credential','active',        'replaced',  'credential.activate',      false,'Superseded when a newer credential is handed over'),
-  ('residence_credential','active',        'expired',   NULL,                       true, 'Past expiry_date')
+  ('residence_credential','active',        'replaced',  'credential.activate',      false,'Superseded; the gate requires the successor to exist'),
+  ('residence_credential','active',        'expired',   NULL,                       true, 'Past expiry_date; no scheduled job sets this yet')
 ON CONFLICT (entity, from_status, to_status) DO NOTHING;
 
 COMMIT;

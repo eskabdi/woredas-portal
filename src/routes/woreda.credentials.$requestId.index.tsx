@@ -2024,12 +2024,21 @@ function IssuanceCard({
 
       // 3. Prior credential replacement (non-new_issue with prior)
       const priorRow = priorCredQuery.data;
-      if (requestType !== "new_issue" && priorCredentialId && priorRow) {
+      // Only an ACTIVE prior credential is superseded. A prior card that is
+      // already expired, suspended, revoked or merely printed has no
+      // `-> replaced` transition, so attempting it raises -- and this call
+      // previously discarded the error, leaving the new card active while the
+      // old one stayed valid. Two live cards for one resident, silently.
+      if (requestType !== "new_issue" && priorCredentialId && priorRow?.status === "active") {
         const priorOldStatus = priorRow.status;
-        await supabase
+        const { data: replacedRow, error: replaceErr } = await supabase
           .from("residence_credential")
           .update({ status: "replaced", replaced_at: nowIso })
-          .eq("credential_id", priorCredentialId);
+          .eq("credential_id", priorCredentialId)
+          .select("credential_id")
+          .maybeSingle();
+        if (replaceErr) throw replaceErr;
+        if (!replacedRow) throw new Error("Prior credential was not superseded");
 
         await supabase.from("credential_status_history").insert({
           credential_id: priorCredentialId,

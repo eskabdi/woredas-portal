@@ -33,6 +33,7 @@ export const P = {
   CREDENTIAL_RETURN: "credential.return",
   CREDENTIAL_REJECT: "credential.reject",
   CREDENTIAL_RECORD_PAYMENT: "credential.record_payment",
+  CREDENTIAL_PREVIEW_PRINT: "credential.preview_print",
   CREDENTIAL_CONFIRM_PRINT: "credential.confirm_print",
   CREDENTIAL_ACTIVATE: "credential.activate",
   CREDENTIAL_SUSPEND: "credential.suspend",
@@ -141,6 +142,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     P.CREDENTIAL_CONFIRM_PRINT,
     P.CREDENTIAL_ACTIVATE,
     P.CREDENTIAL_SUSPEND,
+    P.CREDENTIAL_PREVIEW_PRINT,
   ],
   supervisor: [
     P.RESIDENT_READ,
@@ -190,6 +192,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     P.CREDENTIAL_RETURN,
     P.CREDENTIAL_CONFIRM_PRINT,
     P.CREDENTIAL_ACTIVATE,
+    P.CREDENTIAL_PREVIEW_PRINT,
   ],
   registry_clerk: [
     P.RESIDENT_CREATE,
@@ -216,6 +219,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     P.CREDENTIAL_RETURN,
     P.CREDENTIAL_CONFIRM_PRINT,
     P.CREDENTIAL_ACTIVATE,
+    P.CREDENTIAL_PREVIEW_PRINT,
   ],
   finance_clerk: [
     P.PAYMENT_COLLECT,
