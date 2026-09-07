@@ -206,6 +206,17 @@ BEGIN
   -- and force_actor_columns() only overwrites a NON-NULL incoming value, so an
   -- explicit null passed straight through. A status-preserving PATCH could
   -- therefore erase who ordered a revocation while the revocation stood.
+  --
+  -- Note this guard deliberately only prevents CLEARING an already-recorded
+  -- value; it does NOT require the column to be set when a credential is
+  -- revoked. That is not an oversight. A revocation legitimately has no human
+  -- actor when it comes from the death-registration trigger
+  -- (00000000000000_baseline.sql:846), which revokes a deceased resident's
+  -- active credentials with revoked_at and revoked_reason but no user -- there
+  -- is no person to attribute it to. Adding a NOT NULL requirement here would
+  -- break civil registration's death approval. If per-actor attribution is
+  -- wanted for the human path specifically, gate it on the transition source,
+  -- not on the column being present.
   IF v_new ? 'revoked_by_user_id'
      AND (v_old ->> 'revoked_by_user_id') IS NOT NULL
      AND (v_new ->> 'revoked_by_user_id') IS NULL THEN
