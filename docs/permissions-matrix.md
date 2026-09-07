@@ -28,15 +28,24 @@ INSA Enforcer Phase 2.3 / Phase 4 Access Control. Generated from `src/config/per
 
 ### Credentials
 
-| Permission           | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer |
-| -------------------- | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ |
-| `credential.issue`   |             | ✓            |            | ✓               | ✓              |               |         |        |
-| `credential.read`    |             | ✓            | ✓          | ✓               | ✓              | ✓             | ✓       | ✓      |
-| `credential.print`   |             | ✓            |            | ✓               | ✓              |               |         |        |
-| `credential.verify`  |             | ✓            | ✓          | ✓               | ✓              | ✓             | ✓       | ✓      |
-| `credential.revoke`  |             | ✓            | ✓          |                 |                |               |         |        |
-| `credential.renew`   |             | ✓            |            |                 |                |               |         |        |
-| `credential.approve` |             | ✓            | ✓          |                 |                |               |         |        |
+| Permission                  | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer |
+| --------------------------- | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ |
+| `credential.issue`          |             | ✓            |            | ✓               | ✓              |               |         |        |
+| `credential.read`           |             | ✓            | ✓          | ✓               | ✓              | ✓             | ✓       | ✓      |
+| `credential.print`          |             | ✓            |            | ✓               | ✓              |               |         |        |
+| `credential.verify`         |             | ✓            | ✓          | ✓               | ✓              | ✓             | ✓       | ✓      |
+| `credential.revoke`         |             | ✓            | ✓          |                 |                |               |         |        |
+| `credential.renew`          |             | ✓            |            |                 |                |               |         |        |
+| `credential.approve`        |             | ✓            | ✓          |                 |                |               |         |        |
+| `credential.submit`         |             | ✓            |            | ✓               | ✓              |               |         |        |
+| `credential.review`         |             | ✓            |            | ✓               | ✓              |               |         |        |
+| `credential.resubmit`       |             | ✓            |            | ✓               | ✓              |               |         |        |
+| `credential.return`         |             | ✓            | ✓          | ✓               | ✓              |               |         |        |
+| `credential.reject`         |             | ✓            | ✓          |                 |                |               |         |        |
+| `credential.record_payment` |             | ✓            |            |                 |                | ✓             |         |        |
+| `credential.confirm_print`  |             | ✓            |            | ✓               | ✓              |               |         |        |
+| `credential.activate`       |             | ✓            |            | ✓               | ✓              |               |         |        |
+| `credential.suspend`        |             | ✓            | ✓          |                 |                |               |         |        |
 
 ### Civil Registration
 
