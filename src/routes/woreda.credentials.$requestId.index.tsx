@@ -484,11 +484,21 @@ function CredentialRequestDetailPage() {
       // approver has not opened it yet, `pending_approval` means they have.
       // Claim it first when arriving from `verified`.
       if (status === "verified") {
-        const { error: claimErr } = await supabase
+        const { data: claimRow, error: claimErr } = await supabase
           .from("credential_request")
           .update({ status: "pending_approval" })
-          .eq("credential_request_id", request.credential_request_id);
+          .eq("credential_request_id", request.credential_request_id)
+          .select("credential_request_id")
+          .maybeSingle();
         if (claimErr) throw claimErr;
+        // PostgREST reports error: null whether the WHERE matched one row or
+        // zero, so an RLS-excluded or concurrently-moved row would otherwise
+        // fall through and fail confusingly on the `approved` write instead.
+        if (!claimRow) {
+          throw new Error(
+            "ጥያቄው ሊያዝ አልቻለም / Could not claim this request — it may have been moved by someone else",
+          );
+        }
       }
 
       const { error } = await supabase
@@ -1360,11 +1370,18 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
       // request may reach `paid`. Arriving straight from `approved` (the
       // approver hands off to finance) we do it here.
       if (status === "approved") {
-        const { error: raiseErr } = await supabase
+        const { data: raiseRow, error: raiseErr } = await supabase
           .from("credential_request")
           .update({ status: "awaiting_payment" })
-          .eq("credential_request_id", request.credential_request_id);
+          .eq("credential_request_id", request.credential_request_id)
+          .select("credential_request_id")
+          .maybeSingle();
         if (raiseErr) throw raiseErr;
+        if (!raiseRow) {
+          throw new Error(
+            "ክፍያው ሊጠየቅ አልቻለም / Could not raise the fee — the request may have been moved by someone else",
+          );
+        }
       }
 
       const { data: pay, error: payErr } = await supabase
@@ -1455,7 +1472,12 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
           <span className="ml-2 text-sm text-white/80">/ Payment</span>
         </div>
         <div className="space-y-4 p-5">
-          {status === "awaiting_payment" && (
+          {/* Also renders at `approved`: since the FSM split approval from the
+              fee raise, a request hands off to finance at `approved` and
+              handleRecord performs `approved -> awaiting_payment` itself. Gating
+              this body on `awaiting_payment` alone stranded every approved
+              request with no control able to move it. */}
+          {(status === "approved" || status === "awaiting_payment") && (
             <>
               {feeQuery.isLoading ? (
                 <Skeleton className="h-8 w-40" />
@@ -2057,10 +2079,21 @@ function IssuanceCard({
       }
 
       // 4. Sync request to active
-      await supabase
+      const { data: reqActivateRow, error: reqActivateErr } = await supabase
         .from("credential_request")
         .update({ status: "active" })
-        .eq("credential_request_id", requestId);
+        .eq("credential_request_id", requestId)
+        .select("credential_request_id")
+        .maybeSingle();
+      if (reqActivateErr) throw reqActivateErr;
+      // Previously discarded entirely. The FSM can now reject this write (the
+      // request is not at `printed`), and RLS can match zero rows -- either
+      // way the card was handed over while the request stayed behind.
+      if (!reqActivateRow) {
+        throw new Error(
+          "ጥያቄው ወደ 'ገቢር' አልተቀየረም / The card was activated but its request was not — please reopen and retry",
+        );
+      }
 
       await supabase.from("credential_request_status_history").insert({
         credential_request_id: requestId,

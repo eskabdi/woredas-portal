@@ -28,7 +28,7 @@ flowchart TB
         Auth["GoTrue (Auth) — JWT issuance, invite/recovery email links"]
         Storage["Storage — 9 buckets, all private, signed-URL reads only"]
         Functions["6 Edge Functions (Deno) — service-role, own CORS allow-list,<br/>each re-checks caller identity + authorization in code"]
-        DB[("Postgres — 42 tables, RLS on every one,<br/>SECURITY DEFINER helper functions")]
+        DB[("Postgres — 43 tables, RLS on every one,<br/>SECURITY DEFINER helper functions")]
         PostgREST --> DB
         Functions --> DB
         Auth --> DB

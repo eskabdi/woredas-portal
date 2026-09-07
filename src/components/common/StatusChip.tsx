@@ -15,6 +15,16 @@ const STATUS_STYLES: Record<string, string> = {
   revoked: "bg-red-100 text-red-800",
 
   draft: "bg-slate-100 text-slate-600",
+  // Credential workflow stages. Colours follow the spec's chip map
+  // (docs/id-card-workflow.txt:580-601); `printed` keeps the purple it already
+  // shipped with rather than being restyled underneath existing screens.
+  submitted: "bg-blue-100 text-blue-800",
+  under_review: "bg-blue-100 text-blue-800",
+  verified: "bg-teal-100 text-teal-800",
+  awaiting_payment: "bg-amber-100 text-amber-800",
+  paid: "bg-green-100 text-green-800",
+  ready_to_print: "bg-indigo-100 text-indigo-800",
+  printing: "bg-indigo-100 text-indigo-800",
   printed: "bg-purple-100 text-purple-800",
   confirmed: "bg-green-100 text-green-800",
   suspended: "bg-orange-100 text-orange-800",
@@ -35,6 +45,18 @@ const STATUS_LABELS_AM: Record<string, string> = {
   expired: "ጊዜው አልፏል",
   revoked: "ተሽሯል",
   draft: "ረቂቅ",
+  // Amharic taken verbatim from the reviewed bilingual filter labels in
+  // woreda.credentials.index.tsx, except `printing` ("በህትመት ላይ"), which is new
+  // for the two-phase print step and was approved by the system owner
+  // (native speaker) on 2026-09-07. `ready_to_print` reuses the string already
+  // shipping in woreda.reports.$reportType.print.tsx:172.
+  submitted: "ገብቷል",
+  under_review: "በክለሳ ላይ",
+  verified: "ተረጋግጧል",
+  awaiting_payment: "ክፍያ በጥበቃ",
+  paid: "ተከፍሏል",
+  ready_to_print: "ለህትመት ዝግጁ",
+  printing: "በህትመት ላይ",
   printed: "ታትሟል",
   confirmed: "ተረጋግጧል",
   suspended: "ታግዷል",

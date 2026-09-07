@@ -133,7 +133,7 @@ query missing a `woreda_id` filter still can't cross tenants, but conversely,
 don't assume an app-level filter is sufficient on its own. See `README.md` for
 the full domain/role/permission model, and `docs/` for per-module design notes.
 `docs/erd.md` and `docs/dfd.md` are the current entity-relationship and
-data-flow diagrams (42 tables, not the 36 in the baseline migration alone);
+data-flow diagrams (43 tables, not the 36 in the baseline migration alone);
 `docs/api-security.md`, `docs/security-functionality.md` and
 `docs/security-hardening.md` are the INSA Enforcer compliance write-ups
 (access control, input validation, session handling, rate limiting, transport

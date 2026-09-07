@@ -79,6 +79,19 @@ export function parseDefaultRolePerms(sql: string): Record<string, Set<string>> 
       .split(",")
       .map((s) => s.trim().replace(/^'|'$/g, ""))
       .filter(Boolean);
+    // Reject a key listed twice in the same branch BEFORE collapsing to a Set.
+    // Everything downstream compares Sets, so a duplicate is invisible from
+    // here on -- migration 25 shipped 'credential.preview_print' twice in three
+    // branches and CI stayed green. Harmless at runtime, but the SQL matrix is
+    // a source of truth for authorization and it disagreed with itself.
+    const duplicates = keys.filter((k, i) => keys.indexOf(k) !== i);
+    if (duplicates.length > 0) {
+      throw new Error(
+        `default_role_perms(): role '${role}' lists ${[...new Set(duplicates)]
+          .map((d) => `'${d}'`)
+          .join(", ")} more than once. Remove the duplicate in the migration.`,
+      );
+    }
     result[role] = new Set(keys);
   }
   return result;

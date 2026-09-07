@@ -183,7 +183,11 @@ function CredentialVerificationPage() {
   // holder their valid card had been revoked.
   const WITHDRAWN = ["revoked", "suspended", "replaced"];
   const withdrawn = !!registry && WITHDRAWN.includes(registry.status);
-  const notYetIssued = registry?.status === "ready_to_print";
+  // `printing` counts as not-yet-issued: the card is at the printer and has
+  // not been handed to anyone. The window includes a failed print whose
+  // physical card is a discarded misfeed -- scanning that must never return
+  // the green "valid" verdict.
+  const notYetIssued = registry?.status === "ready_to_print" || registry?.status === "printing";
   const expired = data.expired || registry?.status === "expired";
 
   return (
