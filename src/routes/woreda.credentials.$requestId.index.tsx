@@ -333,7 +333,7 @@ function CredentialRequestDetailPage() {
     try {
       const nowIso = new Date().toISOString();
       const payload = {
-        status: "pending_approval",
+        status: "verified",
         verified_by_user_id: actorUserId,
         verified_at: nowIso,
         verification_checklist: {
@@ -351,7 +351,7 @@ function CredentialRequestDetailPage() {
       await supabase.from("credential_request_status_history").insert({
         credential_request_id: request.credential_request_id,
         old_status: status,
-        new_status: "pending_approval",
+        new_status: "verified",
         changed_by_user_id: actorUserId,
         change_reason: "Verification passed — all checklist items confirmed",
       });
@@ -480,10 +480,21 @@ function CredentialRequestDetailPage() {
     setBusy(true);
     try {
       const nowIso = new Date().toISOString();
+      // The FSM routes approval through two stops: `verified` means the
+      // approver has not opened it yet, `pending_approval` means they have.
+      // Claim it first when arriving from `verified`.
+      if (status === "verified") {
+        const { error: claimErr } = await supabase
+          .from("credential_request")
+          .update({ status: "pending_approval" })
+          .eq("credential_request_id", request.credential_request_id);
+        if (claimErr) throw claimErr;
+      }
+
       const { error } = await supabase
         .from("credential_request")
         .update({
-          status: "awaiting_payment",
+          status: "approved",
           approved_by_user_id: actorUserId,
           approval_decision_at: nowIso,
         })
@@ -493,7 +504,7 @@ function CredentialRequestDetailPage() {
       await supabase.from("credential_request_status_history").insert({
         credential_request_id: request.credential_request_id,
         old_status: status,
-        new_status: "awaiting_payment",
+        new_status: "approved",
         changed_by_user_id: actorUserId,
         change_reason: "Approved",
       });
@@ -528,14 +539,14 @@ function CredentialRequestDetailPage() {
       const nowIso = new Date().toISOString();
       const { error } = await supabase
         .from("credential_request")
-        .update({ status: "approval_returned", return_reason: reason })
+        .update({ status: "returned", return_reason: reason })
         .eq("credential_request_id", request.credential_request_id);
       if (error) throw error;
 
       await supabase.from("credential_request_status_history").insert({
         credential_request_id: request.credential_request_id,
         old_status: status,
-        new_status: "approval_returned",
+        new_status: "returned",
         changed_by_user_id: actorUserId,
         change_reason: reason,
       });
@@ -599,43 +610,6 @@ function CredentialRequestDetailPage() {
       invalidateAll();
     } catch (e) {
       toast.error(`Reject failed: ${(e as Error).message}`);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleResubmitForApproval = async () => {
-    if (!request || !actorUserId || !woredaId) return;
-    setBusy(true);
-    try {
-      const nowIso = new Date().toISOString();
-      const { error } = await supabase
-        .from("credential_request")
-        .update({ status: "pending_approval", return_reason: null })
-        .eq("credential_request_id", request.credential_request_id);
-      if (error) throw error;
-
-      await supabase.from("credential_request_status_history").insert({
-        credential_request_id: request.credential_request_id,
-        old_status: "approval_returned",
-        new_status: "pending_approval",
-        changed_by_user_id: actorUserId,
-        change_reason: "Resubmitted for approval",
-      });
-      await supabase.from("audit_log").insert({
-        woreda_id: woredaId,
-        actor_user_id: actorUserId,
-        entity_name: "credential_request",
-        entity_id: request.credential_request_id,
-        action_type: "REQUEST_RESUBMITTED_FOR_APPROVAL",
-        new_value_json: null,
-        action_at: nowIso,
-      });
-
-      toast.success("ጥያቄው ለማጽደቅ ዳግም ተልኳል / Resubmitted for approval");
-      invalidateAll();
-    } catch (e) {
-      toast.error(`Resubmit failed: ${(e as Error).message}`);
     } finally {
       setBusy(false);
     }
@@ -909,8 +883,9 @@ function CredentialRequestDetailPage() {
         </section>
 
         {/* Card 3 — Approval */}
-        {(status === "pending_approval" ||
-          status === "approval_returned" ||
+        {(status === "verified" ||
+          status === "pending_approval" ||
+          status === "approved" ||
           status === "rejected" ||
           status === "awaiting_payment" ||
           status === "paid") && (
@@ -925,7 +900,7 @@ function CredentialRequestDetailPage() {
             </div>
             <div className="space-y-4 p-5">
               {/* Review-scope summary */}
-              {(status === "pending_approval" || status === "approval_returned") && (
+              {(status === "verified" || status === "pending_approval") && (
                 <div className="space-y-3">
                   <div
                     className={`rounded-md border p-3 text-sm ${
@@ -985,7 +960,7 @@ function CredentialRequestDetailPage() {
                 </div>
               )}
 
-              {status === "pending_approval" &&
+              {(status === "verified" || status === "pending_approval") &&
                 (canApprove ? (
                   <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-4">
                     <Button
@@ -1026,35 +1001,6 @@ function CredentialRequestDetailPage() {
                   </p>
                 ))}
 
-              {status === "approval_returned" && (
-                <>
-                  {request.return_reason && (
-                    <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900">
-                      <div className="font-noto-ethiopic text-sm font-semibold">
-                        በማጽደቅ ደረጃ የተመለሰበት ምክንያት
-                      </div>
-                      <div className="text-xs opacity-80">
-                        / Returned at Approval Stage — Reason
-                      </div>
-                      <p className="mt-2 whitespace-pre-wrap text-sm">{request.return_reason}</p>
-                    </div>
-                  )}
-                  {canAct && (
-                    <div className="flex justify-end border-t border-slate-200 pt-4">
-                      <Button
-                        onClick={handleResubmitForApproval}
-                        disabled={busy}
-                        className="bg-blue-700 text-white hover:bg-blue-800"
-                      >
-                        {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        <span className="font-noto-ethiopic">ለማጽደቅ ዳግም አስገባ</span>
-                        <span className="ml-1 text-xs opacity-80">/ Resubmit for Approval</span>
-                      </Button>
-                    </div>
-                  )}
-                </>
-              )}
-
               {status === "rejected" && (
                 <div className="rounded-lg border-2 border-red-300 bg-red-50 p-4 text-red-900">
                   <div className="font-noto-ethiopic text-sm font-semibold">ጥያቄው ውድቅ ተደርጓል</div>
@@ -1076,7 +1022,7 @@ function CredentialRequestDetailPage() {
                 </div>
               )}
 
-              {(status === "awaiting_payment" || status === "paid") && (
+              {(status === "approved" || status === "awaiting_payment" || status === "paid") && (
                 <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
                   <div className="font-noto-ethiopic font-semibold">ጥያቄው ጸድቋል</div>
                   <div className="text-xs opacity-80">/ Request approved</div>
@@ -1094,7 +1040,7 @@ function CredentialRequestDetailPage() {
           </section>
         )}
 
-        {(status === "awaiting_payment" || status === "paid") && (
+        {(status === "approved" || status === "awaiting_payment" || status === "paid") && (
           <PaymentCard request={request} status={status} onDone={invalidateAll} />
         )}
 
@@ -1337,7 +1283,7 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
 
   const feeQuery = useQuery({
     queryKey: ["woreda-settings-fee", woredaId],
-    enabled: !!woredaId && status === "awaiting_payment",
+    enabled: !!woredaId && (status === "approved" || status === "awaiting_payment"),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("woreda_settings")
@@ -1408,6 +1354,18 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
       const paymentChannel = waived ? "cash" : channel;
       const refNo =
         waived || paymentChannel === "cash" ? referenceNo.trim() || null : referenceNo.trim();
+
+      // The fee is raised as its own transition: `approved -> awaiting_payment`
+      // is the moment the amount is fixed, and the FSM requires it before a
+      // request may reach `paid`. Arriving straight from `approved` (the
+      // approver hands off to finance) we do it here.
+      if (status === "approved") {
+        const { error: raiseErr } = await supabase
+          .from("credential_request")
+          .update({ status: "awaiting_payment" })
+          .eq("credential_request_id", request.credential_request_id);
+        if (raiseErr) throw raiseErr;
+      }
 
       const { data: pay, error: payErr } = await supabase
         .from("payment")
@@ -2066,12 +2024,21 @@ function IssuanceCard({
 
       // 3. Prior credential replacement (non-new_issue with prior)
       const priorRow = priorCredQuery.data;
-      if (requestType !== "new_issue" && priorCredentialId && priorRow) {
+      // Only an ACTIVE prior credential is superseded. A prior card that is
+      // already expired, suspended, revoked or merely printed has no
+      // `-> replaced` transition, so attempting it raises -- and this call
+      // previously discarded the error, leaving the new card active while the
+      // old one stayed valid. Two live cards for one resident, silently.
+      if (requestType !== "new_issue" && priorCredentialId && priorRow?.status === "active") {
         const priorOldStatus = priorRow.status;
-        await supabase
+        const { data: replacedRow, error: replaceErr } = await supabase
           .from("residence_credential")
           .update({ status: "replaced", replaced_at: nowIso })
-          .eq("credential_id", priorCredentialId);
+          .eq("credential_id", priorCredentialId)
+          .select("credential_id")
+          .maybeSingle();
+        if (replaceErr) throw replaceErr;
+        if (!replacedRow) throw new Error("Prior credential was not superseded");
 
         await supabase.from("credential_status_history").insert({
           credential_id: priorCredentialId,
