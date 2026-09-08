@@ -161,6 +161,38 @@ function OccupantRegistrationPage() {
 
   // --- Contract
   const [houseId, setHouseId] = useState<string>(houseIdFromSearch ?? "");
+
+  // Eligibility comes from the DATABASE, via the same rental_eligibility()
+  // function the BEFORE INSERT trigger calls (migration 31). Deliberately not
+  // reimplemented here: a client rule that drifts from its server half is the
+  // failure this codebase keeps hitting, and the whole point of the shared
+  // function is that the screen and the gate cannot disagree.
+  //
+  // The rule is the name on the occupancy, not the household -- a member of a
+  // household that holds a kebele house is still eligible. house_type comes
+  // back for the officer to weigh, never to block on.
+  const eligibility = useQuery({
+    queryKey: ["rental-eligibility", resident?.resident_id, houseId],
+    enabled: !!resident?.resident_id && !!houseId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc(
+        "rental_eligibility" as never,
+        {
+          _resident_id: resident!.resident_id,
+          _rental_house_id: houseId,
+          _request_type: "new_registration",
+        } as never,
+      );
+      if (error) throw error;
+      return data as unknown as {
+        eligible: boolean;
+        house_type: string | null;
+        is_household_head: boolean;
+        reasons: { code: string; am: string; en: string }[];
+      };
+    },
+  });
+  const ineligible = eligibility.data && !eligibility.data.eligible;
   const [rentAmount, setRentAmount] = useState<string>("");
   const [rentStart, setRentStart] = useState<string>("");
   const [rentEnd, setRentEnd] = useState<string>("");
@@ -443,7 +475,9 @@ function OccupantRegistrationPage() {
           <Button
             type="button"
             onClick={openConfirm}
-            disabled={mutation.isPending}
+            // Blocked client-side purely so the officer is not sent into a form
+            // the database will refuse. The trigger is the real gate.
+            disabled={mutation.isPending || !!ineligible || eligibility.isLoading}
             className="bg-[#0b2a63] font-noto-ethiopic text-white hover:bg-[#0b2a63]/90"
           >
             {mutation.isPending ? (
@@ -523,6 +557,68 @@ function OccupantRegistrationPage() {
         <Card className="border-slate-200 p-5">
           <SectionTitle icon={UserSearch} am="የተከራይ መታወቂያ መረጃ" />
           <div className="mt-4 space-y-4">
+            {resident && houseId && (eligibility.isLoading || eligibility.data) && (
+              <div
+                className={
+                  eligibility.isLoading
+                    ? "rounded-md border border-slate-200 bg-slate-50 p-3"
+                    : ineligible
+                      ? "rounded-md border-2 border-red-300 bg-red-50 p-3"
+                      : "rounded-md border border-emerald-300 bg-emerald-50 p-3"
+                }
+              >
+                {eligibility.isLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-slate-600">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="font-noto-ethiopic">ብቁነት በመመርመር ላይ</span>
+                    <span className="text-xs">/ Checking eligibility</span>
+                  </div>
+                ) : ineligible ? (
+                  <div className="space-y-2">
+                    <div className="font-noto-ethiopic text-sm font-semibold text-red-800">
+                      ይህ ነዋሪ ብቁ አይደለም
+                      <span className="ml-2 font-sans text-xs font-normal text-red-700">
+                        / This resident is not eligible
+                      </span>
+                    </div>
+                    <ul className="space-y-1">
+                      {eligibility.data!.reasons.map((r) => (
+                        <li key={r.code} className="text-sm text-red-800">
+                          <span className="font-noto-ethiopic">{r.am}</span>
+                          <span className="mt-0.5 block text-xs text-red-700">/ {r.en}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <div className="font-noto-ethiopic text-sm font-semibold text-emerald-800">
+                      ብቁ ነው
+                      <span className="ml-2 font-sans text-xs font-normal text-emerald-700">
+                        / Eligible
+                      </span>
+                    </div>
+                    {/* house_type is context for the verifier, not a blocker --
+                        a household member is not the holder. */}
+                    {eligibility.data!.house_type && (
+                      <div className="text-xs text-emerald-800">
+                        <span className="font-noto-ethiopic">የአሁኑ የቤት ዓይነት፦ </span>
+                        <span>{eligibility.data!.house_type}</span>
+                        {eligibility.data!.is_household_head ? (
+                          <span className="font-noto-ethiopic"> (የቤተሰብ ኃላፊ / household head)</span>
+                        ) : (
+                          <span className="font-noto-ethiopic">
+                            {" "}
+                            (የቤተሰብ አባል / household member)
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div>
               <FieldLabel am="የነዋሪነት መለያ ቁጥር" en="Resident ID" />
               <div className="relative">
