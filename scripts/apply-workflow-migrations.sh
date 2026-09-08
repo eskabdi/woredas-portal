@@ -42,26 +42,41 @@ set -euo pipefail
 
 REF="${1:-}"
 MODE="${2:-}"
+shift 2 2>/dev/null || true
 
 if [[ -z "$REF" ]]; then
-  echo "usage: $0 <project-ref> [--dry-run]" >&2
+  echo "usage: $0 <project-ref> [--dry-run|--apply] [migration.sql ...]" >&2
   exit 2
 fi
 if [[ -z "${SUPABASE_ACCESS_TOKEN:-}" ]]; then
   echo "SUPABASE_ACCESS_TOKEN is not set" >&2
   exit 2
 fi
+# --apply is accepted as an explicit synonym for "no flag", so a caller can name
+# the intent positionally rather than relying on an empty second argument.
+if [[ "$MODE" == "--apply" ]]; then MODE=""; fi
 if [[ -n "$MODE" && "$MODE" != "--dry-run" ]]; then
-  echo "unknown option: $MODE (only --dry-run is supported)" >&2
+  echo "unknown option: $MODE (expected --dry-run or --apply)" >&2
   exit 2
 fi
 
 cd "$(dirname "$0")/.."
 
-M25="supabase/migrations/00000000000025_workflow_engine.sql"
-M26="supabase/migrations/00000000000026_workflow_engine_fixes.sql"
+# Default set is 25+26: they must go together (25 alone is a broken state --
+# 26 is what fixes the `approved` dead end, the hidden approval-queue rows and
+# the green verdict on a card still at the printer). Any other set is passed
+# explicitly, and whatever is listed is applied in ONE transaction in the order
+# given.
+if [[ $# -gt 0 ]]; then
+  MIGRATIONS=("$@")
+else
+  MIGRATIONS=(
+    "supabase/migrations/00000000000025_workflow_engine.sql"
+    "supabase/migrations/00000000000026_workflow_engine_fixes.sql"
+  )
+fi
 
-for f in "$M25" "$M26"; do
+for f in "${MIGRATIONS[@]}"; do
   [[ -f "$f" ]] || { echo "missing migration: $f" >&2; exit 2; }
 done
 
@@ -76,10 +91,10 @@ trap 'rm -f "$PAYLOAD"' EXIT
 # load-bearing for --dry-run: leaving an inner COMMIT in place would end the
 # outer transaction early and commit migration 25 for real, so a "dry run"
 # would apply half the change to production before reaching ROLLBACK.
-python3 - "$M25" "$M26" "$PAYLOAD" "${MODE:-}" <<'PY'
+python3 - "$PAYLOAD" "${MODE:-}" "${MIGRATIONS[@]}" <<'PY'
 import json, re, sys
 
-m25, m26, out, mode = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+out, mode, paths = sys.argv[1], sys.argv[2], sys.argv[3:]
 
 def strip_tx(path):
     body = open(path).read()
@@ -91,7 +106,7 @@ def strip_tx(path):
             kept.append(line)
     return "\n".join(kept)
 
-combined = strip_tx(m25) + "\n" + strip_tx(m26)
+combined = "\n".join(strip_tx(p) for p in paths)
 
 # Refuse to build a payload that could commit inside the wrapper.
 for kw in ("COMMIT", "ROLLBACK"):
@@ -103,10 +118,11 @@ json.dump({"query": "BEGIN;\n" + combined + "\n" + closer + "\n"}, open(out, "w"
 PY
 
 if [[ "$MODE" == "--dry-run" ]]; then
-  echo "==> REHEARSING migrations 25+26 against $REF (rolls back; nothing is applied)"
+  echo "==> REHEARSING against $REF (rolls back; nothing is applied):"
 else
-  echo "==> APPLYING migrations 25+26 to $REF (real apply -- both, or neither)"
+  echo "==> APPLYING to $REF (real apply -- all listed, or none):"
 fi
+for f in "${MIGRATIONS[@]}"; do echo "      $(basename "$f")"; done
 
 # -o /dev/null would hide the error body, so capture it and print only what the
 # API returned. The token is in a header read from the environment: never on the
