@@ -313,3 +313,62 @@ own `BEGIN`/`COMMIT` and wraps the concatenation in one transaction, so
 commit migration 25 for real before the wrapper's `ROLLBACK` was ever reached.
 The dry run and the apply send byte-identical SQL apart from the closing
 keyword, so what was rehearsed is what runs.
+
+---
+
+## 8. Deployment completed — 2026-09-08
+
+The frontend and all migrations are live and in step. Production is built from
+`3cc09c2` (confirmed via the deployment's own `meta.githubCommitSha`), aliased
+to `woredas-portal.vercel.app`.
+
+### Final live state
+
+| Check                                      | Value |
+| ------------------------------------------ | ----- |
+| `workflow_transition` rows                 | 31    |
+| Temporary LEGACY-28 rows remaining         | 0     |
+| `ready_to_print -> printed` (one-step)     | 0     |
+| `ready_to_print -> printing` (two-phase)   | 1     |
+| `submitted -> verified` (8-stage path)     | 1     |
+| `submitted -> pending_approval` (old)      | 0     |
+| Ungated transitions                        | 0     |
+| Terminal states with an exit               | 0     |
+| `zz_enforce_workflow_insert` triggers      | 2     |
+| `anon` grants on the two PII-bearing views | 0     |
+
+### Migration order, and why it mattered
+
+25 → 26 → 27 → 28 (temporary) → 29 → **deploy frontend** → 30 (removes 28).
+
+28 and 30 are a matched pair created by an ordering mistake: 25/26 were applied
+while the pre-Task-1 frontend was still serving, so the transitions that build
+writes were unseeded and live credential processing failed with
+`may not move from submitted to pending_approval`. 28 re-seeded them to restore
+service; 30 removed them once the new frontend was live. 30 guards itself —
+it refuses to run while any request sits at `pending_approval` without having
+passed through `verified`, the signature of the old build still being in play.
+
+**The general rule this establishes for this project:** the credential
+frontend and the workflow FSM are a single deploy unit. Neither half is
+independently deployable, because each enforces assumptions about the other.
+The migration must land first (the frontend writes `printing`, which only the
+migration makes legal), and the frontend must follow immediately.
+
+### Restored by migration 30
+
+Two-phase printing. While the legacy rows were live, `ready_to_print -> printed`
+was legal, so a jammed or misfed printer spent the credential and forced the
+resident to start a new request. That window is closed.
+
+### Still open (not deployment blockers)
+
+- **Fee waivers** send `amount: 0`, which `payment_amount_sync()` rejects
+  outright. Broken before this work; under the FSM it also strands the request
+  at `awaiting_payment` (migration 27's abandon paths are now the escape).
+  Needs a product decision — `validate_credential_fee_amount()` already
+  contemplates supervisor-authorised waivers, but nothing implements them.
+- **`vital_event`, `service_request`, `rental_occupancy_request`** carry no FSM
+  triggers, so F-01 remains fully open on all three. Task 14.
+- **`authenticated` retains INSERT/UPDATE/DELETE on `household_member_roster`**,
+  which is auto-updatable over `resident`. Gated by RLS and used by no code.
