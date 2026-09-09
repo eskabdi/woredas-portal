@@ -37,15 +37,15 @@ ordering.
 
 ## Phase status
 
-| Phase | Scope                                                                                              | Status                  |
-| ----- | -------------------------------------------------------------------------------------------------- | ----------------------- |
-| 0     | Commit the report + this tracker                                                                   | done                    |
-| 1     | F13 — Vitest test harness                                                                          | done                    |
-| 2     | P0 — F1 (edge function errors), F5 (permission upsert)                                             | done                    |
-| 3     | P1 — F4 (backfill/seeding), F6 (row-verification), F7 (`current_permissions()`)                    | done                    |
-| 4     | P2 — F3 (per-user overrides), F8 (single source of truth), F9 (localization), F12 (password reset) | done                    |
-| 5     | P3 — F10 (CORS allow-list), access review (`updated_by`)                                           | done                    |
-| 6     | Internal review pass on the whole diff (`tenant-isolation-review`, `portal-conventions-review`, `secret-sweep`) before deploy | done |
+| Phase | Scope                                                                                                                         | Status |
+| ----- | ----------------------------------------------------------------------------------------------------------------------------- | ------ |
+| 0     | Commit the report + this tracker                                                                                              | done   |
+| 1     | F13 — Vitest test harness                                                                                                     | done   |
+| 2     | P0 — F1 (edge function errors), F5 (permission upsert)                                                                        | done   |
+| 3     | P1 — F4 (backfill/seeding), F6 (row-verification), F7 (`current_permissions()`)                                               | done   |
+| 4     | P2 — F3 (per-user overrides), F8 (single source of truth), F9 (localization), F12 (password reset)                            | done   |
+| 5     | P3 — F10 (CORS allow-list), access review (`updated_by`)                                                                      | done   |
+| 6     | Internal review pass on the whole diff (`tenant-isolation-review`, `portal-conventions-review`, `secret-sweep`) before deploy | done   |
 
 ## Open Decisions D1/D2 — resolution
 
@@ -108,7 +108,7 @@ rewrites SQL: this repo's migrations are forward-only (CLAUDE.md), and
 `default_role_perms()` lives in the already-applied baseline migration, which
 is never edited after the fact. Auto-generating and overwriting that file
 would violate that rule for no real benefit. Instead the script parses the
-*last* `CREATE OR REPLACE FUNCTION default_role_perms` definition across all
+_last_ `CREATE OR REPLACE FUNCTION default_role_perms` definition across all
 migrations concatenated in order (matching Postgres's own semantics — a later
 migration's redefinition wins), and fails CI the moment its per-role key sets
 stop matching `permissions.ts`'s `ROLE_PERMISSIONS` — the actual failure mode
@@ -127,7 +127,7 @@ downstream consequence, not a fourth source of truth.
 
 Wired into `.github/workflows/ci.yml` as `bun run check:role-perms-drift`.
 Regression lock: `scripts/__tests__/check-role-perms-drift.test.ts` (parser
-correctness, including picking the *last* definition when more than one
+correctness, including picking the _last_ definition when more than one
 exists); the check's actual real-world behavior was also sanity-tested by
 temporarily introducing a real mismatch into `permissions.ts` and confirming
 the script caught it before reverting.
@@ -164,7 +164,7 @@ below.** The system owner directed a different shape for F12: no
 self-service "forgot password" entry point on the login page at all. A
 locked-out user (someone who cannot sign in) still contacts an administrator
 -- `login.tsx` shows a static message, same as before this remediation, not
-an interactive request flow. Instead, an *already signed-in* user gets a
+an interactive request flow. Instead, an _already signed-in_ user gets a
 self-service "Change Password" action from the header avatar dropdown in
 both portal shells:
 
@@ -195,7 +195,7 @@ approach.
 **Net effect on F12's original complaint** ("every locked-out user becomes
 an admin ticket"): that remains true by design for a user who cannot sign in
 at all -- this is the system owner's explicit choice, not a gap. What's
-newly self-service is the *different*, arguably more common case: a signed-in
+newly self-service is the _different_, arguably more common case: a signed-in
 user who wants to change a password they still remember.
 
 Also fixed during this change, per `portal-conventions-review`: a hand-rolled
@@ -212,6 +212,27 @@ item and dialog were verified by code review and build/lint/typecheck only
 `Dialog`/`Input`/`Button`/`Label` primitives are the same ones already
 proven working elsewhere in this exact file (`ChangeRoleDialog`,
 `UserPermissionOverridesDialog`).
+
+**Update (2026-09-09) — the owner revisited the 2026-09-01 decision.** "A
+locked-out user still contacts an administrator" now has a second half: the
+administrator has a real tool to act on that contact, not only a re-invite.
+`send-password-reset-link` (Edge Function) + "Send Password Reset Link" in
+`UsersRolesTab.tsx`'s dropdown let a `tenant_admin` (or `super_admin`)
+trigger a real recovery email for a specific staff member, scoped to their
+own woreda and to staff roles only (never `tenant_admin`/`super_admin`).
+`login.tsx`'s static message is **unchanged** -- there is still no
+unauthenticated self-service entry point, and that half of the 2026-09-01
+decision stands. See CLAUDE.md, "Password change is self-service; password
+reset (locked-out) is admin-initiated, not self-service" for the current,
+authoritative description; this file records the decision history, not the
+current behavior.
+
+This is also where "What's still in place from the original approach" above
+stops being a dead end: the `type=recovery` handling in `authRedirect.ts`/
+`index.tsx`, kept in 2026-09-01 only in case a link was ever generated "by
+other means," is now the live redemption path for the links this feature
+sends. No changes were needed there -- `resetPasswordForEmail`'s link is the
+same shape that code already parsed.
 
 <details>
 <summary>Original approach (superseded by the product decision above, kept for history)</summary>
@@ -354,7 +375,7 @@ production. Also corrected a stale claim in
 `scripts/check-role-perms-drift.ts`'s own header comment, which asserted
 `seed.sql` "can no longer drift independently of" `default_role_perms()` —
 false, and this finding is why: `role_permission` is a per-tenant override
-table by design, so `seed.sql` is *supposed* to be able to diverge from the
+table by design, so `seed.sql` is _supposed_ to be able to diverge from the
 platform default. A drift check that enforced equality here would flag
 legitimate tenant customization as a bug, so none was added; the comment now
 explains the actual (asymmetric, one-directional) relationship instead.
