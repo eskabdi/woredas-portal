@@ -1,15 +1,15 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { MoreHorizontal, Plus, Search, UserPlus, Users } from "lucide-react";
+import { MoreHorizontal, Plus, UserPlus, Users } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { toast } from "sonner";
 import {
   useUrlSort,
   SortableTh,
   useClearTableFilters,
-  ClearFiltersButton,
-  ExportButtons,
+  TableToolbar,
+  FilterGroup,
 } from "@/components/common/TableToolbar";
 import { TableSkeletonRows, TableEmptyRow, TableErrorRow } from "@/components/common/TableStates";
 import { exportRowsToCsv, exportRowsToPdf, type TableColumn } from "@/utils/tableExport";
@@ -291,66 +291,63 @@ function ResidentsListPage() {
       />
 
       {/* Search + filters */}
-      <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <Input
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="በስም፣ የመታወቂያ ቁጥር፣ ስልክ ይፈልጉ / Search by name, ID number, phone…"
-            className="font-am-body pl-10"
-          />
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <FilterGroup
-            label="Sex"
-            value={sex}
-            onChange={(v) => {
-              setSex(v as SexFilter);
-              setPage(0);
-            }}
-            options={[
-              { value: "all", label: "ሁሉም / All" },
-              { value: "male", label: "ወንድ / Male" },
-              { value: "female", label: "ሴት / Female" },
-            ]}
-          />
-          <FilterGroup
-            label="Status"
-            value={status}
-            onChange={(v) => {
-              setStatus(v as StatusFilter);
-              setPage(0);
-            }}
-            options={[
-              { value: "all", label: "ሁሉም / All" },
-              { value: "active", label: "ንቁ / Active" },
-              { value: "inactive", label: "ኢ-ንቁ / Inactive" },
-              { value: "moved_out", label: "ወጥቷል / Moved Out" },
-              { value: "deceased", label: "ሞቷል / Deceased" },
-            ]}
-          />
-          <FilterGroup
-            label="Kebele"
-            value={kebeleId}
-            onChange={(v) => {
-              setKebeleId(v);
-              setPage(0);
-            }}
-            options={[
-              { value: "all", label: "ሁሉም ቀበሌዎች / All Kebeles" },
-              ...(kebelesQuery.data ?? []).map((k) => ({
-                value: k.kebele_id,
-                label: `${k.kebele_number} — ${k.kebele_name_am}`,
-              })),
-            ]}
-          />
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
-          <ClearFiltersButton active={filtersActive} onClear={clearFilters} />
-          <ExportButtons onCsv={handleExportCsv} onPdf={handleExportPdf} busy={exporting} />
-        </div>
-      </div>
+      <TableToolbar
+        searchValue={searchInput}
+        onSearchChange={setSearchInput}
+        searchPlaceholder="በስም፣ የመታወቂያ ቁጥር፣ ስልክ ይፈልጉ / Search by name, ID number, phone…"
+        clearActive={filtersActive}
+        onClear={clearFilters}
+        onExportCsv={handleExportCsv}
+        onExportPdf={handleExportPdf}
+        exportBusy={exporting}
+        filters={
+          <>
+            <FilterGroup
+              label="Sex"
+              value={sex}
+              onChange={(v) => {
+                setSex(v as SexFilter);
+                setPage(0);
+              }}
+              options={[
+                { value: "all", label: "ሁሉም / All" },
+                { value: "male", label: "ወንድ / Male" },
+                { value: "female", label: "ሴት / Female" },
+              ]}
+            />
+            <FilterGroup
+              label="Status"
+              value={status}
+              onChange={(v) => {
+                setStatus(v as StatusFilter);
+                setPage(0);
+              }}
+              options={[
+                { value: "all", label: "ሁሉም / All" },
+                { value: "active", label: "ንቁ / Active" },
+                { value: "inactive", label: "ኢ-ንቁ / Inactive" },
+                { value: "moved_out", label: "ወጥቷል / Moved Out" },
+                { value: "deceased", label: "ሞቷል / Deceased" },
+              ]}
+            />
+            <FilterGroup
+              label="Kebele"
+              value={kebeleId}
+              onChange={(v) => {
+                setKebeleId(v);
+                setPage(0);
+              }}
+              options={[
+                { value: "all", label: "ሁሉም ቀበሌዎች / All Kebeles" },
+                ...(kebelesQuery.data ?? []).map((k) => ({
+                  value: k.kebele_id,
+                  label: `${k.kebele_number} — ${k.kebele_name_am}`,
+                })),
+              ]}
+            />
+          </>
+        }
+      />
 
       {/* Table */}
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
@@ -492,35 +489,6 @@ function ResidentsListPage() {
         onPageSizeChange={setPageSize}
         className="rounded-lg border bg-white"
       />
-    </div>
-  );
-}
-
-function FilterGroup({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  options: { value: string; label: string }[];
-}) {
-  return (
-    <div className="flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1">
-      <span className="text-xs font-medium text-slate-500">{label}:</span>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="font-am-body bg-transparent px-1 py-0.5 text-sm focus:outline-none"
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
     </div>
   );
 }
