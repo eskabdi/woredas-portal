@@ -1,10 +1,9 @@
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { FileText, Search } from "lucide-react";
+import { FileText } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/common/PageHeader";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
@@ -20,8 +19,7 @@ import {
   useUrlSearchTerm,
 } from "@/components/common/TablePagination";
 import {
-  ClearFiltersButton,
-  ExportButtons,
+  TableToolbar,
   SortableTh,
   useClearTableFilters,
   useUrlSort,
@@ -322,46 +320,41 @@ function RentalRequestListPage() {
 
       <TabNav />
 
-      <Card className="p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative flex-1 min-w-[240px]">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-slate-400" />
-            <Input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="ጥያቄ ቁጥር / የቤት ቁጥር / የተከራይ ስም / Request, house or name"
-              className="pl-8"
-            />
-          </div>
-          <select
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-          >
-            <option value="">All types</option>
-            <option value="new_registration">New registration</option>
-            <option value="termination">Vacate</option>
-          </select>
-          <select
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="">All statuses</option>
-            <option value="submitted">Submitted</option>
-            <option value="under_review">Under review</option>
-            <option value="returned">Returned</option>
-            <option value="verified">Verified</option>
-            <option value="rejected">Rejected</option>
-          </select>
-          <ClearFiltersButton active={filtersActive} onClear={clearFilters} />
-          <ExportButtons
-            onCsv={() => handleExport("csv")}
-            onPdf={() => handleExport("pdf")}
-            busy={exporting}
-          />
-        </div>
-      </Card>
+      <TableToolbar
+        searchValue={q}
+        onSearchChange={setQ}
+        searchPlaceholder="ጥያቄ ቁጥር / የቤት ቁጥር / የተከራይ ስም / Request, house or name"
+        clearActive={filtersActive}
+        onClear={clearFilters}
+        onExportCsv={() => handleExport("csv")}
+        onExportPdf={() => handleExport("pdf")}
+        exportBusy={exporting}
+        filters={
+          <>
+            <select
+              className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+            >
+              <option value="">All types</option>
+              <option value="new_registration">New registration</option>
+              <option value="termination">Vacate</option>
+            </select>
+            <select
+              className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="">All statuses</option>
+              <option value="submitted">Submitted</option>
+              <option value="under_review">Under review</option>
+              <option value="returned">Returned</option>
+              <option value="verified">Verified</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </>
+        }
+      />
 
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">

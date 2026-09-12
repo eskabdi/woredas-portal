@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Building2, Shield, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -25,8 +24,7 @@ import {
   useUrlSearchTerm,
 } from "@/components/common/TablePagination";
 import {
-  ClearFiltersButton,
-  ExportButtons,
+  TableToolbar,
   SortableTh,
   useClearTableFilters,
   useUrlSort,
@@ -322,22 +320,16 @@ function TenantsListPage() {
             <InsufficientConsolePermissionNotice />
           ) : (
             <>
-              <Card className="mb-4 p-4">
-                <div className="flex flex-wrap items-center gap-3">
-                  <Input
-                    value={q}
-                    onChange={(e) => setQ(e.target.value)}
-                    placeholder="በወረዳ ስም ወይም ኮድ ይፈልጉ / Search woreda name or code…"
-                    className="max-w-md"
-                  />
-                  <ClearFiltersButton active={filtersActive} onClear={clearFilters} />
-                  <ExportButtons
-                    onCsv={() => handleExport("csv")}
-                    onPdf={() => handleExport("pdf")}
-                    busy={exporting}
-                  />
-                </div>
-              </Card>
+              <TableToolbar
+                searchValue={q}
+                onSearchChange={setQ}
+                searchPlaceholder="በወረዳ ስም ወይም ኮድ ይፈልጉ / Search woreda name or code…"
+                clearActive={filtersActive}
+                onClear={clearFilters}
+                onExportCsv={() => handleExport("csv")}
+                onExportPdf={() => handleExport("pdf")}
+                exportBusy={exporting}
+              />
 
               <Card className="overflow-hidden">
                 <table className="w-full text-sm">

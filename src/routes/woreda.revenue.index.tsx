@@ -28,8 +28,7 @@ import {
 } from "@/components/common/TablePagination";
 import { TableEmptyRow, TableErrorRow, TableSkeletonRows } from "@/components/common/TableStates";
 import {
-  ClearFiltersButton,
-  ExportButtons,
+  TableToolbar,
   SortableTh,
   useClearTableFilters,
   useUrlSort,
@@ -276,7 +275,6 @@ function RevenuePage() {
         titleEn="Revenue"
         actions={
           <div className="flex items-center gap-2">
-            <ExportButtons onCsv={handleExportCsv} onPdf={handleExportPdf} busy={exporting} />
             {hasPermission(P.REVENUE_COLLECT) && (
               <Button onClick={() => setCollectOpen(true)}>
                 <Plus className="mr-1 h-4 w-4" /> Collect Rental Rent
@@ -286,57 +284,55 @@ function RevenuePage() {
         }
       />
 
-      <Card className="p-4">
-        <div className="flex flex-wrap items-end gap-3">
-          <div>
-            <Label>Payment type</Label>
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value as PaymentType | "")}
-              className="mt-1 block h-10 rounded-md border border-input bg-background px-3 text-sm"
-            >
-              <option value="">All types</option>
-              <option value="rental_rent">Rental Rent</option>
-              <option value="credential_fee">Credential Fee</option>
-              <option value="service_fee">Service Fee</option>
-              <option value="house_rent">House Rent (legacy)</option>
-              <option value="penalty">Penalty</option>
-            </select>
-          </div>
-          <div>
-            <Label>Start</Label>
-            <Input type="date" value={start} onChange={(e) => setStart(e.target.value)} />
-          </div>
-          <div>
-            <Label>End</Label>
-            <Input type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
-          </div>
-          <KebeleFilter
-            value={kebeleFilter}
-            onChange={(v) => {
-              setKebeleFilter(v);
-              setPage(0);
-            }}
-            hint="Matches the household or rental unit kebele"
-          />
-          <div className="min-w-[220px] flex-1">
-            <Label className="font-am-body">ፍለጋ / Search</Label>
-            <Input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="ደረሰኝ ቁጥር / Receipt or reference no…"
+      <TableToolbar
+        searchValue={q}
+        onSearchChange={setQ}
+        searchPlaceholder="ደረሰኝ ቁጥር / Receipt or reference no…"
+        clearActive={filtersActive}
+        onClear={() => {
+          setQ("");
+          clearFilters();
+          setPage(0);
+        }}
+        onExportCsv={handleExportCsv}
+        onExportPdf={handleExportPdf}
+        exportBusy={exporting}
+        filters={
+          <>
+            <div>
+              <Label>Payment type</Label>
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value as PaymentType | "")}
+                className="mt-1 block h-10 rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="">All types</option>
+                <option value="rental_rent">Rental Rent</option>
+                <option value="credential_fee">Credential Fee</option>
+                <option value="service_fee">Service Fee</option>
+                <option value="house_rent">House Rent (legacy)</option>
+                <option value="penalty">Penalty</option>
+              </select>
+            </div>
+            <div>
+              <Label>Start</Label>
+              <Input type="date" value={start} onChange={(e) => setStart(e.target.value)} />
+            </div>
+            <div>
+              <Label>End</Label>
+              <Input type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
+            </div>
+            <KebeleFilter
+              value={kebeleFilter}
+              onChange={(v) => {
+                setKebeleFilter(v);
+                setPage(0);
+              }}
+              hint="Matches the household or rental unit kebele"
             />
-          </div>
-          <ClearFiltersButton
-            active={filtersActive}
-            onClear={() => {
-              setQ("");
-              clearFilters();
-              setPage(0);
-            }}
-          />
-        </div>
-      </Card>
+          </>
+        }
+      />
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <Card className="p-4">

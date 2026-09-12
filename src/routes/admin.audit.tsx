@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Eye, Loader2, ScrollText, Search } from "lucide-react";
+import { Eye, Loader2, ScrollText } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card } from "@/components/ui/card";
@@ -19,8 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatEthiopianDateShort } from "@/utils/ethiopianCalendar";
 import { TableEmptyRow, TableErrorRow, TableSkeletonRows } from "@/components/common/TableStates";
 import {
-  ClearFiltersButton,
-  ExportButtons,
+  TableToolbar,
   SortableTh,
   useClearTableFilters,
   useUrlSort,
@@ -349,87 +348,83 @@ function AdminAuditPage() {
               {isFetching ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
               Refresh
             </Button>
-            <ExportButtons onCsv={handleExportCsv} onPdf={handleExportPdf} busy={exporting} />
           </div>
         }
       />
 
-      <Card className="mb-4 p-4">
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="min-w-[240px] flex-1">
-            <Label className="font-am-body text-xs">ፍለጋ / Search</Label>
-            <div className="relative">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-slate-400" />
-              <Input
-                value={q}
+      <TableToolbar
+        searchValue={q}
+        onSearchChange={(v) => {
+          setQ(v);
+          setPage(0);
+        }}
+        searchPlaceholder="Action, entity, or record ID"
+        clearActive={filtersActive}
+        onClear={resetAll}
+        onExportCsv={handleExportCsv}
+        onExportPdf={handleExportPdf}
+        exportBusy={exporting}
+        filters={
+          <>
+            <div>
+              <Label className="font-am-body text-xs">ወረዳ / Tenant</Label>
+              <select
+                className="h-10 w-[220px] rounded-md border border-input bg-background px-3 text-sm"
+                value={woreda}
+                onChange={(e) => setWoreda(e.target.value)}
+              >
+                <option value={PLATFORM_SCOPE}>Platform (no tenant)</option>
+                <option value={ALL_SCOPE}>All tenants</option>
+                {woredas.map((w) => (
+                  <option key={w.woreda_id} value={w.woreda_id}>
+                    {w.woreda_name_en}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label className="font-am-body text-xs">ክፍል / Entity</Label>
+              <select
+                className="h-10 w-[220px] rounded-md border border-input bg-background px-3 text-sm"
+                value={entity}
                 onChange={(e) => {
-                  setQ(e.target.value);
+                  setEntity(e.target.value);
                   setPage(0);
                 }}
-                placeholder="Action, entity, or record ID"
-                className="pl-8"
+              >
+                <option value="">All entities</option>
+                {ENTITIES.map((e) => (
+                  <option key={e} value={e}>
+                    {e}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label className="font-am-body text-xs">ከ / From</Label>
+              <Input
+                type="date"
+                value={start}
+                onChange={(e) => {
+                  setStart(e.target.value);
+                  setPage(0);
+                }}
               />
             </div>
-          </div>
-          <div>
-            <Label className="font-am-body text-xs">ወረዳ / Tenant</Label>
-            <select
-              className="h-10 w-[220px] rounded-md border border-input bg-background px-3 text-sm"
-              value={woreda}
-              onChange={(e) => setWoreda(e.target.value)}
-            >
-              <option value={PLATFORM_SCOPE}>Platform (no tenant)</option>
-              <option value={ALL_SCOPE}>All tenants</option>
-              {woredas.map((w) => (
-                <option key={w.woreda_id} value={w.woreda_id}>
-                  {w.woreda_name_en}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <Label className="font-am-body text-xs">ክፍል / Entity</Label>
-            <select
-              className="h-10 w-[220px] rounded-md border border-input bg-background px-3 text-sm"
-              value={entity}
-              onChange={(e) => {
-                setEntity(e.target.value);
-                setPage(0);
-              }}
-            >
-              <option value="">All entities</option>
-              {ENTITIES.map((e) => (
-                <option key={e} value={e}>
-                  {e}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <Label className="font-am-body text-xs">ከ / From</Label>
-            <Input
-              type="date"
-              value={start}
-              onChange={(e) => {
-                setStart(e.target.value);
-                setPage(0);
-              }}
-            />
-          </div>
-          <div>
-            <Label className="font-am-body text-xs">እስከ / To</Label>
-            <Input
-              type="date"
-              value={end}
-              onChange={(e) => {
-                setEnd(e.target.value);
-                setPage(0);
-              }}
-            />
-          </div>
-          <ClearFiltersButton active={filtersActive} onClear={resetAll} />
-        </div>
-      </Card>
+            <div>
+              <Label className="font-am-body text-xs">እስከ / To</Label>
+              <Input
+                type="date"
+                value={end}
+                onChange={(e) => {
+                  setEnd(e.target.value);
+                  setPage(0);
+                }}
+              />
+            </div>
+          </>
+        }
+      />
 
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">

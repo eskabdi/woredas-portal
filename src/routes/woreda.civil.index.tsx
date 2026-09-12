@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { FileText, Plus, Search, Baby, HeartCrack, Heart, Scale, ChevronDown } from "lucide-react";
+import { FileText, Plus, Baby, HeartCrack, Heart, Scale, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,6 @@ import {
   useUrlPagination,
   useUrlSearchTerm,
 } from "@/components/common/TablePagination";
-import { Input } from "@/components/ui/input";
 import { StatusChip } from "@/components/common/StatusChip";
 import { PermissionGate } from "@/components/common/PermissionGate";
 import {
@@ -27,8 +26,8 @@ import {
   useUrlSort,
   SortableTh,
   useClearTableFilters,
-  ClearFiltersButton,
-  ExportButtons,
+  TableToolbar,
+  FilterGroup,
 } from "@/components/common/TableToolbar";
 import { exportRowsToCsv, exportRowsToPdf, type TableColumn } from "@/utils/tableExport";
 import { useReportBranding } from "@/hooks/useReportBranding";
@@ -253,7 +252,6 @@ function CivilListPage() {
         titleEn="Civil Registration"
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <ExportButtons onCsv={handleExportCsv} onPdf={handleExportPdf} busy={exporting} />
             <PermissionGate permission={P.CIVIL_REGISTER}>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -292,38 +290,38 @@ function CivilListPage() {
         }
       />
 
-      <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <Input
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="የክስተት ቁጥር / Search by event #…"
-            className="font-am-body pl-10"
-          />
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <FilterGroup
-            label="Type"
-            value={eventType}
-            onChange={(v) => {
-              setEventType(v);
-              setPage(0);
-            }}
-            options={EVENT_TYPES}
-          />
-          <FilterGroup
-            label="Status"
-            value={status}
-            onChange={(v) => {
-              setStatus(v);
-              setPage(0);
-            }}
-            options={STATUSES}
-          />
-          <ClearFiltersButton active={filtersActive} onClear={clearFilters} />
-        </div>
-      </div>
+      <TableToolbar
+        searchValue={searchInput}
+        onSearchChange={setSearchInput}
+        searchPlaceholder="የክስተት ቁጥር / Search by event #…"
+        clearActive={filtersActive}
+        onClear={clearFilters}
+        onExportCsv={handleExportCsv}
+        onExportPdf={handleExportPdf}
+        exportBusy={exporting}
+        filters={
+          <>
+            <FilterGroup
+              label="Type"
+              value={eventType}
+              onChange={(v) => {
+                setEventType(v);
+                setPage(0);
+              }}
+              options={EVENT_TYPES}
+            />
+            <FilterGroup
+              label="Status"
+              value={status}
+              onChange={(v) => {
+                setStatus(v);
+                setPage(0);
+              }}
+              options={STATUSES}
+            />
+          </>
+        }
+      />
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
         <table className="w-full text-sm">
@@ -421,34 +419,5 @@ function Th({ am, en }: { am: string; en: string }) {
       <span className="font-am-body">{am}</span>
       <span className="ml-1 text-slate-400 normal-case">/ {en}</span>
     </th>
-  );
-}
-
-function FilterGroup({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  options: { value: string; label: string }[];
-}) {
-  return (
-    <div className="flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1">
-      <span className="text-xs font-medium text-slate-500">{label}:</span>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="font-am-body bg-transparent px-1 py-0.5 text-sm focus:outline-none"
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </div>
   );
 }

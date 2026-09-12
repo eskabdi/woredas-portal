@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Plus, MoreHorizontal, Search } from "lucide-react";
+import { Plus, MoreHorizontal } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,8 +45,7 @@ import {
   useUrlSearchTerm,
 } from "@/components/common/TablePagination";
 import {
-  ClearFiltersButton,
-  ExportButtons,
+  TableToolbar,
   SortableTh,
   useClearTableFilters,
   useUrlSort,
@@ -338,45 +337,44 @@ export function PlatformUsersTab() {
       </div>
 
       {/* Filters */}
-      <Card className="mb-4 p-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative min-w-[240px] flex-1">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-slate-400" />
-            <Input
-              placeholder="Search name or email…"
-              className="pl-8"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
-          </div>
-          <Select value={roleFilter} onValueChange={(v) => setRoleFilter(v as typeof roleFilter)}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Roles</SelectItem>
-              <SelectItem value="super_admin">Super Admin</SelectItem>
-              <SelectItem value="tenant_admin">Tenant Admin</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select
-            value={statusFilter}
-            onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}
-          >
-            <SelectTrigger className="w-[160px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="suspended">Suspended</SelectItem>
-            </SelectContent>
-          </Select>
-          <ClearFiltersButton active={filtersActive} onClear={clearFilters} />
-          <ExportButtons onCsv={exportCsv} onPdf={handleExportPdf} busy={exporting} />
-        </div>
-      </Card>
+      <TableToolbar
+        searchValue={q}
+        onSearchChange={setQ}
+        searchPlaceholder="Search name or email…"
+        clearActive={filtersActive}
+        onClear={clearFilters}
+        onExportCsv={exportCsv}
+        onExportPdf={handleExportPdf}
+        exportBusy={exporting}
+        filters={
+          <>
+            <Select value={roleFilter} onValueChange={(v) => setRoleFilter(v as typeof roleFilter)}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Roles</SelectItem>
+                <SelectItem value="super_admin">Super Admin</SelectItem>
+                <SelectItem value="tenant_admin">Tenant Admin</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select
+              value={statusFilter}
+              onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}
+            >
+              <SelectTrigger className="w-[160px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="suspended">Suspended</SelectItem>
+              </SelectContent>
+            </Select>
+          </>
+        }
+      />
 
       <Card className="overflow-hidden">
         <table className="w-full text-sm">

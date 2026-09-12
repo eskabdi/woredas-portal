@@ -1,11 +1,10 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Search } from "lucide-react";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,8 +17,7 @@ import {
   useUrlSearchTerm,
 } from "@/components/common/TablePagination";
 import {
-  ClearFiltersButton,
-  ExportButtons,
+  TableToolbar,
   SortableTh,
   useClearTableFilters,
   useUrlSort,
@@ -290,64 +288,54 @@ export function ServiceRequestList({ category, titleAm, titleEn, descriptionAm }
         }
       />
 
-      <Card className="p-4">
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="min-w-[240px] flex-1">
-            <Label className="font-am-body text-xs">ፍለጋ / Search</Label>
-            <div className="relative mt-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <Input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="ቁጥር፣ አመልካች ወይም ጉዳይ / Reference, applicant or subject"
-                className="font-am-body pl-9"
-              />
+      <TableToolbar
+        searchValue={input}
+        onSearchChange={setInput}
+        searchPlaceholder="ቁጥር፣ አመልካች ወይም ጉዳይ / Reference, applicant or subject"
+        clearActive={filtered || !sort.isDefault}
+        onClear={clearFilters}
+        onExportCsv={() => doExport("csv")}
+        onExportPdf={() => doExport("pdf")}
+        exportBusy={exporting}
+        filters={
+          <>
+            <div>
+              <Label className="font-am-body text-xs">ደረጃ / Status</Label>
+              <select
+                className="mt-1 block h-10 w-[220px] rounded-md border border-input bg-background px-3 text-sm"
+                value={statusFilter}
+                onChange={(e) =>
+                  patch({ st: e.target.value === "all" ? undefined : e.target.value })
+                }
+              >
+                {statusOptions.map((s) => (
+                  <option key={s} value={s}>
+                    {s === "all" ? "ሁሉም / All" : serviceStatusLabel(s)}
+                  </option>
+                ))}
+              </select>
             </div>
-          </div>
 
-          <div>
-            <Label className="font-am-body text-xs">ደረጃ / Status</Label>
-            <select
-              className="mt-1 block h-10 w-[220px] rounded-md border border-input bg-background px-3 text-sm"
-              value={statusFilter}
-              onChange={(e) => patch({ st: e.target.value === "all" ? undefined : e.target.value })}
-            >
-              {statusOptions.map((s) => (
-                <option key={s} value={s}>
-                  {s === "all" ? "ሁሉም / All" : serviceStatusLabel(s)}
-                </option>
-              ))}
-            </select>
-          </div>
+            <div>
+              <Label className="font-am-body text-xs">አገልግሎት / Service type</Label>
+              <select
+                className="font-am-body mt-1 block h-10 w-[260px] rounded-md border border-input bg-background px-3 text-sm"
+                value={typeFilter}
+                onChange={(e) => patch({ ty: e.target.value || undefined })}
+              >
+                <option value="">ሁሉም / All types</option>
+                {(typesQuery.data ?? []).map((t) => (
+                  <option key={t.service_type_id} value={t.service_type_id}>
+                    {t.name_am} / {t.name_en}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <div>
-            <Label className="font-am-body text-xs">አገልግሎት / Service type</Label>
-            <select
-              className="font-am-body mt-1 block h-10 w-[260px] rounded-md border border-input bg-background px-3 text-sm"
-              value={typeFilter}
-              onChange={(e) => patch({ ty: e.target.value || undefined })}
-            >
-              <option value="">ሁሉም / All types</option>
-              {(typesQuery.data ?? []).map((t) => (
-                <option key={t.service_type_id} value={t.service_type_id}>
-                  {t.name_am} / {t.name_en}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <KebeleFilter value={kebeleFilter} onChange={(v) => patch({ kb: v || undefined })} />
-
-          <div className="ml-auto flex items-end gap-2">
-            <ClearFiltersButton active={filtered || !sort.isDefault} onClear={clearFilters} />
-            <ExportButtons
-              onCsv={() => doExport("csv")}
-              onPdf={() => doExport("pdf")}
-              busy={exporting}
-            />
-          </div>
-        </div>
-      </Card>
+            <KebeleFilter value={kebeleFilter} onChange={(v) => patch({ kb: v || undefined })} />
+          </>
+        }
+      />
 
       <Card className="overflow-hidden p-0">
         <div className="overflow-x-auto">

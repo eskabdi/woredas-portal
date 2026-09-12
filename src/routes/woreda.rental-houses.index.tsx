@@ -1,11 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Building2, Plus, Search } from "lucide-react";
+import { Building2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/common/PageHeader";
 import { KebeleFilter } from "@/components/common/KebeleFilter";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,8 +20,7 @@ import {
   useUrlSearchTerm,
 } from "@/components/common/TablePagination";
 import {
-  ClearFiltersButton,
-  ExportButtons,
+  TableToolbar,
   SortableTh,
   useClearTableFilters,
   useUrlSort,
@@ -274,42 +272,37 @@ function RentalHouseListPage() {
 
       <TabNav />
 
-      <Card className="p-4">
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="relative flex-1 min-w-[240px]">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-slate-400" />
-            <Input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="የቤት ቁጥር / House number"
-              className="pl-8"
+      <TableToolbar
+        searchValue={q}
+        onSearchChange={setQ}
+        searchPlaceholder="የቤት ቁጥር / House number"
+        clearActive={filtersActive}
+        onClear={clearFilters}
+        onExportCsv={() => handleExport("csv")}
+        onExportPdf={() => handleExport("pdf")}
+        exportBusy={exporting}
+        filters={
+          <>
+            <KebeleFilter
+              value={kebeleFilter}
+              onChange={(v) => {
+                setKebeleFilter(v);
+                setPage(0);
+              }}
             />
-          </div>
-          <KebeleFilter
-            value={kebeleFilter}
-            onChange={(v) => {
-              setKebeleFilter(v);
-              setPage(0);
-            }}
-          />
-          <select
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="">All statuses</option>
-            <option value="vacant">Vacant</option>
-            <option value="occupied">Occupied</option>
-            <option value="under_maintenance">Under maintenance</option>
-          </select>
-          <ClearFiltersButton active={filtersActive} onClear={clearFilters} />
-          <ExportButtons
-            onCsv={() => handleExport("csv")}
-            onPdf={() => handleExport("pdf")}
-            busy={exporting}
-          />
-        </div>
-      </Card>
+            <select
+              className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="">All statuses</option>
+              <option value="vacant">Vacant</option>
+              <option value="occupied">Occupied</option>
+              <option value="under_maintenance">Under maintenance</option>
+            </select>
+          </>
+        }
+      />
 
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
