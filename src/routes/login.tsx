@@ -132,7 +132,7 @@ function LoginPage() {
 
           <div className="my-6 border-t border-slate-200" />
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
             <div>
               <Label htmlFor="email">Email</Label>
               <Input
