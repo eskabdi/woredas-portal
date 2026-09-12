@@ -164,6 +164,7 @@ export function UsersRolesTab() {
   const [suspendUser, setSuspendUser] = useState<AppUserRow | null>(null);
   const [assignRoleOpen, setAssignRoleOpen] = useState(false);
   const [permissionsUser, setPermissionsUser] = useState<AppUserRow | null>(null);
+  const [resetLinkSendingId, setResetLinkSendingId] = useState<string | null>(null);
 
   async function refresh() {
     qc.invalidateQueries({ queryKey: ["app_user_list", woredaId] });
@@ -224,6 +225,26 @@ export function UsersRolesTab() {
     });
     toast.success("ተጠቃሚው ታግዷል / User suspended");
     await refresh();
+  }
+
+  // The Edge Function does the real authorization and tenant-isolation check
+  // server-side (caller must be an active tenant admin of the target's own
+  // woreda); this is just the UI's call site and its own no-op-avoidance --
+  // not a security boundary.
+  async function sendPasswordResetLink(user: AppUserRow) {
+    setResetLinkSendingId(user.user_id);
+    try {
+      const { friendlyError } = await invokeEdgeFunction("send-password-reset-link", {
+        user_id: user.user_id,
+      });
+      if (friendlyError) {
+        toast.error(friendlyError);
+        return;
+      }
+      toast.success("የይለፍ ቃል መልሶ ማስጀመሪያ አገናኝ ተልኳል / Reset link sent");
+    } finally {
+      setResetLinkSendingId(null);
+    }
   }
 
   return (
@@ -339,6 +360,28 @@ export function UsersRolesTab() {
                               >
                                 <span className="font-noto-ethiopic text-red-600">አግድ</span>
                                 <span className="ml-2 text-xs text-slate-500">/ Suspend</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                // Server-side re-checks all of this (role,
+                                // status, tenant boundary); disabling here
+                                // only spares the admin a doomed request --
+                                // see sendPasswordResetLink and
+                                // send-password-reset-link/index.ts.
+                                disabled={
+                                  u.role === "tenant_admin" ||
+                                  u.role === "super_admin" ||
+                                  u.status !== "active" ||
+                                  u.user_id === callerId ||
+                                  resetLinkSendingId === u.user_id
+                                }
+                                onClick={() => sendPasswordResetLink(u)}
+                              >
+                                <span className="font-noto-ethiopic">
+                                  የይለፍ ቃል መልሶ ማስጀመሪያ አገናኝ ላክ
+                                </span>
+                                <span className="ml-2 text-xs text-slate-500">
+                                  / Send Password Reset Link
+                                </span>
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 disabled={u.role === "tenant_admin" || u.role === "super_admin"}

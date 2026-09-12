@@ -53,6 +53,20 @@ const ERROR_MESSAGES: Record<string, string> = {
     "A platform administrator can't also be assigned to a woreda.",
   "email is required": "Please enter an email address.",
   "Target is not a platform admin.": "This user is not a platform administrator.",
+  "user_id is required": "Please choose a user.",
+  "User not found": "This user could not be found.",
+
+  // send-password-reset-link
+  "Use the change-password option for your own account instead.":
+    "To change your own password, use the change-password option in the account menu instead.",
+  "Cannot send a reset link for this role.":
+    "A reset link can't be sent for this role. Ask a platform administrator for help.",
+  "This user has never completed setup. Resend the invitation instead.":
+    "This person hasn't set up their account yet. Resend their invitation instead of a reset link.",
+  "This account is not active. Reactivate it before sending a reset link.":
+    "This account isn't active. Reactivate it first, then send the reset link.",
+  "Could not resolve this user's email address": "Could not find an email address for this user.",
+  "Failed to send the reset link": "Could not send the reset link. Please try again.",
 
   // Invite flow
   "No app_user profile found": "This user's profile could not be found.",
