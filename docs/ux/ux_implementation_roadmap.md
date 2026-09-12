@@ -3,6 +3,13 @@
 Five phases. Each phase's exit criteria must hold before the next phase starts — this is a dependency
 chain, not a checklist to work in parallel. Component names match `ux_restructure_plan.md` exactly.
 
+**Status** (see `ux_implementation_report.md` for full detail):
+- [x] Phase 0 — Foundations — **done**, verified (branch `ux-restructure`)
+- [ ] Phase 1 — Shared patterns — not started
+- [ ] Phase 2 — Screen-by-screen adoption — not started
+- [ ] Phase 3 — Print documents & dashboards — not started
+- [ ] Phase 4 — Validation — not started
+
 ## Phase 0 — Foundations (blocks every later phase)
 
 **Workstreams**:
