@@ -109,7 +109,9 @@ export function buildPermissionsMarkdown(): string {
 
   lines.push("## Tenant permissions, by role");
   lines.push("");
-  lines.push("`✓` = granted by default. Eight roles, in the order defined in `permissions.ts`.");
+  lines.push(
+    `\`✓\` = granted by default. ${ROLES.length} roles, in the order defined in \`permissions.ts\`.`,
+  );
   lines.push("");
 
   for (const [group, perms] of groups) {

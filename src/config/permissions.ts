@@ -6,7 +6,11 @@ export type Role =
   | "finance_clerk"
   | "supervisor"
   | "auditor"
-  | "viewer";
+  | "viewer"
+  // A2 (fix-task-production-readiness-v3, Task 4): built-in per the workflow
+  // spec's RBAC table. Print/handover duties (Task 10): preview_print,
+  // confirm_print, authorize_reprint, activate.
+  | "print_officer";
 
 export const P = {
   RESIDENT_CREATE: "resident.create",
@@ -37,9 +41,33 @@ export const P = {
   CREDENTIAL_CONFIRM_PRINT: "credential.confirm_print",
   CREDENTIAL_ACTIVATE: "credential.activate",
   CREDENTIAL_SUSPEND: "credential.suspend",
+  // Task 4 (fix-task-production-readiness-v3): materialized ahead of Task 9/10's
+  // enforcement. CREDENTIAL_VIEW is deliberately distinct from CREDENTIAL_READ --
+  // D-3 in docs/fix-task-v3-execution-notes.md already reserved credential.view
+  // for the workflow spec's read-only-role RBAC row, separate from the broader
+  // coarse credential.read this app already gates most of the credentials module
+  // on. Coarse permissions keep working; these are additive, not a replacement.
+  CREDENTIAL_CREATE_REQUEST: "credential.create_request",
+  CREDENTIAL_AUTHORIZE_REPRINT: "credential.authorize_reprint",
+  // Reserved (A4): tenant_admin only, never grantable to another role or via
+  // override -- see ROLE_PERMISSIONS' reserved-permission note below.
+  CREDENTIAL_CONFIGURE_POLICY: "credential.configure_policy",
+  CREDENTIAL_VIEW: "credential.view",
   CIVIL_REGISTER: "civil.register",
   CIVIL_APPROVE: "civil.approve",
   CIVIL_READ: "civil.read",
+  // Task 14's granular civil-registration workflow verbs, materialized now
+  // (Task 4 item 1) so the default matrix is ready before Task 14 wires the
+  // vital_event FSM. civil.register/.approve/.read (coarse) are unchanged and
+  // keep gating everything until Task 14 lands.
+  CIVIL_CREATE_EVENT: "civil.create_event",
+  CIVIL_SUBMIT: "civil.submit",
+  CIVIL_RESUBMIT: "civil.resubmit",
+  CIVIL_VERIFY: "civil.verify",
+  CIVIL_RETURN: "civil.return",
+  CIVIL_REJECT: "civil.reject",
+  CIVIL_RECORD_PAYMENT: "civil.record_payment",
+  CIVIL_VIEW: "civil.view",
   PAYMENT_COLLECT: "payment.collect",
   PAYMENT_READ: "payment.read",
   RECEIPT_PRINT: "receipt.print",
@@ -63,6 +91,18 @@ export const P = {
   SERVICE_VERIFY: "service.verify",
   SERVICE_APPROVE: "service.approve",
   SERVICE_ISSUE: "service.issue",
+  // Task 14's granular service-request workflow verbs, materialized now
+  // (same reasoning as CIVIL_* above). service.create/.read/.verify/.approve/
+  // .issue (coarse) are unchanged and keep gating everything until Task 14
+  // lands; service.issue_letter is a distinct new terminal verb (paid ->
+  // issued), not a rename of service.issue.
+  SERVICE_SUBMIT: "service.submit",
+  SERVICE_RESUBMIT: "service.resubmit",
+  SERVICE_RETURN: "service.return",
+  SERVICE_REJECT: "service.reject",
+  SERVICE_RECORD_PAYMENT: "service.record_payment",
+  SERVICE_ISSUE_LETTER: "service.issue_letter",
+  SERVICE_COMPLETE: "service.complete",
   COMPLAINT_MANAGE: "complaint.manage",
   APPROVAL_QUEUE_VIEW: "approval.queue.view",
 } as const;
@@ -83,6 +123,12 @@ export const CP = {
 
 export type ConsolePermission = (typeof CP)[keyof typeof CP];
 
+// Reserved (A4, fix-task-production-readiness-v3 Task 13): role management
+// (user.manage), credential.revoke, credential.configure_policy, and the rest
+// of tenant_admin's own grant set are never grantable to another role or user
+// via the matrix or an override -- enforced server-side (role_permission /
+// user_permission_override policies + triggers), not just by omission here.
+// tenant_admin's own array below is the reserved set's definition.
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   super_admin: [
     P.PLATFORM_MANAGE,
@@ -143,6 +189,25 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     P.CREDENTIAL_ACTIVATE,
     P.CREDENTIAL_SUSPEND,
     P.CREDENTIAL_PREVIEW_PRINT,
+    P.CREDENTIAL_CREATE_REQUEST,
+    P.CREDENTIAL_AUTHORIZE_REPRINT,
+    P.CREDENTIAL_CONFIGURE_POLICY,
+    P.CREDENTIAL_VIEW,
+    P.CIVIL_CREATE_EVENT,
+    P.CIVIL_SUBMIT,
+    P.CIVIL_RESUBMIT,
+    P.CIVIL_VERIFY,
+    P.CIVIL_RETURN,
+    P.CIVIL_REJECT,
+    P.CIVIL_RECORD_PAYMENT,
+    P.CIVIL_VIEW,
+    P.SERVICE_SUBMIT,
+    P.SERVICE_RESUBMIT,
+    P.SERVICE_RETURN,
+    P.SERVICE_REJECT,
+    P.SERVICE_RECORD_PAYMENT,
+    P.SERVICE_ISSUE_LETTER,
+    P.SERVICE_COMPLETE,
   ],
   supervisor: [
     P.RESIDENT_READ,
@@ -170,6 +235,11 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     P.CREDENTIAL_RETURN,
     P.CREDENTIAL_REJECT,
     P.CREDENTIAL_SUSPEND,
+    P.CREDENTIAL_AUTHORIZE_REPRINT,
+    P.CREDENTIAL_VIEW,
+    P.CIVIL_REJECT,
+    P.CIVIL_VIEW,
+    P.SERVICE_REJECT,
   ],
   civil_registrar: [
     P.RESIDENT_CREATE,
@@ -193,6 +263,18 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     P.CREDENTIAL_CONFIRM_PRINT,
     P.CREDENTIAL_ACTIVATE,
     P.CREDENTIAL_PREVIEW_PRINT,
+    P.CREDENTIAL_CREATE_REQUEST,
+    P.CREDENTIAL_VIEW,
+    P.CIVIL_CREATE_EVENT,
+    P.CIVIL_SUBMIT,
+    P.CIVIL_RESUBMIT,
+    P.CIVIL_VERIFY,
+    P.CIVIL_RETURN,
+    P.CIVIL_VIEW,
+    P.SERVICE_SUBMIT,
+    P.SERVICE_RESUBMIT,
+    P.SERVICE_RETURN,
+    P.SERVICE_ISSUE_LETTER,
   ],
   registry_clerk: [
     P.RESIDENT_CREATE,
@@ -220,6 +302,18 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     P.CREDENTIAL_CONFIRM_PRINT,
     P.CREDENTIAL_ACTIVATE,
     P.CREDENTIAL_PREVIEW_PRINT,
+    P.CREDENTIAL_CREATE_REQUEST,
+    P.CREDENTIAL_VIEW,
+    P.CIVIL_CREATE_EVENT,
+    P.CIVIL_SUBMIT,
+    P.CIVIL_RESUBMIT,
+    P.CIVIL_VERIFY,
+    P.CIVIL_RETURN,
+    P.CIVIL_VIEW,
+    P.SERVICE_SUBMIT,
+    P.SERVICE_RESUBMIT,
+    P.SERVICE_RETURN,
+    P.SERVICE_ISSUE_LETTER,
   ],
   finance_clerk: [
     P.PAYMENT_COLLECT,
@@ -235,6 +329,10 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     P.SERVICE_READ,
     P.APPROVAL_QUEUE_VIEW,
     P.CREDENTIAL_RECORD_PAYMENT,
+    P.CREDENTIAL_VIEW,
+    P.CIVIL_VIEW,
+    P.CIVIL_RECORD_PAYMENT,
+    P.SERVICE_RECORD_PAYMENT,
   ],
   auditor: [
     P.RESIDENT_READ,
@@ -249,6 +347,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     P.RENTAL_REPORT,
     P.REVENUE_VIEW,
     P.SERVICE_READ,
+    P.CREDENTIAL_VIEW,
+    P.CIVIL_VIEW,
   ],
   viewer: [
     P.RESIDENT_READ,
@@ -258,6 +358,22 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     P.CIVIL_READ,
     P.PAYMENT_READ,
     P.SERVICE_READ,
+    P.CREDENTIAL_VIEW,
+    P.CIVIL_VIEW,
+  ],
+  // A2: built-in per the workflow spec's RBAC table. Print/handover stage
+  // duties only -- exact grant set inferred from Task 1/10's role
+  // descriptions since ID Card Workflow.txt (the spec's own binding
+  // reference) isn't in this repo; adjustable per-tenant via the matrix (A3)
+  // like any other built-in role.
+  print_officer: [
+    P.CREDENTIAL_READ,
+    P.CREDENTIAL_VIEW,
+    P.CREDENTIAL_PREVIEW_PRINT,
+    P.CREDENTIAL_CONFIRM_PRINT,
+    P.CREDENTIAL_AUTHORIZE_REPRINT,
+    P.CREDENTIAL_ACTIVATE,
+    P.APPROVAL_QUEUE_VIEW,
   ],
 };
 

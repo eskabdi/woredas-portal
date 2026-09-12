@@ -23,15 +23,17 @@ const EDITABLE_ROLES: { key: Role; am: string; en: string }[] = [
 
 // Mirrors the DB's own lock list exactly -- role_permission's INSERT/UPDATE
 // policies and user_permission_override's CHECK constraint both exclude
-// these five keys (00000000000021_override_security_fixes.sql), so a toggle
-// this set doesn't grey out here would round-trip as a raw Postgres
-// check-constraint violation instead of simply being disabled.
+// these six keys (00000000000021_override_security_fixes.sql,
+// 00000000000036_task4_reserve_configure_policy.sql), so a toggle this set
+// doesn't grey out here would round-trip as a raw Postgres check-constraint
+// violation instead of simply being disabled.
 export const LOCKED_KEYS = new Set([
   "credential.approve",
   "civil.approve",
   "tenant.manage",
   "platform.manage",
   "tenant.create",
+  "credential.configure_policy",
 ]);
 
 export const GROUP_LABELS: Record<string, { am: string; en: string }> = {

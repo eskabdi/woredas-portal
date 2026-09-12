@@ -7,139 +7,158 @@ INSA Enforcer Phase 2.3 / Phase 4 Access Control. Generated from `src/config/per
 
 ## Tenant permissions, by role
 
-`✓` = granted by default. Eight roles, in the order defined in `permissions.ts`.
+`✓` = granted by default. 9 roles, in the order defined in `permissions.ts`.
 
 ### Residents
 
-| Permission        | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer |
-| ----------------- | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ |
-| `resident.create` |             | ✓            |            | ✓               | ✓              |               |         |        |
-| `resident.read`   |             | ✓            | ✓          | ✓               | ✓              | ✓             | ✓       | ✓      |
-| `resident.update` |             | ✓            |            | ✓               | ✓              |               |         |        |
-| `resident.delete` |             | ✓            |            |                 |                |               |         |        |
+| Permission        | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer | print_officer |
+| ----------------- | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ | ------------- |
+| `resident.create` |             | ✓            |            | ✓               | ✓              |               |         |        |               |
+| `resident.read`   |             | ✓            | ✓          | ✓               | ✓              | ✓             | ✓       | ✓      |               |
+| `resident.update` |             | ✓            |            | ✓               | ✓              |               |         |        |               |
+| `resident.delete` |             | ✓            |            |                 |                |               |         |        |               |
 
 ### Households
 
-| Permission         | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer |
-| ------------------ | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ |
-| `household.create` |             | ✓            |            |                 | ✓              |               |         |        |
-| `household.read`   |             | ✓            | ✓          | ✓               | ✓              | ✓             | ✓       | ✓      |
-| `household.update` |             | ✓            |            |                 | ✓              |               |         |        |
+| Permission         | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer | print_officer |
+| ------------------ | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ | ------------- |
+| `household.create` |             | ✓            |            |                 | ✓              |               |         |        |               |
+| `household.read`   |             | ✓            | ✓          | ✓               | ✓              | ✓             | ✓       | ✓      |               |
+| `household.update` |             | ✓            |            |                 | ✓              |               |         |        |               |
 
 ### Credentials
 
-| Permission                  | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer |
-| --------------------------- | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ |
-| `credential.issue`          |             | ✓            |            | ✓               | ✓              |               |         |        |
-| `credential.read`           |             | ✓            | ✓          | ✓               | ✓              | ✓             | ✓       | ✓      |
-| `credential.print`          |             | ✓            |            | ✓               | ✓              |               |         |        |
-| `credential.verify`         |             | ✓            | ✓          | ✓               | ✓              | ✓             | ✓       | ✓      |
-| `credential.revoke`         |             | ✓            | ✓          |                 |                |               |         |        |
-| `credential.renew`          |             | ✓            |            |                 |                |               |         |        |
-| `credential.approve`        |             | ✓            | ✓          |                 |                |               |         |        |
-| `credential.submit`         |             | ✓            |            | ✓               | ✓              |               |         |        |
-| `credential.review`         |             | ✓            |            | ✓               | ✓              |               |         |        |
-| `credential.resubmit`       |             | ✓            |            | ✓               | ✓              |               |         |        |
-| `credential.return`         |             | ✓            | ✓          | ✓               | ✓              |               |         |        |
-| `credential.reject`         |             | ✓            | ✓          |                 |                |               |         |        |
-| `credential.record_payment` |             | ✓            |            |                 |                | ✓             |         |        |
-| `credential.preview_print`  |             | ✓            |            | ✓               | ✓              |               |         |        |
-| `credential.confirm_print`  |             | ✓            |            | ✓               | ✓              |               |         |        |
-| `credential.activate`       |             | ✓            |            | ✓               | ✓              |               |         |        |
-| `credential.suspend`        |             | ✓            | ✓          |                 |                |               |         |        |
+| Permission                     | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer | print_officer |
+| ------------------------------ | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ | ------------- |
+| `credential.issue`             |             | ✓            |            | ✓               | ✓              |               |         |        |               |
+| `credential.read`              |             | ✓            | ✓          | ✓               | ✓              | ✓             | ✓       | ✓      | ✓             |
+| `credential.print`             |             | ✓            |            | ✓               | ✓              |               |         |        |               |
+| `credential.verify`            |             | ✓            | ✓          | ✓               | ✓              | ✓             | ✓       | ✓      |               |
+| `credential.revoke`            |             | ✓            | ✓          |                 |                |               |         |        |               |
+| `credential.renew`             |             | ✓            |            |                 |                |               |         |        |               |
+| `credential.approve`           |             | ✓            | ✓          |                 |                |               |         |        |               |
+| `credential.submit`            |             | ✓            |            | ✓               | ✓              |               |         |        |               |
+| `credential.review`            |             | ✓            |            | ✓               | ✓              |               |         |        |               |
+| `credential.resubmit`          |             | ✓            |            | ✓               | ✓              |               |         |        |               |
+| `credential.return`            |             | ✓            | ✓          | ✓               | ✓              |               |         |        |               |
+| `credential.reject`            |             | ✓            | ✓          |                 |                |               |         |        |               |
+| `credential.record_payment`    |             | ✓            |            |                 |                | ✓             |         |        |               |
+| `credential.preview_print`     |             | ✓            |            | ✓               | ✓              |               |         |        | ✓             |
+| `credential.confirm_print`     |             | ✓            |            | ✓               | ✓              |               |         |        | ✓             |
+| `credential.activate`          |             | ✓            |            | ✓               | ✓              |               |         |        | ✓             |
+| `credential.suspend`           |             | ✓            | ✓          |                 |                |               |         |        |               |
+| `credential.create_request`    |             | ✓            |            | ✓               | ✓              |               |         |        |               |
+| `credential.authorize_reprint` |             | ✓            | ✓          |                 |                |               |         |        | ✓             |
+| `credential.configure_policy`  |             | ✓            |            |                 |                |               |         |        |               |
+| `credential.view`              |             | ✓            | ✓          | ✓               | ✓              | ✓             | ✓       | ✓      | ✓             |
 
 ### Civil Registration
 
-| Permission       | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer |
-| ---------------- | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ |
-| `civil.register` |             | ✓            |            | ✓               |                |               |         |        |
-| `civil.approve`  |             | ✓            | ✓          |                 |                |               |         |        |
-| `civil.read`     |             | ✓            | ✓          | ✓               | ✓              |               | ✓       | ✓      |
+| Permission             | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer | print_officer |
+| ---------------------- | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ | ------------- |
+| `civil.register`       |             | ✓            |            | ✓               |                |               |         |        |               |
+| `civil.approve`        |             | ✓            | ✓          |                 |                |               |         |        |               |
+| `civil.read`           |             | ✓            | ✓          | ✓               | ✓              |               | ✓       | ✓      |               |
+| `civil.create_event`   |             | ✓            |            | ✓               | ✓              |               |         |        |               |
+| `civil.submit`         |             | ✓            |            | ✓               | ✓              |               |         |        |               |
+| `civil.resubmit`       |             | ✓            |            | ✓               | ✓              |               |         |        |               |
+| `civil.verify`         |             | ✓            |            | ✓               | ✓              |               |         |        |               |
+| `civil.return`         |             | ✓            |            | ✓               | ✓              |               |         |        |               |
+| `civil.reject`         |             | ✓            | ✓          |                 |                |               |         |        |               |
+| `civil.record_payment` |             | ✓            |            |                 |                | ✓             |         |        |               |
+| `civil.view`           |             | ✓            | ✓          | ✓               | ✓              | ✓             | ✓       | ✓      |               |
 
 ### Payments
 
-| Permission        | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer |
-| ----------------- | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ |
-| `payment.collect` |             | ✓            |            |                 |                | ✓             |         |        |
-| `payment.read`    |             | ✓            | ✓          |                 |                | ✓             | ✓       | ✓      |
+| Permission        | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer | print_officer |
+| ----------------- | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ | ------------- |
+| `payment.collect` |             | ✓            |            |                 |                | ✓             |         |        |               |
+| `payment.read`    |             | ✓            | ✓          |                 |                | ✓             | ✓       | ✓      |               |
 
 ### Receipts
 
-| Permission      | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer |
-| --------------- | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ |
-| `receipt.print` |             | ✓            | ✓          |                 |                | ✓             |         |        |
+| Permission      | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer | print_officer |
+| --------------- | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ | ------------- |
+| `receipt.print` |             | ✓            | ✓          |                 |                | ✓             |         |        |               |
 
 ### Reports
 
-| Permission      | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer |
-| --------------- | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ |
-| `report.view`   | ✓           | ✓            | ✓          |                 |                |               | ✓       |        |
-| `report.export` |             | ✓            | ✓          |                 |                |               |         |        |
+| Permission      | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer | print_officer |
+| --------------- | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ | ------------- |
+| `report.view`   | ✓           | ✓            | ✓          |                 |                |               | ✓       |        |               |
+| `report.export` |             | ✓            | ✓          |                 |                |               |         |        |               |
 
 ### Audit
 
-| Permission   | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer |
-| ------------ | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ |
-| `audit.view` | ✓           | ✓            | ✓          |                 |                |               | ✓       |        |
+| Permission   | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer | print_officer |
+| ------------ | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ | ------------- |
+| `audit.view` | ✓           | ✓            | ✓          |                 |                |               | ✓       |        |               |
 
 ### Tenant Admin
 
-| Permission      | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer |
-| --------------- | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ |
-| `tenant.manage` | ✓           | ✓            |            |                 |                |               |         |        |
-| `tenant.create` | ✓           |              |            |                 |                |               |         |        |
+| Permission      | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer | print_officer |
+| --------------- | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ | ------------- |
+| `tenant.manage` | ✓           | ✓            |            |                 |                |               |         |        |               |
+| `tenant.create` | ✓           |              |            |                 |                |               |         |        |               |
 
 ### User Management
 
-| Permission    | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer |
-| ------------- | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ |
-| `user.manage` | ✓           | ✓            |            |                 |                |               |         |        |
+| Permission    | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer | print_officer |
+| ------------- | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ | ------------- |
+| `user.manage` | ✓           | ✓            |            |                 |                |               |         |        |               |
 
 ### Platform (Super Admin)
 
-| Permission        | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer |
-| ----------------- | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ |
-| `platform.manage` | ✓           |              |            |                 |                |               |         |        |
+| Permission        | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer | print_officer |
+| ----------------- | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ | ------------- |
+| `platform.manage` | ✓           |              |            |                 |                |               |         |        |               |
 
 ### Rental Houses
 
-| Permission       | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer |
-| ---------------- | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ |
-| `rental.view`    |             | ✓            | ✓          |                 | ✓              |               | ✓       |        |
-| `rental.create`  |             | ✓            |            |                 | ✓              |               |         |        |
-| `rental.approve` |             | ✓            | ✓          |                 |                |               |         |        |
-| `rental.vacate`  |             | ✓            |            |                 |                |               |         |        |
-| `rental.report`  |             | ✓            |            |                 |                |               | ✓       |        |
+| Permission       | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer | print_officer |
+| ---------------- | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ | ------------- |
+| `rental.view`    |             | ✓            | ✓          |                 | ✓              |               | ✓       |        |               |
+| `rental.create`  |             | ✓            |            |                 | ✓              |               |         |        |               |
+| `rental.approve` |             | ✓            | ✓          |                 |                |               |         |        |               |
+| `rental.vacate`  |             | ✓            |            |                 |                |               |         |        |               |
+| `rental.report`  |             | ✓            |            |                 |                |               | ✓       |        |               |
 
 ### Revenue
 
-| Permission                | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer |
-| ------------------------- | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ |
-| `revenue.view`            |             | ✓            | ✓          |                 |                | ✓             | ✓       |        |
-| `revenue.collect`         |             | ✓            |            |                 |                | ✓             |         |        |
-| `revenue.receipt_reprint` |             | ✓            | ✓          |                 |                | ✓             |         |        |
+| Permission                | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer | print_officer |
+| ------------------------- | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ | ------------- |
+| `revenue.view`            |             | ✓            | ✓          |                 |                | ✓             | ✓       |        |               |
+| `revenue.collect`         |             | ✓            |            |                 |                | ✓             |         |        |               |
+| `revenue.receipt_reprint` |             | ✓            | ✓          |                 |                | ✓             |         |        |               |
 
 ### Service Requests
 
-| Permission        | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer |
-| ----------------- | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ |
-| `service.create`  |             | ✓            |            | ✓               | ✓              |               |         |        |
-| `service.read`    |             | ✓            | ✓          | ✓               | ✓              | ✓             | ✓       | ✓      |
-| `service.verify`  |             | ✓            | ✓          |                 |                |               |         |        |
-| `service.approve` |             | ✓            | ✓          |                 |                |               |         |        |
-| `service.issue`   |             | ✓            |            | ✓               | ✓              |               |         |        |
+| Permission               | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer | print_officer |
+| ------------------------ | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ | ------------- |
+| `service.create`         |             | ✓            |            | ✓               | ✓              |               |         |        |               |
+| `service.read`           |             | ✓            | ✓          | ✓               | ✓              | ✓             | ✓       | ✓      |               |
+| `service.verify`         |             | ✓            | ✓          |                 |                |               |         |        |               |
+| `service.approve`        |             | ✓            | ✓          |                 |                |               |         |        |               |
+| `service.issue`          |             | ✓            |            | ✓               | ✓              |               |         |        |               |
+| `service.submit`         |             | ✓            |            | ✓               | ✓              |               |         |        |               |
+| `service.resubmit`       |             | ✓            |            | ✓               | ✓              |               |         |        |               |
+| `service.return`         |             | ✓            |            | ✓               | ✓              |               |         |        |               |
+| `service.reject`         |             | ✓            | ✓          |                 |                |               |         |        |               |
+| `service.record_payment` |             | ✓            |            |                 |                | ✓             |         |        |               |
+| `service.issue_letter`   |             | ✓            |            | ✓               | ✓              |               |         |        |               |
+| `service.complete`       |             | ✓            |            |                 |                |               |         |        |               |
 
 ### Complaints
 
-| Permission         | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer |
-| ------------------ | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ |
-| `complaint.manage` |             | ✓            | ✓          |                 | ✓              |               |         |        |
+| Permission         | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer | print_officer |
+| ------------------ | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ | ------------- |
+| `complaint.manage` |             | ✓            | ✓          |                 | ✓              |               |         |        |               |
 
 ### Approval Queue
 
-| Permission            | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer |
-| --------------------- | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ |
-| `approval.queue.view` |             | ✓            | ✓          | ✓               | ✓              | ✓             |         |        |
+| Permission            | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer | print_officer |
+| --------------------- | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ | ------------- |
+| `approval.queue.view` |             | ✓            | ✓          | ✓               | ✓              | ✓             |         |        | ✓             |
 
 ## Console permissions (`/admin`, super_admin only)
 
