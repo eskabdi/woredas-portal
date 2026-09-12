@@ -63,6 +63,11 @@ Deno.serve(async (req) => {
     const isSuper = caller.role === "super_admin";
     const isTenantAdmin = caller.role === "tenant_admin";
     if (!isSuper && !isTenantAdmin) return json(req, 403, { error: "Forbidden" });
+    // A tenant_admin row with no woreda_id shouldn't exist (invite-platform-admin
+    // forces one on creation), but nothing enforces that at the database level.
+    // Rejecting it here up front means the target query below never has to
+    // reason about matching null against null.
+    if (isTenantAdmin && !caller.woreda_id) return json(req, 403, { error: "Forbidden" });
 
     // Keyed by the VERIFIED caller, after the authz gate. Reset links are
     // rarer than invites and this also caps how many recovery emails one
@@ -85,17 +90,21 @@ Deno.serve(async (req) => {
     // Target's woreda is re-derived from its own row, never taken from the
     // request, so a tenant admin cannot reach across tenants by supplying a
     // different id -- the same rule every cross-tenant check in this app
-    // follows.
-    const { data: target, error: targetErr } = await admin
+    // follows. The woreda filter is folded into THIS query, not applied
+    // afterward, so a cross-tenant id and a genuinely nonexistent one both
+    // come back "not found" for a tenant_admin -- matching
+    // invite-tenant-user's reports_to_user_id check, which does the same for
+    // the same reason: a separate 403 after a successful lookup would let a
+    // tenant admin holding (or guessing) a UUID learn that it belongs to
+    // *some* woreda, just not theirs.
+    let targetQuery = admin
       .from("app_user")
       .select("role, status, woreda_id")
-      .eq("user_id", user_id)
-      .maybeSingle();
+      .eq("user_id", user_id);
+    if (!isSuper) targetQuery = targetQuery.eq("woreda_id", caller.woreda_id);
+    const { data: target, error: targetErr } = await targetQuery.maybeSingle();
     if (targetErr || !target) return json(req, 404, { error: "User not found" });
 
-    if (!isSuper && target.woreda_id !== caller.woreda_id) {
-      return json(req, 403, { error: "Forbidden" });
-    }
     if (!ALLOWED_TARGET_ROLES.has(target.role)) {
       return json(req, 400, { error: "Cannot send a reset link for this role." });
     }
@@ -129,12 +138,20 @@ Deno.serve(async (req) => {
     // does not send mail at all, it only returns a link for the caller to
     // deliver by their own means.
     //
-    // redirectTo here is threaded as a query parameter by the client library
-    // (see node_modules/@supabase/auth-js .../fetch.js), not nested under a
-    // JSON `options` key -- so it is NOT the shape CLAUDE.md warns about for
-    // `POST /admin/generate_link`, where the JS client's `options.redirect_to`
-    // placement is silently ignored by the server. Confirmed against this
-    // repo's pinned auth-js before relying on it.
+    // redirectTo here is threaded as a query parameter by the client library,
+    // not nested under a JSON `options` key -- so it is NOT the shape
+    // CLAUDE.md warns about for `POST /admin/generate_link`, where the JS
+    // client's `options.redirect_to` placement is silently ignored by the
+    // server. Verified against this repo's locally pinned auth-js
+    // (node_modules/@supabase/auth-js, GoTrueClient.js's resetPasswordForEmail
+    // -> lib/fetch.js's qs['redirect_to'] = options.redirectTo). This function
+    // imports supabase-js from esm.sh at a floating "@2", same as every other
+    // Edge Function in this repo, so that exact source wasn't re-inspected for
+    // THIS import -- but inviteUserByEmail (already proven working in
+    // production; see docs/rbac-security-forensic-review.md's invite-link
+    // notes) goes through the identical `_request(..., { redirectTo })` helper
+    // for the same reason, so this isn't a new assumption, just the same one
+    // this app already depends on elsewhere.
     const anon = createClient(SUPABASE_URL, ANON_KEY);
     const { error: resetErr } = await anon.auth.resetPasswordForEmail(targetEmail, {
       redirectTo: `${SITE_URL}/set-password`,
