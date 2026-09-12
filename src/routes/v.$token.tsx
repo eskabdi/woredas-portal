@@ -225,7 +225,7 @@ function CredentialVerificationPage() {
               <div className="font-noto-ethiopic font-bold text-red-800">ይህ መታወቂያ ተሰርዟል</div>
               <div className="text-sm text-red-700">
                 {registry!.status === "invalid"
-                  ? "Signature is genuine, but the registry does not currently consider this card valid."
+                  ? "Revoked ID Card"
                   : `Signature is genuine, but the registry lists this card as ${registry!.status}.`}
               </div>
             </div>
@@ -311,7 +311,7 @@ function CredentialVerificationPage() {
       </div>
 
       <p className="mt-4 text-center text-xs text-slate-500">
-        <span className="font-noto-ethiopic">የሐረሪ ክልል መስተዳድር</span> / Harari Regional Government
+        <span className="font-noto-ethiopic">የሐረሪ ክልላዊ መንግሥት</span> / Harari Regional State
       </p>
     </Shell>
   );
