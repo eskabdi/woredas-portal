@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { upsertRolePermission } from "@/lib/rolePermissions";
 import { ROW_VERIFICATION_FAILURE_MESSAGE } from "@/lib/rowVerification";
 import { useAuthStore } from "@/stores/authStore";
-import { ROLE_PERMISSIONS, type Role } from "@/config/permissions";
+import { ROLE_PERMISSIONS, RESERVED_PERMISSION_KEYS, type Role } from "@/config/permissions";
 import { PERMISSION_ACTION_LABELS } from "@/config/permissionLabels";
 
 const EDITABLE_ROLES: { key: Role; am: string; en: string }[] = [
@@ -21,18 +21,17 @@ const EDITABLE_ROLES: { key: Role; am: string; en: string }[] = [
   { key: "viewer", am: "ተመልካች", en: "Viewer" },
 ];
 
-// Mirrors the DB's own lock list exactly -- role_permission's INSERT/UPDATE
-// policies and user_permission_override's CHECK constraint both exclude
-// these five keys (00000000000021_override_security_fixes.sql), so a toggle
-// this set doesn't grey out here would round-trip as a raw Postgres
-// check-constraint violation instead of simply being disabled.
-export const LOCKED_KEYS = new Set([
-  "credential.approve",
-  "civil.approve",
-  "tenant.manage",
-  "platform.manage",
-  "tenant.create",
-]);
+// Derived from RESERVED_PERMISSION_KEYS (permissions.ts) -- the single
+// canonical list, kept in sync BY HAND with the DB's own exclusion lists
+// (role_permission's INSERT/UPDATE policies, user_permission_override's and
+// tenant_role_permission's CHECK constraints:
+// 00000000000021_override_security_fixes.sql,
+// 00000000000036_task4_reserve_configure_policy.sql,
+// 00000000000037_task13_expand_reserved_keys.sql,
+// 00000000000038_task13_tenant_role_schema.sql). A toggle this set doesn't
+// grey out here would round-trip as a raw Postgres check-constraint
+// violation instead of simply being disabled.
+export const LOCKED_KEYS = new Set<string>(RESERVED_PERMISSION_KEYS);
 
 export const GROUP_LABELS: Record<string, { am: string; en: string }> = {
   resident: { am: "ነዋሪ", en: "Resident" },
