@@ -1,18 +1,19 @@
-# UX Implementation Report — Phase 0 Complete
+# UX Implementation Report — Phase 0 Complete, Phase 1 Started
 
 Branch: `ux-restructure` (created off `claude/woredas-portal-amharic-manual-0x86rz`, not merged, not
-pushed — per instructions, changes stay on this working branch pending review).
+pushed — per instructions, changes stay on this working branch pending review). Three commits:
+Phase 0 part 1 (fonts/tokens/font migration), Phase 0 part 2 (`AppShell`), Phase 1 start (`TableToolbar`).
 
 ## Scope of this pass
 
-**Phase 0 (Foundations) of `ux_implementation_roadmap.md` is complete and verified.** Phases 1–4 (shared
-component library, the 55-screen rollout, print/dashboard typography, and formal validation) are **not
-started** — see "What's not done" below for why, and for the concrete next steps. This report is
-deliberately honest about that split rather than claiming a 55-screen restructuring that didn't happen:
-the roadmap's own effort estimate for the full plan is ~60–72 developer-days: Phase 0 alone is
-realistically the amount of work one focused session can execute *and properly verify*, and shipping
-unverified changes across 55 production screens would violate the "do not break existing functionality"
-constraint more than stopping at a verified foundation does.
+**Phase 0 (Foundations) is complete and verified. Phase 1 (Shared patterns) has one of its four component
+families done** (`TableToolbar`, wired into 3 of Cluster A's ~16 list screens as the reference
+implementation) — the other three (`Stepper`, `DetailHeader`/`WorkflowStepper`, `charts/`) and the
+remaining 13 Cluster A screens, all of Clusters B/C, and Phases 2–4 are **not started**. This report stays
+honest about that split rather than claiming a 55-screen restructuring that didn't happen: the roadmap's
+own effort estimate for the full plan is ~60–72 developer-days, and shipping unverified changes across 55
+production screens in one pass would violate the "do not break existing functionality" constraint more
+than stopping at verified, incremental progress does.
 
 ## What changed (Phase 0, all four workstreams)
 
@@ -84,6 +85,26 @@ pass fixed line-length-only formatting drift the class-name swap caused.
 - Auth-guard/redirect logic in `src/routes/woreda.tsx` and `src/routes/admin.tsx` was **not touched** —
   only the shell component each renders was swapped, per the specific risk called out in the roadmap.
 
+## What changed (Phase 1, partial)
+
+### `TableToolbar` (`ux_restructure_plan.md`, Cluster A)
+- Promoted the previously duplicated per-route toolbar markup into a real visual component,
+  `TableToolbar`, added to `src/components/common/TableToolbar.tsx` alongside its existing hooks
+  (`useUrlSort`, `useClearTableFilters`, etc.) — same file, since that's where every list screen already
+  imports from. Added a shared `FilterGroup` (also previously duplicated per-route) in the same file.
+- Visual treatment follows the design spec's §3.A floating toolbar: `bg-white/80 backdrop-blur-md
+  rounded-2xl border-slate-200/80 shadow-sm`, replacing the flat `rounded-xl border bg-white` card.
+- Wired into three reference screens: `woreda.residents.index.tsx`, `woreda.households.index.tsx`,
+  `woreda.credentials.index.tsx`. Each screen's local `FilterGroup` duplicate was removed. Credentials'
+  export buttons were moved from the page header into the toolbar itself, matching the other two screens
+  and the design spec's own placement (export pills belong in the floating toolbar, not the header) —
+  the one intentional layout change beyond a pure markup swap.
+- **Not done**: the other 13 Cluster A screens (civil events, service requests/complaints, approval
+  queue, rental houses ×2, revenue, audit ×2, admin tenants) still use the old inline toolbar markup.
+  Each is a same-shape swap to `<TableToolbar>` following the pattern in the three migrated screens —
+  no new component work needed, just repetition, which is why it's flagged as a good next batch rather
+  than a hard follow-up.
+
 ## Verification performed
 
 | Check | Result |
@@ -95,7 +116,10 @@ pass fixed line-length-only formatting drift the class-name swap caused.
 | Amharic font rendering, real strings | ✅ — the login page's title "ወረዳ አስተዳደር ሥርዓት" and the
   "ግባ / Sign In" button render in Tayitu with **no tofu boxes** and correct Ethiopic glyph/mark
   rendering (see the screenshot) |
-| Authenticated shell (`AppShell` itself) rendered live | ❌ **not verified** — see below |
+| Authenticated shell (`AppShell` itself) rendered live | ❌ **not verified** — see below. Confirmed only
+  that the bundle containing `AppShell` + `TableToolbar` loads without a runtime crash: hitting
+  `/woreda/residents` unauthenticated correctly redirects to `/login` rather than hitting the app's error
+  boundary, proving the code path is at least import-safe. |
 | Automated test suite | N/A — per `CLAUDE.md`, this repo has no test suite (`no vitest/jest, no *.test.* files`) |
 | WCAG 2.1 AA contrast audit | ❌ not performed — scoped to Phase 4, not Phase 0 |
 | Responsive/breakpoint check | ❌ not performed — scoped to Phase 2/4, and blocked by the same auth

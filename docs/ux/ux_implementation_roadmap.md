@@ -5,8 +5,10 @@ chain, not a checklist to work in parallel. Component names match `ux_restructur
 
 **Status** (see `ux_implementation_report.md` for full detail):
 - [x] Phase 0 — Foundations — **done**, verified (branch `ux-restructure`)
-- [ ] Phase 1 — Shared patterns — not started
-- [ ] Phase 2 — Screen-by-screen adoption — not started
+- [~] Phase 1 — Shared patterns — **`TableToolbar` done** (3 of ~16 Cluster A screens migrated as the
+  reference implementation); `Stepper`, `DetailHeader`/`WorkflowStepper`, `charts/` not started
+- [ ] Phase 2 — Screen-by-screen adoption — not started (13 of 16 Cluster A screens remain, plus
+  Clusters B/C entirely)
 - [ ] Phase 3 — Print documents & dashboards — not started
 - [ ] Phase 4 — Validation — not started
 
