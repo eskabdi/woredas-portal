@@ -114,7 +114,7 @@ function LoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen bg-slate-50 px-4 py-12">
+    <main className="relative min-h-screen bg-slate-50 px-4 py-12">
       <div className="absolute right-4 top-4">
         <span className="font-noto-ethiopic rounded-full bg-blue-50 px-3 py-1 text-sm text-blue-800">
           {getCurrentEthiopianDate()}
@@ -139,6 +139,7 @@ function LoginPage() {
                 id="email"
                 type="email"
                 autoComplete="email"
+                required
                 {...register("email")}
                 className="mt-1"
               />
@@ -151,6 +152,7 @@ function LoginPage() {
                 id="password"
                 type="password"
                 autoComplete="current-password"
+                required
                 {...register("password")}
                 className="mt-1"
               />
@@ -183,6 +185,6 @@ function LoginPage() {
           </p>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
