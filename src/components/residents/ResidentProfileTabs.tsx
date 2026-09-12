@@ -223,10 +223,9 @@ export function HouseholdTab({
       // separate query rather than folded into the household select below:
       // that select embeds kebele via a FK-derived PostgREST join, which is
       // not guaranteed to resolve through a view the same way it does
-      // through the base table. rent_amount stays read from the base table
-      // here -- household.rent_amount has no encrypted counterpart
-      // (00000000000023's own header comment records this as a known scope
-      // gap, unlike rental_occupancy.rent_amount which is in scope).
+      // through the base table. rent_amount now also has an encrypted
+      // counterpart (00000000000044_task6_household_rent_national_id_pii.sql
+      // closed the scope gap 00000000000023's header comment recorded).
       const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
       const [hh, members, contact] = await Promise.all([
         supabase
@@ -246,7 +245,7 @@ export function HouseholdTab({
           .order("full_name_am"),
         db
           .from("household_decrypted")
-          .select("phone_number_decrypted")
+          .select("phone_number_decrypted, rent_amount_decrypted")
           .eq("household_id", householdId as string)
           .maybeSingle(),
       ]);
@@ -255,7 +254,11 @@ export function HouseholdTab({
       if (contact.error) throw contact.error;
       return {
         household: hh.data
-          ? { ...hh.data, phone_number: contact.data?.phone_number_decrypted }
+          ? {
+              ...hh.data,
+              phone_number: contact.data?.phone_number_decrypted,
+              rent_amount: contact.data?.rent_amount_decrypted ?? hh.data.rent_amount,
+            }
           : null,
         members: members.data ?? [],
       };

@@ -66,7 +66,7 @@ function EditResidentPage() {
   const [step, setStep] = useState(1);
   const [maxReached] = useState(4); // all steps reachable in edit
   const [submitting, setSubmitting] = useState(false);
-  const [phoneUnverified, setPhoneUnverified] = useState(false);
+  const [piiUnverified, setPiiUnverified] = useState(false);
 
   const residentQuery = useQuery({
     queryKey: ["resident", residentId],
@@ -116,7 +116,11 @@ function EditResidentPage() {
       r.phone_number_decrypted as string | null,
       r.phone_number as string | null,
     );
-    setPhoneUnverified(phoneField.decryptFailed);
+    const nationalIdField = resolveDecryptedField(
+      r.national_id_no_decrypted as string | null,
+      r.national_id_no as string | null,
+    );
+    setPiiUnverified(phoneField.decryptFailed || nationalIdField.decryptFailed);
     const phone = phoneField.value ?? "";
     const phoneDigits = sanitizePhoneDigits(phone);
 
@@ -131,7 +135,7 @@ function EditResidentPage() {
       photo_url: (r.photo_url as string) ?? "",
       ethnicity: (r.ethnicity as string) ?? "",
       religion: (r.religion as string) ?? "",
-      national_id_no: (r.national_id_no as string) ?? "",
+      national_id_no: nationalIdField.value ?? "",
       phone_digits: phoneDigits,
       current_household_id: (r.current_household_id as string) ?? "",
       relation_to_head: (r.relation_to_head as string) ?? "",
@@ -282,7 +286,7 @@ function EditResidentPage() {
     <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-6 pb-28">
       <PageHeader icon={UserCircle2} titleAm="ነዋሪ አስተካክል" titleEn="Edit Resident" />
 
-      {phoneUnverified && (
+      {piiUnverified && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
           <p className="font-noto-ethiopic">{DECRYPT_UNVERIFIED_WARNING.am}</p>
           <p>{DECRYPT_UNVERIFIED_WARNING.en}</p>

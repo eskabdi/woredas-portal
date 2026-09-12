@@ -136,42 +136,55 @@ tenant, not the platform.
 
 **What this does and does not protect — and its real scope.** It closes the
 stolen-dump/backup case for the columns actually covered:
-`resident.phone_number`/`.email`, `household.phone_number`/`.email`,
-`service_request.applicant_phone`, `payment.amount`,
-`rental_occupancy.rent_amount`, `rental_occupancy_request.rent_amount`.
+`resident.phone_number`/`.email`/`.national_id_no`,
+`household.phone_number`/`.email`/`.rent_amount`, `service_request.applicant_phone`,
+`payment.amount`, `rental_occupancy.rent_amount`,
+`rental_occupancy_request.rent_amount`. `resident.national_id_no` and
+`household.rent_amount` were originally left plaintext — the first migration's
+own header comment recorded both as known gaps (`national_id_no` a stronger
+identifier than the phone number already covered; `household.rent_amount` an
+oversight next to `rental_occupancy.rent_amount`, which was in scope from the
+start) — and Task 6 (fix-task-production-readiness-v3) closed both, same
+per-tenant-key design, in
+`00000000000044_task6_household_rent_national_id_pii.sql`.
 Vault's root key is held outside the database, so a dump yields ciphertext for
-those fields — **not "the database's PII" as a whole**. Left plaintext on the
-same rows: `resident.national_id_no` (a stronger identifier than the phone
-number that _is_ encrypted), `full_name`, `date_of_birth`, `father_name`,
+those fields — **not "the database's PII" as a whole**. Still left plaintext
+on the same rows: `full_name`, `date_of_birth`, `father_name`,
 `mother_full_name`, `birth_place`, `work_info`, `former_residence`;
-`household.address_line`, `gps_lat`/`gps_lng`, and — a genuine scope
-oversight, not a deliberate exclusion — `household.rent_amount` (unlike
-`rental_occupancy.rent_amount`, which is in scope); `service_request`'s
+`household.address_line`, `gps_lat`/`gps_lng`; `service_request`'s
 `applicant_name`, `details`, `incident_place`, `fee_amount`; and
 `issued_letter_html`, which renders a resident's name and address into stored
 HTML. A stolen dump still yields near-complete civil-registration PII per
 resident; this migration materially narrows what it exposes for the
-highest-sensitivity contact and financial fields, it does not make a dump
-safe to lose. It also deliberately does **not** protect against a compromised
-staff session reading its own tenant's data — that user can already read that
-PII legitimately. RLS remains the tenant boundary; this sits under it.
+highest-sensitivity identity, contact and financial fields, it does not make a
+dump safe to lose. It also deliberately does **not** protect against a
+compromised staff session reading its own tenant's data — that user can
+already read that PII legitimately. RLS remains the tenant boundary; this
+sits under it.
 
 **Search tradeoff — a real, user-visible behaviour change.** A randomized
-ciphertext cannot be searched, so `resident.phone_number` also carries a
-deterministic `phone_number_blind_index` (HMAC under the same per-tenant key,
-over a normalized number). This makes **exact-match** phone lookup work and
-partial/substring lookup impossible: the residents list page's current
-`.ilike` "starts with 091…" search cannot survive the cutover, and a staff
-member typing a partial number will get zero results rather than a filtered
-list. That is a deliberate accepted cost, not an oversight — it is called out
-here, in the migration header, and in the remediation plan.
+ciphertext cannot be searched, so `resident.phone_number` and, since Task 6,
+`resident.national_id_no` each carry a deterministic blind index (HMAC under
+the same per-tenant key) alongside their `_enc` column. This makes
+**exact-match** lookup work and partial/substring lookup impossible: the
+residents list page's `.ilike` "starts with 091…" / "starts with 1234…"
+search cannot survive either cutover, and a staff member typing a partial
+number or partial ID will get zero results on that field rather than a
+filtered list (name, Amharic name and resident number still match on partial
+input). That is a deliberate accepted cost, not an oversight — it is called
+out here, in each migration's own header, and in the remediation plan.
 
-Numbers are normalized before hashing so the formats staff actually type fold
-together — `0911223344`, `+251 91 122 3344`, `251911223344` and `911223344` all
-index as the 9-digit national significant number. Anything unrecognisable is
-indexed as its own digit string. Getting this rule wrong fails _silently_ (the
-resident simply is not found), which is why it is pinned explicitly in
-`normalize_phone()` and covered by the dry run.
+Phone numbers are normalized before hashing so the formats staff actually
+type fold together — `0911223344`, `+251 91 122 3344`, `251911223344` and
+`911223344` all index as the 9-digit national significant number; anything
+unrecognisable is indexed as its own digit string (`normalize_phone()`,
+pinned explicitly and covered by the dry run, since getting this rule wrong
+fails _silently_ — the resident simply is not found). National ID numbers get
+no equivalent normalization (`national_id_blind_index()` only trims
+whitespace) — there is no documented "same ID, different spelling" problem
+for this field the way there is for phone numbers, and inventing a
+normalization rule not asked for risks silently folding together IDs that
+are not actually the same.
 
 **Rollout status.**
 
@@ -179,17 +192,23 @@ resident simply is not found), which is why it is pinned explicitly in
 | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1     | Columns, crypto functions, sync triggers, decrypting views                                                                                         | **Applied to production**                                                                                                                                                                                                                                       |
 | 2     | Create the Vault secret, backfill existing rows                                                                                                    | **Applied to production** — all pre-existing rows backfilled, verified via `pii_encryption_status()`                                                                                                                                                            |
-| 3     | Move read paths onto the `*_decrypted` views, call site by call site                                                                               | **Applied to production** — every application read call site now uses the decrypted view, verified live against production data; `00000000000024_...sql` (a sixth decrypting view, `rental_occupancy_request_decrypted`, closing a gap stage 1 left) is applied |
+| 3     | Move read paths onto the `*_decrypted` views, call site by call site                                                                               | **Applied to production** — every application read call site now uses the decrypted view, verified live against production data; `00000000000024_...sql` (a sixth decrypting view, `rental_occupancy_request_decrypted`, closing a gap stage 1 left) is applied; `00000000000044_task6_...sql` (Task 6) added `resident.national_id_no` and `household.rent_amount` to the same rollout, cutting every read/search/duplicate-check call site over in the same migration series |
 | 4     | Drop plaintext columns (separate migration, after burn-in) — the amount>0 guard's stage-4 mechanism is a genuinely open decision, not yet resolved | Not started                                                                                                                                                                                                                                                     |
 
-**Stage 3 notes.** The residents-list phone search (`woreda.residents.index.tsx`)
-changed from `.ilike` substring matching to an exact match against the
-deterministic blind index (`my_phone_blind_index` RPC) — a disclosed,
-intentional UX regression: a staff member searching a partial phone number now
-gets no match on that field (name/resident-number/national-ID search is
-unaffected). `household.rent_amount` remains plaintext-only and unaddressed by
-this stage — it was never brought into stage 1's scope (see the migration's own
-header comment) and has no `_enc` column or decrypted view to cut over to.
+**Stage 3 notes.** The residents-list search (`woreda.residents.index.tsx`)
+changed from `.ilike` substring matching to an exact match against a
+deterministic blind index for both `phone_number` (`my_phone_blind_index`
+RPC) and, since Task 6, `national_id_no` (`my_national_id_blind_index` RPC) —
+two disclosed, intentional UX regressions: a staff member searching a partial
+phone number or partial national ID now gets no match on either field (name,
+Amharic name and resident number still match on partial input). The
+duplicate-ID check in the resident wizard (`ResidentWizardSteps.tsx`) moved
+from `.eq('national_id_no', ...)` to the same blind index for the same reason
+— it was already an exact match, so nothing about that check's behavior
+changed, only which column it reads. `household.rent_amount` is no longer a
+gap: `00000000000044_task6_household_rent_national_id_pii.sql` brought it into
+scope the same way `rental_occupancy.rent_amount` always was, with no search
+tradeoff (it's a display-only numeric field, never filtered on).
 
 **NULL-decrypt fallback policy, by field type.** A decrypt failure (Vault
 secret rotated/absent, corrupt ciphertext) returns NULL, not an error — stage
@@ -202,11 +221,16 @@ revenue. **PII text reads on display-only pages fail closed** (render "—"),
 since showing nothing is preferable to a wrong-looking blank field being
 mistaken for "not recorded." **The two edit forms** (resident and household)
 are the one place a NULL decrypt is genuinely destructive rather than
-cosmetic — the form would otherwise pre-fill an empty phone/email, and saving
-overwrites the still-good plaintext with it — so those also fall back to
-plaintext, matching the financial policy. At stage 4, once plaintext columns
-are dropped, every one of these fallbacks needs to become a hard, visible
-error instead: there will be no plaintext left to fall back to.
+cosmetic — the form would otherwise pre-fill an empty phone/email/national
+ID/rent amount, and saving overwrites the still-good plaintext with it — so
+those also fall back to plaintext, matching the financial policy. The
+printed ID card (`woreda.credentials.$requestId.print.tsx`) applies the same
+policy to `national_id_no` for the same reason a display-only page would
+normally fail closed: a physical card is expensive to reissue, so a
+transient decrypt failure falls back to the still-present plaintext rather
+than printing a blank ID field. At stage 4, once plaintext columns are
+dropped, every one of these fallbacks needs to become a hard, visible error
+instead: there will be no plaintext left to fall back to.
 
 Stage 1 is inert by design: until the Vault secret exists, `encrypt_pii_*()`
 returns NULL and the sync triggers write NULL rather than raising, so applying

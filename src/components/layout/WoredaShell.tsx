@@ -1,4 +1,5 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard,
@@ -31,6 +32,7 @@ import { useWoredaInfo } from "@/hooks/useWoredaInfo";
 import { useWoredaLogo } from "@/hooks/useWoredaLogo";
 import { useTenantModules } from "@/hooks/useTenantModules";
 import { useIdleTimeout } from "@/hooks/useIdleTimeout";
+import { clearAllWizardDrafts } from "@/hooks/useFormDraft";
 import { ChangePasswordDialog } from "@/components/common/ChangePasswordDialog";
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -64,6 +66,7 @@ const ROLE_LABEL_AM: Record<string, string> = {
 
 export function WoredaShell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const appUser = useAuthStore((s) => s.appUser);
   const currentPath = useRouterState({ select: (r) => r.location.pathname });
@@ -83,6 +86,17 @@ export function WoredaShell({ children }: { children: React.ReactNode }) {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
+    // Task 7: TanStack Query's cache is a single module-level client shared
+    // across the whole app (src/router.tsx) -- nothing clears it on its own
+    // when a session ends. Without this, a resident/household/report query
+    // cached under the outgoing tenant's data stays in memory and can
+    // flash stale (wrong-tenant) content the instant the next person signs
+    // in on the same tab, before their own queries have re-fetched.
+    queryClient.clear();
+    // Task 7: a half-typed wizard draft is localStorage, not session state --
+    // it would otherwise still be sitting there (and readable) for whoever
+    // signs in next on this browser. See useFormDraft.ts's own comment.
+    clearAllWizardDrafts();
     navigate({ to: "/login" });
   };
 

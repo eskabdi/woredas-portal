@@ -124,12 +124,16 @@ function HouseholdDetailPage() {
       const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
       const { data, error } = await db
         .from("household_decrypted")
-        .select("phone_number_decrypted, email_decrypted")
+        .select("phone_number_decrypted, email_decrypted, rent_amount_decrypted")
         .eq("household_id", householdId)
         .eq("woreda_id", woredaId as string)
         .single();
       if (error) throw error;
-      return data as { phone_number_decrypted: string | null; email_decrypted: string | null };
+      return data as {
+        phone_number_decrypted: string | null;
+        email_decrypted: string | null;
+        rent_amount_decrypted: number | null;
+      };
     },
   });
 
@@ -322,7 +326,13 @@ function HouseholdDetailPage() {
                   {(h.house_type === "rental" || h.house_type === "rented_by_private") && (
                     <Row
                       label="Rent (ETB)"
-                      value={h.rent_amount != null ? String(h.rent_amount) : notRecorded()}
+                      value={
+                        (householdContactQuery.data?.rent_amount_decrypted ?? h.rent_amount) != null
+                          ? String(
+                              householdContactQuery.data?.rent_amount_decrypted ?? h.rent_amount,
+                            )
+                          : notRecorded()
+                      }
                       mono
                     />
                   )}

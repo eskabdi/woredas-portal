@@ -134,11 +134,37 @@ export function ResidentWizardSteps({
       return;
     }
     idCheckTimer.current = setTimeout(async () => {
+      // national_id_no is encrypted at rest
+      // (00000000000044_task6_household_rent_national_id_pii.sql) -- the
+      // duplicate check now matches on the deterministic blind index instead
+      // of the plaintext column, same cutover shape as the phone/email
+      // blind-index reads elsewhere in this codebase. my_national_id_blind_index
+      // isn't in the generated types yet, hence the untyped rpc cast.
+      const db = supabase as unknown as {
+        rpc: (
+          fn: string,
+          params: Record<string, unknown>,
+        ) => Promise<{ data: unknown; error: { message: string } | null }>;
+      };
+      const { data: blindIndex, error: rpcError } = await db.rpc("my_national_id_blind_index", {
+        _id: nationalId.trim(),
+      });
+      // An RPC error is not "no duplicate" -- clearing the warning on a
+      // transient failure would tell the operator it's safe to proceed when
+      // the check simply never ran.
+      if (rpcError) return;
+      if (!blindIndex) {
+        setDuplicateIdWarning(null);
+        return;
+      }
+      // national_id_no_blind_index isn't in the generated types yet either --
+      // .or() takes a raw filter string, sidestepping the typed-column check
+      // .eq() would otherwise fail on the same way rpc(...) above does.
       let q = supabase
         .from("resident")
         .select("resident_id, resident_number")
         .eq("woreda_id", woredaId)
-        .eq("national_id_no", nationalId.trim())
+        .or(`national_id_no_blind_index.eq.${blindIndex}`)
         .limit(1);
       if (excludeResidentId) q = q.neq("resident_id", excludeResidentId);
       const { data } = await q;

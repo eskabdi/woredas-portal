@@ -45,6 +45,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/integrations/supabase/client";
 import { P } from "@/config/permissions";
 import { formatEthiopianDateOnly } from "@/utils/ethiopianCalendar";
+import { resolveDecryptedField } from "@/lib/decryptedFieldGuard";
 
 export const Route = createFileRoute("/woreda/credentials/$requestId/print")({
   ssr: false,
@@ -240,11 +241,14 @@ function PrintPage() {
       const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
       const { data, error } = await db
         .from("resident_decrypted")
-        .select("phone_number_decrypted")
+        .select("phone_number_decrypted, national_id_no_decrypted")
         .eq("resident_id", request!.resident_id!)
         .maybeSingle();
       if (error) throw error;
-      return data as { phone_number_decrypted: string | null } | null;
+      return data as {
+        phone_number_decrypted: string | null;
+        national_id_no_decrypted: string | null;
+      } | null;
     },
   });
 
@@ -439,16 +443,30 @@ function PrintPage() {
   // field through all three. Memoized (not a plain const) because the
   // object-spread below would otherwise create a new reference every
   // render, which defeated the checks useMemo's own memoization.
+  // national_id_no, unlike phone_number, IS still selected plaintext in the
+  // embed above (it wasn't dropped from that select), so this falls back to
+  // it rather than blanking a physical card's printed ID on a transient
+  // decrypt failure -- same resolveDecryptedField fail-soft policy as the
+  // resident/household edit forms.
   const resident = useMemo(() => {
     if (!request?.resident) return null;
-    /* eslint-disable @typescript-eslint/no-explicit-any -- merging one decrypted
-       field onto an already-untyped (pre-typegen embed) row */
+    /* eslint-disable @typescript-eslint/no-explicit-any -- merging decrypted
+       fields onto an already-untyped (pre-typegen embed) row */
+    const r = request.resident as any;
     return {
-      ...request.resident,
+      ...r,
       phone_number: residentContactQuery.data?.phone_number_decrypted ?? null,
+      national_id_no: resolveDecryptedField(
+        residentContactQuery.data?.national_id_no_decrypted ?? null,
+        r.national_id_no ?? null,
+      ).value,
     } as any;
     /* eslint-enable @typescript-eslint/no-explicit-any */
-  }, [request?.resident, residentContactQuery.data?.phone_number_decrypted]);
+  }, [
+    request?.resident,
+    residentContactQuery.data?.phone_number_decrypted,
+    residentContactQuery.data?.national_id_no_decrypted,
+  ]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const household = request?.household as any;
   const kebele = household?.kebele;

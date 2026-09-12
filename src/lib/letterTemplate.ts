@@ -48,11 +48,20 @@ const ALLOWED_TAGS = new Set([
 const ALLOWED_ATTRS = new Set(["href", "target", "rel", "colspan", "rowspan"]);
 const ALLOWED_STYLES = new Set(["text-align", "font-weight", "font-style", "text-decoration"]);
 
+// These tags' whole point is that their "text content" is not meant to be
+// read as document text -- a <script> body is source code, a <style> body is
+// CSS. The generic disallowed-tag path below unwraps to textContent (so a
+// stray tag an editor produces by accident still keeps its visible words),
+// which is correct for e.g. <font> or <center> but would leak an injected
+// script's source as literal visible text in the rendered letter for these.
+// Removed outright instead, content included.
+const STRIP_ENTIRELY = new Set(["SCRIPT", "STYLE", "IFRAME", "OBJECT", "EMBED"]);
+
 /** Strips scripts, event handlers and unsafe URLs from editor/template HTML. */
 export function sanitizeLetterHtml(html: string): string {
   if (!html) return "";
   if (typeof window === "undefined" || typeof window.DOMParser === "undefined") {
-    return html.replace(/<\/?(script|style|iframe|object|embed)[^>]*>/gi, "");
+    return html.replace(/<(script|style|iframe|object|embed)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, "");
   }
   const doc = new DOMParser().parseFromString(`<div>${html}</div>`, "text/html");
   const root = doc.body.firstElementChild;
@@ -60,6 +69,10 @@ export function sanitizeLetterHtml(html: string): string {
 
   const walk = (node: Element) => {
     for (const child of Array.from(node.children)) {
+      if (STRIP_ENTIRELY.has(child.tagName)) {
+        child.remove();
+        continue;
+      }
       if (!ALLOWED_TAGS.has(child.tagName)) {
         const text = doc.createTextNode(child.textContent ?? "");
         child.replaceWith(text);
