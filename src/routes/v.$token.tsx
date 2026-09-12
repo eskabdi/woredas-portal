@@ -118,7 +118,7 @@ function CredentialVerificationPage() {
       let photoUrl: string | null = null;
       try {
         const { data: rows, error } = await supabase.rpc("verify_credential_token", {
-          _credential_digits: verified.payload.credentialNumber,
+          _token: token,
         });
         if (error) throw error;
         registry = ((rows ?? []) as RegistryRow[])[0] ?? null;
@@ -178,11 +178,6 @@ function CredentialVerificationPage() {
   const registry = data.registry;
   const notFound = !registry && !data.registryError;
 
-  // Enumerated rather than negated: treating anything-but-active as bad would
-  // tell a holder their valid card had been revoked.
-  const WITHDRAWN = ["revoked", "suspended", "replaced"];
-  const withdrawn = !!registry && WITHDRAWN.includes(registry.status);
-
   // Not yet a physical card in anyone's hands: still at (or heading to) the
   // printer. The `printing` window includes a failed print whose physical card
   // is a discarded misfeed -- scanning that must never return a green verdict.
@@ -197,7 +192,27 @@ function CredentialVerificationPage() {
   // nobody -- so a card lost, misfiled, or taken from the output tray in that
   // window must not scan as a card in force.
   const printedNotCollected = registry?.status === "printed";
+
+  // Computed from the SIGNED payload's own expiry date, not from the
+  // registry -- this still works even when the registry collapses its
+  // status to "invalid" (see below), because the client already knows the
+  // card's expiry date independently and correctly regardless of what the
+  // server folded that into.
   const expired = data.expired || registry?.status === "expired";
+
+  // verify_credential_token() (F-02 hardening) now returns a single generic
+  // "invalid" for expired/suspended/revoked/replaced to an anonymous caller,
+  // rather than the real status -- a stranger doesn't get to learn WHY a
+  // card is invalid, only that it is. A signed-in staff member's own session
+  // (this page carries no PermissionGate, so a staff member's cookies still
+  // apply if they open a public link while logged in) still gets the real
+  // granular value, hence checking for the original values too. Order
+  // matters: `expired` is checked above and takes priority, so a card that
+  // is invalid ONLY because it passed its own expiry date still gets the
+  // friendlier amber "expired" message instead of the red one below, even
+  // when the registry said just "invalid".
+  const WITHDRAWN = ["revoked", "suspended", "replaced", "invalid"];
+  const withdrawn = !!registry && !expired && WITHDRAWN.includes(registry.status);
 
   return (
     <Shell>
@@ -209,7 +224,9 @@ function CredentialVerificationPage() {
             <div>
               <div className="font-noto-ethiopic font-bold text-red-800">ይህ መታወቂያ ተሰርዟል</div>
               <div className="text-sm text-red-700">
-                Signature is genuine, but the registry lists this card as {registry!.status}.
+                {registry!.status === "invalid"
+                  ? "Signature is genuine, but the registry does not currently consider this card valid."
+                  : `Signature is genuine, but the registry lists this card as ${registry!.status}.`}
               </div>
             </div>
           </div>
@@ -248,9 +265,7 @@ function CredentialVerificationPage() {
               <div className="font-noto-ethiopic font-bold text-emerald-800">
                 የተረጋገጠ ትክክለኛ መታወቂያ
               </div>
-              <div className="text-sm text-emerald-700">
-                Issued by the Harari Regional Government.
-              </div>
+              <div className="text-sm text-emerald-700">Issued by the Harari Regional State.</div>
             </div>
           </div>
         )}
@@ -266,24 +281,33 @@ function CredentialVerificationPage() {
           </div>
         )}
 
-        <div className="px-5 py-4">
-          {data.photoUrl && (
-            <img
-              src={data.photoUrl}
-              alt=""
-              className="mb-4 h-40 w-40 rounded-lg border border-slate-200 object-cover"
-            />
-          )}
-          <Row labelAm="ስም" labelEn="Full Name" value={payload.fullNameEnglish} />
-          <Row labelAm="መ.ቁ" labelEn="Card Number" value={payload.credentialNumber} />
-          <Row labelAm="ወረዳ" labelEn="Woreda" value={payload.woreda} />
-          <Row labelAm="ቀበሌ" labelEn="Kebele" value={payload.kebele} />
-          <Row labelAm="የተሰጠበት" labelEn="Issued" value={payload.issueDate} />
-          <Row labelAm="የሚያበቃበት" labelEn="Expires" value={payload.expiryDate} />
-          {registry?.date_of_birth && (
-            <Row labelAm="የልደት ቀን" labelEn="Date of Birth" value={registry.date_of_birth} />
-          )}
-        </div>
+        {/* A withdrawn/invalid card reveals nothing beyond the banner above --
+            same treatment as a bad signature (t3_03_bare_number.png-style):
+            the point of collapsing the status to "invalid" for an anonymous
+            caller is to stop a stranger learning WHY a card is invalid, and
+            showing the resident's name/woreda/kebele/dates right below that
+            banner would leak exactly the identity the collapse was meant to
+            protect. */}
+        {!withdrawn && (
+          <div className="px-5 py-4">
+            {data.photoUrl && (
+              <img
+                src={data.photoUrl}
+                alt=""
+                className="mb-4 h-40 w-40 rounded-lg border border-slate-200 object-cover"
+              />
+            )}
+            <Row labelAm="ስም" labelEn="Full Name" value={payload.fullNameEnglish} />
+            <Row labelAm="መ.ቁ" labelEn="Card Number" value={payload.credentialNumber} />
+            <Row labelAm="ወረዳ" labelEn="Woreda" value={payload.woreda} />
+            <Row labelAm="ቀበሌ" labelEn="Kebele" value={payload.kebele} />
+            <Row labelAm="የተሰጠበት" labelEn="Issued" value={payload.issueDate} />
+            <Row labelAm="የሚያበቃበት" labelEn="Expires" value={payload.expiryDate} />
+            {registry?.date_of_birth && (
+              <Row labelAm="የልደት ቀን" labelEn="Date of Birth" value={registry.date_of_birth} />
+            )}
+          </div>
+        )}
       </div>
 
       <p className="mt-4 text-center text-xs text-slate-500">
