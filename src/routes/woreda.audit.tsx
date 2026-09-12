@@ -360,7 +360,7 @@ function AuditTrailPage() {
       <Card className="p-4">
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-[240px] flex-1">
-            <Label className="font-noto-ethiopic text-xs">ፍለጋ / Search</Label>
+            <Label className="font-am-body text-xs">ፍለጋ / Search</Label>
             <div className="relative">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-slate-400" />
               <Input
@@ -375,7 +375,7 @@ function AuditTrailPage() {
             </div>
           </div>
           <div>
-            <Label className="font-noto-ethiopic text-xs">ክፍል / Entity</Label>
+            <Label className="font-am-body text-xs">ክፍል / Entity</Label>
             <select
               className="h-10 w-[220px] rounded-md border border-input bg-background px-3 text-sm"
               value={entity}
@@ -393,7 +393,7 @@ function AuditTrailPage() {
             </select>
           </div>
           <div>
-            <Label className="font-noto-ethiopic text-xs">ከ / From</Label>
+            <Label className="font-am-body text-xs">ከ / From</Label>
             <Input
               type="date"
               value={start}
@@ -404,7 +404,7 @@ function AuditTrailPage() {
             />
           </div>
           <div>
-            <Label className="font-noto-ethiopic text-xs">እስከ / To</Label>
+            <Label className="font-am-body text-xs">እስከ / To</Label>
             <Input
               type="date"
               value={end}
@@ -479,13 +479,13 @@ function AuditTrailPage() {
                   return (
                     <tr key={r.audit_log_id} className="border-t hover:bg-slate-50">
                       <td className="whitespace-nowrap px-4 py-2">
-                        <div className="font-noto-ethiopic">{formatEthiopianDateShort(at)}</div>
+                        <div className="font-am-body">{formatEthiopianDateShort(at)}</div>
                         <div className="text-xs text-slate-500">
                           {at.toLocaleString("en-GB", { hour12: false })}
                         </div>
                       </td>
                       <td className="px-4 py-2">
-                        <div className="font-noto-ethiopic">
+                        <div className="font-am-body">
                           {r.actor?.full_name ?? r.actor?.username ?? "System"}
                         </div>
                         {r.actor?.role && (
@@ -530,7 +530,7 @@ function AuditTrailPage() {
       <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
         <DialogContent className="max-h-[85vh] max-w-2xl overflow-auto">
           <DialogHeader>
-            <DialogTitle className="font-noto-ethiopic">የመዝገብ ዝርዝር / Entry details</DialogTitle>
+            <DialogTitle className="font-am-body">የመዝገብ ዝርዝር / Entry details</DialogTitle>
           </DialogHeader>
           {detail && (
             <div className="space-y-3 text-sm">
@@ -549,7 +549,7 @@ function AuditTrailPage() {
                 <Field label="Source IP" value={detail.source_ip ?? "—"} />
               </div>
               <div className="flex items-center justify-between rounded-md border bg-slate-50 px-3 py-2">
-                <p className="font-noto-ethiopic text-xs text-slate-600">
+                <p className="font-am-body text-xs text-slate-600">
                   የተመለከተውን መዝገብ ክፈት / Review the affected record
                 </p>
                 <AuditDeepLink row={detail} onNavigate={() => setDetail(null)} />
@@ -578,7 +578,7 @@ function Field({ label, value, mono }: { label: string; value: string; mono?: bo
   return (
     <div>
       <p className="text-xs text-slate-500">{label}</p>
-      <p className={mono ? "break-all font-mono text-xs" : "font-noto-ethiopic"}>{value}</p>
+      <p className={mono ? "break-all font-mono text-xs" : "font-am-body"}>{value}</p>
     </div>
   );
 }

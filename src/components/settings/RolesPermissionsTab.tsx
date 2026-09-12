@@ -155,19 +155,19 @@ export function RolesPermissionsTab() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-blue-700 text-white">
-                <th className="sticky left-0 z-10 bg-blue-700 px-4 py-3 text-left font-noto-ethiopic font-medium">
+                <th className="sticky left-0 z-10 bg-blue-700 px-4 py-3 text-left font-am-heading font-medium">
                   <div>ፍቃድ</div>
                   <div className="text-[10px] uppercase tracking-wide text-blue-100">
                     Permission
                   </div>
                 </th>
                 {EDITABLE_ROLES.map((r) => (
-                  <th key={r.key} className="px-3 py-3 text-center font-noto-ethiopic font-medium">
+                  <th key={r.key} className="px-3 py-3 text-center font-am-heading font-medium">
                     <div className="text-xs">{r.am}</div>
                     <div className="text-[10px] uppercase tracking-wide text-blue-100">{r.en}</div>
                   </th>
                 ))}
-                <th className="bg-slate-500 px-3 py-3 text-center font-noto-ethiopic font-medium">
+                <th className="bg-slate-500 px-3 py-3 text-center font-am-heading font-medium">
                   <div className="text-xs">ወረዳ አስተዳዳሪ</div>
                   <div className="text-[10px] uppercase tracking-wide text-slate-200">
                     Tenant Admin (Read-Only)
@@ -183,9 +183,7 @@ export function RolesPermissionsTab() {
                       colSpan={EDITABLE_ROLES.length + 2}
                       className="px-4 py-2 text-xs font-semibold text-slate-700"
                     >
-                      <span className="font-noto-ethiopic">
-                        {GROUP_LABELS[prefix]?.am ?? prefix}
-                      </span>
+                      <span className="font-am-body">{GROUP_LABELS[prefix]?.am ?? prefix}</span>
                       <span className="ml-2 text-slate-500">
                         / {GROUP_LABELS[prefix]?.en ?? prefix}
                       </span>
@@ -222,9 +220,7 @@ export function RolesPermissionsTab() {
                                 <Tooltip>
                                   <TooltipTrigger asChild>{cell}</TooltipTrigger>
                                   <TooltipContent>
-                                    <span className="font-noto-ethiopic">
-                                      የስርዓት ገደብ — ሊቀየር አይችልም
-                                    </span>
+                                    <span className="font-am-body">የስርዓት ገደብ — ሊቀየር አይችልም</span>
                                     <span className="ml-1 text-xs text-slate-300">
                                       / System-locked
                                     </span>
@@ -251,7 +247,7 @@ export function RolesPermissionsTab() {
         </div>
       </Card>
       <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-        <span className="font-noto-ethiopic">የሚና ለውጦች ወዲያውኑ በተጠቃሚዎች ላይ ተፈፃሚ ይሆናሉ</span>
+        <span className="font-am-body">የሚና ለውጦች ወዲያውኑ በተጠቃሚዎች ላይ ተፈፃሚ ይሆናሉ</span>
         <span className="ml-2 text-blue-700">/ Role changes apply immediately to users.</span>
       </div>
     </TooltipProvider>

@@ -55,7 +55,7 @@ export const Route = createFileRoute("/woreda/settings/woreda-configuration")({
       permission={P.TENANT_MANAGE}
       fallback={
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-800">
-          <p className="font-noto-ethiopic font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
+          <p className="font-am-body font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
           <p className="text-sm">You do not have permission to manage settings.</p>
         </div>
       }
@@ -400,7 +400,7 @@ function SettingsPage() {
             <div className="mt-4 space-y-3">
               <ReadOnlyBox value="{WOREDA_CODE}-{TYPE}-{YY}-{SEQ:6}" />
               <PreviewLine label="Example" value={`${woredaCode || "ABOKER"}-BR-26-000001`} />
-              <p className="font-noto-ethiopic text-xs text-slate-500">
+              <p className="font-am-body text-xs text-slate-500">
                 ይህ ቅርጸት በስርዓቱ ተስተካክሏል፤ ለውጥ አያስፈልገውም / This format is system-managed and does not
                 need adjustment.
               </p>
@@ -412,7 +412,7 @@ function SettingsPage() {
             <div className="mt-4 space-y-3">
               <ReadOnlyBox value="{WOREDA_CODE}-RCT-{YY}-{SEQ:6}" />
               <PreviewLine label="Example" value={`${woredaCode || "ABOKER"}-RCT-26-000001`} />
-              <p className="font-noto-ethiopic text-xs text-slate-500">
+              <p className="font-am-body text-xs text-slate-500">
                 ይህ ቅርጸት በስርዓቱ ተስተካክሏል፤ ለውጥ አያስፈልገውም / System-managed format.
               </p>
             </div>
@@ -438,7 +438,7 @@ function SettingsPage() {
       <div className="fixed bottom-0 left-64 right-0 z-20 border-t border-slate-200 bg-white/95 px-6 py-3 backdrop-blur">
         <div className="flex items-center justify-end gap-3">
           {form.formState.isDirty && (
-            <span className="font-noto-ethiopic text-xs text-amber-600">
+            <span className="font-am-body text-xs text-amber-600">
               ያልተቀመጡ ለውጦች አሉ / You have unsaved changes
             </span>
           )}
@@ -452,7 +452,7 @@ function SettingsPage() {
             ) : (
               <Save className="mr-2 h-4 w-4" />
             )}
-            <span className="font-noto-ethiopic">ለውጦችን አስቀምጥ</span>
+            <span className="font-am-body">ለውጦችን አስቀምጥ</span>
             <span className="ml-1 text-xs opacity-80">/ Save Changes</span>
           </Button>
         </div>
@@ -478,7 +478,7 @@ function SettingsTab({
       className="relative rounded-none border-b-2 border-transparent bg-transparent px-4 py-3 text-slate-600 shadow-none data-[state=active]:border-blue-700 data-[state=active]:bg-transparent data-[state=active]:text-blue-800 data-[state=active]:shadow-none"
     >
       <div className="flex flex-col items-start leading-tight">
-        <span className="font-noto-ethiopic text-sm font-medium">{labelAm}</span>
+        <span className="font-am-body text-sm font-medium">{labelAm}</span>
         <span className="text-[10px] uppercase tracking-wide text-slate-400">{labelEn}</span>
       </div>
     </TabsTrigger>
@@ -488,7 +488,7 @@ function SettingsTab({
 function SectionTitle({ titleAm, titleEn }: { titleAm: string; titleEn: string }) {
   return (
     <div className="border-b border-slate-100 pb-3">
-      <h3 className="font-noto-ethiopic text-base font-semibold text-slate-900">{titleAm}</h3>
+      <h3 className="font-am-heading text-base font-semibold text-slate-900">{titleAm}</h3>
       <p className="text-xs text-slate-500">{titleEn}</p>
     </div>
   );
@@ -510,7 +510,7 @@ function Field({
   return (
     <div className={colSpan2 ? "md:col-span-2" : ""}>
       <Label className="mb-1.5 block">
-        <span className="font-noto-ethiopic text-sm font-medium text-slate-700">{labelAm}</span>
+        <span className="font-am-body text-sm font-medium text-slate-700">{labelAm}</span>
         <span className="ml-1 text-xs text-slate-500">/ {labelEn}</span>
       </Label>
       {children}
@@ -615,7 +615,7 @@ function ImageUploadCard({
   return (
     <Card className="p-5">
       <div className="mb-3">
-        <h3 className="font-noto-ethiopic text-sm font-semibold text-slate-900">{titleAm}</h3>
+        <h3 className="font-am-heading text-sm font-semibold text-slate-900">{titleAm}</h3>
         <p className="text-xs text-slate-500">{titleEn}</p>
       </div>
 
@@ -639,7 +639,7 @@ function ImageUploadCard({
           ) : (
             <Upload className="h-4 w-4" />
           )}
-          <span className="font-noto-ethiopic">ምስል አዘምን</span>
+          <span className="font-am-body">ምስል አዘምን</span>
           <span className="text-xs text-slate-500">/ Update Image</span>
         </div>
         <input
@@ -657,7 +657,7 @@ function ImageUploadCard({
 
       {(helperAm || helperEn) && (
         <p className="mt-3 text-xs text-slate-500">
-          {helperAm && <span className="font-noto-ethiopic">{helperAm}</span>}
+          {helperAm && <span className="font-am-body">{helperAm}</span>}
           {helperAm && helperEn && " / "}
           {helperEn}
         </p>
@@ -698,9 +698,7 @@ function FeesTab({
     <Card className="overflow-hidden">
       <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
         <div>
-          <h3 className="font-noto-ethiopic text-base font-semibold text-slate-900">
-            የአገልግሎት ክፍያዎች
-          </h3>
+          <h3 className="font-am-heading text-base font-semibold text-slate-900">የአገልግሎት ክፍያዎች</h3>
           <p className="text-xs text-slate-500">Service Fees</p>
         </div>
         <Button
@@ -709,7 +707,7 @@ function FeesTab({
           size="sm"
         >
           <Plus className="mr-1.5 h-4 w-4" />
-          <span className="font-noto-ethiopic">አዲስ የአገልግሎት ክፍያ</span>
+          <span className="font-am-body">አዲስ የአገልግሎት ክፍያ</span>
           <span className="ml-1 text-xs opacity-80">/ New Service Fee</span>
         </Button>
       </div>
@@ -719,19 +717,19 @@ function FeesTab({
           <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
             <tr>
               <th className="px-5 py-3">
-                <span className="font-noto-ethiopic">የአገልግሎት ዓይነት</span> / Service Type
+                <span className="font-am-body">የአገልግሎት ዓይነት</span> / Service Type
               </th>
               <th className="px-5 py-3">
-                <span className="font-noto-ethiopic">መደበኛ ክፍያ</span> / Standard Fee
+                <span className="font-am-body">መደበኛ ክፍያ</span> / Standard Fee
               </th>
               <th className="px-5 py-3">
-                <span className="font-noto-ethiopic">የቅጣት መጠን</span> / Penalty
+                <span className="font-am-body">የቅጣት መጠን</span> / Penalty
               </th>
               <th className="px-5 py-3">
-                <span className="font-noto-ethiopic">ሁኔታ</span> / Status
+                <span className="font-am-body">ሁኔታ</span> / Status
               </th>
               <th className="px-5 py-3 text-right">
-                <span className="font-noto-ethiopic">ድርጊት</span> / Action
+                <span className="font-am-body">ድርጊት</span> / Action
               </th>
             </tr>
           </thead>
@@ -769,7 +767,7 @@ function FeesTab({
                       className="text-blue-700"
                     >
                       <Pencil className="mr-1 h-3.5 w-3.5" />
-                      <span className="font-noto-ethiopic">አርትዕ</span>
+                      <span className="font-am-body">አርትዕ</span>
                       <span className="ml-1 text-xs opacity-70">/ EDIT</span>
                     </Button>
                   </td>
@@ -890,7 +888,7 @@ function FeeDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            <span className="font-noto-ethiopic">{isEdit ? "የክፍያ አርትዕ" : "አዲስ ክፍያ"}</span>
+            <span className="font-am-body">{isEdit ? "የክፍያ አርትዕ" : "አዲስ ክፍያ"}</span>
             <span className="ml-2 text-sm font-normal text-slate-500">
               / {isEdit ? "Edit Fee" : "New Fee"}
             </span>

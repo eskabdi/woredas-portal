@@ -159,11 +159,11 @@ function ReportsPage() {
       <Card className="p-4">
         <div className="flex flex-wrap items-end gap-3">
           <div>
-            <Label className="font-noto-ethiopic text-xs">ከ / From</Label>
+            <Label className="font-am-body text-xs">ከ / From</Label>
             <Input type="date" value={start} max={end} onChange={(e) => setStart(e.target.value)} />
           </div>
           <div>
-            <Label className="font-noto-ethiopic text-xs">እስከ / To</Label>
+            <Label className="font-am-body text-xs">እስከ / To</Label>
             <Input
               type="date"
               value={end}
@@ -197,7 +197,7 @@ function ReportsPage() {
 
           <div className="ml-auto flex flex-wrap items-end gap-2">
             <div>
-              <Label className="font-noto-ethiopic text-xs">የተቀመጡ ማጣሪያዎች / Saved presets</Label>
+              <Label className="font-am-body text-xs">የተቀመጡ ማጣሪያዎች / Saved presets</Label>
               <select
                 className="h-10 w-[220px] rounded-md border border-input bg-background px-3 text-sm"
                 value=""
@@ -246,9 +246,7 @@ function ReportsPage() {
       <Dialog open={presetDialogOpen} onOpenChange={setPresetDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="font-noto-ethiopic">
-              ማጣሪያ አስቀምጥ / Save filter preset
-            </DialogTitle>
+            <DialogTitle className="font-am-body">ማጣሪያ አስቀምጥ / Save filter preset</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div>
@@ -481,13 +479,13 @@ function ChartCard({
   return (
     <Card className="overflow-hidden">
       <div className="border-b bg-slate-50 px-4 py-3">
-        <h2 className="font-noto-ethiopic text-sm font-semibold text-slate-900">{titleAm}</h2>
+        <h2 className="font-am-heading text-sm font-semibold text-slate-900">{titleAm}</h2>
         <p className="text-xs text-slate-500">{titleEn}</p>
       </div>
       {loading ? (
         <div className="p-6 text-sm text-slate-500">Loading…</div>
       ) : rows.length === 0 ? (
-        <div className="p-6 text-center text-sm text-slate-500 font-noto-ethiopic">
+        <div className="p-6 text-center text-sm text-slate-500 font-am-body">
           ለዚህ ጊዜ መረጃ የለም / No data for this period
         </div>
       ) : (
@@ -529,7 +527,7 @@ function ChartCard({
               <tbody>
                 {rows.map((r) => (
                   <tr key={r.name} className="border-t">
-                    <td className="px-3 py-2 font-noto-ethiopic">{r.name}</td>
+                    <td className="px-3 py-2 font-am-body">{r.name}</td>
                     <td className="px-3 py-2 text-right">{r.value.toLocaleString()}</td>
                     <td className="px-3 py-2 text-right text-slate-500">
                       {total ? ((r.value / total) * 100).toFixed(1) : "0.0"}%
@@ -564,15 +562,13 @@ function PieCard({
   return (
     <Card className="overflow-hidden">
       <div className="border-b bg-slate-50 px-4 py-3">
-        <h2 className="font-noto-ethiopic text-sm font-semibold text-slate-900">{titleAm}</h2>
+        <h2 className="font-am-heading text-sm font-semibold text-slate-900">{titleAm}</h2>
         <p className="text-xs text-slate-500">{titleEn}</p>
       </div>
       {loading ? (
         <div className="p-6 text-sm text-slate-500">Loading…</div>
       ) : rows.length === 0 ? (
-        <div className="p-6 text-center text-sm text-slate-500 font-noto-ethiopic">
-          መረጃ የለም / No data
-        </div>
+        <div className="p-6 text-center text-sm text-slate-500 font-am-body">መረጃ የለም / No data</div>
       ) : (
         <div className="h-64 p-2">
           <ResponsiveContainer width="100%" height="100%">
@@ -604,12 +600,12 @@ function TabExportBar({
   if (!canExport) return null;
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
-      <span className="font-noto-ethiopic mr-auto text-xs text-slate-500">
+      <span className="font-am-body mr-auto text-xs text-slate-500">
         ሙሉ ትንታኔውን አውርድ / Download this tab as a shareable summary
       </span>
       <Button size="sm" variant="outline" onClick={onCsv}>
         <Download className="mr-1.5 h-4 w-4" />
-        <span className="font-noto-ethiopic">CSV አውርድ</span>
+        <span className="font-am-body">CSV አውርድ</span>
       </Button>
       <Button
         type="button"
@@ -618,7 +614,7 @@ function TabExportBar({
         className="rounded-md bg-blue-700 text-white hover:bg-blue-800"
       >
         <Printer className="mr-2 h-4 w-4" />
-        <span className="font-noto-ethiopic">አትም</span>
+        <span className="font-am-body">አትም</span>
         <span className="ml-1 opacity-80">/ Print</span>
       </Button>
     </div>

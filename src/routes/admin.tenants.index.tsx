@@ -305,13 +305,13 @@ function TenantsListPage() {
         <TabsList className="mb-4">
           {canTenants && (
             <TabsTrigger value="tenants">
-              <span className="font-noto-ethiopic">ወረዳዎች</span>
+              <span className="font-am-body">ወረዳዎች</span>
               <span className="ml-1 text-slate-400">/ Tenants</span>
             </TabsTrigger>
           )}
           {canUsers && (
             <TabsTrigger value="users">
-              <span className="font-noto-ethiopic">ተጠቃሚዎች</span>
+              <span className="font-am-body">ተጠቃሚዎች</span>
               <span className="ml-1 text-slate-400">/ Users</span>
             </TabsTrigger>
           )}
@@ -344,11 +344,11 @@ function TenantsListPage() {
                   <thead className="bg-slate-50 text-slate-600">
                     <tr>
                       <SortableTh field="woreda_name" sort={sort} className="text-xs font-medium">
-                        <span className="font-noto-ethiopic">ወረዳ</span>
+                        <span className="font-am-body">ወረዳ</span>
                         <span className="ml-1 text-slate-400">/ Woreda</span>
                       </SortableTh>
                       <SortableTh field="woreda_code" sort={sort} className="text-xs font-medium">
-                        <span className="font-noto-ethiopic">ኮድ</span>
+                        <span className="font-am-body">ኮድ</span>
                         <span className="ml-1 text-slate-400">/ Code</span>
                       </SortableTh>
                       <Th am="የወረዳ አስተዳዳሪ" en="Tenant Admin" />
@@ -382,7 +382,7 @@ function TenantsListPage() {
                                 params={{ woredaId: w.woreda_id }}
                                 className="hover:underline"
                               >
-                                <div className="font-noto-ethiopic font-medium text-blue-700">
+                                <div className="font-am-body font-medium text-blue-700">
                                   {w.woreda_name_am}
                                 </div>
                                 <div className="text-xs text-slate-500">{w.woreda_name_en}</div>
@@ -400,7 +400,7 @@ function TenantsListPage() {
                                   <StatusChip status={activeAdmin.status} />
                                 </div>
                               ) : (
-                                <span className="font-noto-ethiopic text-amber-700">
+                                <span className="font-am-body text-amber-700">
                                   አስተዳዳሪ አልተመደበም
                                   <span className="ml-1 text-xs text-amber-600">
                                     / No Admin Assigned
@@ -422,9 +422,7 @@ function TenantsListPage() {
                                           : "text-slate-400"
                                       }
                                     >
-                                      <span className="font-noto-ethiopic">
-                                        {MODULE_LABELS[key].am}
-                                      </span>
+                                      <span className="font-am-body">{MODULE_LABELS[key].am}</span>
                                     </Badge>
                                   );
                                 })}
@@ -444,7 +442,7 @@ function TenantsListPage() {
                                       params={{ woredaId: w.woreda_id }}
                                     >
                                       <Shield className="mr-2 h-4 w-4" />
-                                      <span className="font-noto-ethiopic">አስተዳዳሪ መድብ</span>
+                                      <span className="font-am-body">አስተዳዳሪ መድብ</span>
                                       <span className="ml-2 text-xs text-slate-500">
                                         / Provision
                                       </span>
@@ -481,7 +479,7 @@ function TenantsListPage() {
 function Th({ am, en, className }: { am: string; en: string; className?: string }) {
   return (
     <th className={`px-4 py-2 text-left text-xs font-medium ${className ?? ""}`}>
-      <span className="font-noto-ethiopic">{am}</span>
+      <span className="font-am-body">{am}</span>
       <span className="ml-1 text-slate-400">/ {en}</span>
     </th>
   );

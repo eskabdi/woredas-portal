@@ -213,7 +213,7 @@ function ProvisionPage() {
               </div>
               <div className="min-w-0">
                 <div
-                  className={`font-noto-ethiopic text-xs ${active ? "text-blue-700 font-semibold" : "text-slate-600"}`}
+                  className={`font-am-body text-xs ${active ? "text-blue-700 font-semibold" : "text-slate-600"}`}
                 >
                   {s.am}
                 </div>
@@ -230,7 +230,7 @@ function ProvisionPage() {
       <Card className="p-6">
         {step === 1 && (
           <div className="space-y-4">
-            <h2 className="font-noto-ethiopic text-lg font-semibold text-slate-900">
+            <h2 className="font-am-heading text-lg font-semibold text-slate-900">
               ወረዳ ማረጋገጫ <span className="text-sm text-slate-500">/ Confirm Woreda</span>
             </h2>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -251,7 +251,7 @@ function ProvisionPage() {
               <div className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 p-3">
                 <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
                 <div className="text-sm">
-                  <div className="font-noto-ethiopic font-medium text-amber-900">
+                  <div className="font-am-body font-medium text-amber-900">
                     ይህ ወረዳ ቀድሞውኑ አስተዳዳሪ አለው: {existingAdmin.full_name}
                   </div>
                   <div className="text-xs text-amber-700">
@@ -265,11 +265,11 @@ function ProvisionPage() {
 
         {step === 2 && (
           <div className="space-y-4">
-            <h2 className="font-noto-ethiopic text-lg font-semibold text-slate-900">
+            <h2 className="font-am-heading text-lg font-semibold text-slate-900">
               የሞጁል ውቅር <span className="text-sm text-slate-500">/ Module Configuration</span>
             </h2>
             <div className="rounded-md bg-blue-50 p-3 text-xs text-blue-900">
-              <span className="font-noto-ethiopic">ነዋሪዎች፣ ቤተሰቦች፣ ዳሽቦርድ እና ቅንብሮች ሁልጊዜ ንቁ ናቸው</span>
+              <span className="font-am-body">ነዋሪዎች፣ ቤተሰቦች፣ ዳሽቦርድ እና ቅንብሮች ሁልጊዜ ንቁ ናቸው</span>
               <span className="ml-1 text-blue-700">
                 / Residents, Households, Dashboard, and Settings are always enabled.
               </span>
@@ -278,7 +278,7 @@ function ProvisionPage() {
               {MODULES.map((m) => (
                 <div key={m.key} className="flex items-center justify-between p-3">
                   <div>
-                    <div className="font-noto-ethiopic text-sm font-medium">{m.am}</div>
+                    <div className="font-am-body text-sm font-medium">{m.am}</div>
                     <div className="text-xs text-slate-500">{m.en}</div>
                   </div>
                   <Switch
@@ -293,7 +293,7 @@ function ProvisionPage() {
 
         {step === 3 && (
           <div className="space-y-4">
-            <h2 className="font-noto-ethiopic text-lg font-semibold text-slate-900">
+            <h2 className="font-am-heading text-lg font-semibold text-slate-900">
               የአስተዳዳሪ መለያ <span className="text-sm text-slate-500">/ Administrator Account</span>
             </h2>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -321,7 +321,7 @@ function ProvisionPage() {
               </div>
             </div>
             <div className="rounded-md bg-blue-50 p-3 text-xs">
-              <span className="font-noto-ethiopic text-blue-900">
+              <span className="font-am-body text-blue-900">
                 ወደዚህ አድራሻ የግብዣ ኢሜይል ይላካል። መለያው 'ወረዳ አስተዳዳሪ' ፈቃድ ይኖረዋል።
               </span>
               <div className="mt-1 text-blue-700">
@@ -334,13 +334,13 @@ function ProvisionPage() {
 
         {step === 4 && (
           <div className="space-y-4">
-            <h2 className="font-noto-ethiopic text-lg font-semibold text-slate-900">
+            <h2 className="font-am-heading text-lg font-semibold text-slate-900">
               ግምገማ እና ማረጋገጫ <span className="text-sm text-slate-500">/ Review & Confirm</span>
             </h2>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Card className="p-4">
                 <div className="mb-2 text-xs font-semibold uppercase text-slate-500">Woreda</div>
-                <div className="font-noto-ethiopic text-slate-900">{woreda.woreda_name_am}</div>
+                <div className="font-am-body text-slate-900">{woreda.woreda_name_am}</div>
                 <div className="text-sm text-slate-600">
                   {woreda.woreda_name_en} · {woreda.woreda_numeric_code ?? woreda.woreda_code}
                 </div>
@@ -361,7 +361,7 @@ function ProvisionPage() {
                       <span className={modules[m.key] ? "text-green-600" : "text-slate-400"}>
                         {modules[m.key] ? "●" : "○"}
                       </span>
-                      <span className="font-noto-ethiopic">{m.am}</span>
+                      <span className="font-am-body">{m.am}</span>
                       <span className="text-xs text-slate-500">/ {m.en}</span>
                     </div>
                   ))}
@@ -394,7 +394,7 @@ function ProvisionPage() {
               className="bg-blue-700 hover:bg-blue-800"
             >
               <Shield className="mr-2 h-4 w-4" />
-              <span className="font-noto-ethiopic">ጨርስ እና ወረዳ አስተዳዳሪ ፍጠር</span>
+              <span className="font-am-body">ጨርስ እና ወረዳ አስተዳዳሪ ፍጠር</span>
               <span className="ml-2 text-xs opacity-80">/ Finalize & Provision</span>
             </Button>
           )}
@@ -408,7 +408,7 @@ function ReadRow({ am, en, value }: { am: string; en: string; value: string }) {
   return (
     <div className="rounded-md border bg-slate-50 p-3">
       <div className="text-xs text-slate-500">
-        <span className="font-noto-ethiopic">{am}</span> / {en}
+        <span className="font-am-body">{am}</span> / {en}
       </div>
       <div className="mt-1 text-sm font-medium text-slate-900">{value}</div>
     </div>

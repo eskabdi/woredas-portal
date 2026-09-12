@@ -131,7 +131,7 @@ function ServiceLetterPrintPage() {
           {verifyUrl && (
             <div className="mt-10 flex items-center gap-4 border-t border-dashed border-slate-300 pt-4">
               <QRCodeSVG value={verifyUrl} size={92} level="M" includeMargin={false} />
-              <div className="font-noto-ethiopic text-[11px] leading-5 text-slate-600">
+              <div className="font-am-body text-[11px] leading-5 text-slate-600">
                 <div className="font-semibold">ይህን ደብዳቤ ያረጋግጡ / Verify this letter</div>
                 <div>QR ኮዱን በስልክዎ ካሜራ ይቅሙ ወይም ይህን አድራሻ ይጎብኙ:</div>
                 <div className="break-all font-mono text-[10px] text-slate-700">{verifyUrl}</div>
@@ -148,7 +148,7 @@ function ServiceLetterPrintPage() {
       }
     >
       <div>
-        <div className="font-noto-ethiopic text-sm font-semibold">
+        <div className="font-am-body text-sm font-semibold">
           {data.addressed_to || "ለሚመለከተው ሁሉ፣"}
         </div>
         <div className="text-xs text-slate-400">
@@ -157,7 +157,7 @@ function ServiceLetterPrintPage() {
       </div>
 
       <div>
-        <div className="font-noto-ethiopic text-base font-semibold">
+        <div className="font-am-body text-base font-semibold">
           ጉዳይ፦ {data.subject || data.service_type?.name_am}
         </div>
         <div className="text-xs text-slate-400">Re: {data.service_type?.name_en}</div>
@@ -165,23 +165,21 @@ function ServiceLetterPrintPage() {
 
       {bodyHtml.trim() ? (
         <div
-          className="letter-body font-noto-ethiopic text-sm leading-8"
+          className="letter-body font-am-body text-sm leading-8"
           dangerouslySetInnerHTML={{ __html: bodyHtml }}
         />
       ) : (
-        <div className="font-noto-ethiopic whitespace-pre-wrap text-sm leading-8">
-          {fallbackBody}
-        </div>
+        <div className="font-am-body whitespace-pre-wrap text-sm leading-8">{fallbackBody}</div>
       )}
 
       {data.details && !templateHtml.includes("{DETAILS}") && (
-        <div className="font-noto-ethiopic whitespace-pre-wrap text-sm leading-7 text-slate-700">
+        <div className="font-am-body whitespace-pre-wrap text-sm leading-7 text-slate-700">
           {data.details}
         </div>
       )}
 
       <div>
-        <div className="font-noto-ethiopic text-sm font-semibold">በአክብሮት፣</div>
+        <div className="font-am-body text-sm font-semibold">በአክብሮት፣</div>
         <div className="text-xs text-slate-400">Sincerely,</div>
       </div>
 

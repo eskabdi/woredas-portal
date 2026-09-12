@@ -326,7 +326,7 @@ export function ResidentWizardSteps({
         <Section icon={UserCircle2} titleAm="የግል መረጃ" titleEn="Identity">
           {residentNumber && (
             <div className="mb-4 flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm">
-              <span className="font-noto-ethiopic text-slate-600">የመዝገብ ቁጥር / Resident #:</span>
+              <span className="font-am-body text-slate-600">የመዝገብ ቁጥር / Resident #:</span>
               <span className="font-mono font-semibold text-blue-800">{residentNumber}</span>
             </div>
           )}
@@ -338,7 +338,7 @@ export function ResidentWizardSteps({
                 required
                 error={errors.first_name?.message}
               >
-                <Input className="font-noto-ethiopic" {...register("first_name")} />
+                <Input className="font-am-body" {...register("first_name")} />
               </FieldWrap>
               <FieldWrap
                 labelAm="ሙሉ ስም (እንግሊዘኛ)"
@@ -354,7 +354,7 @@ export function ResidentWizardSteps({
                 required
                 error={errors.father_name?.message}
               >
-                <Input className="font-noto-ethiopic" {...register("father_name")} />
+                <Input className="font-am-body" {...register("father_name")} />
               </FieldWrap>
               <FieldWrap
                 labelAm="የወንድ አያት ስም"
@@ -362,7 +362,7 @@ export function ResidentWizardSteps({
                 required
                 error={errors.grandfather_name?.message}
               >
-                <Input className="font-noto-ethiopic" {...register("grandfather_name")} />
+                <Input className="font-am-body" {...register("grandfather_name")} />
               </FieldWrap>
               <FieldWrap
                 labelAm="የእናት ስም"
@@ -370,11 +370,11 @@ export function ResidentWizardSteps({
                 required
                 error={errors.mother_full_name?.message}
               >
-                <Input className="font-noto-ethiopic" {...register("mother_full_name")} />
+                <Input className="font-am-body" {...register("mother_full_name")} />
               </FieldWrap>
               <FieldWrap labelAm="ፆታ" labelEn="Gender" required error={errors.sex?.message}>
                 <div className="flex gap-4 pt-2">
-                  <label className="font-noto-ethiopic flex items-center gap-2 text-sm">
+                  <label className="font-am-body flex items-center gap-2 text-sm">
                     <input
                       type="radio"
                       value="male"
@@ -383,7 +383,7 @@ export function ResidentWizardSteps({
                     />{" "}
                     ወንድ / Male
                   </label>
-                  <label className="font-noto-ethiopic flex items-center gap-2 text-sm">
+                  <label className="font-am-body flex items-center gap-2 text-sm">
                     <input
                       type="radio"
                       value="female"
@@ -469,7 +469,7 @@ export function ResidentWizardSteps({
               >
                 <Input inputMode="numeric" maxLength={16} {...register("national_id_no")} />
                 {duplicateIdWarning && (
-                  <div className="font-noto-ethiopic mt-1 flex items-start gap-1 text-xs text-amber-700">
+                  <div className="font-am-body mt-1 flex items-start gap-1 text-xs text-amber-700">
                     <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                     <span>{duplicateIdWarning}</span>
                   </div>
@@ -501,7 +501,7 @@ export function ResidentWizardSteps({
                   ) : (
                     <Upload className="h-4 w-4" />
                   )}
-                  <span className="font-noto-ethiopic">ፎቶ ጫን / Upload Photo</span>
+                  <span className="font-am-body">ፎቶ ጫን / Upload Photo</span>
                   <input
                     type="file"
                     accept="image/*"
@@ -533,11 +533,11 @@ export function ResidentWizardSteps({
                   placeholder="በቤት ቁጥር ይፈልጉ / Search by house number"
                   value={householdSearch}
                   onChange={(e) => setHouseholdSearch(e.target.value)}
-                  className="font-noto-ethiopic"
+                  className="font-am-body"
                 />
                 {selectedHouseholdId && (
                   <div className="flex items-center justify-between rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm">
-                    <span className="font-noto-ethiopic">{selectedHouseholdLabel}</span>
+                    <span className="font-am-body">{selectedHouseholdLabel}</span>
                     <button
                       type="button"
                       onClick={() => {
@@ -565,7 +565,7 @@ export function ResidentWizardSteps({
                           <button
                             key={h.household_id}
                             type="button"
-                            className="font-noto-ethiopic block w-full px-3 py-2 text-left text-sm hover:bg-blue-50"
+                            className="font-am-body block w-full px-3 py-2 text-left text-sm hover:bg-blue-50"
                             onClick={() => {
                               setValue("current_household_id", h.household_id, {
                                 shouldDirty: true,
@@ -588,10 +588,10 @@ export function ResidentWizardSteps({
               </div>
             </FieldWrap>
             <FieldWrap labelAm="ዝምድና ከቤተሰብ ኃላፊ ጋር" labelEn="Relation to Household Head">
-              <Input className="font-noto-ethiopic" {...register("relation_to_head")} />
+              <Input className="font-am-body" {...register("relation_to_head")} />
             </FieldWrap>
             <FieldWrap labelAm="ንኡስ ወረዳ" labelEn="Sub-Woreda">
-              <Input className="font-noto-ethiopic" {...register("sub_woreda")} />
+              <Input className="font-am-body" {...register("sub_woreda")} />
             </FieldWrap>
             <FieldWrap labelAm="ኬክሮስ" labelEn="Latitude">
               <Input type="number" step="any" {...register("latitude")} />
@@ -600,21 +600,21 @@ export function ResidentWizardSteps({
               <Input type="number" step="any" {...register("longitude")} />
             </FieldWrap>
             <FieldWrap labelAm="ሌላ የመኖሪያ አድራሻ ካለ" labelEn="Other Residence Address" colSpan2>
-              <Textarea className="font-noto-ethiopic" rows={2} {...register("other_address")} />
+              <Textarea className="font-am-body" rows={2} {...register("other_address")} />
             </FieldWrap>
           </Grid>
         </Section>
 
         <Section icon={MapPin} titleAm="የትውልድ ሥፍራ" titleEn="Place of Birth">
           <div className="mb-4 rounded-md border border-slate-200 bg-slate-50 p-3">
-            <p className="font-noto-ethiopic mb-2 text-sm font-medium text-slate-700">
+            <p className="font-am-body mb-2 text-sm font-medium text-slate-700">
               የትውልድ ሥፍራ ከአሁኑ መኖሪያ ጋር ተመሳሳይ ነው? / Same as current residence?
             </p>
             <div className="flex gap-4">
-              <label className="font-noto-ethiopic flex items-center gap-2 text-sm">
+              <label className="font-am-body flex items-center gap-2 text-sm">
                 <input type="radio" value="yes" {...register("bp_same_as_current")} /> አዎ / Yes
               </label>
-              <label className="font-noto-ethiopic flex items-center gap-2 text-sm">
+              <label className="font-am-body flex items-center gap-2 text-sm">
                 <input type="radio" value="no" {...register("bp_same_as_current")} /> አይደለም / No
               </label>
             </div>
@@ -622,7 +622,7 @@ export function ResidentWizardSteps({
           <Grid>
             <FieldWrap labelAm="የትውልድ ሥፍራ ስም" labelEn="Place Name">
               <Input
-                className="font-noto-ethiopic"
+                className="font-am-body"
                 disabled={bpReadonly}
                 {...register("bp_place_name")}
               />
@@ -638,35 +638,19 @@ export function ResidentWizardSteps({
               </Select>
             </FieldWrap>
             <FieldWrap labelAm="ዞን" labelEn="Zone">
-              <Input
-                className="font-noto-ethiopic"
-                disabled={bpReadonly}
-                {...register("bp_zone")}
-              />
+              <Input className="font-am-body" disabled={bpReadonly} {...register("bp_zone")} />
             </FieldWrap>
             <FieldWrap labelAm="ወረዳ" labelEn="Woreda">
-              <Input
-                className="font-noto-ethiopic"
-                disabled={bpReadonly}
-                {...register("bp_woreda")}
-              />
+              <Input className="font-am-body" disabled={bpReadonly} {...register("bp_woreda")} />
             </FieldWrap>
             <FieldWrap labelAm="ቀበሌ" labelEn="Kebele">
-              <Input
-                className="font-noto-ethiopic"
-                disabled={bpReadonly}
-                {...register("bp_kebele")}
-              />
+              <Input className="font-am-body" disabled={bpReadonly} {...register("bp_kebele")} />
             </FieldWrap>
             <FieldWrap labelAm="የቤት ቁጥር" labelEn="House Number">
               <Input disabled={bpReadonly} {...register("bp_house_number")} />
             </FieldWrap>
             <FieldWrap labelAm="ልዩ ቦታ" labelEn="Area Name">
-              <Input
-                className="font-noto-ethiopic"
-                disabled={bpReadonly}
-                {...register("bp_area_name")}
-              />
+              <Input className="font-am-body" disabled={bpReadonly} {...register("bp_area_name")} />
             </FieldWrap>
           </Grid>
         </Section>
@@ -697,31 +681,31 @@ export function ResidentWizardSteps({
               </Select>
             </FieldWrap>
             <FieldWrap labelAm="የሥራ ድርሽ" labelEn="Position">
-              <Input className="font-noto-ethiopic" {...register("wi_occupation_post")} />
+              <Input className="font-am-body" {...register("wi_occupation_post")} />
             </FieldWrap>
             <FieldWrap labelAm="የሥራ አድራሻ" labelEn="Work Address">
-              <Input className="font-noto-ethiopic" {...register("wi_work_address")} />
+              <Input className="font-am-body" {...register("wi_work_address")} />
             </FieldWrap>
             <FieldWrap labelAm="ክልል" labelEn="Region">
-              <Input className="font-noto-ethiopic" {...register("wi_region")} />
+              <Input className="font-am-body" {...register("wi_region")} />
             </FieldWrap>
             <FieldWrap labelAm="ዞን" labelEn="Zone">
-              <Input className="font-noto-ethiopic" {...register("wi_zone")} />
+              <Input className="font-am-body" {...register("wi_zone")} />
             </FieldWrap>
             <FieldWrap labelAm="ወረዳ" labelEn="Woreda">
-              <Input className="font-noto-ethiopic" {...register("wi_woreda")} />
+              <Input className="font-am-body" {...register("wi_woreda")} />
             </FieldWrap>
             <FieldWrap labelAm="ቀበሌ" labelEn="Kebele">
-              <Input className="font-noto-ethiopic" {...register("wi_kebele")} />
+              <Input className="font-am-body" {...register("wi_kebele")} />
             </FieldWrap>
             <FieldWrap labelAm="የቤት ቁጥር" labelEn="House Number">
               <Input {...register("wi_house_number")} />
             </FieldWrap>
             <FieldWrap labelAm="ልዩ ቦታ" labelEn="Area Name">
-              <Input className="font-noto-ethiopic" {...register("wi_area_name")} />
+              <Input className="font-am-body" {...register("wi_area_name")} />
             </FieldWrap>
             <FieldWrap labelAm="ሌላ የሥራ አድራሻ ካለ" labelEn="Other Address" colSpan2>
-              <Textarea className="font-noto-ethiopic" rows={2} {...register("wi_other_address")} />
+              <Textarea className="font-am-body" rows={2} {...register("wi_other_address")} />
             </FieldWrap>
           </Grid>
         </Section>
@@ -749,14 +733,14 @@ export function ResidentWizardSteps({
 
         <Section icon={History} titleAm="የቀድሞ አድራሻ" titleEn="Former Residence">
           <div className="mb-4 rounded-md border border-slate-200 bg-slate-50 p-3">
-            <p className="font-noto-ethiopic mb-2 text-sm font-medium text-slate-700">
+            <p className="font-am-body mb-2 text-sm font-medium text-slate-700">
               የቀድሞ መኖሪያ አለ? / Did you have a former residence?
             </p>
             <div className="flex gap-4">
-              <label className="font-noto-ethiopic flex items-center gap-2 text-sm">
+              <label className="font-am-body flex items-center gap-2 text-sm">
                 <input type="radio" value="yes" {...register("has_former_residence")} /> አዎ / Yes
               </label>
-              <label className="font-noto-ethiopic flex items-center gap-2 text-sm">
+              <label className="font-am-body flex items-center gap-2 text-sm">
                 <input type="radio" value="no" {...register("has_former_residence")} /> የለም / No
               </label>
             </div>
@@ -765,7 +749,7 @@ export function ResidentWizardSteps({
           {hasFormer === "yes" && (
             <Grid>
               <FieldWrap labelAm="የቀድሞ አድራሻ" labelEn="Former Address" colSpan2>
-                <Input className="font-noto-ethiopic" {...register("fr_address")} />
+                <Input className="font-am-body" {...register("fr_address")} />
               </FieldWrap>
               <FieldWrap labelAm="ክልል" labelEn="Region">
                 <Select {...register("fr_region")}>
@@ -778,19 +762,19 @@ export function ResidentWizardSteps({
                 </Select>
               </FieldWrap>
               <FieldWrap labelAm="ዞን" labelEn="Zone">
-                <Input className="font-noto-ethiopic" {...register("fr_zone")} />
+                <Input className="font-am-body" {...register("fr_zone")} />
               </FieldWrap>
               <FieldWrap labelAm="ወረዳ" labelEn="Woreda">
-                <Input className="font-noto-ethiopic" {...register("fr_woreda")} />
+                <Input className="font-am-body" {...register("fr_woreda")} />
               </FieldWrap>
               <FieldWrap labelAm="ቀበሌ" labelEn="Kebele">
-                <Input className="font-noto-ethiopic" {...register("fr_kebele")} />
+                <Input className="font-am-body" {...register("fr_kebele")} />
               </FieldWrap>
               <FieldWrap labelAm="የቤት ቁጥር" labelEn="House Number">
                 <Input {...register("fr_house_number")} />
               </FieldWrap>
               <FieldWrap labelAm="ልዩ ቦታ" labelEn="Area Name">
-                <Input className="font-noto-ethiopic" {...register("fr_area_name")} />
+                <Input className="font-am-body" {...register("fr_area_name")} />
               </FieldWrap>
               <FieldWrap
                 labelAm="የክሊራንስ ደብዳቤ"
@@ -810,7 +794,7 @@ export function ResidentWizardSteps({
                       ) : (
                         <FileText className="h-6 w-6 text-blue-700" />
                       )}
-                      <span className="font-noto-ethiopic max-w-[200px] truncate">
+                      <span className="font-am-body max-w-[200px] truncate">
                         {clearanceFileName || clearanceUrl.split("/").pop()}
                       </span>
                       {isClearancePdf && (
@@ -824,7 +808,7 @@ export function ResidentWizardSteps({
                             <Loader2 className="h-3 w-3 animate-spin" />
                           ) : (
                             <>
-                              <span className="font-noto-ethiopic">ይመልከቱ</span>
+                              <span className="font-am-body">ይመልከቱ</span>
                               <span className="ml-1 opacity-70">/ View</span>
                             </>
                           )}
@@ -852,7 +836,7 @@ export function ResidentWizardSteps({
                     ) : (
                       <Upload className="h-4 w-4" />
                     )}
-                    <span className="font-noto-ethiopic">
+                    <span className="font-am-body">
                       {clearanceUrl ? "ቀይር / Replace" : "ፋይል ጫን / Upload"}
                     </span>
                     <input
@@ -897,10 +881,10 @@ function StepIndicator({
   return (
     <Card className="border-slate-200 p-4 shadow-sm">
       <div className="mb-4 flex items-baseline justify-between">
-        <p className="font-noto-ethiopic text-sm font-semibold text-slate-700">
+        <p className="font-am-body text-sm font-semibold text-slate-700">
           ደረጃ {step} ከ 4 <span className="font-normal opacity-60">/ Step {step} of 4</span>
         </p>
-        <p className="font-noto-ethiopic text-sm font-medium text-blue-700">
+        <p className="font-am-body text-sm font-medium text-blue-700">
           {RESIDENT_STEPS[step - 1].am}{" "}
           <span className="opacity-70">/ {RESIDENT_STEPS[step - 1].en}</span>
         </p>

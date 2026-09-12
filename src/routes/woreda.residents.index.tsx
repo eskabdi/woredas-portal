@@ -283,7 +283,7 @@ function ResidentsListPage() {
               className="bg-blue-700 text-white hover:bg-blue-800"
             >
               <Plus className="mr-2 h-4 w-4" />
-              <span className="font-noto-ethiopic">አዲስ ነዋሪ</span>
+              <span className="font-am-body">አዲስ ነዋሪ</span>
               <span className="ml-2 opacity-80">/ New Resident</span>
             </Button>
           </PermissionGate>
@@ -298,7 +298,7 @@ function ResidentsListPage() {
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="በስም፣ የመታወቂያ ቁጥር፣ ስልክ ይፈልጉ / Search by name, ID number, phone…"
-            className="font-noto-ethiopic pl-10"
+            className="font-am-body pl-10"
           />
         </div>
         <div className="flex flex-wrap gap-2">
@@ -358,34 +358,34 @@ function ResidentsListPage() {
           <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
             <tr>
               <SortableTh field="resident_number" sort={sort}>
-                <span className="font-noto-ethiopic">የመዝገብ ቁጥር</span>{" "}
+                <span className="font-am-body">የመዝገብ ቁጥር</span>{" "}
                 <span className="ml-1 text-slate-400 normal-case">/ Resident #</span>
               </SortableTh>
               <SortableTh field="full_name" sort={sort}>
-                <span className="font-noto-ethiopic">ሙሉ ስም</span>{" "}
+                <span className="font-am-body">ሙሉ ስም</span>{" "}
                 <span className="ml-1 text-slate-400 normal-case">/ Full Name</span>
               </SortableTh>
               <th className="px-4 py-3">
-                <span className="font-noto-ethiopic">ጾታ</span>{" "}
+                <span className="font-am-body">ጾታ</span>{" "}
                 <span className="ml-1 text-slate-400 normal-case">/ Sex</span>
               </th>
               <SortableTh field="date_of_birth" sort={sort}>
-                <span className="font-noto-ethiopic">የልደት ቀን</span>{" "}
+                <span className="font-am-body">የልደት ቀን</span>{" "}
                 <span className="ml-1 text-slate-400 normal-case">/ DOB</span>
               </SortableTh>
               <th className="px-4 py-3">
-                <span className="font-noto-ethiopic">ቀበሌ</span>{" "}
+                <span className="font-am-body">ቀበሌ</span>{" "}
                 <span className="ml-1 text-slate-400 normal-case">/ Kebele</span>
               </th>
               <SortableTh field="residency_status" sort={sort}>
-                <span className="font-noto-ethiopic">ሁኔታ</span>{" "}
+                <span className="font-am-body">ሁኔታ</span>{" "}
                 <span className="ml-1 text-slate-400 normal-case">/ Status</span>
               </SortableTh>
               <SortableTh field="updated_at" sort={sort}>
-                <span className="font-noto-ethiopic">የተሻሻለበት</span>{" "}
+                <span className="font-am-body">የተሻሻለበት</span>{" "}
                 <span className="ml-1 text-slate-400 normal-case">/ Updated</span>
               </SortableTh>
-              <th className="font-noto-ethiopic px-4 py-3 text-right">ድርጊቶች / Actions</th>
+              <th className="font-am-heading px-4 py-3 text-right">ድርጊቶች / Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -412,7 +412,7 @@ function ResidentsListPage() {
                       <Link to="/woreda/residents/new" className="mt-2">
                         <Button className="bg-blue-700 text-white hover:bg-blue-800">
                           <UserPlus className="mr-2 h-4 w-4" />
-                          <span className="font-noto-ethiopic">አዲስ ነዋሪ መዝግብ</span>
+                          <span className="font-am-body">አዲስ ነዋሪ መዝግብ</span>
                         </Button>
                       </Link>
                     </PermissionGate>
@@ -440,18 +440,18 @@ function ResidentsListPage() {
                       {r.resident_number}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="font-noto-ethiopic font-medium text-slate-900">
+                      <div className="font-am-body font-medium text-slate-900">
                         {r.full_name_am || "—"}
                       </div>
                       <div className="text-xs text-slate-500">{r.full_name}</div>
                     </td>
-                    <td className="font-noto-ethiopic px-4 py-3">
+                    <td className="font-am-body px-4 py-3">
                       {r.sex === "male" ? "ወንድ" : r.sex === "female" ? "ሴት" : r.sex}
                     </td>
-                    <td className="font-noto-ethiopic px-4 py-3">
+                    <td className="font-am-body px-4 py-3">
                       {r.date_of_birth ? formatEthiopianDateShortOnly(r.date_of_birth) : "—"}
                     </td>
-                    <td className="font-noto-ethiopic px-4 py-3">
+                    <td className="font-am-body px-4 py-3">
                       {hh?.kebele
                         ? `${hh.kebele.kebele_number} — ${hh.kebele.kebele_name_am}`
                         : "—"}
@@ -513,7 +513,7 @@ function FilterGroup({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="font-noto-ethiopic bg-transparent px-1 py-0.5 text-sm focus:outline-none"
+        className="font-am-body bg-transparent px-1 py-0.5 text-sm focus:outline-none"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
@@ -684,7 +684,7 @@ function RowActions({
                 })
               }
             >
-              <span className="font-noto-ethiopic">ዝርዝር ይመልከቱ</span>
+              <span className="font-am-body">ዝርዝር ይመልከቱ</span>
               <span className="ml-2 text-xs text-slate-500">/ View</span>
             </DropdownMenuItem>
           )}
@@ -697,13 +697,13 @@ function RowActions({
                 })
               }
             >
-              <span className="font-noto-ethiopic">አስተካክል</span>
+              <span className="font-am-body">አስተካክል</span>
               <span className="ml-2 text-xs text-slate-500">/ Edit</span>
             </DropdownMenuItem>
           )}
           {canUpdate && (
             <DropdownMenuItem onClick={() => setMode("addHousehold")}>
-              <span className="font-noto-ethiopic">ወደ ቤተሰብ ጨምር</span>
+              <span className="font-am-body">ወደ ቤተሰብ ጨምር</span>
               <span className="ml-2 text-xs text-slate-500">/ Add to Household</span>
             </DropdownMenuItem>
           )}
@@ -715,7 +715,7 @@ function RowActions({
               className="text-amber-700 focus:text-amber-800"
               onClick={() => setMode("suspend")}
             >
-              <span className="font-noto-ethiopic">አግድ</span>
+              <span className="font-am-body">አግድ</span>
               <span className="ml-2 text-xs text-slate-500">/ Suspend</span>
             </DropdownMenuItem>
           )}
@@ -724,13 +724,13 @@ function RowActions({
               className="text-emerald-700 focus:text-emerald-800"
               onClick={() => setMode("reactivate")}
             >
-              <span className="font-noto-ethiopic">ፍቀድ</span>
+              <span className="font-am-body">ፍቀድ</span>
               <span className="ml-2 text-xs text-slate-500">/ Reactivate</span>
             </DropdownMenuItem>
           )}
           {showDeactivate && (
             <DropdownMenuItem className="text-slate-700" onClick={() => setMode("deactivate")}>
-              <span className="font-noto-ethiopic">ቀይር (ኢ-ንቁ)</span>
+              <span className="font-am-body">ቀይር (ኢ-ንቁ)</span>
               <span className="ml-2 text-xs text-slate-500">/ Set Inactive</span>
             </DropdownMenuItem>
           )}
@@ -739,7 +739,7 @@ function RowActions({
               className="text-emerald-700 focus:text-emerald-800"
               onClick={() => setMode("activate")}
             >
-              <span className="font-noto-ethiopic">አንቃ</span>
+              <span className="font-am-body">አንቃ</span>
               <span className="ml-2 text-xs text-slate-500">/ Reactivate</span>
             </DropdownMenuItem>
           )}
@@ -761,10 +761,10 @@ function RowActions({
         <AlertDialog open={mode === "suspend"} onOpenChange={(o) => !o && close()}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle className="font-noto-ethiopic">
+              <AlertDialogTitle className="font-am-body">
                 ይህን ነዋሪ ለማገድ ይፈልጋሉ? / Suspend this resident?
               </AlertDialogTitle>
-              <AlertDialogDescription className="font-noto-ethiopic">
+              <AlertDialogDescription className="font-am-body">
                 ምክንያት / Reason (required)
               </AlertDialogDescription>
             </AlertDialogHeader>
@@ -772,7 +772,7 @@ function RowActions({
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="ምክንያቱን ይጻፉ / Enter reason…"
-              className="font-noto-ethiopic"
+              className="font-am-body"
               rows={3}
             />
             <AlertDialogFooter>
@@ -785,7 +785,7 @@ function RowActions({
                 }}
                 className="bg-amber-600 hover:bg-amber-700"
               >
-                <span className="font-noto-ethiopic">አግድ / Suspend</span>
+                <span className="font-am-body">አግድ / Suspend</span>
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -794,7 +794,7 @@ function RowActions({
         <AlertDialog open={mode === "reactivate"} onOpenChange={(o) => !o && close()}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle className="font-noto-ethiopic">
+              <AlertDialogTitle className="font-am-body">
                 ነዋሪውን ዳግም ማግበር ይፈልጋሉ? / Reactivate this resident?
               </AlertDialogTitle>
             </AlertDialogHeader>
@@ -808,7 +808,7 @@ function RowActions({
                 }}
                 className="bg-emerald-600 hover:bg-emerald-700"
               >
-                <span className="font-noto-ethiopic">ፍቀድ / Reactivate</span>
+                <span className="font-am-body">ፍቀድ / Reactivate</span>
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -817,7 +817,7 @@ function RowActions({
         <AlertDialog open={mode === "deactivate"} onOpenChange={(o) => !o && close()}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle className="font-noto-ethiopic">
+              <AlertDialogTitle className="font-am-body">
                 ይህን ነዋሪ ወደ ኢ-ንቁ ሁኔታ መቀየር ይፈልጋሉ? / Set this resident to inactive?
               </AlertDialogTitle>
             </AlertDialogHeader>
@@ -831,7 +831,7 @@ function RowActions({
                 }}
                 className="bg-slate-700 hover:bg-slate-800"
               >
-                <span className="font-noto-ethiopic">አረጋግጥ / Confirm</span>
+                <span className="font-am-body">አረጋግጥ / Confirm</span>
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -840,7 +840,7 @@ function RowActions({
         <AlertDialog open={mode === "activate"} onOpenChange={(o) => !o && close()}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle className="font-noto-ethiopic">
+              <AlertDialogTitle className="font-am-body">
                 ነዋሪውን ወደ ንቁ ሁኔታ መቀየር ይፈልጋሉ? / Restore this resident to active?
               </AlertDialogTitle>
             </AlertDialogHeader>
@@ -854,7 +854,7 @@ function RowActions({
                 }}
                 className="bg-emerald-600 hover:bg-emerald-700"
               >
-                <span className="font-noto-ethiopic">አንቃ / Activate</span>
+                <span className="font-am-body">አንቃ / Activate</span>
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -971,9 +971,9 @@ function AddToHouseholdDialog({
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="font-noto-ethiopic">ወደ ቤተሰብ ጨምር / Add to Household</DialogTitle>
+          <DialogTitle className="font-am-body">ወደ ቤተሰብ ጨምር / Add to Household</DialogTitle>
           <DialogDescription>
-            <span className="font-noto-ethiopic">{displayName}</span>
+            <span className="font-am-body">{displayName}</span>
             <br />
             <span className="text-xs text-slate-500">
               {current
@@ -988,14 +988,14 @@ function AddToHouseholdDialog({
             value={term}
             onChange={(e) => setTerm(e.target.value)}
             placeholder="በቤት ቁጥር ይፈልጉ / Search by house number…"
-            className="font-noto-ethiopic"
+            className="font-am-body"
             autoFocus
           />
           <div className="max-h-64 overflow-y-auto rounded-md border border-slate-200">
             {search.isLoading && <div className="p-3 text-sm text-slate-500">Loading…</div>}
             {!search.isLoading && (search.data?.length ?? 0) === 0 && (
               <div className="p-3 text-sm text-slate-500">
-                <span className="font-noto-ethiopic">ምንም አልተገኘም / No households found</span>
+                <span className="font-am-body">ምንም አልተገኘም / No households found</span>
               </div>
             )}
             {(search.data ?? []).map((h) => {
@@ -1010,7 +1010,7 @@ function AddToHouseholdDialog({
                   }`}
                 >
                   <span className="font-mono text-xs">{h.house_number ?? "—"}</span>
-                  <span className="font-noto-ethiopic text-xs text-slate-600">
+                  <span className="font-am-body text-xs text-slate-600">
                     {h.kebele
                       ? `${h.kebele.kebele_number ?? ""} — ${h.kebele.kebele_name_am ?? ""}`
                       : ""}
@@ -1030,7 +1030,7 @@ function AddToHouseholdDialog({
             onClick={() => selectedId && assign.mutate(selectedId)}
             className="bg-blue-700 text-white hover:bg-blue-800"
           >
-            <span className="font-noto-ethiopic">ጨምር / Add</span>
+            <span className="font-am-body">ጨምር / Add</span>
           </Button>
         </DialogFooter>
       </DialogContent>

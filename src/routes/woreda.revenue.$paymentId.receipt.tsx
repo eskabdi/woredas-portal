@@ -35,7 +35,7 @@ export const Route = createFileRoute("/woreda/revenue/$paymentId/receipt")({
       permission={P.REVENUE_RECEIPT_REPRINT}
       fallback={
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-800">
-          <p className="font-noto-ethiopic font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
+          <p className="font-am-body font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
           <p className="text-sm">You do not have permission to print receipts.</p>
         </div>
       }
@@ -308,14 +308,14 @@ function ReceiptPrintPage() {
     return (
       <div className="flex items-center justify-center gap-2 p-10 text-sm text-slate-500">
         <Loader2 className="h-4 w-4 animate-spin" />
-        <span className="font-noto-ethiopic">ደረሰኝ በመጫን ላይ…</span> / Loading receipt…
+        <span className="font-am-body">ደረሰኝ በመጫን ላይ…</span> / Loading receipt…
       </div>
     );
   }
   if (dataQuery.isError) {
     return (
       <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-red-800">
-        <p className="font-noto-ethiopic font-medium">ደረሰኙን መጫን አልተቻለም</p>
+        <p className="font-am-body font-medium">ደረሰኙን መጫን አልተቻለም</p>
         <p className="text-sm">
           Failed to load this receipt:{" "}
           {dataQuery.error instanceof Error ? dataQuery.error.message : "Unknown error"}
@@ -326,7 +326,7 @@ function ReceiptPrintPage() {
   if (!dataQuery.data || !dataQuery.data.receipt) {
     return (
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-800">
-        <p className="font-noto-ethiopic font-medium">ለዚህ ክፍያ ደረሰኝ አልተገኘም</p>
+        <p className="font-am-body font-medium">ለዚህ ክፍያ ደረሰኝ አልተገኘም</p>
         <p className="text-sm">No receipt has been generated for this payment.</p>
       </div>
     );

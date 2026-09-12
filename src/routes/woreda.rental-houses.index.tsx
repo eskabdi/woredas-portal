@@ -83,7 +83,7 @@ function TabNav() {
               active ? "bg-white text-slate-900 shadow" : "text-slate-500 hover:text-slate-700",
             )}
           >
-            <span className="font-noto-ethiopic">{t.labelAm}</span>
+            <span className="font-am-body">{t.labelAm}</span>
             <span className="ml-1 text-xs text-slate-400">/ {t.labelEn}</span>
           </Link>
         );
@@ -260,7 +260,7 @@ function RentalHouseListPage() {
               <Button
                 variant="outline"
                 onClick={() => navigate({ to: "/woreda/rental-houses/occupants/new" })}
-                className="font-noto-ethiopic"
+                className="font-am-body"
               >
                 <Plus className="mr-1 h-4 w-4" /> ተከራይ መዝግብ
               </Button>
@@ -347,7 +347,7 @@ function RentalHouseListPage() {
                 pageRows.map((r) => (
                   <tr key={r.rental_house_id} className="border-t hover:bg-slate-50">
                     <td className="px-4 py-2 font-medium">{r.house_number}</td>
-                    <td className="px-4 py-2 font-noto-ethiopic">
+                    <td className="px-4 py-2 font-am-body">
                       {r.kebele?.kebele_name_am ?? "—"}
                       {r.kebele?.kebele_number != null && (
                         <span className="ml-1 text-xs text-slate-500">
@@ -368,7 +368,7 @@ function RentalHouseListPage() {
                         {r.occupancy_status}
                       </Badge>
                     </td>
-                    <td className="px-4 py-2 font-noto-ethiopic">{r.occupant_name}</td>
+                    <td className="px-4 py-2 font-am-body">{r.occupant_name}</td>
                     <td className="px-4 py-2">
                       {r.current_rent != null ? Number(r.current_rent).toLocaleString() : "—"}
                     </td>

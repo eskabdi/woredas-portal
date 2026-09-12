@@ -58,7 +58,7 @@ export const Route = createFileRoute("/woreda/reports/$reportType/print")({
       permission={P.REPORT_EXPORT}
       fallback={
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-800">
-          <p className="font-noto-ethiopic font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
+          <p className="font-am-body font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
           <p className="text-sm">You do not have permission to export reports.</p>
         </div>
       }

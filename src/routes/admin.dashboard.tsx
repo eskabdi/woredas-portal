@@ -166,7 +166,7 @@ function AdminDashboard() {
               <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
                 <th className="py-2 pr-4">Code</th>
                 <th className="py-2 pr-4">Name</th>
-                <th className="font-noto-ethiopic py-2 pr-4">ስም</th>
+                <th className="font-am-heading py-2 pr-4">ስም</th>
                 <th className="py-2 pr-4">Users</th>
                 <th className="py-2 pr-4">Residents</th>
                 <th className="py-2 pr-4">Status</th>
@@ -177,9 +177,7 @@ function AdminDashboard() {
                 <tr key={w.woreda_id} className="border-b border-slate-100">
                   <td className="py-2 pr-4 font-mono text-xs text-slate-600">{w.woreda_code}</td>
                   <td className="py-2 pr-4 text-slate-900">{w.woreda_name_en}</td>
-                  <td className="font-noto-ethiopic py-2 pr-4 text-slate-700">
-                    {w.woreda_name_am}
-                  </td>
+                  <td className="font-am-body py-2 pr-4 text-slate-700">{w.woreda_name_am}</td>
                   <td className="py-2 pr-4 text-slate-700">{w.users}</td>
                   <td className="py-2 pr-4 text-slate-700">{w.residents}</td>
                   <td className="py-2 pr-4">

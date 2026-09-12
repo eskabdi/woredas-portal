@@ -53,7 +53,7 @@ export const Route = createFileRoute("/woreda/credentials/$requestId/print")({
       permission={P.CREDENTIAL_PRINT}
       fallback={
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-800">
-          <p className="font-noto-ethiopic font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
+          <p className="font-am-body font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
           <p className="text-sm">You do not have permission to print credentials.</p>
         </div>
       }
@@ -592,9 +592,7 @@ function PrintPage() {
     return (
       <div className="mx-auto max-w-2xl space-y-4 p-6">
         <div className="rounded-lg border border-amber-300 bg-amber-50 p-6">
-          <div className="font-noto-ethiopic text-lg font-semibold text-amber-900">
-            ማስረጃው ገና አልተፈረመም
-          </div>
+          <div className="font-am-body text-lg font-semibold text-amber-900">ማስረጃው ገና አልተፈረመም</div>
           <div className="mt-1 text-sm text-amber-800">
             / Credential is not yet signed — please wait or retry
           </div>
@@ -612,7 +610,7 @@ function PrintPage() {
               }}
               className="bg-amber-600 hover:bg-amber-700"
             >
-              <span className="font-noto-ethiopic">ዳግም ሞክር</span>
+              <span className="font-am-body">ዳግም ሞክር</span>
               <span className="ml-2 text-xs text-white/80">/ Retry</span>
             </Button>
             <Button
@@ -625,7 +623,7 @@ function PrintPage() {
               }
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
-              <span className="font-noto-ethiopic">ወደ ጥያቄው</span>
+              <span className="font-am-body">ወደ ጥያቄው</span>
               <span className="ml-2 text-xs text-slate-500">
                 / Back to request (re-run signing)
               </span>
@@ -689,13 +687,13 @@ function PrintPage() {
         <aside className="space-y-4">
           <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
             <div className="rounded-t-xl bg-blue-700 px-4 py-3 text-white">
-              <span className="font-noto-ethiopic text-sm font-semibold">የህትመት መቆጣጠሪያዎች</span>
+              <span className="font-am-body text-sm font-semibold">የህትመት መቆጣጠሪያዎች</span>
               <span className="ml-2 text-xs text-white/80">/ Print Controls</span>
             </div>
             <div className="space-y-4 p-4">
               <div>
                 <Label className="text-xs">
-                  <span className="font-noto-ethiopic">አታሚ</span>
+                  <span className="font-am-body">አታሚ</span>
                   <span className="ml-1 text-slate-500">/ Printer</span>
                 </Label>
                 <Select value={printerName} onValueChange={setPrinterName}>
@@ -714,7 +712,7 @@ function PrintPage() {
 
               <div>
                 <Label className="text-xs">
-                  <span className="font-noto-ethiopic">የወረቀት መጠን</span>
+                  <span className="font-am-body">የወረቀት መጠን</span>
                   <span className="ml-1 text-slate-500">/ Paper Size</span>
                 </Label>
                 <div className="mt-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
@@ -724,7 +722,7 @@ function PrintPage() {
 
               <div>
                 <Label className="text-xs">
-                  <span className="font-noto-ethiopic">አቅጣጫ</span>
+                  <span className="font-am-body">አቅጣጫ</span>
                   <span className="ml-1 text-slate-500">/ Orientation</span>
                 </Label>
                 <div className="mt-1 grid grid-cols-2 gap-2">
@@ -747,7 +745,7 @@ function PrintPage() {
 
               <div>
                 <Label className="text-xs">
-                  <span className="font-noto-ethiopic">ጥራት</span>
+                  <span className="font-am-body">ጥራት</span>
                   <span className="ml-1 text-slate-500">/ Quality</span>
                 </Label>
                 <Select value={quality} onValueChange={setQuality}>
@@ -771,7 +769,7 @@ function PrintPage() {
                   className="mt-0.5"
                 />
                 <span className="text-xs leading-snug">
-                  <span className="font-noto-ethiopic font-medium text-slate-900">
+                  <span className="font-am-body font-medium text-slate-900">
                     መረጃው ትክክል መሆኑን አረጋግጣለሁ
                   </span>
                   <span className="block text-slate-500">
@@ -791,7 +789,7 @@ function PrintPage() {
                   ) : (
                     <Printer className="mr-2 h-4 w-4" />
                   )}
-                  <span className="font-noto-ethiopic">ማተም</span>
+                  <span className="font-am-body">ማተም</span>
                   <span className="ml-2 text-xs text-white/80">/ Print</span>
                 </Button>
                 <Button
@@ -801,7 +799,7 @@ function PrintPage() {
                     navigate({ to: "/woreda/credentials/$requestId", params: { requestId } })
                   }
                 >
-                  <span className="font-noto-ethiopic">መተው</span>
+                  <span className="font-am-body">መተው</span>
                   <span className="ml-2 text-xs text-slate-500">/ Cancel</span>
                 </Button>
               </div>
@@ -816,7 +814,7 @@ function PrintPage() {
           {/* Authorization checklist */}
           <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
             <div className="rounded-t-xl bg-slate-800 px-4 py-3 text-white">
-              <span className="font-noto-ethiopic text-sm font-semibold">የህትመት ፍቃድ</span>
+              <span className="font-am-body text-sm font-semibold">የህትመት ፍቃድ</span>
               <span className="ml-2 text-xs text-white/80">/ Print Authorization</span>
             </div>
             <div className="space-y-3 p-4">
@@ -829,7 +827,7 @@ function PrintPage() {
                       <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
                     )}
                     <div>
-                      <div className="font-noto-ethiopic text-xs font-medium text-slate-900">
+                      <div className="font-am-body text-xs font-medium text-slate-900">
                         {c.labelAm}
                       </div>
                       <div className="text-[10px] text-slate-500">/ {c.labelEn}</div>
@@ -840,7 +838,7 @@ function PrintPage() {
 
               {isReprint && (
                 <div className="rounded-md border border-amber-300 bg-amber-50 p-3">
-                  <div className="font-noto-ethiopic text-xs font-semibold text-amber-900">
+                  <div className="font-am-body text-xs font-semibold text-amber-900">
                     ተደጋጋሚ ህትመት ({priorCount})
                   </div>
                   <div className="text-[10px] text-amber-800">
@@ -848,7 +846,7 @@ function PrintPage() {
                     {priorCount === 1 ? "time" : "times"}
                   </div>
                   <Label htmlFor="reprint-reason" className="mt-3 block text-[10px]">
-                    <span className="font-noto-ethiopic">የተደጋጋሚ ህትመት ምክንያት</span>
+                    <span className="font-am-body">የተደጋጋሚ ህትመት ምክንያት</span>
                     <span className="ml-1 text-slate-500">/ Reprint reason</span>
                   </Label>
                   <Textarea
@@ -868,7 +866,7 @@ function PrintPage() {
         {/* Preview */}
         <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="rounded-t-xl bg-blue-700 px-5 py-3 text-white">
-            <span className="font-noto-ethiopic text-base font-semibold">ቅድመ ዕይታ</span>
+            <span className="font-am-body text-base font-semibold">ቅድመ ዕይታ</span>
             <span className="ml-2 text-sm text-white/80">/ Card Preview</span>
           </div>
           <div className="space-y-6 bg-slate-50 p-6">
@@ -967,7 +965,7 @@ function PrintPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              <span className="font-noto-ethiopic">ህትመትን ያረጋግጡ</span>
+              <span className="font-am-body">ህትመትን ያረጋግጡ</span>
               <span className="ml-2 text-sm text-slate-500">/ Confirm Print</span>
             </AlertDialogTitle>
             <AlertDialogDescription>
@@ -1065,7 +1063,7 @@ function CardFront({
               </div>
             )}
             <div className="min-w-0 leading-tight">
-              <div className="truncate font-noto-ethiopic text-[11px] font-semibold">
+              <div className="truncate font-am-body text-[11px] font-semibold">
                 {settings?.woreda_name_display || woreda?.woreda_name_am || "የሐረሪ ክልል"}
               </div>
               <div className="truncate text-[10px] text-blue-100">
@@ -1090,7 +1088,7 @@ function CardFront({
               </div>
               <div className="min-w-0 flex-1 space-y-1.5">
                 <div className="flex items-center gap-1">
-                  <span className="font-noto-ethiopic truncate text-sm font-bold">
+                  <span className="font-am-body truncate text-sm font-bold">
                     {resident?.full_name_am || resident?.full_name || "—"}
                   </span>
                   <BadgeCheck className="h-4 w-4 shrink-0 text-emerald-600" />
@@ -1148,7 +1146,7 @@ function FrontRow({
 }) {
   return (
     <div className="flex items-baseline gap-2 text-[11px]">
-      <span className="font-noto-ethiopic w-24 shrink-0 text-slate-500">
+      <span className="font-am-body w-24 shrink-0 text-slate-500">
         {labelAm} <span className="text-slate-400">/ {labelEn}</span>
       </span>
       <span className={`truncate font-medium text-slate-900 ${mono ? "font-mono" : ""}`}>
@@ -1189,14 +1187,14 @@ function CardBack({
       {!bgUrl && (
         <div className="flex h-full flex-col p-4 text-slate-900">
           <div className="mb-3 border-b border-slate-200 pb-2">
-            <div className="font-noto-ethiopic text-xs font-bold text-blue-800">የነዋሪው አድራሻ</div>
+            <div className="font-am-body text-xs font-bold text-blue-800">የነዋሪው አድራሻ</div>
             <div className="text-[10px] text-slate-500">/ Residential Address</div>
           </div>
 
           <div className="grid grid-cols-2 gap-3 text-[11px]">
             <div>
               <div className="text-[9px] uppercase tracking-wider text-slate-400">
-                <span className="font-noto-ethiopic">ቀበሌ</span> / Kebele
+                <span className="font-am-body">ቀበሌ</span> / Kebele
               </div>
               <div className="mt-0.5 font-medium">
                 {kebele?.kebele_name_am ?? "—"}
@@ -1208,7 +1206,7 @@ function CardBack({
             </div>
             <div>
               <div className="text-[9px] uppercase tracking-wider text-slate-400">
-                <span className="font-noto-ethiopic">የቤት ቁጥር</span> / House No.
+                <span className="font-am-body">የቤት ቁጥር</span> / House No.
               </div>
               <div className="mt-0.5 font-medium">{household?.house_number ?? "—"}</div>
             </div>
@@ -1216,7 +1214,7 @@ function CardBack({
 
           <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5">
             <div className="flex items-baseline justify-between gap-2 text-[11px]">
-              <span className="font-noto-ethiopic font-semibold text-amber-900">
+              <span className="font-am-body font-semibold text-amber-900">
                 የሚያበቃበት ቀን <span className="text-amber-700">/ Expiry</span>
               </span>
               <span className="font-mono text-[11px] font-bold text-red-700">
@@ -1245,7 +1243,7 @@ function CardBack({
                   </div>
                 )}
               </div>
-              <div className="mt-1 text-center font-noto-ethiopic text-[9px] font-medium text-slate-600">
+              <div className="mt-1 text-center font-am-body text-[9px] font-medium text-slate-600">
                 የማረጋገጫ ኮድ
               </div>
               <div className="text-[8px] text-slate-400">/ Verify Authenticity</div>
@@ -1257,7 +1255,7 @@ function CardBack({
                   <img src={signatureUrl} alt="" className="h-full w-full object-contain" />
                 )}
               </div>
-              <div className="mt-1 text-right font-noto-ethiopic text-[9px] font-medium text-slate-700">
+              <div className="mt-1 text-right font-am-body text-[9px] font-medium text-slate-700">
                 የወረዳ አስተዳዳሪ
               </div>
               <div className="text-right text-[8px] text-slate-500">/ Woreda Administrator</div>
@@ -1540,7 +1538,7 @@ function ErrorPanel({
   return (
     <div className="p-6">
       <div className="rounded-lg border border-red-200 bg-red-50 p-6">
-        <p className="font-noto-ethiopic font-semibold text-red-900">{titleAm}</p>
+        <p className="font-am-body font-semibold text-red-900">{titleAm}</p>
         <p className="text-sm font-medium text-red-800">{titleEn}</p>
         <p className="mt-2 text-sm text-red-700">{message}</p>
         {hint && <p className="mt-1 text-xs text-red-600">{hint}</p>}

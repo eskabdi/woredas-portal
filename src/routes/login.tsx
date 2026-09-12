@@ -116,7 +116,7 @@ function LoginPage() {
   return (
     <div className="relative min-h-screen bg-slate-50 px-4 py-12">
       <div className="absolute right-4 top-4">
-        <span className="font-noto-ethiopic rounded-full bg-blue-50 px-3 py-1 text-sm text-blue-800">
+        <span className="font-am-body rounded-full bg-blue-50 px-3 py-1 text-sm text-blue-800">
           {getCurrentEthiopianDate()}
         </span>
       </div>
@@ -124,9 +124,7 @@ function LoginPage() {
       <div className="mx-auto flex min-h-[80vh] max-w-md items-center">
         <div className="w-full rounded-xl bg-white p-8 shadow-lg">
           <div className="text-center">
-            <h1 className="font-noto-ethiopic text-2xl font-bold text-slate-900">
-              ወረዳ አስተዳደር ሥርዓት
-            </h1>
+            <h1 className="font-am-heading text-2xl font-bold text-slate-900">ወረዳ አስተዳደር ሥርዓት</h1>
             <p className="mt-1 text-sm text-slate-500">Woreda Administration ERP — Harari Region</p>
           </div>
 
@@ -173,7 +171,7 @@ function LoginPage() {
               {isSubmitting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <span className="font-noto-ethiopic">ግባ / Sign In</span>
+                <span className="font-am-body">ግባ / Sign In</span>
               )}
             </Button>
           </form>

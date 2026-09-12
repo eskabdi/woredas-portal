@@ -123,7 +123,7 @@ function Stepper({
               <div className="min-w-0 leading-tight">
                 <div
                   className={cn(
-                    "font-noto-ethiopic text-xs font-medium",
+                    "font-am-body text-xs font-medium",
                     done || active ? "text-slate-900" : "text-slate-400",
                   )}
                 >
@@ -152,10 +152,10 @@ function KV({ am, en, children }: { am: string; en: string; children: React.Reac
   return (
     <div>
       <div className="text-xs">
-        <span className="font-noto-ethiopic text-slate-700">{am}</span>
+        <span className="font-am-body text-slate-700">{am}</span>
         <span className="ml-1 text-slate-400">/ {en}</span>
       </div>
-      <div className="font-noto-ethiopic mt-0.5 text-sm text-slate-900">{children ?? "—"}</div>
+      <div className="font-am-body mt-0.5 text-sm text-slate-900">{children ?? "—"}</div>
     </div>
   );
 }
@@ -583,7 +583,7 @@ function RentalRequestDetailPage() {
                       onCheckedChange={(v) => setChecks((s) => ({ ...s, [c.key]: v === true }))}
                     />
                     <span>
-                      <span className="font-noto-ethiopic">{c.labelAm}</span>
+                      <span className="font-am-body">{c.labelAm}</span>
                       <span className="ml-1 text-xs text-slate-500">/ {c.labelEn}</span>
                     </span>
                   </label>
@@ -653,7 +653,7 @@ function RentalRequestDetailPage() {
 
           {req.status === "approved" && !isTermination && (
             <Card className="p-4">
-              <div className="mb-1 font-noto-ethiopic text-sm font-semibold">የቤት ኪራይ ክፍያ</div>
+              <div className="mb-1 font-am-body text-sm font-semibold">የቤት ኪራይ ክፍያ</div>
               <div className="text-xs text-slate-600">
                 Collect the initial rent from the Revenue page. A receipt is generated on payment.
               </div>

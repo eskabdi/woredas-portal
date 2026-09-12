@@ -58,7 +58,7 @@ export const Route = createFileRoute("/woreda/credentials/$requestId/")({
       permission={P.CREDENTIAL_READ}
       fallback={
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-800">
-          <p className="font-noto-ethiopic font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
+          <p className="font-am-body font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
           <p className="text-sm">You do not have permission to view credential requests.</p>
         </div>
       }
@@ -656,10 +656,10 @@ function CredentialRequestDetailPage() {
       <div className="space-y-4">
         <Button variant="ghost" onClick={() => navigate({ to: "/woreda/credentials" })}>
           <ArrowLeft className="mr-2 h-4 w-4" />
-          <span className="font-noto-ethiopic">ወደ ኋላ</span>
+          <span className="font-am-body">ወደ ኋላ</span>
         </Button>
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-8 text-center">
-          <p className="font-noto-ethiopic text-lg text-slate-700">ጥያቄ አልተገኘም</p>
+          <p className="font-am-body text-lg text-slate-700">ጥያቄ አልተገኘም</p>
           <p className="text-sm text-slate-500">Request not found</p>
         </div>
       </div>
@@ -679,7 +679,7 @@ function CredentialRequestDetailPage() {
         <div>
           <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/woreda/credentials" })}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            <span className="font-noto-ethiopic">ወደ ዝርዝር</span>
+            <span className="font-am-body">ወደ ዝርዝር</span>
             <span className="ml-1 text-xs opacity-70">/ Back to list</span>
           </Button>
         </div>
@@ -704,7 +704,7 @@ function CredentialRequestDetailPage() {
             </div>
             <div className="min-w-0 flex-1">
               <div className="font-mono text-sm text-slate-500">{request.request_number}</div>
-              <div className="font-noto-ethiopic text-lg font-semibold text-slate-900">
+              <div className="font-am-body text-lg font-semibold text-slate-900">
                 {resident?.full_name_am || "—"}
               </div>
               <div className="text-sm text-slate-600">{resident?.full_name || ""}</div>
@@ -715,7 +715,7 @@ function CredentialRequestDetailPage() {
             <div className="flex flex-col items-end gap-2">
               <StatusChip status={status} />
               <div className="text-right text-xs text-slate-500">
-                <div className="font-noto-ethiopic">ገባ / Submitted</div>
+                <div className="font-am-body">ገባ / Submitted</div>
                 <div>{submittedDisplay}</div>
               </div>
             </div>
@@ -725,24 +725,24 @@ function CredentialRequestDetailPage() {
         {/* Card 1 — Original Submission */}
         <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="rounded-t-xl bg-slate-800 px-5 py-3 text-white">
-            <span className="font-noto-ethiopic text-base font-semibold">የመጀመሪያ ማመልከቻ</span>
+            <span className="font-am-body text-base font-semibold">የመጀመሪያ ማመልከቻ</span>
             <span className="ml-2 text-sm text-slate-300">/ Original Submission</span>
           </div>
           <div className="space-y-4 p-5">
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
               <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
-                <dt className="font-noto-ethiopic text-slate-500">ጾታ / Sex</dt>
-                <dd className="font-noto-ethiopic text-slate-800">
+                <dt className="font-am-body text-slate-500">ጾታ / Sex</dt>
+                <dd className="font-am-body text-slate-800">
                   {resident?.sex === "male"
                     ? "ወንድ / Male"
                     : resident?.sex === "female"
                       ? "ሴት / Female"
                       : "—"}
                 </dd>
-                <dt className="font-noto-ethiopic text-slate-500">የልደት ቀን / DOB</dt>
-                <dd className="font-noto-ethiopic text-slate-800">{dobDisplay}</dd>
-                <dt className="font-noto-ethiopic text-slate-500">ቤተሰብ / Household</dt>
-                <dd className="font-noto-ethiopic text-slate-800">
+                <dt className="font-am-body text-slate-500">የልደት ቀን / DOB</dt>
+                <dd className="font-am-body text-slate-800">{dobDisplay}</dd>
+                <dt className="font-am-body text-slate-500">ቤተሰብ / Household</dt>
+                <dd className="font-am-body text-slate-800">
                   {household
                     ? `${household.house_number ?? "—"} · ${
                         household.kebele
@@ -755,19 +755,17 @@ function CredentialRequestDetailPage() {
             </div>
 
             <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
-              <dt className="font-noto-ethiopic text-slate-500">የጥያቄ ዓይነት / Request Type</dt>
-              <dd className="font-noto-ethiopic text-slate-800">
+              <dt className="font-am-body text-slate-500">የጥያቄ ዓይነት / Request Type</dt>
+              <dd className="font-am-body text-slate-800">
                 {REQUEST_TYPE_LABEL[request.request_type] ?? request.request_type}
               </dd>
-              <dt className="font-noto-ethiopic text-slate-500">የመታወቂያ ዓይነት / Credential Type</dt>
-              <dd className="font-noto-ethiopic text-slate-800">
+              <dt className="font-am-body text-slate-500">የመታወቂያ ዓይነት / Credential Type</dt>
+              <dd className="font-am-body text-slate-800">
                 {CRED_TYPE_LABEL[request.credential_type] ?? request.credential_type}
               </dd>
               {prior && (
                 <>
-                  <dt className="font-noto-ethiopic text-slate-500">
-                    የቀድሞ መታወቂያ / Prior Credential
-                  </dt>
+                  <dt className="font-am-body text-slate-500">የቀድሞ መታወቂያ / Prior Credential</dt>
                   <dd className="text-slate-800">
                     <span className="font-mono">{prior.credential_number}</span>
                     {" · "}
@@ -786,7 +784,7 @@ function CredentialRequestDetailPage() {
               <div>
                 <Button variant="outline" size="sm" onClick={openDocument}>
                   <FileText className="mr-2 h-4 w-4" />
-                  <span className="font-noto-ethiopic">ሰነድ ይመልከቱ</span>
+                  <span className="font-am-body">ሰነድ ይመልከቱ</span>
                   <span className="ml-1 text-xs opacity-70">/ View Document</span>
                   {request.supporting_document_name && (
                     <span className="ml-2 text-xs text-slate-500">
@@ -812,13 +810,13 @@ function CredentialRequestDetailPage() {
         {/* Card 2 — Verification Checklist */}
         <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="rounded-t-xl bg-blue-700 px-5 py-3 text-white">
-            <span className="font-noto-ethiopic text-base font-semibold">የማረጋገጫ ዝርዝር</span>
+            <span className="font-am-body text-base font-semibold">የማረጋገጫ ዝርዝር</span>
             <span className="ml-2 text-sm text-blue-100">/ Verification Checklist</span>
           </div>
           <div className="space-y-4 p-5">
             {isReturned && request.return_reason && (
               <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900">
-                <div className="font-noto-ethiopic text-sm font-semibold">
+                <div className="font-am-body text-sm font-semibold">
                   የተመለሰበት ምክንያት / Return Reason
                 </div>
                 <p className="mt-1 whitespace-pre-wrap text-sm">{request.return_reason}</p>
@@ -839,7 +837,7 @@ function CredentialRequestDetailPage() {
                         disabled={!canAct}
                       />
                       <Label htmlFor={item.key} className="cursor-pointer text-sm leading-tight">
-                        <span className="font-noto-ethiopic">{item.labelAm}</span>
+                        <span className="font-am-body">{item.labelAm}</span>
                         <span className="ml-2 text-slate-500">/ {item.labelEn}</span>
                       </Label>
                     </li>
@@ -848,7 +846,7 @@ function CredentialRequestDetailPage() {
 
                 {missingCorrectionDoc && (
                   <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800">
-                    <span className="font-noto-ethiopic">ሰነድ ያስፈልጋል</span> / Document required for
+                    <span className="font-am-body">ሰነድ ያስፈልጋል</span> / Document required for
                     corrections
                   </div>
                 )}
@@ -861,7 +859,7 @@ function CredentialRequestDetailPage() {
                       disabled={busy}
                     >
                       <RotateCcw className="mr-2 h-4 w-4" />
-                      <span className="font-noto-ethiopic">መልስ</span>
+                      <span className="font-am-body">መልስ</span>
                       <span className="ml-1 text-xs opacity-70">/ Return</span>
                     </Button>
                     <Button
@@ -874,7 +872,7 @@ function CredentialRequestDetailPage() {
                       ) : (
                         <CheckCircle2 className="mr-2 h-4 w-4" />
                       )}
-                      <span className="font-noto-ethiopic">አልፏል</span>
+                      <span className="font-am-body">አልፏል</span>
                       <span className="ml-1 text-xs opacity-80">/ Pass</span>
                     </Button>
                   </div>
@@ -893,7 +891,7 @@ function CredentialRequestDetailPage() {
                     className="bg-blue-700 text-white hover:bg-blue-800"
                   >
                     {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    <span className="font-noto-ethiopic">ዳግም ለክለሳ አስገባ</span>
+                    <span className="font-am-body">ዳግም ለክለሳ አስገባ</span>
                     <span className="ml-1 text-xs opacity-80">/ Resubmit for Review</span>
                   </Button>
                 </div>
@@ -920,7 +918,7 @@ function CredentialRequestDetailPage() {
                 status === "rejected" ? "bg-red-700" : "bg-emerald-700"
               }`}
             >
-              <span className="font-noto-ethiopic text-base font-semibold">ማጽደቅ</span>
+              <span className="font-am-body text-base font-semibold">ማጽደቅ</span>
               <span className="ml-2 text-sm text-white/80">/ Approval</span>
             </div>
             <div className="space-y-4 p-5">
@@ -934,7 +932,7 @@ function CredentialRequestDetailPage() {
                         : "border-slate-200 bg-slate-50 text-slate-700"
                     }`}
                   >
-                    <div className="font-noto-ethiopic font-medium">
+                    <div className="font-am-body font-medium">
                       {request.duplicate_flag
                         ? `የድግግሞሽ ውጤት: ${request.duplicate_notes ?? ""}`
                         : "ምንም ድግግሞሽ አልተገኘም"}
@@ -948,13 +946,13 @@ function CredentialRequestDetailPage() {
 
                   <div className="rounded-md border border-slate-200 bg-white p-3">
                     <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      <span className="font-noto-ethiopic">የዚህ ነዋሪ ቀደም ያሉ መታወቂያዎች</span>
+                      <span className="font-am-body">የዚህ ነዋሪ ቀደም ያሉ መታወቂያዎች</span>
                       <span className="ml-2 normal-case">/ Credential history</span>
                     </div>
                     {residentCredsQuery.isLoading ? (
                       <Skeleton className="h-8 w-full" />
                     ) : (residentCredsQuery.data?.length ?? 0) === 0 ? (
-                      <p className="font-noto-ethiopic text-sm text-slate-500">
+                      <p className="font-am-body text-sm text-slate-500">
                         ይህ ነዋሪ ቀደም ሲል ምስክርነት የለውም
                         <span className="ml-2 text-slate-400">
                           / This resident has no prior credentials
@@ -968,7 +966,7 @@ function CredentialRequestDetailPage() {
                             className="flex flex-wrap items-center gap-3 py-2"
                           >
                             <span className="font-mono text-xs">{c.credential_number}</span>
-                            <span className="font-noto-ethiopic text-slate-600">
+                            <span className="font-am-body text-slate-600">
                               {CRED_TYPE_LABEL[c.credential_type] ?? c.credential_type}
                             </span>
                             <StatusChip status={c.status} />
@@ -994,7 +992,7 @@ function CredentialRequestDetailPage() {
                       disabled={busy}
                     >
                       <XCircle className="mr-2 h-4 w-4" />
-                      <span className="font-noto-ethiopic">አትቀበል</span>
+                      <span className="font-am-body">አትቀበል</span>
                       <span className="ml-1 text-xs opacity-80">/ Reject</span>
                     </Button>
                     <Button
@@ -1003,7 +1001,7 @@ function CredentialRequestDetailPage() {
                       disabled={busy}
                     >
                       <RotateCcw className="mr-2 h-4 w-4" />
-                      <span className="font-noto-ethiopic">መልስ</span>
+                      <span className="font-am-body">መልስ</span>
                       <span className="ml-1 text-xs opacity-70">/ Return</span>
                     </Button>
                     <Button
@@ -1016,7 +1014,7 @@ function CredentialRequestDetailPage() {
                       ) : (
                         <CheckCircle2 className="mr-2 h-4 w-4" />
                       )}
-                      <span className="font-noto-ethiopic">አጽድቅ</span>
+                      <span className="font-am-body">አጽድቅ</span>
                       <span className="ml-1 text-xs opacity-80">/ Approve</span>
                     </Button>
                   </div>
@@ -1030,7 +1028,7 @@ function CredentialRequestDetailPage() {
                 <>
                   {request.return_reason && (
                     <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900">
-                      <div className="font-noto-ethiopic text-sm font-semibold">
+                      <div className="font-am-body text-sm font-semibold">
                         በማጽደቅ ደረጃ የተመለሰበት ምክንያት
                       </div>
                       <div className="text-xs opacity-80">
@@ -1047,7 +1045,7 @@ function CredentialRequestDetailPage() {
                         className="bg-blue-700 text-white hover:bg-blue-800"
                       >
                         {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        <span className="font-noto-ethiopic">ለማጽደቅ ዳግም አስገባ</span>
+                        <span className="font-am-body">ለማጽደቅ ዳግም አስገባ</span>
                         <span className="ml-1 text-xs opacity-80">/ Resubmit for Approval</span>
                       </Button>
                     </div>
@@ -1057,11 +1055,11 @@ function CredentialRequestDetailPage() {
 
               {status === "rejected" && (
                 <div className="rounded-lg border-2 border-red-300 bg-red-50 p-4 text-red-900">
-                  <div className="font-noto-ethiopic text-sm font-semibold">ጥያቄው ውድቅ ተደርጓል</div>
+                  <div className="font-am-body text-sm font-semibold">ጥያቄው ውድቅ ተደርጓል</div>
                   <div className="text-xs opacity-80">/ Request rejected</div>
                   {request.reject_reason && (
                     <p className="mt-2 whitespace-pre-wrap text-sm">
-                      <span className="font-noto-ethiopic font-medium">ምክንያት: </span>
+                      <span className="font-am-body font-medium">ምክንያት: </span>
                       {request.reject_reason}
                     </p>
                   )}
@@ -1078,7 +1076,7 @@ function CredentialRequestDetailPage() {
 
               {(status === "awaiting_payment" || status === "paid") && (
                 <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
-                  <div className="font-noto-ethiopic font-semibold">ጥያቄው ጸድቋል</div>
+                  <div className="font-am-body font-semibold">ጥያቄው ጸድቋል</div>
                   <div className="text-xs opacity-80">/ Request approved</div>
                   {request.approval_decision_at && (
                     <p className="mt-1 text-xs">
@@ -1128,7 +1126,7 @@ function CredentialRequestDetailPage() {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>
-                <span className="font-noto-ethiopic">ጥያቄውን ይመልሱ</span>
+                <span className="font-am-body">ጥያቄውን ይመልሱ</span>
                 <span className="ml-2 text-sm text-slate-500">/ Return Request</span>
               </AlertDialogTitle>
               <AlertDialogDescription>
@@ -1137,7 +1135,7 @@ function CredentialRequestDetailPage() {
             </AlertDialogHeader>
             <div className="space-y-2">
               <Label htmlFor="return-reason">
-                <span className="font-noto-ethiopic">የመመለሻ ምክንያት</span>
+                <span className="font-am-body">የመመለሻ ምክንያት</span>
                 <span className="ml-2 text-slate-500">/ Return Reason</span>
               </Label>
               <Textarea
@@ -1168,7 +1166,7 @@ function CredentialRequestDetailPage() {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>
-                <span className="font-noto-ethiopic">በማጽደቅ ደረጃ ይመልሱ</span>
+                <span className="font-am-body">በማጽደቅ ደረጃ ይመልሱ</span>
                 <span className="ml-2 text-sm text-slate-500">/ Return at Approval Stage</span>
               </AlertDialogTitle>
               <AlertDialogDescription>
@@ -1177,7 +1175,7 @@ function CredentialRequestDetailPage() {
             </AlertDialogHeader>
             <div className="space-y-2">
               <Label htmlFor="approval-return-reason">
-                <span className="font-noto-ethiopic">የማጽደቅ ደረጃ የመመለሻ ምክንያት</span>
+                <span className="font-am-body">የማጽደቅ ደረጃ የመመለሻ ምክንያት</span>
                 <span className="ml-2 text-slate-500">/ Approval-Stage Return Reason</span>
               </Label>
               <Textarea
@@ -1208,7 +1206,7 @@ function CredentialRequestDetailPage() {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>
-                <span className="font-noto-ethiopic">ጥያቄውን ውድቅ ያድርጉ</span>
+                <span className="font-am-body">ጥያቄውን ውድቅ ያድርጉ</span>
                 <span className="ml-2 text-sm text-slate-500">/ Reject Request</span>
               </AlertDialogTitle>
               <AlertDialogDescription>
@@ -1217,7 +1215,7 @@ function CredentialRequestDetailPage() {
             </AlertDialogHeader>
             <div className="space-y-2">
               <Label htmlFor="reject-reason">
-                <span className="font-noto-ethiopic">የመቀበል ምክንያት</span>
+                <span className="font-am-body">የመቀበል ምክንያት</span>
                 <span className="ml-2 text-slate-500">/ Rejection Reason</span>
               </Label>
               <Textarea
@@ -1272,7 +1270,7 @@ function ReadOnlyChecklist({
 
   if (!hasAny) {
     return (
-      <p className="font-noto-ethiopic text-sm text-slate-500">
+      <p className="font-am-body text-sm text-slate-500">
         ማረጋገጫ አልተመዘገበም / No verification recorded
       </p>
     );
@@ -1291,7 +1289,7 @@ function ReadOnlyChecklist({
                 <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
               )}
               <span>
-                <span className="font-noto-ethiopic">{item.labelAm}</span>
+                <span className="font-am-body">{item.labelAm}</span>
                 <span className="ml-2 text-slate-500">/ {item.labelEn}</span>
               </span>
             </li>
@@ -1481,7 +1479,7 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
       `}</style>
       <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="no-print rounded-t-xl bg-amber-600 px-5 py-3 text-white">
-          <span className="font-noto-ethiopic text-base font-semibold">ክፍያ</span>
+          <span className="font-am-body text-base font-semibold">ክፍያ</span>
           <span className="ml-2 text-sm text-white/80">/ Payment</span>
         </div>
         <div className="space-y-4 p-5">
@@ -1492,12 +1490,12 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
               ) : (
                 <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
                   <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    <span className="font-noto-ethiopic">የሚከፈል ክፍያ</span>
+                    <span className="font-am-body">የሚከፈል ክፍያ</span>
                     <span className="ml-2 normal-case">/ Applicable Fee</span>
                   </div>
                   <div className="mt-1 text-lg font-semibold text-slate-900">
                     {fee.toLocaleString()}{" "}
-                    <span className="font-noto-ethiopic text-sm text-slate-600">ብር</span>
+                    <span className="font-am-body text-sm text-slate-600">ብር</span>
                     <span className="ml-1 text-sm text-slate-500">/ ETB</span>
                   </div>
                 </div>
@@ -1505,7 +1503,7 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
 
               <div className="flex items-center justify-between rounded-md border border-slate-200 p-3">
                 <Label htmlFor="waived" className="cursor-pointer">
-                  <span className="font-noto-ethiopic">ክፍያ ነፃ ነው?</span>
+                  <span className="font-am-body">ክፍያ ነፃ ነው?</span>
                   <span className="ml-2 text-slate-500">/ Fee Waived?</span>
                 </Label>
                 <Switch
@@ -1527,7 +1525,7 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
               {waived ? (
                 <div>
                   <Label htmlFor="waiver-reason">
-                    <span className="font-noto-ethiopic">የነፃ ምክንያት</span>
+                    <span className="font-am-body">የነፃ ምክንያት</span>
                     <span className="ml-2 text-slate-500">/ Waiver Reason</span>
                   </Label>
                   <Textarea
@@ -1543,7 +1541,7 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
                 <>
                   <div>
                     <Label>
-                      <span className="font-noto-ethiopic">የክፍያ መንገድ</span>
+                      <span className="font-am-body">የክፍያ መንገድ</span>
                       <span className="ml-2 text-slate-500">/ Payment Channel</span>
                     </Label>
                     <Select
@@ -1556,13 +1554,13 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="cash">
-                          <span className="font-noto-ethiopic">ጥሬ ገንዘብ</span> / Cash
+                          <span className="font-am-body">ጥሬ ገንዘብ</span> / Cash
                         </SelectItem>
                         <SelectItem value="bank">
-                          <span className="font-noto-ethiopic">ባንክ</span> / Bank
+                          <span className="font-am-body">ባንክ</span> / Bank
                         </SelectItem>
                         <SelectItem value="mobile">
-                          <span className="font-noto-ethiopic">በሞባይል</span> / Mobile
+                          <span className="font-am-body">በሞባይል</span> / Mobile
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -1571,7 +1569,7 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
                   {(channel === "bank" || channel === "mobile" || channel === "cash") && (
                     <div>
                       <Label htmlFor="ref-no">
-                        <span className="font-noto-ethiopic">የማጣቀሻ ቁጥር</span>
+                        <span className="font-am-body">የማጣቀሻ ቁጥር</span>
                         <span className="ml-2 text-slate-500">
                           / Reference Number
                           {channel === "cash" ? " (optional)" : " (required)"}
@@ -1591,12 +1589,12 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
 
               <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
                 <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  <span className="font-noto-ethiopic">መጠን</span>
+                  <span className="font-am-body">መጠን</span>
                   <span className="ml-2 normal-case">/ Amount</span>
                 </div>
                 <div className="mt-1 text-lg font-semibold text-slate-900">
                   {effectiveAmount.toLocaleString()}{" "}
-                  <span className="font-noto-ethiopic text-sm text-slate-600">ብር</span>
+                  <span className="font-am-body text-sm text-slate-600">ብር</span>
                   <span className="ml-1 text-sm text-slate-500">/ ETB</span>
                 </div>
               </div>
@@ -1613,7 +1611,7 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
                     ) : (
                       <ReceiptIcon className="mr-2 h-4 w-4" />
                     )}
-                    <span className="font-noto-ethiopic">ክፍያ መዝግብ</span>
+                    <span className="font-am-body">ክፍያ መዝግብ</span>
                     <span className="ml-1 text-xs opacity-80">/ Record Payment</span>
                   </Button>
                 </div>
@@ -1634,7 +1632,7 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
                   <div className="flex flex-wrap items-start justify-between gap-3 rounded-md border border-emerald-200 bg-emerald-50 p-4">
                     <div>
                       <div className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-                        <span className="font-noto-ethiopic">ደረሰኝ ቁጥር</span>
+                        <span className="font-am-body">ደረሰኝ ቁጥር</span>
                         <span className="ml-2 normal-case">/ Receipt #</span>
                       </div>
                       <div className="font-mono text-base font-semibold text-emerald-900">
@@ -1643,7 +1641,7 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
                     </div>
                     <div className="text-right">
                       <div className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-                        <span className="font-noto-ethiopic">መጠን</span>
+                        <span className="font-am-body">መጠን</span>
                         <span className="ml-2 normal-case">/ Amount</span>
                       </div>
                       <div className="text-base font-semibold text-emerald-900">
@@ -1652,20 +1650,20 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
                             paidQuery.data.payment?.amount ??
                             0,
                         ).toLocaleString()}{" "}
-                        <span className="font-noto-ethiopic text-sm">ብር</span>
+                        <span className="font-am-body text-sm">ብር</span>
                         <span className="ml-1 text-sm">/ ETB</span>
                       </div>
                     </div>
                   </div>
 
                   <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
-                    <dt className="font-noto-ethiopic text-slate-500">ነዋሪ / Resident</dt>
-                    <dd className="font-noto-ethiopic text-slate-800">
+                    <dt className="font-am-body text-slate-500">ነዋሪ / Resident</dt>
+                    <dd className="font-am-body text-slate-800">
                       {request.resident?.full_name_am ?? request.resident?.full_name ?? "—"}
                     </dd>
-                    <dt className="font-noto-ethiopic text-slate-500">የጥያቄ ቁጥር / Request #</dt>
+                    <dt className="font-am-body text-slate-500">የጥያቄ ቁጥር / Request #</dt>
                     <dd className="font-mono text-slate-800">{request.request_number}</dd>
-                    <dt className="font-noto-ethiopic text-slate-500">ቀን / Date</dt>
+                    <dt className="font-am-body text-slate-500">ቀን / Date</dt>
                     <dd className="text-slate-800">
                       {paidQuery.data.receipt?.receipt_date
                         ? formatEthiopianDateOnly(paidQuery.data.receipt.receipt_date)
@@ -1673,16 +1671,16 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
                           ? formatEthiopianDateOnly(paidQuery.data.payment.payment_date)
                           : "—"}
                     </dd>
-                    <dt className="font-noto-ethiopic text-slate-500">የክፍያ መንገድ / Channel</dt>
+                    <dt className="font-am-body text-slate-500">የክፍያ መንገድ / Channel</dt>
                     <dd className="text-slate-800">
                       {Number(paidQuery.data.payment?.amount ?? 0) === 0 ? (
                         <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
-                          <span className="font-noto-ethiopic">ነፃ ተደርጓል</span>
+                          <span className="font-am-body">ነፃ ተደርጓል</span>
                           <span className="ml-1">/ Waived</span>
                         </span>
                       ) : (
                         <>
-                          <span className="font-noto-ethiopic">
+                          <span className="font-am-body">
                             {CHANNEL_LABELS[
                               paidQuery.data.receipt?.cash_bank_channel ??
                                 paidQuery.data.payment?.channel ??
@@ -1702,7 +1700,7 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
                     </dd>
                     {paidQuery.data.payment?.reference_no && (
                       <>
-                        <dt className="font-noto-ethiopic text-slate-500">ማጣቀሻ / Reference</dt>
+                        <dt className="font-am-body text-slate-500">ማጣቀሻ / Reference</dt>
                         <dd className="font-mono text-slate-800">
                           {paidQuery.data.payment.reference_no}
                         </dd>
@@ -1713,7 +1711,7 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
                   <div className="no-print flex justify-end border-t border-slate-200 pt-4">
                     <Button variant="outline" onClick={handlePrint}>
                       <Printer className="mr-2 h-4 w-4" />
-                      <span className="font-noto-ethiopic">ደረሰኝ አትም</span>
+                      <span className="font-am-body">ደረሰኝ አትም</span>
                       <span className="ml-1 text-xs opacity-70">/ Print Receipt</span>
                     </Button>
                   </div>
@@ -1825,7 +1823,7 @@ function CredentialReadinessCard({
   return (
     <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="rounded-t-xl bg-indigo-700 px-5 py-3 text-white">
-        <span className="font-noto-ethiopic text-base font-semibold">ማስረጃ ዝግጁነት</span>
+        <span className="font-am-body text-base font-semibold">ማስረጃ ዝግጁነት</span>
         <span className="ml-2 text-sm text-white/80">/ Credential Readiness</span>
       </div>
       <div className="space-y-3 p-5">
@@ -1836,18 +1834,18 @@ function CredentialReadinessCard({
             <div className="flex items-start gap-3">
               <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
               <div className="flex-1">
-                <div className="font-noto-ethiopic font-semibold text-emerald-900">ማስረጃ ዝግጁ ነው</div>
+                <div className="font-am-body font-semibold text-emerald-900">ማስረጃ ዝግጁ ነው</div>
                 <div className="text-xs text-emerald-800">
                   / Credential ready — <span className="font-mono">{cred.credential_number}</span>
                 </div>
                 <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
                   <dt className="text-slate-600">
-                    <span className="font-noto-ethiopic">ተከታታይ ቁጥር</span>
+                    <span className="font-am-body">ተከታታይ ቁጥር</span>
                     <span className="ml-1 text-xs text-slate-500">/ Serial</span>
                   </dt>
                   <dd className="font-mono text-slate-900">{cred.serial_number}</dd>
                   <dt className="text-slate-600">
-                    <span className="font-noto-ethiopic">የሚያበቃበት ቀን</span>
+                    <span className="font-am-body">የሚያበቃበት ቀን</span>
                     <span className="ml-1 text-xs text-slate-500">/ Expiry</span>
                   </dt>
                   <dd className="text-slate-900">
@@ -1858,7 +1856,7 @@ function CredentialReadinessCard({
                   <Button asChild size="sm" className="bg-blue-700 hover:bg-blue-800">
                     <Link to="/woreda/credentials/$requestId/print" params={{ requestId }}>
                       <Printer className="mr-2 h-4 w-4" />
-                      <span className="font-noto-ethiopic">ቅድመ ዕይታ እና ህትመት</span>
+                      <span className="font-am-body">ቅድመ ዕይታ እና ህትመት</span>
                       <span className="ml-2 text-xs text-white/80">/ Preview &amp; Print</span>
                     </Link>
                   </Button>
@@ -1871,7 +1869,7 @@ function CredentialReadinessCard({
             <div className="flex items-start gap-3">
               <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
               <div className="flex-1">
-                <div className="font-noto-ethiopic text-sm font-semibold text-red-900">
+                <div className="font-am-body text-sm font-semibold text-red-900">
                   ማስረጃ ማዘጋጀት አልተሳካም
                 </div>
                 <div className="text-xs text-red-800">/ Credential preparation failed</div>
@@ -1893,7 +1891,7 @@ function CredentialReadinessCard({
           <div className="flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 p-4">
             <Loader2 className="h-5 w-5 shrink-0 animate-spin text-indigo-600" />
             <div>
-              <div className="font-noto-ethiopic text-sm font-semibold text-slate-800">
+              <div className="font-am-body text-sm font-semibold text-slate-800">
                 ማስረጃ በመዘጋጀት ላይ...
               </div>
               <div className="text-xs text-slate-600">/ Preparing credential...</div>
@@ -2096,14 +2094,14 @@ function IssuanceCard({
   return (
     <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="rounded-t-xl bg-blue-700 px-5 py-3 text-white">
-        <span className="font-noto-ethiopic text-base font-semibold">ርክክብ</span>
+        <span className="font-am-body text-base font-semibold">ርክክብ</span>
         <span className="ml-2 text-sm text-white/80">/ Issuance</span>
       </div>
       <div className="space-y-4 p-5">
         <dl className="grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
-          <dt className="font-noto-ethiopic text-slate-500">ያተመ / Printed by</dt>
+          <dt className="font-am-body text-slate-500">ያተመ / Printed by</dt>
           <dd className="text-slate-800">{printerName}</dd>
-          <dt className="font-noto-ethiopic text-slate-500">የህትመት ቀን / Printed at</dt>
+          <dt className="font-am-body text-slate-500">የህትመት ቀን / Printed at</dt>
           <dd className="text-slate-800">{printedAt}</dd>
         </dl>
 
@@ -2112,21 +2110,19 @@ function IssuanceCard({
             <div className="flex items-start gap-3">
               <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
               <div className="flex-1 space-y-1 text-sm">
-                <div className="font-noto-ethiopic font-semibold text-emerald-900">
-                  ማስረጃው ርክክብ ተደርጓል
-                </div>
+                <div className="font-am-body font-semibold text-emerald-900">ማስረጃው ርክክብ ተደርጓል</div>
                 <div className="text-xs text-emerald-800">/ Credential issued</div>
                 <dl className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
-                  <dt className="font-noto-ethiopic text-slate-600">ተረካቢ / Recipient</dt>
+                  <dt className="font-am-body text-slate-600">ተረካቢ / Recipient</dt>
                   <dd className="text-slate-900">{cred.issued_recipient_name ?? "—"}</dd>
-                  <dt className="font-noto-ethiopic text-slate-600">ቀን / Date</dt>
+                  <dt className="font-am-body text-slate-600">ቀን / Date</dt>
                   <dd className="text-slate-900">
                     {cred.activated_at ? formatEthiopianDate(new Date(cred.activated_at)) : "—"}
                   </dd>
                 </dl>
                 {priorCredQuery.data && (
                   <p className="mt-2 text-xs text-slate-700">
-                    <span className="font-noto-ethiopic">
+                    <span className="font-am-body">
                       ቀዳሚ ማስረጃ {priorCredQuery.data.credential_number} ተተክቷል
                     </span>
                     <span className="ml-1 text-slate-500">
@@ -2141,7 +2137,7 @@ function IssuanceCard({
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="recipient-name">
-                <span className="font-noto-ethiopic">የተረካቢ ስም</span>
+                <span className="font-am-body">የተረካቢ ስም</span>
                 <span className="ml-2 text-slate-500">/ Recipient Name</span>
               </Label>
               <Input
@@ -2152,7 +2148,7 @@ function IssuanceCard({
                 placeholder={residentFullNameAm}
               />
               <p className="text-xs text-slate-500">
-                <span className="font-noto-ethiopic">የነዋሪውን ወይም የወኪሉን ስም ያስገቡ</span>
+                <span className="font-am-body">የነዋሪውን ወይም የወኪሉን ስም ያስገቡ</span>
                 <span className="ml-1">
                   / Enter the resident's or authorized representative's name
                 </span>
@@ -2167,7 +2163,7 @@ function IssuanceCard({
                 className="mt-0.5"
               />
               <span>
-                <span className="font-noto-ethiopic">ማስረጃው ለተረካቢው በአካል ተላልፏል ብዬ አረጋግጣለሁ</span>
+                <span className="font-am-body">ማስረጃው ለተረካቢው በአካል ተላልፏል ብዬ አረጋግጣለሁ</span>
                 <span className="ml-2 text-slate-600">
                   / I confirm the credential has been physically handed over to the recipient
                 </span>
@@ -2181,7 +2177,7 @@ function IssuanceCard({
                 className="bg-blue-700 hover:bg-blue-800"
               >
                 {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                <span className="font-noto-ethiopic">ርክክብ አረጋግጥ</span>
+                <span className="font-am-body">ርክክብ አረጋግጥ</span>
                 <span className="ml-2 text-xs text-white/80">/ Confirm Issuance</span>
               </Button>
             </div>
@@ -2302,24 +2298,22 @@ function RevocationCard({ credentialRowId, onDone }: RevocationCardProps) {
     <section className="rounded-xl border-2 border-red-300 bg-white shadow-sm">
       <div className="flex items-center gap-2 rounded-t-xl bg-red-700 px-5 py-3 text-white">
         <ShieldOff className="h-5 w-5" />
-        <span className="font-noto-ethiopic text-base font-semibold">
-          {isRevoked ? "ተሽሯል" : "መሻር"}
-        </span>
+        <span className="font-am-body text-base font-semibold">{isRevoked ? "ተሽሯል" : "መሻር"}</span>
         <span className="ml-1 text-sm text-white/80">/ {isRevoked ? "Revoked" : "Revocation"}</span>
       </div>
       <div className="space-y-4 p-5">
         {isRevoked ? (
           <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm">
             <dl className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
-              <dt className="font-noto-ethiopic text-slate-600">ማስረጃ / Credential</dt>
+              <dt className="font-am-body text-slate-600">ማስረጃ / Credential</dt>
               <dd className="font-mono text-slate-900">{cred.credential_number}</dd>
-              <dt className="font-noto-ethiopic text-slate-600">ምክንያት / Reason</dt>
+              <dt className="font-am-body text-slate-600">ምክንያት / Reason</dt>
               <dd className="text-slate-900">{cred.revoked_reason ?? "—"}</dd>
-              <dt className="font-noto-ethiopic text-slate-600">ያሸረ / Revoked by</dt>
+              <dt className="font-am-body text-slate-600">ያሸረ / Revoked by</dt>
               <dd className="text-slate-900">
                 {revokerQuery.data ?? cred.revoked_by_user_id ?? "—"}
               </dd>
-              <dt className="font-noto-ethiopic text-slate-600">ቀን / Date</dt>
+              <dt className="font-am-body text-slate-600">ቀን / Date</dt>
               <dd className="text-slate-900">
                 {cred.revoked_at ? formatEthiopianDate(new Date(cred.revoked_at)) : "—"}
               </dd>
@@ -2328,14 +2322,14 @@ function RevocationCard({ credentialRowId, onDone }: RevocationCardProps) {
         ) : (
           <>
             <p className="text-sm">
-              <span className="font-noto-ethiopic text-slate-700">ንቁ ማስረጃ:</span>
+              <span className="font-am-body text-slate-700">ንቁ ማስረጃ:</span>
               <span className="ml-2 text-slate-500">/ Active Credential:</span>
               <span className="ml-2 font-mono text-slate-900">{cred.credential_number}</span>
             </p>
             <div className="flex justify-end">
               <Button variant="destructive" disabled={!canRevoke} onClick={() => setOpen(true)}>
                 <ShieldOff className="mr-2 h-4 w-4" />
-                <span className="font-noto-ethiopic">መሻር</span>
+                <span className="font-am-body">መሻር</span>
                 <span className="ml-2 text-xs text-white/80">/ Revoke</span>
               </Button>
             </div>
@@ -2352,13 +2346,11 @@ function RevocationCard({ credentialRowId, onDone }: RevocationCardProps) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              <span className="font-noto-ethiopic">ማስረጃ መሻር ማረጋገጫ</span>
+              <span className="font-am-body">ማስረጃ መሻር ማረጋገጫ</span>
               <span className="ml-2 text-sm text-slate-500">/ Confirm Credential Revocation</span>
             </AlertDialogTitle>
             <AlertDialogDescription>
-              <span className="font-noto-ethiopic">
-                ይህ እርምጃ የማይቀለበስ ነው። ማስረጃው ወዲያውኑ ልክ ያልሆነ ይሆናል።
-              </span>
+              <span className="font-am-body">ይህ እርምጃ የማይቀለበስ ነው። ማስረጃው ወዲያውኑ ልክ ያልሆነ ይሆናል።</span>
               <span className="ml-1">
                 / This action is irreversible. The credential will become immediately invalid.
               </span>
@@ -2366,7 +2358,7 @@ function RevocationCard({ credentialRowId, onDone }: RevocationCardProps) {
           </AlertDialogHeader>
           <div className="space-y-2">
             <Label htmlFor="revoke-reason">
-              <span className="font-noto-ethiopic">የመሻሪያ ምክንያት</span>
+              <span className="font-am-body">የመሻሪያ ምክንያት</span>
               <span className="ml-2 text-slate-500">/ Revocation Reason</span>
             </Label>
             <Textarea
@@ -2388,7 +2380,7 @@ function RevocationCard({ credentialRowId, onDone }: RevocationCardProps) {
               className="bg-red-700 hover:bg-red-800 focus:ring-red-700"
             >
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              <span className="font-noto-ethiopic">መሻር አረጋግጥ</span>
+              <span className="font-am-body">መሻር አረጋግጥ</span>
               <span className="ml-2 text-xs text-white/80">/ Confirm Revocation</span>
             </AlertDialogAction>
           </AlertDialogFooter>

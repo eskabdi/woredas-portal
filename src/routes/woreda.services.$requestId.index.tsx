@@ -104,9 +104,9 @@ function Row({
   return (
     <div className="border-b border-slate-100 py-2 last:border-0">
       <div className="text-xs text-slate-500">
-        <span className="font-noto-ethiopic">{labelAm}</span> / {labelEn}
+        <span className="font-am-body">{labelAm}</span> / {labelEn}
       </div>
-      <div className="font-noto-ethiopic text-sm text-slate-900">{value ?? "—"}</div>
+      <div className="font-am-body text-sm text-slate-900">{value ?? "—"}</div>
     </div>
   );
 }
@@ -407,7 +407,7 @@ function ServiceRequestDetailPage() {
   if (detailQuery.isError || !req) {
     return (
       <div className="space-y-4 py-20 text-center">
-        <p className="font-noto-ethiopic text-sm text-slate-600">ጥያቄው አልተገኘም / Request not found</p>
+        <p className="font-am-body text-sm text-slate-600">ጥያቄው አልተገኘም / Request not found</p>
         <Button variant="outline" onClick={() => navigate({ to: "/woreda/services" })}>
           <ArrowLeft className="mr-1 h-4 w-4" /> ተመለስ / Back
         </Button>
@@ -468,9 +468,7 @@ function ServiceRequestDetailPage() {
                 >
                   {i < index && !isTerminal ? <Check className="h-4 w-4" /> : i + 1}
                 </div>
-                <span className="font-noto-ethiopic text-xs text-slate-600">
-                  {serviceStatusLabel(s)}
-                </span>
+                <span className="font-am-body text-xs text-slate-600">{serviceStatusLabel(s)}</span>
                 {i < flow.length - 1 && <span className="mx-1 text-slate-300">→</span>}
               </div>
             ))}
@@ -479,12 +477,12 @@ function ServiceRequestDetailPage() {
             <StatusBadge status={req.status} />
             <PriorityBadge priority={req.priority} />
             {req.return_reason && (
-              <span className="font-noto-ethiopic text-xs text-amber-700">
+              <span className="font-am-body text-xs text-amber-700">
                 የመመለስ ምክንያት: {req.return_reason}
               </span>
             )}
             {req.reject_reason && (
-              <span className="font-noto-ethiopic text-xs text-red-700">
+              <span className="font-am-body text-xs text-red-700">
                 የውድቅ ምክንያት: {req.reject_reason}
               </span>
             )}
@@ -494,7 +492,7 @@ function ServiceRequestDetailPage() {
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">
             <Card className="p-5">
-              <h3 className="font-noto-ethiopic mb-3 flex items-center gap-2 text-base font-semibold">
+              <h3 className="font-am-heading mb-3 flex items-center gap-2 text-base font-semibold">
                 <FileText className="h-4 w-4 text-blue-700" /> የጥያቄ መረጃ / Request information
               </h3>
               <div className="grid gap-x-8 md:grid-cols-2">
@@ -560,18 +558,18 @@ function ServiceRequestDetailPage() {
               </div>
               <div className="mt-4">
                 <div className="text-xs text-slate-500">
-                  <span className="font-noto-ethiopic">ማብራሪያ</span> / Description
+                  <span className="font-am-body">ማብራሪያ</span> / Description
                 </div>
-                <p className="font-noto-ethiopic mt-1 whitespace-pre-wrap text-sm text-slate-800">
+                <p className="font-am-body mt-1 whitespace-pre-wrap text-sm text-slate-800">
                   {req.details || "—"}
                 </p>
               </div>
               {req.resolution_notes && (
                 <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 p-3">
-                  <div className="font-noto-ethiopic text-xs font-medium text-emerald-900">
+                  <div className="font-am-body text-xs font-medium text-emerald-900">
                     የመፍትሔ ማስታወሻ / Resolution notes
                   </div>
-                  <p className="font-noto-ethiopic mt-1 whitespace-pre-wrap text-sm text-emerald-900">
+                  <p className="font-am-body mt-1 whitespace-pre-wrap text-sm text-emerald-900">
                     {req.resolution_notes}
                   </p>
                 </div>
@@ -580,11 +578,11 @@ function ServiceRequestDetailPage() {
 
             {/* Attachments */}
             <Card className="p-5">
-              <h3 className="font-noto-ethiopic mb-3 flex items-center gap-2 text-base font-semibold">
+              <h3 className="font-am-heading mb-3 flex items-center gap-2 text-base font-semibold">
                 <Paperclip className="h-4 w-4 text-blue-700" /> ማስረጃ ሰነዶች / Attachments
               </h3>
               {(attachmentsQuery.data ?? []).length === 0 ? (
-                <p className="font-noto-ethiopic text-sm text-slate-500">
+                <p className="font-am-body text-sm text-slate-500">
                   ሰነድ አልተያያዘም / No documents attached
                 </p>
               ) : (
@@ -596,7 +594,7 @@ function ServiceRequestDetailPage() {
                     >
                       <Paperclip className="h-4 w-4 text-slate-400" />
                       <span className="flex-1 truncate text-sm">{a.file_name}</span>
-                      <span className="font-noto-ethiopic text-xs text-slate-500">
+                      <span className="font-am-body text-xs text-slate-500">
                         {DOCUMENT_TYPES.find((d) => d.value === a.document_type)?.labelAm ??
                           a.document_type}
                       </span>
@@ -614,7 +612,7 @@ function ServiceRequestDetailPage() {
               {!isTerminal && canVerify && (
                 <div className="mt-4 flex flex-wrap items-end gap-3 border-t pt-4">
                   <div>
-                    <Label className="font-noto-ethiopic text-xs">የሰነድ ዓይነት / Document type</Label>
+                    <Label className="font-am-body text-xs">የሰነድ ዓይነት / Document type</Label>
                     <Select
                       className="mt-1 w-[200px]"
                       value={docType}
@@ -629,7 +627,7 @@ function ServiceRequestDetailPage() {
                   </div>
                   <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md border border-input px-3 text-sm hover:bg-slate-50">
                     <Upload className="h-4 w-4" />
-                    <span className="font-noto-ethiopic">ሰነድ ጨምር / Add document</span>
+                    <span className="font-am-body">ሰነድ ጨምር / Add document</span>
                     <input
                       type="file"
                       className="hidden"
@@ -648,7 +646,7 @@ function ServiceRequestDetailPage() {
 
             {/* History */}
             <Card className="p-5">
-              <h3 className="font-noto-ethiopic mb-3 text-base font-semibold">
+              <h3 className="font-am-heading mb-3 text-base font-semibold">
                 የሂደት ታሪክ / Status history
               </h3>
               <ol className="space-y-3">
@@ -656,7 +654,7 @@ function ServiceRequestDetailPage() {
                   <li key={h.id} className="flex gap-3">
                     <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
                     <div>
-                      <div className="font-noto-ethiopic text-sm">
+                      <div className="font-am-body text-sm">
                         {h.old_status ? `${serviceStatusLabel(h.old_status)} → ` : ""}
                         {serviceStatusLabel(h.new_status)}
                       </div>
@@ -677,12 +675,12 @@ function ServiceRequestDetailPage() {
           {/* Workflow actions */}
           <div className="space-y-6">
             <Card className="p-5">
-              <h3 className="font-noto-ethiopic mb-3 text-base font-semibold">
+              <h3 className="font-am-heading mb-3 text-base font-semibold">
                 የስራ ሂደት / Workflow actions
               </h3>
 
               {isTerminal && (
-                <p className="font-noto-ethiopic text-sm text-slate-500">
+                <p className="font-am-body text-sm text-slate-500">
                   ይህ ጥያቄ ተዘግቷል / This request is closed.
                 </p>
               )}
@@ -726,11 +724,9 @@ function ServiceRequestDetailPage() {
                     <Check className="mr-1 h-4 w-4" /> አረጋግጥ / Verify
                   </Button>
                   <div>
-                    <Label className="font-noto-ethiopic text-xs">
-                      የመመለስ ምክንያት / Return reason
-                    </Label>
+                    <Label className="font-am-body text-xs">የመመለስ ምክንያት / Return reason</Label>
                     <Textarea
-                      className="font-noto-ethiopic mt-1"
+                      className="font-am-body mt-1"
                       value={reason}
                       onChange={(e) => setReason(e.target.value)}
                     />
@@ -773,9 +769,9 @@ function ServiceRequestDetailPage() {
                       <Check className="mr-1 h-4 w-4" /> አጽድቅ / Approve
                     </Button>
                     <div>
-                      <Label className="font-noto-ethiopic text-xs">ምክንያት / Reason</Label>
+                      <Label className="font-am-body text-xs">ምክንያት / Reason</Label>
                       <Textarea
-                        className="font-noto-ethiopic mt-1"
+                        className="font-am-body mt-1"
                         value={reason}
                         onChange={(e) => setReason(e.target.value)}
                       />
@@ -817,15 +813,13 @@ function ServiceRequestDetailPage() {
               {!isTerminal && req.status === "awaiting_payment" && canCollect && (
                 <div className="space-y-3">
                   <div className="rounded-md border border-orange-200 bg-orange-50 p-3">
-                    <div className="font-noto-ethiopic text-xs text-orange-900">
-                      የሚከፈል / Amount due
-                    </div>
+                    <div className="font-am-body text-xs text-orange-900">የሚከፈል / Amount due</div>
                     <div className="font-mono text-lg font-semibold text-orange-900">
                       {Number(req.fee_amount).toFixed(2)} ETB
                     </div>
                   </div>
                   <div>
-                    <Label className="font-noto-ethiopic text-xs">የክፍያ መንገድ / Channel</Label>
+                    <Label className="font-am-body text-xs">የክፍያ መንገድ / Channel</Label>
                     <Select
                       className="mt-1"
                       value={channel}
@@ -838,7 +832,7 @@ function ServiceRequestDetailPage() {
                   </div>
                   {channel !== "cash" && (
                     <div>
-                      <Label className="font-noto-ethiopic text-xs">ማጣቀሻ / Reference</Label>
+                      <Label className="font-am-body text-xs">ማጣቀሻ / Reference</Label>
                       <Input
                         className="mt-1"
                         value={referenceNo}
@@ -885,11 +879,9 @@ function ServiceRequestDetailPage() {
               {!isTerminal && req.status === "in_progress" && canIssue && (
                 <div className="space-y-3">
                   <div>
-                    <Label className="font-noto-ethiopic text-xs">
-                      የመፍትሔ ማስታወሻ / Resolution notes
-                    </Label>
+                    <Label className="font-am-body text-xs">የመፍትሔ ማስታወሻ / Resolution notes</Label>
                     <Textarea
-                      className="font-noto-ethiopic mt-1"
+                      className="font-am-body mt-1"
                       value={resolution}
                       onChange={(e) => setResolution(e.target.value)}
                     />
@@ -928,7 +920,7 @@ function ServiceRequestDetailPage() {
               )}
 
               {!isTerminal && !canVerify && !canApprove && !canIssue && !canCollect && (
-                <p className="font-noto-ethiopic text-sm text-slate-500">
+                <p className="font-am-body text-sm text-slate-500">
                   በዚህ ደረጃ እርምጃ ለመውሰድ ፈቃድ አልተሰጠዎትም / You do not have permission to act at this stage.
                 </p>
               )}

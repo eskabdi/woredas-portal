@@ -320,7 +320,7 @@ function RevenuePage() {
             hint="Matches the household or rental unit kebele"
           />
           <div className="min-w-[220px] flex-1">
-            <Label className="font-noto-ethiopic">ፍለጋ / Search</Label>
+            <Label className="font-am-body">ፍለጋ / Search</Label>
             <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}

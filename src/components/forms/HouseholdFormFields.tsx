@@ -94,7 +94,7 @@ export function HouseholdFormFields({
             }
           >
             {mode === "edit" ? (
-              <div className="font-noto-ethiopic flex h-10 items-center rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
+              <div className="font-am-body flex h-10 items-center rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
                 {(() => {
                   const id = watch("kebele_id");
                   const k = kebelesQuery.data?.find((x) => x.kebele_id === id);
@@ -146,7 +146,7 @@ export function HouseholdFormFields({
             <Input
               {...register("address_line")}
               placeholder="የመንገድ ስም፣ ምልክት / Street, landmark"
-              className="font-noto-ethiopic"
+              className="font-am-body"
             />
           </FieldWrap>
 
@@ -165,7 +165,7 @@ export function HouseholdFormFields({
           </FieldWrap>
 
           <FieldWrap labelAm="ንዑስ ወረዳ" labelEn="Sub-Woreda" error={errors.sub_woreda?.message}>
-            <Input {...register("sub_woreda")} className="font-noto-ethiopic" />
+            <Input {...register("sub_woreda")} className="font-am-body" />
           </FieldWrap>
         </Grid>
 
@@ -231,7 +231,7 @@ export function HouseholdFormFields({
               href="/woreda/residents/new"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-noto-ethiopic mt-1 inline-block text-xs text-blue-700 hover:underline"
+              className="font-am-body mt-1 inline-block text-xs text-blue-700 hover:underline"
             >
               + አዲስ ነዋሪ መዝግብ / Register a new resident
             </a>
@@ -338,7 +338,7 @@ export function HouseholdFormFields({
                     className="mt-0.5"
                   />
                   <div>
-                    <div className="font-noto-ethiopic font-medium text-slate-800">{opt.am}</div>
+                    <div className="font-am-body font-medium text-slate-800">{opt.am}</div>
                     <div className="text-xs text-slate-500">{opt.en}</div>
                   </div>
                 </label>
@@ -353,7 +353,7 @@ export function HouseholdFormFields({
               required
               error={errors.house_type_other?.message}
             >
-              <Input {...register("house_type_other")} className="font-noto-ethiopic" />
+              <Input {...register("house_type_other")} className="font-am-body" />
             </FieldWrap>
           )}
 

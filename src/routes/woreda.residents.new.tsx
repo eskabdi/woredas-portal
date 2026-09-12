@@ -132,14 +132,14 @@ function NewResidentPage() {
             onClick={() => navigate({ to: "/woreda/residents" })}
             disabled={submitting}
           >
-            <span className="font-noto-ethiopic">ይቅር</span>
+            <span className="font-am-body">ይቅር</span>
             <span className="ml-1 opacity-70">/ Cancel</span>
           </Button>
           <div className="flex items-center gap-3">
             {step > 1 && (
               <Button type="button" variant="outline" onClick={goBack} disabled={submitting}>
                 <ChevronLeft className="mr-1 h-4 w-4" />
-                <span className="font-noto-ethiopic">ወደ ኋላ</span>
+                <span className="font-am-body">ወደ ኋላ</span>
                 <span className="ml-1 opacity-70">/ Back</span>
               </Button>
             )}
@@ -149,7 +149,7 @@ function NewResidentPage() {
                 onClick={goNext}
                 className="bg-blue-700 text-white hover:bg-blue-800"
               >
-                <span className="font-noto-ethiopic">ቀጣይ</span>
+                <span className="font-am-body">ቀጣይ</span>
                 <span className="ml-1 opacity-80">/ Next</span>
                 <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
@@ -160,7 +160,7 @@ function NewResidentPage() {
                 className="bg-blue-700 text-white hover:bg-blue-800"
               >
                 {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                <span className="font-noto-ethiopic">ነዋሪ መዝግብ</span>
+                <span className="font-am-body">ነዋሪ መዝግብ</span>
                 <span className="ml-2 opacity-80">/ Register Resident</span>
               </Button>
             )}

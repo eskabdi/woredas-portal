@@ -250,7 +250,7 @@ function ResidentProfilePage() {
   if (!hasPermission(P.RESIDENT_READ)) {
     return (
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-800">
-        <p className="font-noto-ethiopic font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
+        <p className="font-am-body font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
         <p className="text-sm">You don't have permission to view this page.</p>
       </div>
     );
@@ -273,7 +273,7 @@ function ResidentProfilePage() {
   if (residentQuery.error || !residentQuery.data) {
     return (
       <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-red-800">
-        <p className="font-noto-ethiopic font-medium">ነዋሪ አልተገኘም / Resident not found</p>
+        <p className="font-am-body font-medium">ነዋሪ አልተገኘም / Resident not found</p>
         <Button variant="link" onClick={() => navigate({ to: "/woreda/residents" })}>
           ← Back to list
         </Button>
@@ -345,13 +345,13 @@ function ResidentProfilePage() {
                 className="h-16 w-16 rounded-full object-cover ring-2 ring-white/40"
               />
             ) : (
-              <div className="font-noto-ethiopic flex h-16 w-16 items-center justify-center rounded-full bg-white/15 text-xl font-semibold ring-2 ring-white/25">
+              <div className="font-am-body flex h-16 w-16 items-center justify-center rounded-full bg-white/15 text-xl font-semibold ring-2 ring-white/25">
                 {initials}
               </div>
             )}
             <div className="min-w-0 leading-tight">
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="font-noto-ethiopic truncate text-xl font-semibold">{name}</h1>
+                <h1 className="font-am-heading truncate text-xl font-semibold">{name}</h1>
                 <StatusChip status={statusForChip} />
               </div>
               {r.full_name_am && r.full_name && (
@@ -362,7 +362,7 @@ function ResidentProfilePage() {
                   <IdCard className="h-3.5 w-3.5" />
                   <span className="font-mono">ID: {r.resident_number}</span>
                 </span>
-                <span className="inline-flex items-center gap-1 font-noto-ethiopic">
+                <span className="inline-flex items-center gap-1 font-am-body">
                   <MapPin className="h-3.5 w-3.5" />
                   {kebeleLabel}
                 </span>
@@ -379,7 +379,7 @@ function ResidentProfilePage() {
               className="bg-white text-blue-700 hover:bg-blue-50"
             >
               <Printer className="mr-2 h-4 w-4" />
-              <span className="font-noto-ethiopic">አትም</span>
+              <span className="font-am-body">አትም</span>
               <span className="ml-1 opacity-80">/ Print</span>
             </Button>
             <Button
@@ -510,7 +510,7 @@ function ResidentProfilePage() {
                     onClick={() => setTab("activity")}
                     className="text-xs font-medium text-blue-700 hover:underline"
                   >
-                    <span className="font-noto-ethiopic">ሁሉንም አሳይ</span>
+                    <span className="font-am-body">ሁሉንም አሳይ</span>
                     <span className="ml-1 text-slate-500">/ View All</span>
                   </button>
                 </div>
@@ -522,7 +522,7 @@ function ResidentProfilePage() {
                 )}
                 {!recentActivityQuery.isLoading &&
                   (recentActivityQuery.data?.length ?? 0) === 0 && (
-                    <p className="font-noto-ethiopic rounded-md border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-500">
+                    <p className="font-am-body rounded-md border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-500">
                       እስካሁን ምንም እንቅስቃሴ የለም
                       <span className="ml-1 text-xs text-slate-400">/ No activity yet</span>
                     </p>
@@ -535,7 +535,7 @@ function ResidentProfilePage() {
                           <Activity className="h-4 w-4" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="font-noto-ethiopic truncate text-sm font-medium text-slate-900">
+                          <div className="font-am-body truncate text-sm font-medium text-slate-900">
                             {actionLabelAm(row.action_type as string)}
                           </div>
                           <div className="truncate text-xs text-slate-500">{row.action_type}</div>
@@ -554,7 +554,7 @@ function ResidentProfilePage() {
                 <div className="mb-4 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4 text-blue-700" />
-                    <h3 className="font-noto-ethiopic text-base font-semibold text-slate-900">
+                    <h3 className="font-am-heading text-base font-semibold text-slate-900">
                       የቤተሰብ አባላት <span className="text-slate-400">/ Household Members</span>
                     </h3>
                     <span className="ml-1 inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
@@ -576,9 +576,7 @@ function ResidentProfilePage() {
 
                 {!householdId && (
                   <div className="rounded-md border border-dashed border-slate-200 px-4 py-6 text-center">
-                    <p className="font-noto-ethiopic text-sm text-slate-700">
-                      ይህ ነዋሪ ገና ወደ ቤተሰብ አልተመደበም
-                    </p>
+                    <p className="font-am-body text-sm text-slate-700">ይህ ነዋሪ ገና ወደ ቤተሰብ አልተመደበም</p>
                     <p className="text-xs text-slate-500">Not yet assigned to a household</p>
                     <PermissionGate permission={P.RESIDENT_UPDATE}>
                       <Button
@@ -587,7 +585,7 @@ function ResidentProfilePage() {
                         size="sm"
                       >
                         <UserPlus className="mr-2 h-4 w-4" />
-                        <span className="font-noto-ethiopic">ወደ ቤተሰብ ጨምር</span>
+                        <span className="font-am-body">ወደ ቤተሰብ ጨምር</span>
                         <span className="ml-2 opacity-80">/ Add to Household</span>
                       </Button>
                     </PermissionGate>
@@ -601,7 +599,7 @@ function ResidentProfilePage() {
                 {householdId &&
                   !householdMembersQuery.isLoading &&
                   (householdMembersQuery.data?.length ?? 0) === 0 && (
-                    <p className="font-noto-ethiopic text-sm text-slate-500">
+                    <p className="font-am-body text-sm text-slate-500">
                       በዚህ ቤት ውስጥ ሌላ አባል የለም / No other members in this household
                     </p>
                   )}
@@ -625,15 +623,15 @@ function ResidentProfilePage() {
                                 className="h-9 w-9 flex-none rounded-full object-cover"
                               />
                             ) : (
-                              <div className="font-noto-ethiopic flex h-9 w-9 flex-none items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-700">
+                              <div className="font-am-body flex h-9 w-9 flex-none items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-700">
                                 {getInitials(mname)}
                               </div>
                             )}
                             <div className="min-w-0 flex-1">
-                              <div className="font-noto-ethiopic truncate text-sm font-medium text-slate-900">
+                              <div className="font-am-body truncate text-sm font-medium text-slate-900">
                                 {mname}
                               </div>
-                              <div className="font-noto-ethiopic truncate text-xs text-slate-500">
+                              <div className="font-am-body truncate text-xs text-slate-500">
                                 {m.relation_to_head || "—"}
                               </div>
                             </div>
@@ -656,7 +654,7 @@ function ResidentProfilePage() {
                 ) : (
                   <div className="flex flex-col items-center rounded-md border border-dashed border-slate-200 px-4 py-8 text-center">
                     <MapPinOff className="mb-2 h-6 w-6 text-slate-400" />
-                    <p className="font-noto-ethiopic text-sm text-slate-700">የመገኛ አካባቢ አልተመዘገበም</p>
+                    <p className="font-am-body text-sm text-slate-700">የመገኛ አካባቢ አልተመዘገበም</p>
                     <p className="text-xs text-slate-500">No GPS location recorded</p>
                   </div>
                 )}
@@ -671,7 +669,7 @@ function ResidentProfilePage() {
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10">
                     <IdCard className="h-4 w-4" />
                   </div>
-                  <h3 className="font-noto-ethiopic text-base font-semibold">
+                  <h3 className="font-am-heading text-base font-semibold">
                     ፈጣን ተግባራት <span className="text-slate-400">/ Quick Actions</span>
                   </h3>
                 </div>
@@ -785,7 +783,7 @@ function ResidentProfilePage() {
 function TabRow({ value, am, en }: { value: TabKey; am: string; en: string }) {
   return (
     <TabsTrigger value={value} className="flex-none">
-      <span className="font-noto-ethiopic">{am}</span>
+      <span className="font-am-body">{am}</span>
       <span className="ml-1.5 text-xs text-slate-500">/ {en}</span>
     </TabsTrigger>
   );
@@ -811,14 +809,14 @@ function SummaryCard({
           <Icon className="h-5 w-5" />
         </div>
         <div className="min-w-0">
-          <div className="font-noto-ethiopic truncate text-xs text-slate-500">
+          <div className="font-am-body truncate text-xs text-slate-500">
             {labelAm} <span className="text-slate-400">/ {labelEn}</span>
           </div>
-          <div className="font-noto-ethiopic truncate text-base font-semibold text-slate-900">
+          <div className="font-am-body truncate text-base font-semibold text-slate-900">
             {primary}
           </div>
           {secondary && (
-            <div className="font-noto-ethiopic truncate text-xs text-slate-500">{secondary}</div>
+            <div className="font-am-body truncate text-xs text-slate-500">{secondary}</div>
           )}
         </div>
       </div>
@@ -840,7 +838,7 @@ function CardHeading({
   return (
     <div className={inline ? "flex items-center gap-2" : "mb-4 flex items-center gap-2"}>
       <Icon className="h-4 w-4 text-blue-700" />
-      <h3 className="font-noto-ethiopic text-base font-semibold text-slate-900">
+      <h3 className="font-am-heading text-base font-semibold text-slate-900">
         {am} <span className="text-slate-400">/ {en}</span>
       </h3>
     </div>
@@ -862,12 +860,12 @@ function Field({
 }) {
   return (
     <div>
-      <dt className="font-noto-ethiopic text-xs uppercase tracking-wide text-slate-500">
+      <dt className="font-am-body text-xs uppercase tracking-wide text-slate-500">
         {labelAm} <span className="text-slate-400">/ {labelEn}</span>
       </dt>
       <dd
         className={`mt-0.5 flex items-center gap-1.5 text-sm text-slate-900 ${
-          mono ? "font-mono" : "font-noto-ethiopic"
+          mono ? "font-mono" : "font-am-body"
         }`}
       >
         {Icon && <Icon className="h-3.5 w-3.5 text-slate-400" />}
@@ -879,7 +877,7 @@ function Field({
 
 function notRecorded() {
   return (
-    <span className="font-noto-ethiopic text-slate-400">
+    <span className="font-am-body text-slate-400">
       አልተመዘገበም <span className="text-slate-300">/ Not recorded</span>
     </span>
   );
@@ -973,7 +971,7 @@ function QuickAction({
             <Icon className="h-4 w-4" />
           </span>
           <span className="min-w-0">
-            <span className="font-noto-ethiopic block truncate text-sm font-medium">{am}</span>
+            <span className="font-am-body block truncate text-sm font-medium">{am}</span>
             <span className="block truncate text-xs text-slate-400">/ {en}</span>
           </span>
         </span>
@@ -1000,16 +998,16 @@ function MemberAddDropdown({
             className="border-blue-200 text-blue-700 hover:bg-blue-50"
           >
             <UserPlus className="mr-1.5 h-4 w-4" />
-            <span className="font-noto-ethiopic">ተጨማሪ አባል ጨምር</span>
+            <span className="font-am-body">ተጨማሪ አባል ጨምር</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-64">
           <DropdownMenuItem onClick={onAttach}>
-            <span className="font-noto-ethiopic">ነባር ነዋሪ አክል</span>
+            <span className="font-am-body">ነባር ነዋሪ አክል</span>
             <span className="ml-2 text-xs text-slate-500">/ Attach Existing</span>
           </DropdownMenuItem>
           <DropdownMenuItem onClick={onRegisterNew}>
-            <span className="font-noto-ethiopic">አዲስ ነዋሪ መዝግብ</span>
+            <span className="font-am-body">አዲስ ነዋሪ መዝግብ</span>
             <span className="ml-2 text-xs text-slate-500">/ Register New</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -1021,7 +1019,7 @@ function MemberAddDropdown({
 function PlaceholderPanel() {
   return (
     <Card className="p-10 text-center">
-      <p className="font-noto-ethiopic text-sm text-slate-700">
+      <p className="font-am-body text-sm text-slate-700">
         በቅርቡ ይሟላል <span className="text-slate-400">/ Details coming in the next update</span>
       </p>
     </Card>

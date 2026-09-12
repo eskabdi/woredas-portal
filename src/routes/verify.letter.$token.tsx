@@ -60,7 +60,7 @@ function LetterVerificationPage() {
   return (
     <div className="min-h-screen bg-slate-100 px-4 py-10">
       <div className="mx-auto w-full max-w-xl">
-        <h1 className="font-noto-ethiopic mb-6 text-center text-lg font-bold text-slate-800">
+        <h1 className="font-am-heading mb-6 text-center text-lg font-bold text-slate-800">
           የደብዳቤ ማረጋገጫ / Letter Verification
         </h1>
 
@@ -81,7 +81,7 @@ function LetterVerificationPage() {
                 <ShieldAlert className="h-16 w-16 text-red-600" aria-label="Unverified" />
               )}
               <div
-                className={`font-noto-ethiopic text-lg font-bold ${
+                className={`font-am-body text-lg font-bold ${
                   verified ? "text-emerald-800" : "text-red-800"
                 }`}
               >
@@ -95,7 +95,7 @@ function LetterVerificationPage() {
                 {verified ? "Verified" : "Unverified"}
               </div>
               {!verified && (
-                <p className="font-noto-ethiopic mt-1 max-w-sm text-xs text-red-700">
+                <p className="font-am-body mt-1 max-w-sm text-xs text-red-700">
                   {isError
                     ? "ማረጋገጥ አልተቻለም። እባክዎ ደግመው ይሞክሩ። / Verification could not be completed. Please try again."
                     : "ይህ QR ኮድ በዚህ ወረዳ አስተዳደር የተሰጠ ትክክለኛ ደብዳቤ አይመለከትም። / This QR code does not match any letter issued by the woreda administration."}
@@ -169,11 +169,11 @@ function Row({
   return (
     <div className="grid grid-cols-[40%_60%] gap-2 px-6 py-3">
       <dt>
-        <div className="font-noto-ethiopic text-xs font-medium text-slate-700">{labelAm}</div>
+        <div className="font-am-body text-xs font-medium text-slate-700">{labelAm}</div>
         <div className="text-[10px] uppercase tracking-wide text-slate-400">{labelEn}</div>
       </dt>
       <dd
-        className={`font-noto-ethiopic self-center break-words text-sm text-slate-900 ${
+        className={`font-am-body self-center break-words text-sm text-slate-900 ${
           mono ? "font-mono text-xs" : ""
         }`}
       >

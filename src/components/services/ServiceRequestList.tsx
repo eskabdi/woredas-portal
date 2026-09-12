@@ -65,7 +65,7 @@ export function StatusBadge({ status }: { status: string }) {
   return (
     <span
       className={
-        "font-noto-ethiopic inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium " +
+        "font-am-body inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium " +
         (SERVICE_STATUS_STYLE[status] ?? "bg-slate-100 text-slate-700")
       }
     >
@@ -78,7 +78,7 @@ export function PriorityBadge({ priority }: { priority: string }) {
   return (
     <span
       className={
-        "font-noto-ethiopic inline-flex items-center rounded px-2 py-0.5 text-xs " +
+        "font-am-body inline-flex items-center rounded px-2 py-0.5 text-xs " +
         (PRIORITY_STYLE[priority] ?? "bg-slate-100 text-slate-700")
       }
     >
@@ -281,7 +281,7 @@ export function ServiceRequestList({ category, titleAm, titleEn, descriptionAm }
             <Link to="/woreda/services/new" search={{ category } as never}>
               <Button>
                 <Plus className="mr-1 h-4 w-4" />
-                <span className="font-noto-ethiopic">
+                <span className="font-am-body">
                   {category === "complaint" ? "አዲስ ቅሬታ" : "አዲስ ጥያቄ"}
                 </span>
               </Button>
@@ -293,20 +293,20 @@ export function ServiceRequestList({ category, titleAm, titleEn, descriptionAm }
       <Card className="p-4">
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-[240px] flex-1">
-            <Label className="font-noto-ethiopic text-xs">ፍለጋ / Search</Label>
+            <Label className="font-am-body text-xs">ፍለጋ / Search</Label>
             <div className="relative mt-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="ቁጥር፣ አመልካች ወይም ጉዳይ / Reference, applicant or subject"
-                className="font-noto-ethiopic pl-9"
+                className="font-am-body pl-9"
               />
             </div>
           </div>
 
           <div>
-            <Label className="font-noto-ethiopic text-xs">ደረጃ / Status</Label>
+            <Label className="font-am-body text-xs">ደረጃ / Status</Label>
             <select
               className="mt-1 block h-10 w-[220px] rounded-md border border-input bg-background px-3 text-sm"
               value={statusFilter}
@@ -321,9 +321,9 @@ export function ServiceRequestList({ category, titleAm, titleEn, descriptionAm }
           </div>
 
           <div>
-            <Label className="font-noto-ethiopic text-xs">አገልግሎት / Service type</Label>
+            <Label className="font-am-body text-xs">አገልግሎት / Service type</Label>
             <select
-              className="font-noto-ethiopic mt-1 block h-10 w-[260px] rounded-md border border-input bg-background px-3 text-sm"
+              className="font-am-body mt-1 block h-10 w-[260px] rounded-md border border-input bg-background px-3 text-sm"
               value={typeFilter}
               onChange={(e) => patch({ ty: e.target.value || undefined })}
             >
@@ -396,10 +396,10 @@ export function ServiceRequestList({ category, titleAm, titleEn, descriptionAm }
                         {r.request_number}
                       </Link>
                     </td>
-                    <td className="font-noto-ethiopic px-4 py-3">
+                    <td className="font-am-body px-4 py-3">
                       {r.applicant_name || r.resident?.full_name_am || r.resident?.full_name || "—"}
                     </td>
-                    <td className="font-noto-ethiopic px-4 py-3">
+                    <td className="font-am-body px-4 py-3">
                       {r.service_type?.name_am ?? r.service_type?.name_en ?? "—"}
                       {r.subject && <div className="text-xs text-slate-500">{r.subject}</div>}
                     </td>

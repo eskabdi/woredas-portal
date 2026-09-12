@@ -413,19 +413,17 @@ function OccupantRegistrationPage() {
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="font-noto-ethiopic text-2xl font-bold tracking-tight text-[#0b2a63] md:text-3xl">
+          <h1 className="font-am-heading text-2xl font-bold tracking-tight text-[#0b2a63] md:text-3xl">
             የቀበሌ ቤት ተከራዮች ምዝገባ ቅጽ
           </h1>
-          <p className="font-noto-ethiopic mt-1 text-sm text-slate-500">
-            ሁሉንም መረጃዎች በጥንቃቄ መሙላትዎን ያረጋግጡ።
-          </p>
+          <p className="font-am-body mt-1 text-sm text-slate-500">ሁሉንም መረጃዎች በጥንቃቄ መሙላትዎን ያረጋግጡ።</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
             type="button"
             variant="outline"
             onClick={() => navigate({ to: "/woreda/rental-houses" })}
-            className="font-noto-ethiopic"
+            className="font-am-body"
           >
             ሰርዝ
           </Button>
@@ -433,7 +431,7 @@ function OccupantRegistrationPage() {
             type="button"
             onClick={openConfirm}
             disabled={mutation.isPending}
-            className="bg-[#0b2a63] font-noto-ethiopic text-white hover:bg-[#0b2a63]/90"
+            className="bg-[#0b2a63] font-am-body text-white hover:bg-[#0b2a63]/90"
           >
             {mutation.isPending ? (
               <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
@@ -455,16 +453,16 @@ function OccupantRegistrationPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-noto-ethiopic">
+            <AlertDialogTitle className="font-am-body">
               ምዝገባውን ያረጋግጡ / Confirm registration
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-2 text-sm">
-                <p className="font-noto-ethiopic">የተከራይ ምዝገባ ጥያቄ ይፈጠራል። መረጃውን ያረጋግጡ።</p>
+                <p className="font-am-body">የተከራይ ምዝገባ ጥያቄ ይፈጠራል። መረጃውን ያረጋግጡ።</p>
                 <ul className="space-y-1 text-slate-600">
                   <li>
                     <span className="font-medium">Occupant:</span>{" "}
-                    <span className="font-noto-ethiopic">
+                    <span className="font-am-body">
                       {resident?.full_name_am || resident?.full_name || "—"}
                     </span>{" "}
                     ({resident?.resident_number})
@@ -488,7 +486,7 @@ function OccupantRegistrationPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={mutation.isPending} className="font-noto-ethiopic">
+            <AlertDialogCancel disabled={mutation.isPending} className="font-am-body">
               ተመለስ
             </AlertDialogCancel>
             <AlertDialogAction
@@ -497,7 +495,7 @@ function OccupantRegistrationPage() {
                 mutation.mutate();
               }}
               disabled={mutation.isPending}
-              className="bg-[#0b2a63] font-noto-ethiopic hover:bg-[#0b2a63]/90"
+              className="bg-[#0b2a63] font-am-body hover:bg-[#0b2a63]/90"
             >
               {mutation.isPending && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
               አረጋግጥ
@@ -537,7 +535,7 @@ function OccupantRegistrationPage() {
                   <Button
                     type="button"
                     onClick={() => setSearchOpen((o) => !o)}
-                    className="bg-blue-100 font-noto-ethiopic text-blue-700 hover:bg-blue-200"
+                    className="bg-blue-100 font-am-body text-blue-700 hover:bg-blue-200"
                   >
                     <Search className="mr-1 h-4 w-4" /> ፈልግ
                   </Button>
@@ -554,12 +552,12 @@ function OccupantRegistrationPage() {
                     />
                     <div className="max-h-56 overflow-auto">
                       {term.length === 0 && (
-                        <div className="p-2 text-sm text-slate-500 font-noto-ethiopic">
+                        <div className="p-2 text-sm text-slate-500 font-am-body">
                           ስም ወይም መለያ ቁጥር ይጻፉ / Type a name or resident number
                         </div>
                       )}
                       {termTooShort && (
-                        <div className="p-2 text-sm text-amber-600 font-noto-ethiopic">
+                        <div className="p-2 text-sm text-amber-600 font-am-body">
                           ቢያንስ 2 ፊደል ያስገቡ / Enter at least 2 characters
                         </div>
                       )}
@@ -586,7 +584,7 @@ function OccupantRegistrationPage() {
                         !search.isFetching &&
                         !search.isError &&
                         (search.data?.length ?? 0) === 0 && (
-                          <div className="p-2 text-sm text-slate-500 font-noto-ethiopic">
+                          <div className="p-2 text-sm text-slate-500 font-am-body">
                             ምንም ውጤት የለም / No residents matched “{term}”
                           </div>
                         )}
@@ -597,7 +595,7 @@ function OccupantRegistrationPage() {
                           onClick={() => pickResident(r)}
                           className="block w-full rounded px-2 py-1.5 text-left hover:bg-blue-50"
                         >
-                          <div className="font-noto-ethiopic text-sm font-medium text-slate-900">
+                          <div className="font-am-body text-sm font-medium text-slate-900">
                             {r.full_name_am || r.full_name || "—"}
                           </div>
                           <div className="font-mono text-xs text-slate-500">
@@ -617,7 +615,7 @@ function OccupantRegistrationPage() {
                 readOnly
                 value={resident?.full_name_am || resident?.full_name || ""}
                 placeholder="—"
-                className="font-noto-ethiopic"
+                className="font-am-body"
               />
             </div>
 
@@ -627,7 +625,7 @@ function OccupantRegistrationPage() {
                 <select
                   value={sex}
                   onChange={(e) => setSex(e.target.value)}
-                  className="font-noto-ethiopic flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  className="font-am-body flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                 >
                   <option value="">ምረጥ</option>
                   <option value="male">ወንድ / Male</option>
@@ -661,7 +659,7 @@ function OccupantRegistrationPage() {
                     if (h?.monthly_rent_standard != null && !rentAmount)
                       setRentAmount(String(h.monthly_rent_standard));
                   }}
-                  className="font-noto-ethiopic flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  className="font-am-body flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                 >
                   <option value="">ምረጥ</option>
                   {houses?.map((h) => (
@@ -686,7 +684,7 @@ function OccupantRegistrationPage() {
                       : ""
                   }
                   placeholder="—"
-                  className="font-noto-ethiopic"
+                  className="font-am-body"
                 />
               </div>
             </div>
@@ -728,7 +726,7 @@ function OccupantRegistrationPage() {
                     type="button"
                     onClick={() => setFrequency(opt.v)}
                     className={cn(
-                      "font-noto-ethiopic rounded-md border px-4 py-2 text-sm transition",
+                      "font-am-body rounded-md border px-4 py-2 text-sm transition",
                       frequency === opt.v
                         ? "border-[#0b2a63] bg-[#0b2a63] text-white"
                         : "border-slate-200 bg-white text-slate-700 hover:border-slate-300",
@@ -752,28 +750,25 @@ function OccupantRegistrationPage() {
             onClick={addMember}
             className="inline-flex items-center gap-1 text-sm font-medium text-blue-700 hover:text-blue-900"
           >
-            <Plus className="h-4 w-4" /> <span className="font-noto-ethiopic">አባል ጨምር</span>
+            <Plus className="h-4 w-4" /> <span className="font-am-body">አባል ጨምር</span>
           </button>
         </div>
         <div className="mt-4 overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr className="text-left">
-                <th className="px-3 py-2 font-noto-ethiopic w-12">ተ.ቁ</th>
-                <th className="px-3 py-2 font-noto-ethiopic">ሙሉ ስም</th>
-                <th className="px-3 py-2 font-noto-ethiopic">ዝምድና</th>
-                <th className="px-3 py-2 font-noto-ethiopic w-24">ዕድሜ</th>
-                <th className="px-3 py-2 font-noto-ethiopic">የስራ ሁኔታ</th>
-                <th className="px-3 py-2 font-noto-ethiopic w-16 text-right">ተግባር</th>
+                <th className="px-3 py-2 font-am-heading w-12">ተ.ቁ</th>
+                <th className="px-3 py-2 font-am-heading">ሙሉ ስም</th>
+                <th className="px-3 py-2 font-am-heading">ዝምድና</th>
+                <th className="px-3 py-2 font-am-heading w-24">ዕድሜ</th>
+                <th className="px-3 py-2 font-am-heading">የስራ ሁኔታ</th>
+                <th className="px-3 py-2 font-am-heading w-16 text-right">ተግባር</th>
               </tr>
             </thead>
             <tbody>
               {members.length === 0 && (
                 <tr>
-                  <td
-                    colSpan={6}
-                    className="px-3 py-8 text-center text-slate-400 font-noto-ethiopic"
-                  >
+                  <td colSpan={6} className="px-3 py-8 text-center text-slate-400 font-am-body">
                     ምንም አባል አልተጨመረም — "አባል ጨምር" የሚለውን ይጫኑ
                   </td>
                 </tr>
@@ -785,14 +780,14 @@ function OccupantRegistrationPage() {
                     <Input
                       value={m.full_name}
                       onChange={(e) => updateMember(m.id, { full_name: e.target.value })}
-                      className="font-noto-ethiopic h-9"
+                      className="font-am-body h-9"
                     />
                   </td>
                   <td className="px-3 py-2">
                     <Input
                       value={m.relation}
                       onChange={(e) => updateMember(m.id, { relation: e.target.value })}
-                      className="font-noto-ethiopic h-9"
+                      className="font-am-body h-9"
                     />
                   </td>
                   <td className="px-3 py-2">
@@ -807,7 +802,7 @@ function OccupantRegistrationPage() {
                     <Input
                       value={m.work_status}
                       onChange={(e) => updateMember(m.id, { work_status: e.target.value })}
-                      className="font-noto-ethiopic h-9"
+                      className="font-am-body h-9"
                     />
                   </td>
                   <td className="px-3 py-2 text-right">
@@ -855,18 +850,18 @@ function OccupantRegistrationPage() {
                 className="mt-0.5"
               />
               <div>
-                <div className="font-noto-ethiopic text-sm font-medium text-slate-900">
+                <div className="font-am-body text-sm font-medium text-slate-900">
                   ኦፊሴላዊ ማረጋገጫ{" "}
                   <span className="text-slate-500 font-normal">(Official Verification)</span>
                 </div>
-                <div className="font-noto-ethiopic mt-1 text-xs text-slate-500">
+                <div className="font-am-body mt-1 text-xs text-slate-500">
                   የቀበሌ ሰነዶች በሙሉ ኦርጅናል መሆናቸውን እና የተከራይ ማንነት መረጋገጡን አረጋግጣለሁ።
                 </div>
               </div>
             </label>
 
             <div>
-              <div className="font-noto-ethiopic text-sm text-slate-700">
+              <div className="font-am-body text-sm text-slate-700">
                 የምዝገባ ሁኔታ <span className="text-slate-500">(Approval Status)</span>
               </div>
               <div className="mt-2 space-y-2">
@@ -892,7 +887,7 @@ function OccupantRegistrationPage() {
                       onChange={() => setApprovalStatus(opt.v)}
                       className="h-4 w-4 accent-[#0b2a63]"
                     />
-                    <span className={cn("font-noto-ethiopic text-sm font-medium", opt.color)}>
+                    <span className={cn("font-am-body text-sm font-medium", opt.color)}>
                       {opt.am} <span className="text-slate-500 font-normal">({opt.en})</span>
                     </span>
                   </label>
@@ -901,12 +896,12 @@ function OccupantRegistrationPage() {
             </div>
 
             <div>
-              <Label className="font-noto-ethiopic text-sm text-slate-700">ማስታወሻ ካለ</Label>
+              <Label className="font-am-body text-sm text-slate-700">ማስታወሻ ካለ</Label>
               <Textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="ተጨማሪ አስተያየት እዚህ ይጻፉ..."
-                className="mt-1 font-noto-ethiopic"
+                className="mt-1 font-am-body"
                 rows={4}
               />
             </div>
@@ -931,7 +926,7 @@ function SectionTitle({
   return (
     <div className="flex items-center gap-2">
       <Icon className={cn("h-5 w-5 text-[#0b2a63]", iconClassName)} />
-      <h2 className="font-noto-ethiopic text-base font-semibold text-slate-900">
+      <h2 className="font-am-heading text-base font-semibold text-slate-900">
         {am}
         {en && <span className="ml-1 text-sm font-normal text-slate-500">({en})</span>}
       </h2>
@@ -942,7 +937,7 @@ function SectionTitle({
 function FieldLabel({ am, en }: { am: string; en: string }) {
   return (
     <Label className="mb-1.5 block">
-      <span className="font-noto-ethiopic text-xs font-medium text-slate-600">{am}</span>{" "}
+      <span className="font-am-body text-xs font-medium text-slate-600">{am}</span>{" "}
       <span className="text-xs text-slate-400">({en})</span>
     </Label>
   );
@@ -973,7 +968,7 @@ function UploadTile({
       )}
     >
       <Icon className={cn("h-6 w-6", file ? "text-emerald-600" : "text-slate-400")} />
-      <div className="font-noto-ethiopic text-sm font-medium text-slate-800">{tile.am}</div>
+      <div className="font-am-body text-sm font-medium text-slate-800">{tile.am}</div>
       <div className="text-xs text-slate-400">{tile.hint}</div>
       {file && (
         <>

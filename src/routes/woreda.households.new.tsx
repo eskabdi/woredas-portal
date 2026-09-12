@@ -27,7 +27,7 @@ export const Route = createFileRoute("/woreda/households/new")({
       permission={P.HOUSEHOLD_CREATE}
       fallback={
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-800">
-          <p className="font-noto-ethiopic font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
+          <p className="font-am-body font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
           <p className="text-sm">You don't have permission to create households.</p>
         </div>
       }
@@ -173,7 +173,7 @@ function NewHouseholdPage() {
               variant="ghost"
               onClick={() => navigate({ to: "/woreda/households" })}
             >
-              <span className="font-noto-ethiopic">ይቅር</span>
+              <span className="font-am-body">ይቅር</span>
               <span className="ml-2 text-xs opacity-70">/ Cancel</span>
             </Button>
             <Button
@@ -182,7 +182,7 @@ function NewHouseholdPage() {
               className="bg-blue-700 text-white hover:bg-blue-800"
             >
               {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              <span className="font-noto-ethiopic">ቤተሰብ መዝግብ</span>
+              <span className="font-am-body">ቤተሰብ መዝግብ</span>
               <span className="ml-2 text-xs opacity-80">/ Register Household</span>
             </Button>
           </div>

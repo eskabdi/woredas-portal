@@ -253,7 +253,7 @@ function ConsoleRolesPage() {
                 {PERMISSION_ROWS.map((p, idx) => (
                   <tr key={p.key} className={idx % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
                     <td className="sticky left-0 z-[1] bg-inherit px-4 py-2 text-xs text-slate-700">
-                      <div className="font-noto-ethiopic">{p.am}</div>
+                      <div className="font-am-body">{p.am}</div>
                       <div className="text-slate-400">{p.en}</div>
                     </td>
                     {roles.map((r) => (

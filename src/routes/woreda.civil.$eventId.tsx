@@ -46,7 +46,7 @@ export const Route = createFileRoute("/woreda/civil/$eventId")({
       permission={P.CIVIL_READ}
       fallback={
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-800">
-          <p className="font-noto-ethiopic font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
+          <p className="font-am-body font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
           <p className="text-sm">You do not have permission to view civil events.</p>
         </div>
       }
@@ -445,7 +445,7 @@ function CivilEventDetailPage() {
   if (!event) {
     return (
       <div className="rounded-lg border border-slate-200 bg-white p-8 text-center">
-        <p className="font-noto-ethiopic text-slate-700">ክስተቱ አልተገኘም</p>
+        <p className="font-am-body text-slate-700">ክስተቱ አልተገኘም</p>
         <p className="text-sm text-slate-500">Event not found</p>
         <Button
           className="mt-4"
@@ -507,7 +507,7 @@ function CivilEventDetailPage() {
               {eventType === "birth" && (
                 <>
                   <Field labelAm="የልጅ ሙሉ ስም" labelEn="Child Name">
-                    <span className="font-noto-ethiopic">{childName || "—"}</span>
+                    <span className="font-am-body">{childName || "—"}</span>
                     {birthD.child_full_name_en && (
                       <div className="text-xs text-slate-500">{birthD.child_full_name_en}</div>
                     )}
@@ -532,14 +532,14 @@ function CivilEventDetailPage() {
                         params={{ residentId: birthD.mother_resident_id }}
                         className="text-blue-700 hover:underline"
                       >
-                        <span className="font-noto-ethiopic">
+                        <span className="font-am-body">
                           {findParent(birthD.mother_resident_id)?.full_name_am ||
                             findParent(birthD.mother_resident_id)?.full_name ||
                             "View"}
                         </span>
                       </Link>
                     ) : (
-                      <span className="font-noto-ethiopic">{birthD.mother_name || "—"}</span>
+                      <span className="font-am-body">{birthD.mother_name || "—"}</span>
                     )}
                   </Field>
                   <Field labelAm="አባት" labelEn="Father">
@@ -549,14 +549,14 @@ function CivilEventDetailPage() {
                         params={{ residentId: birthD.father_resident_id }}
                         className="text-blue-700 hover:underline"
                       >
-                        <span className="font-noto-ethiopic">
+                        <span className="font-am-body">
                           {findParent(birthD.father_resident_id)?.full_name_am ||
                             findParent(birthD.father_resident_id)?.full_name ||
                             "View"}
                         </span>
                       </Link>
                     ) : (
-                      <span className="font-noto-ethiopic">{birthD.father_name || "—"}</span>
+                      <span className="font-am-body">{birthD.father_name || "—"}</span>
                     )}
                   </Field>
                   <Field labelAm="የተወለደበት ስፍራ" labelEn="Place of Birth">
@@ -577,12 +577,12 @@ function CivilEventDetailPage() {
                         params={{ residentId: event.resident.resident_id }}
                         className="text-blue-700 hover:underline"
                       >
-                        <span className="font-noto-ethiopic">
+                        <span className="font-am-body">
                           {event.resident.full_name_am || event.resident.full_name || "View"}
                         </span>
                       </Link>
                     ) : (
-                      <span className="font-noto-ethiopic">{deathD.deceased_name || "—"}</span>
+                      <span className="font-am-body">{deathD.deceased_name || "—"}</span>
                     )}
                   </Field>
                   <Field labelAm="ፆታ" labelEn="Sex">
@@ -663,7 +663,7 @@ function CivilEventDetailPage() {
               )}
 
               <Field labelAm="መረጃ ሰጪ" labelEn="Informant">
-                <span className="font-noto-ethiopic">
+                <span className="font-am-body">
                   {(rawDetails.informant as { name?: string } | undefined)?.name || "—"}
                 </span>
                 {(rawDetails.informant as { relation?: string } | undefined)?.relation && (
@@ -694,12 +694,12 @@ function CivilEventDetailPage() {
             <div className="space-y-4">
               <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
                 <div className="font-medium">Returned for correction</div>
-                <div className="mt-1 font-noto-ethiopic">ምክንያት: {event.return_reason || "—"}</div>
+                <div className="mt-1 font-am-body">ምክንያት: {event.return_reason || "—"}</div>
               </div>
               <PermissionGate permission={P.CIVIL_REGISTER}>
                 <Button onClick={handleResubmit} disabled={busy}>
                   {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  <span className="font-noto-ethiopic">እንደገና ላክ</span>
+                  <span className="font-am-body">እንደገና ላክ</span>
                   <span className="ml-2 opacity-80">/ Resubmit</span>
                 </Button>
               </PermissionGate>
@@ -718,7 +718,7 @@ function CivilEventDetailPage() {
                       disabled={!canRegister}
                     />
                     <label htmlFor={item.key} className="cursor-pointer text-sm leading-tight">
-                      <div className="font-noto-ethiopic text-slate-800">{item.am}</div>
+                      <div className="font-am-body text-slate-800">{item.am}</div>
                       <div className="text-xs text-slate-500">{item.en}</div>
                     </label>
                   </li>
@@ -733,11 +733,11 @@ function CivilEventDetailPage() {
                   >
                     {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     <CheckCircle2 className="mr-2 h-4 w-4" />
-                    <span className="font-noto-ethiopic">አልፏል</span>
+                    <span className="font-am-body">አልፏል</span>
                     <span className="ml-2 opacity-80">/ Pass Verification</span>
                   </Button>
                   <Button variant="outline" onClick={() => setReturnOpen(true)} disabled={busy}>
-                    <span className="font-noto-ethiopic">መልስ</span>
+                    <span className="font-am-body">መልስ</span>
                     <span className="ml-2 opacity-80">/ Return</span>
                   </Button>
                 </div>
@@ -754,12 +754,12 @@ function CivilEventDetailPage() {
             <div className="space-y-4">
               <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
                 <div className="font-medium">Returned by supervisor</div>
-                <div className="mt-1 font-noto-ethiopic">ምክንያት: {event.return_reason || "—"}</div>
+                <div className="mt-1 font-am-body">ምክንያት: {event.return_reason || "—"}</div>
               </div>
               <PermissionGate permission={P.CIVIL_REGISTER}>
                 <Button onClick={handleResubmit} disabled={busy}>
                   {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  <span className="font-noto-ethiopic">እንደገና ላክ</span>
+                  <span className="font-am-body">እንደገና ላክ</span>
                   <span className="ml-2 opacity-80">/ Resubmit</span>
                 </Button>
               </PermissionGate>
@@ -776,7 +776,7 @@ function CivilEventDetailPage() {
               <div className="space-y-4">
                 {eventType === "birth" && (
                   <>
-                    <p className="font-noto-ethiopic text-sm text-slate-700">
+                    <p className="font-am-body text-sm text-slate-700">
                       በዚህ ማጽደቅ ላይ አዲስ የነዋሪ መዝገብ ይፈጠራል።
                     </p>
                     <p className="text-xs text-slate-500">
@@ -786,7 +786,7 @@ function CivilEventDetailPage() {
                 )}
                 {eventType === "death" && (
                   <>
-                    <p className="font-noto-ethiopic text-sm text-slate-700">
+                    <p className="font-am-body text-sm text-slate-700">
                       በዚህ ማጽደቅ ላይ የነዋሪ ሁኔታ "የተሞተ" ተብሎ ይመዘገባል።
                     </p>
                     <p className="text-xs text-slate-500">
@@ -809,7 +809,7 @@ function CivilEventDetailPage() {
                   >
                     {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     <CheckCircle2 className="mr-2 h-4 w-4" />
-                    <span className="font-noto-ethiopic">አጽድቅ</span>
+                    <span className="font-am-body">አጽድቅ</span>
                     <span className="ml-2 opacity-80">/ Approve</span>
                   </Button>
                   <Button
@@ -817,12 +817,12 @@ function CivilEventDetailPage() {
                     onClick={() => setApprovalReturnOpen(true)}
                     disabled={busy}
                   >
-                    <span className="font-noto-ethiopic">መልስ</span>
+                    <span className="font-am-body">መልስ</span>
                     <span className="ml-2 opacity-80">/ Return</span>
                   </Button>
                   <Button variant="destructive" onClick={() => setRejectOpen(true)} disabled={busy}>
                     <XCircle className="mr-2 h-4 w-4" />
-                    <span className="font-noto-ethiopic">ውድቅ</span>
+                    <span className="font-am-body">ውድቅ</span>
                     <span className="ml-2 opacity-80">/ Reject</span>
                   </Button>
                 </div>
@@ -842,14 +842,14 @@ function CivilEventDetailPage() {
         >
           {status === "rejected" ? (
             <div className="text-sm text-slate-700">
-              <div className="font-noto-ethiopic">ምክንያት: {event.reject_reason || "—"}</div>
+              <div className="font-am-body">ምክንያት: {event.reject_reason || "—"}</div>
             </div>
           ) : (
             <div className="space-y-3 text-sm">
               {eventType === "birth" && (
                 <>
                   <div className="text-slate-700">
-                    <span className="font-noto-ethiopic">ክስተቱ ጸድቋል። አዲስ የነዋሪ መዝገብ ተፈጥሯል።</span>
+                    <span className="font-am-body">ክስተቱ ጸድቋል። አዲስ የነዋሪ መዝገብ ተፈጥሯል።</span>
                     <div className="text-xs text-slate-500">
                       Event approved. A new resident record has been generated.
                     </div>
@@ -860,7 +860,7 @@ function CivilEventDetailPage() {
                       params={{ residentId: event.resident_id }}
                     >
                       <Button className="bg-blue-700 text-white hover:bg-blue-800">
-                        <span className="font-noto-ethiopic">የነዋሪ መገለጫ ተመልከት</span>
+                        <span className="font-am-body">የነዋሪ መገለጫ ተመልከት</span>
                         <span className="ml-2 opacity-80">/ View Resident</span>
                       </Button>
                     </Link>
@@ -871,7 +871,7 @@ function CivilEventDetailPage() {
               {eventType === "death" && (
                 <>
                   <div className="text-slate-700">
-                    <span className="font-noto-ethiopic">የሞት ክስተት ጸድቋል። የነዋሪ ሁኔታ ተሻሽሏል።</span>
+                    <span className="font-am-body">የሞት ክስተት ጸድቋል። የነዋሪ ሁኔታ ተሻሽሏል።</span>
                     <div className="text-xs text-slate-500">
                       Death approved. Resident status updated and active credentials revoked.
                     </div>
@@ -882,7 +882,7 @@ function CivilEventDetailPage() {
                       params={{ residentId: event.resident_id }}
                     >
                       <Button variant="outline">
-                        <span className="font-noto-ethiopic">የነዋሪ መገለጫ ተመልከት</span>
+                        <span className="font-am-body">የነዋሪ መገለጫ ተመልከት</span>
                         <span className="ml-2 opacity-80">/ View Resident</span>
                       </Button>
                     </Link>
@@ -892,7 +892,7 @@ function CivilEventDetailPage() {
 
               {(eventType === "marriage" || eventType === "divorce") && (
                 <div className="text-slate-700">
-                  <span className="font-noto-ethiopic">
+                  <span className="font-am-body">
                     {eventType === "marriage" ? "የጋብቻ ክስተት ጸድቋል።" : "የፍቺ ክስተት ጸድቋል።"}
                   </span>
                   <div className="text-xs text-slate-500">
@@ -908,7 +908,7 @@ function CivilEventDetailPage() {
                   <Button variant="outline" onClick={handleClose} disabled={busy} className="mt-2">
                     {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     <CheckCircle2 className="mr-2 h-4 w-4" />
-                    <span className="font-noto-ethiopic">ዝጋ</span>
+                    <span className="font-am-body">ዝጋ</span>
                     <span className="ml-2 opacity-80">/ Close</span>
                   </Button>
                 </PermissionGate>
@@ -1021,7 +1021,7 @@ function Card({
           <Icon className="h-5 w-5" />
         </div>
         <div className="leading-tight">
-          <h2 className="font-noto-ethiopic text-lg font-semibold">{title}</h2>
+          <h2 className="font-am-heading text-lg font-semibold">{title}</h2>
           <p className="text-sm text-white/80">{titleEn}</p>
         </div>
       </div>
@@ -1042,7 +1042,7 @@ function Field({
   return (
     <div>
       <div className="text-xs uppercase tracking-wide text-slate-500">
-        <span className="font-noto-ethiopic">{labelAm}</span>
+        <span className="font-am-body">{labelAm}</span>
         <span className="ml-1">/ {labelEn}</span>
       </div>
       <div className="mt-1 text-sm text-slate-800">{children}</div>
@@ -1067,9 +1067,9 @@ function SpouseView({
         params={{ residentId: party.resident_id }}
         className="text-blue-700 hover:underline"
       >
-        <span className="font-noto-ethiopic">{p?.full_name_am || p?.full_name || "View"}</span>
+        <span className="font-am-body">{p?.full_name_am || p?.full_name || "View"}</span>
       </Link>
     );
   }
-  return <span className="font-noto-ethiopic">{party.name || "—"}</span>;
+  return <span className="font-am-body">{party.name || "—"}</span>;
 }

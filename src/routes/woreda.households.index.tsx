@@ -256,7 +256,7 @@ function HouseholdsListPage() {
   if (!hasPermission(P.HOUSEHOLD_READ)) {
     return (
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-800">
-        <p className="font-noto-ethiopic font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
+        <p className="font-am-body font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
         <p className="text-sm">You don't have permission to view this page.</p>
       </div>
     );
@@ -275,7 +275,7 @@ function HouseholdsListPage() {
               className="bg-blue-700 text-white hover:bg-blue-800"
             >
               <Plus className="mr-2 h-4 w-4" />
-              <span className="font-noto-ethiopic">አዲስ ቤተሰብ</span>
+              <span className="font-am-body">አዲስ ቤተሰብ</span>
               <span className="ml-2 opacity-80">/ New Household</span>
             </Button>
           </PermissionGate>
@@ -289,7 +289,7 @@ function HouseholdsListPage() {
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="በቤት ቁጥር ወይም አድራሻ ይፈልጉ / Search by house number or address…"
-            className="font-noto-ethiopic pl-10"
+            className="font-am-body pl-10"
           />
         </div>
         <div className="flex flex-wrap gap-2">
@@ -352,34 +352,34 @@ function HouseholdsListPage() {
           <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
             <tr>
               <SortableTh field="house_number" sort={sort}>
-                <span className="font-noto-ethiopic">የቤት ቁጥር</span>{" "}
+                <span className="font-am-body">የቤት ቁጥር</span>{" "}
                 <span className="ml-1 text-slate-400 normal-case">/ House #</span>
               </SortableTh>
               <th className="px-4 py-3">
-                <span className="font-noto-ethiopic">ቀበሌ</span>{" "}
+                <span className="font-am-body">ቀበሌ</span>{" "}
                 <span className="ml-1 text-slate-400 normal-case">/ Kebele</span>
               </th>
               <th className="px-4 py-3">
-                <span className="font-noto-ethiopic">የቤተሰብ ኃላፊ</span>{" "}
+                <span className="font-am-body">የቤተሰብ ኃላፊ</span>{" "}
                 <span className="ml-1 text-slate-400 normal-case">/ Household Head</span>
               </th>
               <th className="px-4 py-3 text-center">
-                <span className="font-noto-ethiopic">አባላት</span>{" "}
+                <span className="font-am-body">አባላት</span>{" "}
                 <span className="ml-1 text-slate-400 normal-case">/ Members</span>
               </th>
               <SortableTh field="house_type" sort={sort}>
-                <span className="font-noto-ethiopic">የቤት አይነት</span>{" "}
+                <span className="font-am-body">የቤት አይነት</span>{" "}
                 <span className="ml-1 text-slate-400 normal-case">/ House Type</span>
               </SortableTh>
               <SortableTh field="occupancy_status" sort={sort}>
-                <span className="font-noto-ethiopic">ሁኔታ</span>{" "}
+                <span className="font-am-body">ሁኔታ</span>{" "}
                 <span className="ml-1 text-slate-400 normal-case">/ Status</span>
               </SortableTh>
               <SortableTh field="updated_at" sort={sort}>
-                <span className="font-noto-ethiopic">የተሻሻለበት</span>{" "}
+                <span className="font-am-body">የተሻሻለበት</span>{" "}
                 <span className="ml-1 text-slate-400 normal-case">/ Updated</span>
               </SortableTh>
-              <th className="font-noto-ethiopic px-4 py-3 text-right">ድርጊቶች / Actions</th>
+              <th className="font-am-heading px-4 py-3 text-right">ድርጊቶች / Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -406,7 +406,7 @@ function HouseholdsListPage() {
                       <Link to="/woreda/households/new" className="mt-2">
                         <Button className="bg-blue-700 text-white hover:bg-blue-800">
                           <Plus className="mr-2 h-4 w-4" />
-                          <span className="font-noto-ethiopic">አዲስ ቤተሰብ መዝግብ</span>
+                          <span className="font-am-body">አዲስ ቤተሰብ መዝግብ</span>
                         </Button>
                       </Link>
                     </PermissionGate>
@@ -437,12 +437,10 @@ function HouseholdsListPage() {
                     <td className="px-4 py-3 font-mono text-sm font-medium text-slate-900">
                       {h.house_number}
                     </td>
-                    <td className="font-noto-ethiopic px-4 py-3 text-sm">
+                    <td className="font-am-body px-4 py-3 text-sm">
                       {kebele ? `${kebele.kebele_number} — ${kebele.kebele_name_am}` : "—"}
                     </td>
-                    <td className="font-noto-ethiopic px-4 py-3 text-sm">
-                      {head?.full_name_am || "—"}
-                    </td>
+                    <td className="font-am-body px-4 py-3 text-sm">{head?.full_name_am || "—"}</td>
                     <td className="px-4 py-3 text-center text-sm font-medium text-slate-700">
                       {memberCount}
                     </td>
@@ -512,7 +510,7 @@ function FilterGroup({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="font-noto-ethiopic bg-transparent px-1 py-0.5 text-sm focus:outline-none"
+        className="font-am-body bg-transparent px-1 py-0.5 text-sm focus:outline-none"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
@@ -597,7 +595,7 @@ function RowActions({
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="font-noto-ethiopic">
+        <DropdownMenuContent align="end" className="font-am-body">
           {canRead && (
             <DropdownMenuItem
               onClick={() =>
@@ -641,10 +639,10 @@ function RowActions({
         <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle className="font-noto-ethiopic">
+              <DialogTitle className="font-am-body">
                 ቤተሰብ ኢ-ንቁ አድርግ / Set Household Inactive
               </DialogTitle>
-              <DialogDescription className="font-noto-ethiopic">
+              <DialogDescription className="font-am-body">
                 ቤት ቁጥር <span className="font-mono">{household.house_number}</span> በመንጠቅ ሁኔታ ይቀየራል።
                 <br />
                 House <span className="font-mono">{household.house_number}</span> will be marked
@@ -652,7 +650,7 @@ function RowActions({
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-2">
-              <label className="font-noto-ethiopic text-sm font-medium text-slate-700">
+              <label className="font-am-body text-sm font-medium text-slate-700">
                 ምክንያት / Reason <span className="text-red-600">*</span>
               </label>
               <Textarea
@@ -660,7 +658,7 @@ function RowActions({
                 onChange={(e) => setReason(e.target.value)}
                 placeholder="ይህን ለውጥ ለምን ያደርጋሉ? / Why are you making this change?"
                 rows={3}
-                className="font-noto-ethiopic"
+                className="font-am-body"
               />
             </div>
             <DialogFooter>
@@ -706,13 +704,13 @@ function ChangeLogDrawer({
     <Sheet open={!!householdId} onOpenChange={(o) => !o && onClose()}>
       <SheetContent className="w-full sm:max-w-lg">
         <SheetHeader>
-          <SheetTitle className="font-noto-ethiopic">የለውጥ ምዝግብ / Change Log</SheetTitle>
+          <SheetTitle className="font-am-body">የለውጥ ምዝግብ / Change Log</SheetTitle>
           <SheetDescription>All recorded changes for this household.</SheetDescription>
         </SheetHeader>
         <div className="mt-6 space-y-3">
           {query.isLoading && <Skeleton className="h-16 w-full" />}
           {!query.isLoading && (query.data?.length ?? 0) === 0 && (
-            <p className="font-noto-ethiopic text-sm text-slate-500">
+            <p className="font-am-body text-sm text-slate-500">
               ምንም ለውጥ አልተመዘገበም / No changes recorded
             </p>
           )}
@@ -727,9 +725,7 @@ function ChangeLogDrawer({
                 </span>
               </div>
               {row.clerk_comment && (
-                <p className="font-noto-ethiopic mt-2 text-sm text-slate-700">
-                  {row.clerk_comment}
-                </p>
+                <p className="font-am-body mt-2 text-sm text-slate-700">{row.clerk_comment}</p>
               )}
             </div>
           ))}

@@ -259,7 +259,7 @@ function CivilListPage() {
                 <DropdownMenuTrigger asChild>
                   <Button className="bg-blue-700 text-white hover:bg-blue-800">
                     <Plus className="mr-2 h-4 w-4" />
-                    <span className="font-noto-ethiopic">አዲስ ምዝገባ</span>
+                    <span className="font-am-body">አዲስ ምዝገባ</span>
                     <span className="ml-2 opacity-80">/ New Registration</span>
                     <ChevronDown className="ml-2 h-4 w-4 opacity-80" />
                   </Button>
@@ -267,22 +267,22 @@ function CivilListPage() {
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuItem onClick={() => navigate({ to: "/woreda/civil/birth/new" })}>
                     <Baby className="mr-2 h-4 w-4 text-blue-600" />
-                    <span className="font-noto-ethiopic">ልደት</span>
+                    <span className="font-am-body">ልደት</span>
                     <span className="ml-auto text-xs text-slate-500">Birth</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate({ to: "/woreda/civil/death/new" })}>
                     <HeartCrack className="mr-2 h-4 w-4 text-slate-700" />
-                    <span className="font-noto-ethiopic">ሞት</span>
+                    <span className="font-am-body">ሞት</span>
                     <span className="ml-auto text-xs text-slate-500">Death</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate({ to: "/woreda/civil/marriage/new" })}>
                     <Heart className="mr-2 h-4 w-4 text-rose-600" />
-                    <span className="font-noto-ethiopic">ጋብቻ</span>
+                    <span className="font-am-body">ጋብቻ</span>
                     <span className="ml-auto text-xs text-slate-500">Marriage</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate({ to: "/woreda/civil/divorce/new" })}>
                     <Scale className="mr-2 h-4 w-4 text-amber-600" />
-                    <span className="font-noto-ethiopic">ፍቺ</span>
+                    <span className="font-am-body">ፍቺ</span>
                     <span className="ml-auto text-xs text-slate-500">Divorce</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -299,7 +299,7 @@ function CivilListPage() {
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="የክስተት ቁጥር / Search by event #…"
-            className="font-noto-ethiopic pl-10"
+            className="font-am-body pl-10"
           />
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -330,13 +330,13 @@ function CivilListPage() {
           <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
             <tr>
               <SortableTh field="event_number" sort={sort}>
-                <span className="font-noto-ethiopic">የክስተት ቁጥር</span>
+                <span className="font-am-body">የክስተት ቁጥር</span>
                 <span className="ml-1 text-slate-400 normal-case">/ Event #</span>
               </SortableTh>
               <Th am="ዓይነት" en="Type" />
               <Th am="ስም" en="Subject" />
               <SortableTh field="event_date" sort={sort}>
-                <span className="font-noto-ethiopic">የክስተት ቀን</span>
+                <span className="font-am-body">የክስተት ቀን</span>
                 <span className="ml-1 text-slate-400 normal-case">/ Event Date</span>
               </SortableTh>
               <Th am="ሁኔታ" en="Status" />
@@ -362,7 +362,7 @@ function CivilListPage() {
                         className="mt-3 bg-blue-700 text-white hover:bg-blue-800"
                       >
                         <Baby className="mr-2 h-4 w-4" />
-                        <span className="font-noto-ethiopic">አዲስ የልደት ምዝገባ</span>
+                        <span className="font-am-body">አዲስ የልደት ምዝገባ</span>
                         <span className="ml-2 opacity-80">/ New Birth</span>
                       </Button>
                     </PermissionGate>
@@ -383,11 +383,11 @@ function CivilListPage() {
                   }
                 >
                   <td className="px-4 py-3 font-mono text-xs text-slate-700">{r.event_number}</td>
-                  <td className="font-noto-ethiopic px-4 py-3">
+                  <td className="font-am-body px-4 py-3">
                     {EVENT_TYPE_LABEL[r.event_type] ?? r.event_type}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="font-noto-ethiopic font-medium text-slate-900">{sub.am}</div>
+                    <div className="font-am-body font-medium text-slate-900">{sub.am}</div>
                     {sub.en && <div className="text-xs text-slate-500">{sub.en}</div>}
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-500">
@@ -418,7 +418,7 @@ function CivilListPage() {
 function Th({ am, en }: { am: string; en: string }) {
   return (
     <th className="px-4 py-3">
-      <span className="font-noto-ethiopic">{am}</span>
+      <span className="font-am-body">{am}</span>
       <span className="ml-1 text-slate-400 normal-case">/ {en}</span>
     </th>
   );
@@ -441,7 +441,7 @@ function FilterGroup({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="font-noto-ethiopic bg-transparent px-1 py-0.5 text-sm focus:outline-none"
+        className="font-am-body bg-transparent px-1 py-0.5 text-sm focus:outline-none"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>

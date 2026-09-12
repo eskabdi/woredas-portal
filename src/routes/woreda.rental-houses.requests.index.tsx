@@ -80,7 +80,7 @@ function TabNav() {
               active ? "bg-white text-slate-900 shadow" : "text-slate-500 hover:text-slate-700",
             )}
           >
-            <span className="font-noto-ethiopic">{t.labelAm}</span>
+            <span className="font-am-body">{t.labelAm}</span>
             <span className="ml-1 text-xs text-slate-400">/ {t.labelEn}</span>
           </Link>
         );
@@ -115,7 +115,7 @@ function StatusBadge({ status }: { status: string }) {
     <span
       className={`inline-flex flex-col items-start rounded-md px-2 py-0.5 text-xs font-medium ${s.className}`}
     >
-      <span className="font-noto-ethiopic leading-tight">{s.am}</span>
+      <span className="font-am-body leading-tight">{s.am}</span>
       <span className="text-[10px] font-normal opacity-80">{s.en}</span>
     </span>
   );
@@ -408,7 +408,7 @@ function RentalRequestListPage() {
                     <tr key={r.rental_request_id} className="border-t hover:bg-slate-50">
                       <td className="px-4 py-2 font-medium">{r.request_number}</td>
                       <td className="px-4 py-2">
-                        <div className="font-noto-ethiopic text-xs">{type.am}</div>
+                        <div className="font-am-body text-xs">{type.am}</div>
                         <div className="text-[10px] text-slate-500">{type.en}</div>
                       </td>
                       <td className="px-4 py-2">
@@ -424,7 +424,7 @@ function RentalRequestListPage() {
                           "—"
                         )}
                       </td>
-                      <td className="px-4 py-2 font-noto-ethiopic">
+                      <td className="px-4 py-2 font-am-body">
                         {r.resident ? (
                           <Link
                             to="/woreda/residents/$residentId"

@@ -257,10 +257,10 @@ function NewServiceRequestPage() {
         </Grid>
         {requiredDocs.length > 0 && (
           <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 p-3">
-            <div className="font-noto-ethiopic text-xs font-medium text-blue-900">
+            <div className="font-am-body text-xs font-medium text-blue-900">
               የሚያስፈልጉ ሰነዶች / Required documents
             </div>
-            <ul className="font-noto-ethiopic mt-1 list-inside list-disc text-xs text-blue-800">
+            <ul className="font-am-body mt-1 list-inside list-disc text-xs text-blue-800">
               {requiredDocs.map((d) => (
                 <li key={d}>{d}</li>
               ))}
@@ -289,7 +289,7 @@ function NewServiceRequestPage() {
             error={errors["applicantName"]}
           >
             <Input
-              className="font-noto-ethiopic"
+              className="font-am-body"
               value={applicantName}
               onChange={(e) => setApplicantName(e.target.value)}
             />
@@ -322,7 +322,7 @@ function NewServiceRequestPage() {
         <Grid>
           <FieldWrap labelAm="ጉዳይ" labelEn="Subject" required error={errors["subject"]} colSpan2>
             <Input
-              className="font-noto-ethiopic"
+              className="font-am-body"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
             />
@@ -331,14 +331,14 @@ function NewServiceRequestPage() {
             <>
               <FieldWrap labelAm="ዓላማ" labelEn="Purpose">
                 <Input
-                  className="font-noto-ethiopic"
+                  className="font-am-body"
                   value={purpose}
                   onChange={(e) => setPurpose(e.target.value)}
                 />
               </FieldWrap>
               <FieldWrap labelAm="ለማን ይቀርባል" labelEn="Addressed to">
                 <Input
-                  className="font-noto-ethiopic"
+                  className="font-am-body"
                   value={addressedTo}
                   onChange={(e) => setAddressedTo(e.target.value)}
                 />
@@ -349,7 +349,7 @@ function NewServiceRequestPage() {
             <>
               <FieldWrap labelAm="ተከሳሽ / አቤቱታ የቀረበበት" labelEn="Respondent">
                 <Input
-                  className="font-noto-ethiopic"
+                  className="font-am-body"
                   value={respondentName}
                   onChange={(e) => setRespondentName(e.target.value)}
                 />
@@ -363,7 +363,7 @@ function NewServiceRequestPage() {
               </FieldWrap>
               <FieldWrap labelAm="የተከሰተበት ቦታ" labelEn="Incident place" colSpan2>
                 <Input
-                  className="font-noto-ethiopic"
+                  className="font-am-body"
                   value={incidentPlace}
                   onChange={(e) => setIncidentPlace(e.target.value)}
                 />
@@ -378,7 +378,7 @@ function NewServiceRequestPage() {
             colSpan2
           >
             <Textarea
-              className="font-noto-ethiopic min-h-28"
+              className="font-am-body min-h-28"
               value={details}
               onChange={(e) => setDetails(e.target.value)}
             />
@@ -397,7 +397,7 @@ function NewServiceRequestPage() {
           }}
           className="block w-full cursor-pointer rounded-md border border-dashed border-slate-300 p-4 text-sm"
         />
-        <p className="font-noto-ethiopic mt-2 text-xs text-slate-500">
+        <p className="font-am-body mt-2 text-xs text-slate-500">
           JPG, PNG, WEBP ወይም PDF — ከ5MB በታች / Max 5MB per file
         </p>
         {files.length > 0 && (
@@ -453,17 +453,15 @@ function NewServiceRequestPage() {
           }}
         >
           <Send className="mr-1 h-4 w-4" />
-          <span className="font-noto-ethiopic">አስገባ / Submit</span>
+          <span className="font-am-body">አስገባ / Submit</span>
         </Button>
       </div>
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="font-noto-ethiopic">
-              ማስገባትን ያረጋግጡ / Confirm submission
-            </DialogTitle>
-            <DialogDescription className="font-noto-ethiopic">
+            <DialogTitle className="font-am-body">ማስገባትን ያረጋግጡ / Confirm submission</DialogTitle>
+            <DialogDescription className="font-am-body">
               ጥያቄው ወደ ማጽደቅ ወረፋ ይላካል። መረጃው ትክክል መሆኑን ያረጋግጡ።
               <span className="mt-2 block text-xs text-slate-500">
                 The request will be sent to the approval queue.

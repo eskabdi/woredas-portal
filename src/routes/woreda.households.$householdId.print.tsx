@@ -88,7 +88,7 @@ function HouseholdProfilePrintPage() {
   if (!hasPermission(P.HOUSEHOLD_READ)) {
     return (
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-800">
-        <p className="font-noto-ethiopic font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
+        <p className="font-am-body font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
         <p className="text-sm">You don't have permission to view this page.</p>
       </div>
     );
@@ -194,19 +194,19 @@ function HouseholdProfilePrintPage() {
         <table className="w-full border-collapse text-xs">
           <thead>
             <tr className="border-b border-slate-300 text-left">
-              <th className="pb-1.5 pr-3 font-noto-ethiopic font-semibold text-slate-700">
+              <th className="pb-1.5 pr-3 font-am-heading font-semibold text-slate-700">
                 ስም <span className="block text-[9px] font-normal text-slate-400">Full Name</span>
               </th>
-              <th className="pb-1.5 pr-3 font-noto-ethiopic font-semibold text-slate-700">
+              <th className="pb-1.5 pr-3 font-am-heading font-semibold text-slate-700">
                 ግንኙነት
                 <span className="block text-[9px] font-normal text-slate-400">
                   Relation to Head
                 </span>
               </th>
-              <th className="pb-1.5 pr-3 font-noto-ethiopic font-semibold text-slate-700">
+              <th className="pb-1.5 pr-3 font-am-heading font-semibold text-slate-700">
                 ጾታ <span className="block text-[9px] font-normal text-slate-400">Sex</span>
               </th>
-              <th className="pb-1.5 font-noto-ethiopic font-semibold text-slate-700">
+              <th className="pb-1.5 font-am-heading font-semibold text-slate-700">
                 ዕድሜ <span className="block text-[9px] font-normal text-slate-400">Age</span>
               </th>
             </tr>
@@ -222,17 +222,17 @@ function HouseholdProfilePrintPage() {
             {(members ?? []).map((m) => (
               <tr key={m.resident_id} className="border-b border-slate-100">
                 <td className="py-1.5 pr-3">
-                  <div className="font-noto-ethiopic font-medium text-slate-900">
+                  <div className="font-am-body font-medium text-slate-900">
                     {m.full_name_am || m.full_name}
                   </div>
                   {m.full_name_am && m.full_name && (
                     <div className="text-[10px] text-slate-500">{m.full_name}</div>
                   )}
                 </td>
-                <td className="py-1.5 pr-3 font-noto-ethiopic text-slate-700">
+                <td className="py-1.5 pr-3 font-am-body text-slate-700">
                   {m.relation_to_head || "—"}
                 </td>
-                <td className="py-1.5 pr-3 font-noto-ethiopic text-slate-700">
+                <td className="py-1.5 pr-3 font-am-body text-slate-700">
                   {m.sex === "female" ? "ሴት" : "ወንድ"}
                 </td>
                 <td className="py-1.5 text-slate-700">{calcAge(m.date_of_birth)}</td>

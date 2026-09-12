@@ -29,7 +29,7 @@ export const Route = createFileRoute("/woreda/residents/$residentId/edit")({
       permission={P.RESIDENT_UPDATE}
       fallback={
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-800">
-          <p className="font-noto-ethiopic font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
+          <p className="font-am-body font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
           <p className="text-sm">You don't have permission to edit residents.</p>
         </div>
       }
@@ -248,7 +248,7 @@ function EditResidentPage() {
   if (residentQuery.error || !residentQuery.data) {
     return (
       <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-red-800">
-        <p className="font-noto-ethiopic font-medium">ነዋሪ አልተገኘም / Resident not found</p>
+        <p className="font-am-body font-medium">ነዋሪ አልተገኘም / Resident not found</p>
         <Button variant="link" onClick={() => navigate({ to: "/woreda/residents" })}>
           ← Back to list
         </Button>
@@ -282,14 +282,14 @@ function EditResidentPage() {
             }
             disabled={submitting}
           >
-            <span className="font-noto-ethiopic">ይቅር</span>
+            <span className="font-am-body">ይቅር</span>
             <span className="ml-1 opacity-70">/ Cancel</span>
           </Button>
           <div className="flex items-center gap-3">
             {step > 1 && (
               <Button type="button" variant="outline" onClick={goBack} disabled={submitting}>
                 <ChevronLeft className="mr-1 h-4 w-4" />
-                <span className="font-noto-ethiopic">ወደ ኋላ</span>
+                <span className="font-am-body">ወደ ኋላ</span>
                 <span className="ml-1 opacity-70">/ Back</span>
               </Button>
             )}
@@ -299,7 +299,7 @@ function EditResidentPage() {
                 onClick={goNext}
                 className="bg-blue-700 text-white hover:bg-blue-800"
               >
-                <span className="font-noto-ethiopic">ቀጣይ</span>
+                <span className="font-am-body">ቀጣይ</span>
                 <span className="ml-1 opacity-80">/ Next</span>
                 <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
@@ -310,7 +310,7 @@ function EditResidentPage() {
                 className="bg-blue-700 text-white hover:bg-blue-800"
               >
                 {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                <span className="font-noto-ethiopic">ለውጦችን አስቀምጥ</span>
+                <span className="font-am-body">ለውጦችን አስቀምጥ</span>
                 <span className="ml-2 opacity-80">/ Save Changes</span>
               </Button>
             )}

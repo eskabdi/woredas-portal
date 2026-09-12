@@ -52,7 +52,7 @@ export function TableEmptyRow({
           ) : (
             <Inbox className="h-8 w-8 text-slate-300" />
           )}
-          <div className="font-noto-ethiopic text-sm font-medium text-slate-700">
+          <div className="font-am-body text-sm font-medium text-slate-700">
             {filtered ? filteredLabelAm : labelAm}
           </div>
           <div className="text-sm text-slate-500">{filtered ? filteredLabelEn : labelEn}</div>
@@ -85,9 +85,7 @@ export function TableErrorRow({
       <td colSpan={cols} className="px-4 py-12">
         <div className="flex flex-col items-center gap-2 text-center">
           <AlertTriangle className="h-8 w-8 text-destructive/70" />
-          <div className="font-noto-ethiopic text-sm font-medium text-slate-700">
-            መረጃውን መጫን አልተቻለም
-          </div>
+          <div className="font-am-body text-sm font-medium text-slate-700">መረጃውን መጫን አልተቻለም</div>
           <div className="max-w-md text-sm text-slate-500">{message}</div>
           {onRetry && (
             <Button variant="outline" size="sm" className="mt-2" onClick={onRetry}>

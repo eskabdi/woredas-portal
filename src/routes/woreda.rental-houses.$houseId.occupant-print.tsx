@@ -114,7 +114,7 @@ function RentalOccupantPrintPage() {
   if (!hasPermission(P.RENTAL_VIEW)) {
     return (
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-800">
-        <p className="font-noto-ethiopic font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
+        <p className="font-am-body font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
         <p className="text-sm">You don't have permission to view this page.</p>
       </div>
     );
@@ -251,7 +251,7 @@ function RentalOccupantPrintPage() {
             />
           </DocFieldGrid>
         ) : (
-          <p className="font-noto-ethiopic text-sm text-slate-500">
+          <p className="font-am-body text-sm text-slate-500">
             ይህ ቤት በአሁኑ ጊዜ ተከራይ የለውም / This house currently has no active occupant
           </p>
         )}
@@ -296,13 +296,13 @@ function RentalOccupantPrintPage() {
         <table className="w-full border-collapse text-xs">
           <thead>
             <tr className="border-b border-slate-300 text-left">
-              <th className="pb-1.5 pr-3 font-noto-ethiopic font-semibold text-slate-700">
+              <th className="pb-1.5 pr-3 font-am-heading font-semibold text-slate-700">
                 ተከራይ <span className="block text-[9px] font-normal text-slate-400">Occupant</span>
               </th>
-              <th className="pb-1.5 pr-3 font-noto-ethiopic font-semibold text-slate-700">
+              <th className="pb-1.5 pr-3 font-am-heading font-semibold text-slate-700">
                 ጊዜ <span className="block text-[9px] font-normal text-slate-400">Period</span>
               </th>
-              <th className="pb-1.5 font-noto-ethiopic font-semibold text-slate-700">
+              <th className="pb-1.5 font-am-heading font-semibold text-slate-700">
                 ሁኔታ <span className="block text-[9px] font-normal text-slate-400">Status</span>
               </th>
             </tr>
@@ -327,7 +327,7 @@ function RentalOccupantPrintPage() {
               return (
                 <tr key={o.occupancy_id} className="border-b border-slate-100">
                   <td className="py-1.5 pr-3">
-                    <div className="font-noto-ethiopic font-medium text-slate-900">
+                    <div className="font-am-body font-medium text-slate-900">
                       {res?.full_name_am || res?.full_name || "—"}
                     </div>
                     {res?.full_name_am && res?.full_name && (
@@ -337,7 +337,7 @@ function RentalOccupantPrintPage() {
                   <td className="py-1.5 pr-3 text-slate-700">
                     {start} – {end}
                   </td>
-                  <td className="py-1.5 font-noto-ethiopic text-slate-700">
+                  <td className="py-1.5 font-am-body text-slate-700">
                     {HISTORY_STATUS_LABEL[o.status] ?? o.status}
                   </td>
                 </tr>

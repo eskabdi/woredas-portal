@@ -167,7 +167,7 @@ function TenantDetailPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card className="p-5">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
-            <span className="font-noto-ethiopic">የወረዳ አስተዳዳሪ</span>
+            <span className="font-am-body">የወረዳ አስተዳዳሪ</span>
             <span className="ml-1">/ Tenant Administrator</span>
           </h2>
           {admin ? (
@@ -180,7 +180,7 @@ function TenantDetailPage() {
             </div>
           ) : (
             <div className="flex items-center justify-between">
-              <span className="font-noto-ethiopic text-amber-700">
+              <span className="font-am-body text-amber-700">
                 አስተዳዳሪ አልተመደበም
                 <span className="ml-1 text-xs text-amber-600">/ No Admin Assigned</span>
               </span>
@@ -196,7 +196,7 @@ function TenantDetailPage() {
 
         <Card className="p-5">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
-            <span className="font-noto-ethiopic">እንቅስቃሴ</span>
+            <span className="font-am-body">እንቅስቃሴ</span>
             <span className="ml-1">/ Activity</span>
           </h2>
           <p className="mb-4 text-sm text-slate-600">
@@ -212,7 +212,7 @@ function TenantDetailPage() {
 
         <Card className="p-5 lg:col-span-2">
           <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-slate-500">
-            <span className="font-noto-ethiopic">የሞጁል ውቅር</span>
+            <span className="font-am-body">የሞጁል ውቅር</span>
             <span className="ml-1">/ Module Configuration</span>
           </h2>
           <p className="mb-3 text-xs text-slate-500">
@@ -223,7 +223,7 @@ function TenantDetailPage() {
             {MODULES.map((m) => (
               <div key={m.key} className="flex items-center justify-between p-3">
                 <div>
-                  <div className="font-noto-ethiopic text-sm font-medium">{m.am}</div>
+                  <div className="font-am-body text-sm font-medium">{m.am}</div>
                   <div className="text-xs text-slate-500">{m.en}</div>
                 </div>
                 <Switch

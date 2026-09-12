@@ -307,7 +307,7 @@ function CredentialsListPage() {
                 className="border-emerald-600 text-emerald-700 hover:bg-emerald-50"
               >
                 <ShieldCheck className="mr-2 h-4 w-4" />
-                <span className="font-noto-ethiopic">ያረጋግጡ</span>
+                <span className="font-am-body">ያረጋግጡ</span>
                 <span className="ml-2 opacity-80">/ Verify</span>
               </Button>
             </PermissionGate>
@@ -317,7 +317,7 @@ function CredentialsListPage() {
                 className="bg-blue-700 text-white hover:bg-blue-800"
               >
                 <Plus className="mr-2 h-4 w-4" />
-                <span className="font-noto-ethiopic">አዲስ ጥያቄ</span>
+                <span className="font-am-body">አዲስ ጥያቄ</span>
                 <span className="ml-2 opacity-80">/ New Request</span>
               </Button>
             </PermissionGate>
@@ -332,7 +332,7 @@ function CredentialsListPage() {
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="የጥያቄ ቁጥር ወይም የነዋሪ ስም / Search by request # or resident name…"
-            className="font-noto-ethiopic pl-10"
+            className="font-am-body pl-10"
           />
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -372,7 +372,7 @@ function CredentialsListPage() {
           <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
             <tr>
               <SortableTh field="request_number" sort={sort}>
-                <span className="font-noto-ethiopic">የጥያቄ ቁጥር</span>
+                <span className="font-am-body">የጥያቄ ቁጥር</span>
                 <span className="ml-1 text-slate-400 normal-case">/ Request #</span>
               </SortableTh>
               <Th am="ነዋሪ" en="Resident" />
@@ -380,7 +380,7 @@ function CredentialsListPage() {
               <Th am="የምስክርነት ዓይነት" en="Credential Type" />
               <Th am="ሁኔታ" en="Status" />
               <SortableTh field="submitted_at" sort={sort}>
-                <span className="font-noto-ethiopic">የቀረበበት ቀን</span>
+                <span className="font-am-body">የቀረበበት ቀን</span>
                 <span className="ml-1 text-slate-400 normal-case">/ Submitted</span>
               </SortableTh>
             </tr>
@@ -403,7 +403,7 @@ function CredentialsListPage() {
                       <Link to="/woreda/credentials/new" className="mt-3">
                         <Button className="bg-blue-700 text-white hover:bg-blue-800">
                           <FilePlus className="mr-2 h-4 w-4" />
-                          <span className="font-noto-ethiopic">አዲስ ጥያቄ</span>
+                          <span className="font-am-body">አዲስ ጥያቄ</span>
                           <span className="ml-2 opacity-80">/ New Request</span>
                         </Button>
                       </Link>
@@ -426,17 +426,17 @@ function CredentialsListPage() {
                 >
                   <td className="px-4 py-3 font-mono text-xs text-slate-700">{r.request_number}</td>
                   <td className="px-4 py-3">
-                    <div className="font-noto-ethiopic font-medium text-slate-900">
+                    <div className="font-am-body font-medium text-slate-900">
                       {person?.full_name_am || "—"}
                     </div>
                     <div className="text-xs text-slate-500">
                       {person?.full_name} · {person?.resident_number}
                     </div>
                   </td>
-                  <td className="font-noto-ethiopic px-4 py-3">
+                  <td className="font-am-body px-4 py-3">
                     {REQUEST_TYPE_LABEL[r.request_type] ?? r.request_type}
                   </td>
-                  <td className="font-noto-ethiopic px-4 py-3">
+                  <td className="font-am-body px-4 py-3">
                     {CRED_TYPE_LABEL[r.credential_type] ?? r.credential_type}
                   </td>
                   <td className="px-4 py-3">
@@ -471,7 +471,7 @@ function CredentialsListPage() {
 function Th({ am, en }: { am: string; en: string }) {
   return (
     <th className="px-4 py-3">
-      <span className="font-noto-ethiopic">{am}</span>
+      <span className="font-am-body">{am}</span>
       <span className="ml-1 text-slate-400 normal-case">/ {en}</span>
     </th>
   );
@@ -494,7 +494,7 @@ function FilterGroup({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="font-noto-ethiopic bg-transparent px-1 py-0.5 text-sm focus:outline-none"
+        className="font-am-body bg-transparent px-1 py-0.5 text-sm focus:outline-none"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>

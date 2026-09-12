@@ -366,9 +366,7 @@ export function HararildScanner() {
                   )}
                 >
                   <Upload className="h-8 w-8 text-slate-400" />
-                  <div className="font-noto-ethiopic text-sm text-slate-700">
-                    ምስል እዚህ ይጣሉ ወይም ጠቅ ያድርጉ
-                  </div>
+                  <div className="font-am-body text-sm text-slate-700">ምስል እዚህ ይጣሉ ወይም ጠቅ ያድርጉ</div>
                   <div className="text-xs text-slate-500">
                     Drag &amp; drop, or click to upload · PNG / JPEG
                   </div>
@@ -431,7 +429,7 @@ export function HararildScanner() {
               <div className="flex justify-center">
                 <Button onClick={resetAll} variant="outline" className="gap-2">
                   <RefreshCw className="h-4 w-4" />
-                  <span className="font-noto-ethiopic">አዲስ ቅኝት</span>
+                  <span className="font-am-body">አዲስ ቅኝት</span>
                   <span className="opacity-70">/ New Scan</span>
                 </Button>
               </div>
@@ -483,7 +481,7 @@ function SuccessPanel({
       <div className="flex flex-wrap items-center gap-2">
         <Badge className="gap-1 bg-emerald-600 text-white hover:bg-emerald-600">
           <CheckCircle2 className="h-3.5 w-3.5" />
-          <span className="font-noto-ethiopic">የተረጋገጠ ትክክለኛ መታወቂያ</span>
+          <span className="font-am-body">የተረጋገጠ ትክክለኛ መታወቂያ</span>
           <span className="opacity-90">/ Verified</span>
         </Badge>
         {expiryBadge}
@@ -504,7 +502,7 @@ function SuccessPanel({
         <Alert variant="destructive" className="mt-3">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            <span className="font-noto-ethiopic">
+            <span className="font-am-body">
               ይህ መታወቂያ {liveStatus === "revoked" ? "ተሰርዟል" : "ትክክል አይደለም"}
             </span>{" "}
             / This credential is {liveStatus}.
@@ -526,12 +524,12 @@ function SuccessPanel({
             <div className="flex h-40 w-40 flex-col items-center justify-center gap-1 rounded-lg border border-slate-200 bg-slate-100 px-2 text-center text-xs text-slate-500">
               {online ? (
                 <>
-                  <span className="font-noto-ethiopic">ፎቶ ለማየት</span>
+                  <span className="font-am-body">ፎቶ ለማየት</span>
                   <span>Check live status to load the photo</span>
                 </>
               ) : (
                 <>
-                  <span className="font-noto-ethiopic">ከመስመር ውጭ</span>
+                  <span className="font-am-body">ከመስመር ውጭ</span>
                   <span>Offline — photo unavailable</span>
                 </>
               )}
@@ -565,7 +563,7 @@ function SuccessPanel({
               <span>Checking…</span>
             ) : (
               <>
-                <span className="font-noto-ethiopic">የቀጥታ ሁኔታ ይፈትሹ</span>
+                <span className="font-am-body">የቀጥታ ሁኔታ ይፈትሹ</span>
                 <span className="opacity-70">/ Check Live Status</span>
               </>
             )}
@@ -591,7 +589,7 @@ function FailurePanel({
       <div className="flex items-center gap-2">
         <Badge variant="destructive" className="gap-1">
           <XCircle className="h-3.5 w-3.5" />
-          <span className="font-noto-ethiopic">አልተረጋገጠም</span>
+          <span className="font-am-body">አልተረጋገጠም</span>
           <span className="opacity-90">/ Not Verified</span>
         </Badge>
       </div>
@@ -600,12 +598,11 @@ function FailurePanel({
         <AlertDescription>
           {expired ? (
             <>
-              <span className="font-noto-ethiopic">የአገልግሎት ጊዜው ያበቃ</span> / The credential has
-              expired.
+              <span className="font-am-body">የአገልግሎት ጊዜው ያበቃ</span> / The credential has expired.
             </>
           ) : (
             <>
-              <span className="font-noto-ethiopic">{amMsg}</span> / {enMsg}
+              <span className="font-am-body">{amMsg}</span> / {enMsg}
             </>
           )}
         </AlertDescription>

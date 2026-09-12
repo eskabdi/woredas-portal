@@ -124,13 +124,13 @@ export function PrintDocumentShell({
               )}
             </div>
             <div>
-              <div className="font-noto-ethiopic text-[11px] font-semibold tracking-wide text-blue-800">
+              <div className="font-am-body text-[11px] font-semibold tracking-wide text-blue-800">
                 {REGIONAL_HEADER_AM}
               </div>
               <div className="text-[9px] uppercase tracking-wide text-slate-500">
                 {REGIONAL_HEADER_EN}
               </div>
-              <h1 className="font-noto-ethiopic mt-1.5 text-xl font-bold text-slate-900">
+              <h1 className="font-am-heading mt-1.5 text-xl font-bold text-slate-900">
                 {woredaNameAm}
               </h1>
               <div className="mt-0.5 text-xs text-slate-600">{woredaNameEn}</div>
@@ -140,12 +140,12 @@ export function PrintDocumentShell({
             </div>
           </div>
           <div className="text-right">
-            <span className="font-noto-ethiopic inline-block rounded bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-800">
+            <span className="font-am-body inline-block rounded bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-800">
               {docTagAm}
             </span>
             <div className="mt-1 text-[9px] uppercase tracking-wide text-slate-400">{docTagEn}</div>
             <div className="mt-2 text-[11px] text-slate-700">
-              <span className="font-noto-ethiopic">{docNumberLabelAm}</span>
+              <span className="font-am-body">{docNumberLabelAm}</span>
               <span className="text-slate-400"> / {docNumberLabelEn}</span>:{" "}
               <strong className="font-mono">{docNumber}</strong>
             </div>
@@ -176,7 +176,7 @@ export function DocSection({
 }) {
   return (
     <section>
-      <h2 className="font-noto-ethiopic mb-3.5 text-xs font-semibold tracking-wide text-blue-800">
+      <h2 className="font-am-heading mb-3.5 text-xs font-semibold tracking-wide text-blue-800">
         {number} — {titleAm}
         <span className="ml-2 font-normal normal-case text-slate-400">{titleEn}</span>
       </h2>
@@ -213,11 +213,11 @@ export function DocField({
   return (
     <div className={span === 3 ? "col-span-3" : span === 2 ? "col-span-2" : undefined}>
       <div className="text-[9.5px] font-medium uppercase tracking-wide text-slate-400">
-        <span className="font-noto-ethiopic">{labelAm}</span>
+        <span className="font-am-body">{labelAm}</span>
         <span className="ml-1 normal-case text-slate-400">/ {labelEn}</span>
       </div>
       <div
-        className={`font-noto-ethiopic mt-0.5 text-sm font-semibold text-slate-900 ${mono ? "font-mono" : ""}`}
+        className={`font-am-body mt-0.5 text-sm font-semibold text-slate-900 ${mono ? "font-mono" : ""}`}
       >
         {value}
       </div>
@@ -243,10 +243,10 @@ export function DocStat({
   return (
     <div>
       <div className="text-[9.5px] font-medium uppercase tracking-wide text-slate-400">
-        <span className="font-noto-ethiopic">{labelAm}</span>
+        <span className="font-am-body">{labelAm}</span>
         <span className="ml-1 normal-case text-slate-400">/ {labelEn}</span>
       </div>
-      <div className="font-noto-ethiopic mt-0.5 text-xl font-bold text-slate-900">{value}</div>
+      <div className="font-am-body mt-0.5 text-xl font-bold text-slate-900">{value}</div>
     </div>
   );
 }
@@ -265,7 +265,7 @@ export function DocDataTable({
     <table className="w-full border-collapse text-xs">
       <thead>
         <tr className="border-b border-slate-300 text-left">
-          <th className="pb-1.5 pr-3 font-noto-ethiopic font-semibold text-slate-700">Label</th>
+          <th className="pb-1.5 pr-3 font-am-heading font-semibold text-slate-700">Label</th>
           <th className="pb-1.5 pr-3 text-right font-semibold text-slate-700">{valueLabel}</th>
           <th className="pb-1.5 text-right font-semibold text-slate-700">Share</th>
         </tr>
@@ -280,7 +280,7 @@ export function DocDataTable({
         )}
         {rows.map((r) => (
           <tr key={r.name} className="border-b border-slate-100">
-            <td className="py-1.5 pr-3 font-noto-ethiopic text-slate-800">{r.name}</td>
+            <td className="py-1.5 pr-3 font-am-body text-slate-800">{r.name}</td>
             <td className="py-1.5 pr-3 text-right text-slate-800">{r.value.toLocaleString()}</td>
             <td className="py-1.5 text-right text-slate-500">
               {total > 0 ? `${((r.value / total) * 100).toFixed(1)}%` : "0.0%"}
@@ -310,7 +310,7 @@ export function DocSignatureBlock({
     <div className="grid grid-cols-3 gap-5">
       {items.map((it) => (
         <div key={it.labelAm} className="mt-10 border-t border-slate-400 pt-1.5 text-[11px]">
-          <span className="font-noto-ethiopic">{it.labelAm}</span>
+          <span className="font-am-body">{it.labelAm}</span>
           <div className="text-[10px] text-slate-500">/ {it.labelEn}</div>
         </div>
       ))}
@@ -345,7 +345,7 @@ export function DocRecordFooter({
     <div className="mt-8 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3 border border-slate-200 px-3.5 py-2.5 text-[10px] text-slate-600">
         <div>
-          <strong className="font-noto-ethiopic text-slate-800">{refLabel}</strong>{" "}
+          <strong className="font-am-body text-slate-800">{refLabel}</strong>{" "}
           <span className="font-mono">{refId}</span>
         </div>
         <div>የታተመው ቀን / Printed: {printedOn}</div>
