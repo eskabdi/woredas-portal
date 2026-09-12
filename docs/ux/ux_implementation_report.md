@@ -99,11 +99,42 @@ pass fixed line-length-only formatting drift the class-name swap caused.
   export buttons were moved from the page header into the toolbar itself, matching the other two screens
   and the design spec's own placement (export pills belong in the floating toolbar, not the header) —
   the one intentional layout change beyond a pure markup swap.
-- **Not done**: the other 13 Cluster A screens (civil events, service requests/complaints, approval
-  queue, rental houses ×2, revenue, audit ×2, admin tenants) still use the old inline toolbar markup.
-  Each is a same-shape swap to `<TableToolbar>` following the pattern in the three migrated screens —
-  no new component work needed, just repetition, which is why it's flagged as a good next batch rather
-  than a hard follow-up.
+- **Update — since rolled out to the rest of Cluster A**: the remaining 9 screens (civil events, woreda
+  audit, admin audit, revenue, both rental-houses list screens, admin tenants, and the shared
+  `ServiceRequestList` powering both service-requests and complaints) were migrated in a follow-up commit
+  using the exact pattern established here — see the "Cluster A completion" section below. 12 of ~16
+  Cluster A screens now share `TableToolbar`. The two left out (`woreda.approvals.tsx`, whose read-only
+  triage table has no search/export/clear affordance at all, and `admin.console-roles.tsx`, a permission
+  matrix rather than a filterable list) don't fit the toolbar's shape and weren't forced into it.
+
+### Cluster A completion (follow-up commit)
+
+Migrated the remaining 9 screens: `woreda.civil.index.tsx`, `woreda.audit.tsx`, `admin.audit.tsx`,
+`woreda.revenue.index.tsx`, `woreda.rental-houses.index.tsx`,
+`woreda.rental-houses.requests.index.tsx`, `admin.tenants.index.tsx` (Tenants tab),
+`src/components/admin/PlatformUsersTab.tsx` (the Users tab of the same screen), and
+`src/components/services/ServiceRequestList.tsx` (the shared component behind both
+`/woreda/services` and `/woreda/complaints`, so this one migration covers two nav entries).
+
+Two variations from the straightforward residents/households/credentials pattern, both intentional:
+- Several screens use controls that aren't the standard `FilterGroup` select — `KebeleFilter` (its own
+  shared component), native `<input type="date">` range pickers (audit, revenue), and shadcn `<Select>`
+  (`PlatformUsersTab`). These were passed into `TableToolbar`'s `filters` slot as-is rather than rebuilt
+  to fit `FilterGroup`'s exact shape — the restructuring target was the toolbar *container* (the
+  floating/translucent card, search box, clear/export row), not every filter control inside it. This
+  means the filter row in these screens is visually slightly less uniform (a stacked `<Label>` + control
+  next to a `FilterGroup` pill) than in residents/households/credentials — flagged as a follow-up
+  polish item, not a functional gap.
+- Left `woreda.approvals.tsx` and `admin.console-roles.tsx` out of Cluster A entirely: the former is a
+  read-only triage table with no search/filter/export affordance to migrate, and the latter is a
+  permission-grid matrix, not a filterable list — forcing either into `TableToolbar` would add UI that
+  doesn't correspond to anything the screen actually does.
+
+Net effect: **-85 lines across the 9 files** despite adding a shared component import to each, since 9
+duplicated local `FilterGroup` definitions and their toolbar card markup were removed. Smoke-tested all 9
+routes (10 counting `/woreda/complaints`, which shares `ServiceRequestList` with `/woreda/services`) via
+headless Chromium — each correctly redirects unauthenticated traffic to `/login` rather than hitting the
+app's error boundary.
 
 ## Verification performed
 
