@@ -2901,7 +2901,7 @@ export type Database = {
         Returns: boolean
       }
       verify_credential_token: {
-        Args: { _credential_digits: string }
+        Args: { _token: string }
         Returns: {
           credential_number: string
           date_of_birth: string

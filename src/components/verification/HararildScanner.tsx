@@ -258,7 +258,7 @@ export function HararildScanner() {
       // photo when the caller is active staff — the card's QR no longer carries
       // one, because an embedded photo made the printed code too dense to scan.
       const { data, error } = await supabase.rpc("verify_credential_token", {
-        _credential_digits: result.payload.credentialNumber,
+        _token: result.payload.credentialNumber,
       });
       if (error) throw error;
       const row = Array.isArray(data) ? data[0] : data;

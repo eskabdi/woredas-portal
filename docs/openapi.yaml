@@ -14,6 +14,13 @@ info:
     only custom server-side logic in this app (everything else is a direct
     PostgREST/RPC call from the browser — see `docs/architecture.md`).
 
+    One PostgREST RPC is documented below despite that split:
+    `verify_credential_token` (under `/rest/v1/rpc`, not `/functions/v1`)
+    picked up rate limiting, a caller-dependent response shape and a new
+    audit table in the F-02 hardening pass, which puts it on the same
+    footing as the Edge Functions above even though it's a plain SQL/plpgsql
+    function, not a Deno function.
+
     All six run under Supabase's service-role key and bypass RLS, so each
     independently authenticates the caller (`Authorization: Bearer <JWT>`)
     and re-checks authorization by hand — see `docs/api-security.md` for the
@@ -367,3 +374,127 @@ paths:
               example: { error: "No app_user profile found" }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "500": { $ref: "#/components/responses/ServerError" }
+
+  /rpc/verify_credential_token:
+    servers:
+      - url: "{SUPABASE_URL}/rest/v1"
+        variables:
+          SUPABASE_URL:
+            default: https://your-project-ref.supabase.co
+    post:
+      summary: Public + staff verification of a residence ID card (F-02 hardened)
+      description: >
+        Backs the public `/v/<token>` page and the in-portal
+        `HararildScanner` verify tool. Anonymous callers must pass the
+        signed QR payload itself (`residence_credential.qr_payload` --
+        the same value already embedded in the card's QR code, ~2^60
+        entropy, same order as `verify_service_letter`/`verify_receipt`'s
+        own random tokens). A bare credential number only matches for an
+        authenticated, active staff session (`is_active_app_user()`) --
+        an anonymous caller supplying one gets no match, not the record.
+
+        Rate limited on the anonymous path only (30 requests/60s per
+        client IP, `rate_limit_hit()` -- reuses `rate_limit_bucket`, the
+        same table the invite Edge Functions use). Fails OPEN on a
+        limiter malfunction, same policy as every other limiter in this
+        app. An authenticated staff session is not rate limited here --
+        it's a normal part of their job and already has its own session
+        audit trail.
+
+        For an anonymous caller, `status` collapses `expired`,
+        `suspended`, `revoked` and `replaced` to a single `"invalid"` --
+        a stranger learns THAT a card isn't currently valid, not WHY.
+        Staff sessions get the real value. `photo_path` and
+        `date_of_birth` are likewise staff-only, unchanged from before
+        this hardening pass.
+
+        Every attempt is recorded in `credential_verification_log`
+        (tenant-scoped, RLS -- `is_super_admin()` or same-woreda staff
+        can read it), written from inside this function so the
+        anonymous path logs too. The one exception: a rate-limited
+        rejection is NOT durably logged -- `RAISE EXCEPTION` aborts the
+        whole transaction PostgREST wraps this call in, which would
+        also roll back that row (and this call's own rate-limit bucket
+        increment) -- logging it durably would need an autonomous
+        transaction this project doesn't run anywhere. The rejection
+        itself is unaffected by this: every call past the limit is
+        still correctly blocked.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [_token]
+              properties:
+                _token:
+                  type: string
+                  description: >
+                    The signed QR payload (anonymous callers) or a bare
+                    13-digit credential number with no hyphens
+                    (authenticated staff callers only).
+              example: { _token: "eyJjIjoiMDQxMTI2...M3xweOegXSr8Zg" }
+      responses:
+        "200":
+          description: >
+            Always 200 with a JSON array -- empty when nothing matched
+            (never a 404; a nonexistent token must not read differently
+            from a real one that was rejected for some other reason).
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    credential_number: { type: string }
+                    status:
+                      type: string
+                      description: >
+                        Real status for staff; "invalid" for an
+                        anonymous caller when the real value is
+                        expired/suspended/revoked/replaced.
+                    issue_date: { type: string, format: date }
+                    expiry_date: { type: string, format: date }
+                    resident_full_name: { type: string }
+                    woreda_name_am: { type: string }
+                    woreda_name_en: { type: string }
+                    kebele_name_am: { type: string }
+                    kebele_name_en: { type: string }
+                    photo_path:
+                      { type: string, nullable: true, description: "Staff-only; null for anon" }
+                    date_of_birth:
+                      {
+                        type: string,
+                        format: date,
+                        nullable: true,
+                        description: "Staff-only; null for anon",
+                      }
+              examples:
+                found:
+                  value:
+                    [
+                      {
+                        "credential_number": "04-11-26-000005-3",
+                        "status": "active",
+                        "issue_date": "2026-09-08",
+                        "expiry_date": "2027-09-08",
+                        "resident_full_name": "Sultan Sani Mohammed",
+                        "woreda_name_am": "አቦከር",
+                        "woreda_name_en": "Aboker",
+                        "kebele_name_am": "ቀበሔ 11",
+                        "kebele_name_en": "Kebele 11",
+                        "photo_path": null,
+                        "date_of_birth": null,
+                      },
+                    ]
+                notFound: { value: [] }
+        "500":
+          description: >
+            Rate limit exceeded (anonymous path only) -- surfaces as a
+            plain Postgres error via PostgREST, message "Too many
+            requests". Not a real 429; this RPC has no per-status error
+            mapping the way the Edge Functions above do.
+          content:
+            application/json:
+              example: { message: "Too many requests" }
