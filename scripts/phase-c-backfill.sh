@@ -49,11 +49,13 @@ END $$;
 
 UPDATE public.resident SET phone_number = phone_number
 WHERE (phone_number IS NOT NULL AND phone_number_enc IS NULL)
-   OR (email IS NOT NULL AND email_enc IS NULL);
+   OR (email IS NOT NULL AND email_enc IS NULL)
+   OR (national_id_no IS NOT NULL AND national_id_no_enc IS NULL);
 
 UPDATE public.household SET phone_number = phone_number
 WHERE (phone_number IS NOT NULL AND phone_number_enc IS NULL)
-   OR (email IS NOT NULL AND email_enc IS NULL);
+   OR (email IS NOT NULL AND email_enc IS NULL)
+   OR (rent_amount IS NOT NULL AND rent_amount_enc IS NULL);
 
 UPDATE public.service_request SET applicant_phone = applicant_phone
 WHERE applicant_phone IS NOT NULL AND applicant_phone_enc IS NULL;

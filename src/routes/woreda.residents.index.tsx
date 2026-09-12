@@ -149,7 +149,28 @@ function ResidentsListPage() {
     },
   });
 
-  const buildResidentsQuery = (phoneBlindIndex?: string | null) => {
+  // resident.national_id_no is encrypted at rest
+  // (00000000000044_task6_household_rent_national_id_pii.sql), same
+  // exact-match-only trade-off as phone_number above: my_national_id_blind_index
+  // is a deterministic HMAC (no normalization beyond trim), so a PARTIAL
+  // national ID typed into search no longer matches on this field --
+  // disclosed in that migration's own header comment. An exact ID still
+  // matches; full-name, Amharic name and resident number still match on
+  // partial input.
+  const nationalIdBlindIndexQuery = useQuery({
+    queryKey: ["resident-search-national-id-blind-index", search],
+    enabled: !!search && !!woredaId,
+    queryFn: async () => {
+      const { data, error } = await db.rpc("my_national_id_blind_index", { _id: search });
+      if (error) throw new Error(error.message);
+      return data as string | null;
+    },
+  });
+
+  const buildResidentsQuery = (
+    phoneBlindIndex?: string | null,
+    nationalIdBlindIndex?: string | null,
+  ) => {
     let q = supabase
       .from("resident")
       .select(RESIDENT_SELECT, { count: "exact" })
@@ -163,9 +184,10 @@ function ResidentsListPage() {
         `full_name.ilike.%${escaped}%`,
         `full_name_am.ilike.%${escaped}%`,
         `resident_number.ilike.%${escaped}%`,
-        `national_id_no.ilike.%${escaped}%`,
       ];
       if (phoneBlindIndex) clauses.push(`phone_number_blind_index.eq.${phoneBlindIndex}`);
+      if (nationalIdBlindIndex)
+        clauses.push(`national_id_no_blind_index.eq.${nationalIdBlindIndex}`);
       q = q.or(clauses.join(","));
     }
     return q
@@ -179,6 +201,7 @@ function ResidentsListPage() {
       woredaId,
       search,
       phoneBlindIndexQuery.data,
+      nationalIdBlindIndexQuery.data,
       sex,
       status,
       kebeleId,
@@ -186,16 +209,18 @@ function ResidentsListPage() {
       pageSize,
       sort.key,
     ],
-    // Waits for the blind-index lookup above to settle whenever there's a
-    // search term, so the first fetch after typing a phone number doesn't
-    // run without that clause and silently under-match.
+    // Waits for both blind-index lookups above to settle whenever there's a
+    // search term, so the first fetch after typing a phone number or
+    // national ID doesn't run without that clause and silently under-match.
     enabled:
-      !!woredaId && hasPermission(P.RESIDENT_READ) && (!search || !phoneBlindIndexQuery.isPending),
+      !!woredaId &&
+      hasPermission(P.RESIDENT_READ) &&
+      (!search || (!phoneBlindIndexQuery.isPending && !nationalIdBlindIndexQuery.isPending)),
     queryFn: async () => {
-      const q = buildResidentsQuery(phoneBlindIndexQuery.data).range(
-        page * pageSize,
-        page * pageSize + pageSize - 1,
-      );
+      const q = buildResidentsQuery(
+        phoneBlindIndexQuery.data,
+        nationalIdBlindIndexQuery.data,
+      ).range(page * pageSize, page * pageSize + pageSize - 1);
 
       const { data, error, count } = await q;
       if (error) throw error;
@@ -268,14 +293,19 @@ function ResidentsListPage() {
 
   const fetchAllResidentsForExport = async () => {
     let phoneBlindIndex: string | null = null;
+    let nationalIdBlindIndex: string | null = null;
     if (search) {
-      const { data: hash, error: hashError } = await db.rpc("my_phone_blind_index", {
-        _phone: search,
-      });
-      if (hashError) throw new Error(hashError.message);
-      phoneBlindIndex = hash as string | null;
+      const [{ data: phoneHash, error: phoneError }, { data: idHash, error: idError }] =
+        await Promise.all([
+          db.rpc("my_phone_blind_index", { _phone: search }),
+          db.rpc("my_national_id_blind_index", { _id: search }),
+        ]);
+      if (phoneError) throw new Error(phoneError.message);
+      if (idError) throw new Error(idError.message);
+      phoneBlindIndex = phoneHash as string | null;
+      nationalIdBlindIndex = idHash as string | null;
     }
-    const q = buildResidentsQuery(phoneBlindIndex).range(0, 4999);
+    const q = buildResidentsQuery(phoneBlindIndex, nationalIdBlindIndex).range(0, 4999);
     const { data, error } = await q;
     if (error) throw error;
     let rows = data ?? [];

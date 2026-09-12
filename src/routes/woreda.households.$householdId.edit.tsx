@@ -101,7 +101,13 @@ function EditHouseholdPage() {
       h.email_decrypted as string | null,
       h.email as string | null,
     );
-    setContactUnverified(phoneField.decryptFailed || emailField.decryptFailed);
+    const rentField = resolveDecryptedField(
+      h.rent_amount_decrypted as number | null,
+      h.rent_amount as number | null,
+    );
+    setContactUnverified(
+      phoneField.decryptFailed || emailField.decryptFailed || rentField.decryptFailed,
+    );
     const phone = phoneField.value ?? "";
     reset({
       kebele_id: (h.kebele_id as string) ?? "",
@@ -119,7 +125,7 @@ function EditHouseholdPage() {
       house_type: (h.house_type as HouseholdFormInput["house_type"]) ?? "private",
       house_type_other: (h.house_type_other as string) ?? "",
       rent_amount:
-        h.rent_amount !== null && h.rent_amount !== undefined ? String(h.rent_amount) : "",
+        rentField.value !== null && rentField.value !== undefined ? String(rentField.value) : "",
       gps_lat: (h.gps_lat as number | null) ?? undefined,
       gps_lng: (h.gps_lng as number | null) ?? undefined,
     } as HouseholdFormInput);
@@ -163,7 +169,7 @@ function EditHouseholdPage() {
         email: old.email_decrypted ?? old.email,
         house_type: old.house_type,
         house_type_other: old.house_type_other,
-        rent_amount: old.rent_amount,
+        rent_amount: old.rent_amount_decrypted ?? old.rent_amount,
       };
 
       await supabase.from("audit_log").insert({
