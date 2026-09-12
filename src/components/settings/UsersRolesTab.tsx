@@ -64,6 +64,7 @@ import {
 } from "@/utils/imageCompression";
 import { GROUP_LABELS, LOCKED_KEYS, PERMISSION_LABELS } from "./RolesPermissionsTab";
 import { PERMISSION_ACTION_LABELS } from "@/config/permissionLabels";
+import { fetchTenantRoles, type TenantRoleRow } from "@/lib/tenantRoles";
 
 const EDITABLE_ROLES = [
   { key: "registry_clerk", am: "የመዝገብ ሰራተኛ", en: "Registry Clerk" },
@@ -80,10 +81,26 @@ const ROLE_LABEL_MAP: Record<string, { am: string; en: string }> = Object.fromEn
 ROLE_LABEL_MAP.tenant_admin = { am: "ወረዳ አስተዳዳሪ", en: "Tenant Admin" };
 ROLE_LABEL_MAP.super_admin = { am: "ሁሉ አስተዳዳሪ", en: "Super Admin" };
 
+/** Resolves a user's display role label, including a custom role's own name
+ * -- every ROLE_LABEL_MAP[u.role] call site must go through this once a
+ * user can have role === "custom", or it falls back to the literal string
+ * "custom" instead of the tenant's chosen name. */
+function roleLabel(
+  u: { role: string; custom_role_id: string | null },
+  tenantRolesById: Map<string, TenantRoleRow>,
+): { am: string; en: string } {
+  if (u.role === "custom") {
+    const name = (u.custom_role_id && tenantRolesById.get(u.custom_role_id)?.name) || "Custom";
+    return { am: name, en: name };
+  }
+  return ROLE_LABEL_MAP[u.role] ?? { am: u.role, en: u.role };
+}
+
 interface AppUserRow {
   user_id: string;
   full_name: string;
   role: string;
+  custom_role_id: string | null;
   status: string;
   invited_at: string | null;
   department: string | null;
@@ -105,14 +122,29 @@ export function UsersRolesTab() {
       const { data, error } = await supabase
         .from("app_user")
         .select(
-          "user_id, full_name, role, status, invited_at, department, job_title, reports_to_user_id, signature_path, photo_path",
+          "user_id, full_name, role, custom_role_id, status, invited_at, department, job_title, reports_to_user_id, signature_path, photo_path",
         )
         .eq("woreda_id", woredaId as string)
         .order("full_name");
       if (error) throw error;
-      return (data ?? []) as AppUserRow[];
+      // custom_role_id (00000000000038_task13_tenant_role_schema.sql) isn't in
+      // the generated types yet -- same temporary cast pattern as this
+      // codebase's other pre-typegen columns.
+      return (data ?? []) as unknown as AppUserRow[];
     },
   });
+
+  const { data: tenantRoles = [] } = useQuery({
+    queryKey: ["tenant_role", woredaId],
+    enabled: !!woredaId,
+    queryFn: () => fetchTenantRoles(woredaId as string),
+  });
+
+  const tenantRolesById = useMemo(() => {
+    const m = new Map<string, TenantRoleRow>();
+    for (const r of tenantRoles) m.set(r.tenant_role_id, r);
+    return m;
+  }, [tenantRoles]);
 
   const { input: q, setInput: setQ, term: qTerm } = useUrlSearchTerm("uq");
 
@@ -174,14 +206,34 @@ export function UsersRolesTab() {
   // all overrides" checkbox must not fire when this update was rejected or
   // RLS-filtered, or a failed role change and a successful override wipe
   // would compound into the opposite of both things the admin asked for.
-  async function changeRole(user: AppUserRow, newRole: string): Promise<boolean> {
-    if (!EDITABLE_ROLES.find((r) => r.key === newRole)) {
+  //
+  // An audit_log row for USER_ROLE_CHANGED is no longer inserted here --
+  // app_user_role_audit (00000000000040_task13_role_audit_logging.sql) now
+  // logs it server-side on every actual role/custom_role_id change, which
+  // also catches changes this UI doesn't make (a direct PostgREST call, a
+  // future admin tool). Logging it here too would double every entry.
+  async function changeRole(
+    user: AppUserRow,
+    newRole: string,
+    customRoleId: string | null = null,
+  ): Promise<boolean> {
+    const isBuiltIn = EDITABLE_ROLES.find((r) => r.key === newRole);
+    if (!isBuiltIn && newRole !== "custom") {
       toast.error("Invalid role");
       return false;
     }
+    if (newRole === "custom" && !customRoleId) {
+      toast.error("Select a custom role");
+      return false;
+    }
+    // custom_role_id isn't in the generated types yet (same pre-typegen cast
+    // pattern as elsewhere in this file).
     const { data: updated, error } = await supabase
       .from("app_user")
-      .update({ role: newRole })
+      .update({
+        role: newRole,
+        custom_role_id: newRole === "custom" ? customRoleId : null,
+      } as never)
       .eq("user_id", user.user_id)
       .select("user_id")
       .maybeSingle();
@@ -193,14 +245,6 @@ export function UsersRolesTab() {
       toast.error(ROW_VERIFICATION_FAILURE_MESSAGE);
       return false;
     }
-    await supabase.from("audit_log").insert({
-      actor_user_id: callerId ?? null,
-      woreda_id: woredaId,
-      entity_name: "app_user",
-      entity_id: user.user_id,
-      action_type: "USER_ROLE_CHANGED",
-      new_value_json: { from: user.role, to: newRole },
-    });
     toast.success("ሚና ተቀይሯል / Role updated");
     await refresh();
     return true;
@@ -319,12 +363,21 @@ export function UsersRolesTab() {
                         </td>
                         <td className="px-4 py-3 text-slate-800">{u.full_name}</td>
                         <td className="px-4 py-3">
-                          <span className="font-noto-ethiopic">
-                            {ROLE_LABEL_MAP[u.role]?.am ?? u.role}
-                          </span>
-                          <span className="ml-1 text-xs text-slate-500">
-                            / {ROLE_LABEL_MAP[u.role]?.en ?? u.role}
-                          </span>
+                          {u.role === "custom" ? (
+                            <span className="text-slate-800">
+                              {(u.custom_role_id && tenantRolesById.get(u.custom_role_id)?.name) ??
+                                "Custom"}
+                            </span>
+                          ) : (
+                            <>
+                              <span className="font-noto-ethiopic">
+                                {ROLE_LABEL_MAP[u.role]?.am ?? u.role}
+                              </span>
+                              <span className="ml-1 text-xs text-slate-500">
+                                / {ROLE_LABEL_MAP[u.role]?.en ?? u.role}
+                              </span>
+                            </>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-slate-600">{u.department || "—"}</td>
                         <td className="px-4 py-3 text-slate-600">{u.job_title || "—"}</td>
@@ -446,6 +499,7 @@ export function UsersRolesTab() {
         onOpenChange={setInviteOpen}
         woredaId={woredaId}
         users={users}
+        tenantRolesById={tenantRolesById}
         onDone={refresh}
       />
 
@@ -453,6 +507,7 @@ export function UsersRolesTab() {
         user={changeUser}
         woredaId={woredaId}
         callerId={callerId ?? null}
+        tenantRoles={tenantRoles}
         onClose={() => setChangeUser(null)}
         onConfirm={changeRole}
       />
@@ -461,6 +516,7 @@ export function UsersRolesTab() {
         user={permissionsUser}
         woredaId={woredaId}
         callerId={callerId ?? null}
+        tenantRolesById={tenantRolesById}
         onClose={() => setPermissionsUser(null)}
       />
 
@@ -492,6 +548,8 @@ export function UsersRolesTab() {
         open={assignRoleOpen}
         onOpenChange={setAssignRoleOpen}
         users={users}
+        tenantRoles={tenantRoles.filter((r) => r.is_active)}
+        tenantRolesById={tenantRolesById}
         onConfirm={changeRole}
       />
     </div>
@@ -655,12 +713,14 @@ function InviteDialog({
   onOpenChange,
   woredaId,
   users,
+  tenantRolesById,
   onDone,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   woredaId: string | null;
   users: AppUserRow[];
+  tenantRolesById: Map<string, TenantRoleRow>;
   onDone: () => void;
 }) {
   const [email, setEmail] = useState("");
@@ -778,7 +838,7 @@ function InviteDialog({
                   <SelectItem key={u.user_id} value={u.user_id}>
                     {u.full_name}
                     <span className="ml-2 text-xs text-slate-500">
-                      ({ROLE_LABEL_MAP[u.role]?.en ?? u.role})
+                      ({roleLabel(u, tenantRolesById).en})
                     </span>
                   </SelectItem>
                 ))}
@@ -817,24 +877,49 @@ function InviteDialog({
   );
 }
 
+// The Select's value is either a built-in role key, or "custom:<tenant_role_id>"
+// for a custom role -- one flat string keeps the picker a single control
+// instead of two coupled ones (a role select plus a conditionally-shown
+// custom-role select that could disagree about which is "active").
+function encodeRoleValue(role: string, customRoleId: string | null): string {
+  return role === "custom" && customRoleId ? `custom:${customRoleId}` : role;
+}
+function decodeRoleValue(value: string): { role: string; customRoleId: string | null } {
+  if (value.startsWith("custom:")) return { role: "custom", customRoleId: value.slice(7) };
+  return { role: value, customRoleId: null };
+}
+
 function ChangeRoleDialog({
   user,
   woredaId,
   callerId,
+  tenantRoles,
   onClose,
   onConfirm,
 }: {
   user: AppUserRow | null;
   woredaId: string | null;
   callerId: string | null;
+  tenantRoles: TenantRoleRow[];
   onClose: () => void;
-  onConfirm: (u: AppUserRow, role: string) => Promise<boolean>;
+  onConfirm: (u: AppUserRow, role: string, customRoleId?: string | null) => Promise<boolean>;
 }) {
-  const [role, setRole] = useState<string>(user?.role ?? "registry_clerk");
+  const [roleValue, setRoleValue] = useState<string>(
+    encodeRoleValue(user?.role ?? "registry_clerk", user?.custom_role_id ?? null),
+  );
   const [clearOverrides, setClearOverrides] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const current = user;
   const qc = useQueryClient();
+
+  // Active roles, plus the user's own current custom role even if it was
+  // since deactivated -- otherwise reopening this dialog for someone on a
+  // deactivated role shows no matching <SelectItem> for their actual role
+  // and the Select renders blank instead of what they're currently on.
+  const selectableRoles = useMemo(
+    () => tenantRoles.filter((r) => r.is_active || r.tenant_role_id === current?.custom_role_id),
+    [tenantRoles, current],
+  );
 
   // The dialog is mounted unconditionally by the parent (open/close is
   // `open={!!current}` below, not a conditional render), so useState's
@@ -844,7 +929,7 @@ function ChangeRoleDialog({
   // person's dialog instead of the newly-selected user's actual role.
   useEffect(() => {
     if (current) {
-      setRole(current.role);
+      setRoleValue(encodeRoleValue(current.role, current.custom_role_id));
       setClearOverrides(false);
     }
   }, [current]);
@@ -879,7 +964,7 @@ function ChangeRoleDialog({
         </DialogHeader>
         <div>
           <Label>Role</Label>
-          <Select value={role} onValueChange={setRole}>
+          <Select value={roleValue} onValueChange={setRoleValue}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -888,6 +973,14 @@ function ChangeRoleDialog({
                 <SelectItem key={r.key} value={r.key}>
                   <span className="font-noto-ethiopic">{r.am}</span>
                   <span className="ml-2 text-xs text-slate-500">/ {r.en}</span>
+                </SelectItem>
+              ))}
+              {selectableRoles.map((r) => (
+                <SelectItem key={r.tenant_role_id} value={`custom:${r.tenant_role_id}`}>
+                  {r.name}
+                  <span className="ml-2 text-xs text-slate-500">
+                    / Custom{!r.is_active ? " (inactive)" : ""}
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>
@@ -925,7 +1018,8 @@ function ChangeRoleDialog({
             onClick={async () => {
               if (!current) return;
               setSubmitting(true);
-              const roleChanged = await onConfirm(current, role);
+              const { role: newRole, customRoleId } = decodeRoleValue(roleValue);
+              const roleChanged = await onConfirm(current, newRole, customRoleId);
               if (roleChanged && clearOverrides) {
                 const { data, error } = await clearAllUserOverrides(current.user_id);
                 if (error || !data?.length) {
@@ -964,11 +1058,13 @@ function UserPermissionOverridesDialog({
   user,
   woredaId,
   callerId,
+  tenantRolesById,
   onClose,
 }: {
   user: AppUserRow | null;
   woredaId: string | null;
   callerId: string | null;
+  tenantRolesById: Map<string, TenantRoleRow>;
   onClose: () => void;
 }) {
   const qc = useQueryClient();
@@ -1075,8 +1171,8 @@ function UserPermissionOverridesDialog({
         </DialogHeader>
         <p className="text-xs text-slate-500">
           Overrides this person&apos;s permissions independent of their role (
-          {ROLE_LABEL_MAP[user.role]?.en ?? user.role}). &quot;Default&quot; means this person gets
-          exactly what their role grants.
+          {roleLabel(user, tenantRolesById).en}). &quot;Default&quot; means this person gets exactly
+          what their role grants.
         </p>
         {loadingDefaults || loadingOverrides ? (
           <div className="p-4 text-sm text-slate-500">Loading…</div>
@@ -1157,16 +1253,20 @@ function AssignRoleDialog({
   open,
   onOpenChange,
   users,
+  tenantRoles,
+  tenantRolesById,
   onConfirm,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   users: AppUserRow[];
-  onConfirm: (u: AppUserRow, role: string) => Promise<boolean>;
+  tenantRoles: TenantRoleRow[];
+  tenantRolesById: Map<string, TenantRoleRow>;
+  onConfirm: (u: AppUserRow, role: string, customRoleId?: string | null) => Promise<boolean>;
 }) {
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<AppUserRow | null>(null);
-  const [role, setRole] = useState<string>("registry_clerk");
+  const [roleValue, setRoleValue] = useState<string>("registry_clerk");
   const [submitting, setSubmitting] = useState(false);
 
   const filtered = useMemo(() => {
@@ -1180,7 +1280,7 @@ function AssignRoleDialog({
   function reset() {
     setQ("");
     setSelected(null);
-    setRole("registry_clerk");
+    setRoleValue("registry_clerk");
   }
 
   return (
@@ -1215,7 +1315,7 @@ function AssignRoleDialog({
               >
                 <div className="font-medium text-slate-800">{u.full_name}</div>
                 <div className="text-xs text-slate-500">
-                  <span className="font-noto-ethiopic">{ROLE_LABEL_MAP[u.role]?.am ?? u.role}</span>
+                  <span className="font-noto-ethiopic">{roleLabel(u, tenantRolesById).am}</span>
                 </div>
               </button>
             ))}
@@ -1226,7 +1326,7 @@ function AssignRoleDialog({
           {selected && (
             <div>
               <Label>New role</Label>
-              <Select value={role} onValueChange={setRole}>
+              <Select value={roleValue} onValueChange={setRoleValue}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -1235,6 +1335,11 @@ function AssignRoleDialog({
                     <SelectItem key={r.key} value={r.key}>
                       <span className="font-noto-ethiopic">{r.am}</span>
                       <span className="ml-2 text-xs text-slate-500">/ {r.en}</span>
+                    </SelectItem>
+                  ))}
+                  {tenantRoles.map((r) => (
+                    <SelectItem key={r.tenant_role_id} value={`custom:${r.tenant_role_id}`}>
+                      {r.name} <span className="ml-2 text-xs text-slate-500">/ Custom</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -1252,7 +1357,8 @@ function AssignRoleDialog({
             onClick={async () => {
               if (!selected) return;
               setSubmitting(true);
-              await onConfirm(selected, role);
+              const { role: newRole, customRoleId } = decodeRoleValue(roleValue);
+              await onConfirm(selected, newRole, customRoleId);
               setSubmitting(false);
               reset();
               onOpenChange(false);

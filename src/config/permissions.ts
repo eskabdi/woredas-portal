@@ -10,7 +10,14 @@ export type Role =
   // A2 (fix-task-production-readiness-v3, Task 4): built-in per the workflow
   // spec's RBAC table. Print/handover duties (Task 10): preview_print,
   // confirm_print, authorize_reprint, activate.
-  | "print_officer";
+  | "print_officer"
+  // D4/A5 (Task 13): a tenant-defined custom role. Carries no compiled
+  // default grant set of its own -- ROLE_PERMISSIONS.custom is deliberately
+  // [] (A6: custom roles fail closed, no defaults). Its actual grants live
+  // in tenant_role_permission, keyed by app_user.custom_role_id, resolved by
+  // user_has_perm()/current_permissions() (00000000000039), never by
+  // default_role_perms() or role_permission.
+  | "custom";
 
 export const P = {
   RESIDENT_CREATE: "resident.create",
@@ -123,12 +130,27 @@ export const CP = {
 
 export type ConsolePermission = (typeof CP)[keyof typeof CP];
 
-// Reserved (A4, fix-task-production-readiness-v3 Task 13): role management
-// (user.manage), credential.revoke, credential.configure_policy, and the rest
-// of tenant_admin's own grant set are never grantable to another role or user
-// via the matrix or an override -- enforced server-side (role_permission /
-// user_permission_override policies + triggers), not just by omission here.
-// tenant_admin's own array below is the reserved set's definition.
+// Reserved (A4, fix-task-production-readiness-v3 Task 13): platform.manage,
+// tenant.create, tenant.manage, user.manage, credential.approve, civil.approve,
+// credential.revoke, credential.configure_policy -- administrative/approval
+// powers that must never become grantable to a different role or user than
+// their compiled default via the matrix, an override, or a custom tenant_role,
+// no matter which role's default_role_perms() already includes them. Enforced
+// server-side: role_permission's INSERT/UPDATE policies, user_permission_override's
+// CHECK constraint, and tenant_role_permission's CHECK constraint all exclude
+// this exact list (00000000000021, 00000000000036, 00000000000038); this
+// comment and RESERVED_PERMISSION_KEYS below are documentation, not the
+// enforcement itself -- keep both in sync with those constraints by hand.
+export const RESERVED_PERMISSION_KEYS: Permission[] = [
+  P.PLATFORM_MANAGE,
+  P.TENANT_CREATE,
+  P.TENANT_MANAGE,
+  P.USER_MANAGE,
+  P.CREDENTIAL_APPROVE,
+  P.CIVIL_APPROVE,
+  P.CREDENTIAL_REVOKE,
+  P.CREDENTIAL_CONFIGURE_POLICY,
+];
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   super_admin: [
     P.PLATFORM_MANAGE,
@@ -375,6 +397,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     P.CREDENTIAL_ACTIVATE,
     P.APPROVAL_QUEUE_VIEW,
   ],
+  // D4/A5 (Task 13): no compiled default -- see the Role type's own comment.
+  custom: [],
 };
 
 export type ModuleKey =
