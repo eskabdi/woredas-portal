@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { ResidentWizardSteps } from "@/components/forms/ResidentWizardSteps";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
+import { useFormDraft } from "@/hooks/useFormDraft";
 import {
   residentSchema,
   RESIDENT_STEP_FIELDS,
@@ -44,7 +45,23 @@ function NewResidentPage() {
     handleSubmit,
     formState: { errors },
     trigger,
+    watch,
+    reset,
+    getValues,
   } = form;
+
+  // Task 7: this multi-step wizard has no autosave, so a reload or an
+  // accidental tab close previously lost everything typed so far. Restored
+  // once woredaId resolves (the storage key is scoped by it, see
+  // useFormDraft's own comment on why), cleared on a successful submit
+  // below and on sign-out (WoredaShell.tsx/AdminShell.tsx).
+  const { clearDraft } = useFormDraft({
+    storageKey: `resident-new:${woredaId ?? ""}`,
+    watch,
+    reset,
+    getValues,
+    enabled: !!woredaId,
+  });
 
   const onInvalid = () => {
     const firstKey = Object.keys(errors)[0];
@@ -104,6 +121,7 @@ function NewResidentPage() {
         return;
       }
       toast.success("ነዋሪው ተመዝግቧል / Resident registered");
+      clearDraft();
       navigate({ to: "/woreda/residents" });
     } catch (e) {
       toast.error(`ስህተት / Error: ${(e as Error).message}`);

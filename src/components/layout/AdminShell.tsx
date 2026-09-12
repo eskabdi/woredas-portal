@@ -1,4 +1,5 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard,
@@ -17,6 +18,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/integrations/supabase/client";
 import { ChangePasswordDialog } from "@/components/common/ChangePasswordDialog";
 import { useIdleTimeout } from "@/hooks/useIdleTimeout";
+import { clearAllWizardDrafts } from "@/hooks/useFormDraft";
 
 const ICON_MAP: Record<string, LucideIcon> = {
   LayoutDashboard,
@@ -28,6 +30,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const appUser = useAuthStore((s) => s.appUser);
   const hasConsolePermission = useAuthStore((s) => s.hasConsolePermission);
   const currentPath = useRouterState({ select: (r) => r.location.pathname });
@@ -44,6 +47,16 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
+    // Task 7: see WoredaShell.tsx's identical call for why -- the query
+    // cache is a single shared client (src/router.tsx) and nothing else
+    // clears it when a session ends.
+    queryClient.clear();
+    // Task 7: no wizard exists in the admin console today, but the console
+    // shares this browser origin's localStorage with the woreda portal, so
+    // this sign-out point is where a leftover woreda-portal draft would
+    // otherwise still be readable after an admin signs in. See
+    // useFormDraft.ts's own comment.
+    clearAllWizardDrafts();
     navigate({ to: "/login" });
   };
 
