@@ -244,3 +244,20 @@ ROLLBACK;
 -- No active `viewer`-role account exists in production (only registry_clerk
 -- and tenant_admin are active) -- see the report row for this item,
 -- classified UNVERIFIED-with-reason.
+
+-- === PROBE: kpi_rpc_denies_suspended_user ===
+-- (Task 12-B)
+-- get_credential_kpis() (00000000000057) is SECURITY DEFINER and bypasses
+-- RLS; get_user_woreda_id() alone doesn't check app_user.status the way
+-- user_has_perm() does, so the RPC's own permission check
+-- (is_super_admin() OR user_has_any_perm('{credential.read}')) is what has
+-- to catch a non-active account. dc070cc9-24f6-4d19-b3e7-34c42e2f6b6f is a
+-- real, pre-existing `suspended` tenant_admin in production (not created by
+-- this probe) -- read-only RPC call, nothing to roll back.
+BEGIN;
+SET LOCAL request.jwt.claim.sub = 'dc070cc9-24f6-4d19-b3e7-34c42e2f6b6f';
+SET LOCAL role authenticated;
+SELECT get_credential_kpis() AS kpis;
+RESET role;
+ROLLBACK;
+-- EXPECT: ERROR (get_credential_kpis: permission denied)
