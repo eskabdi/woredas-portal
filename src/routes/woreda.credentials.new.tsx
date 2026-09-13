@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -25,6 +26,10 @@ import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/integrations/supabase/client";
 import { P } from "@/config/permissions";
 import { formatEthiopianDate, parseDateOnly } from "@/utils/ethiopianCalendar";
+import {
+  POLICE_REPORT_REQUIRED_TYPES,
+  CORRECTION_FIELD_OPTIONS,
+} from "@/lib/credentialWorkflowSchemas";
 
 const searchSchema = z.object({
   residentId: z.string().optional(),
@@ -80,6 +85,9 @@ const formSchema = z
     supporting_document_name: z.string().nullable().optional(),
     supporting_document_content_type: z.string().nullable().optional(),
     notes: z.string().max(2000).optional().nullable(),
+    police_report_number: z.string().max(100).optional().nullable(),
+    correction_fields: z.array(z.string()).optional(),
+    correction_reason: z.string().max(2000).optional().nullable(),
   })
   .refine((v) => v.request_type === "new_issue" || !!v.prior_credential_id, {
     path: ["prior_credential_id"],
@@ -88,6 +96,18 @@ const formSchema = z
   .refine((v) => v.request_type !== "reissue_correction" || !!v.supporting_document_path, {
     path: ["supporting_document_path"],
     message: "Supporting document is required for corrections",
+  })
+  .refine(
+    (v) => !POLICE_REPORT_REQUIRED_TYPES.has(v.request_type) || !!v.police_report_number?.trim(),
+    { path: ["police_report_number"], message: "Police report number is required" },
+  )
+  .refine(
+    (v) => v.request_type !== "reissue_correction" || (v.correction_fields?.length ?? 0) > 0,
+    { path: ["correction_fields"], message: "Select at least one field to correct" },
+  )
+  .refine((v) => v.request_type !== "reissue_correction" || !!v.correction_reason?.trim(), {
+    path: ["correction_reason"],
+    message: "A reason is required for a correction",
   });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -129,6 +149,7 @@ function NewCredentialRequestPage() {
   const {
     control,
     handleSubmit,
+    register,
     watch,
     setValue,
     formState: { errors },
@@ -143,6 +164,9 @@ function NewCredentialRequestPage() {
       supporting_document_name: null,
       supporting_document_content_type: null,
       notes: "",
+      police_report_number: null,
+      correction_fields: [],
+      correction_reason: null,
     },
   });
 
@@ -151,9 +175,17 @@ function NewCredentialRequestPage() {
   const supportingDocPath = watch("supporting_document_path");
   const supportingDocName = watch("supporting_document_name");
 
-  // Reset prior_credential when going back to new_issue
+  // Reset prior_credential when going back to new_issue, and clear the
+  // other request-type-conditional fields so a stale value from a
+  // previously-selected type can't slip through if the user switches types
+  // after filling them in.
   useEffect(() => {
     if (requestType === "new_issue") setValue("prior_credential_id", null);
+    if (requestType !== "reissue_stolen") setValue("police_report_number", null);
+    if (requestType !== "reissue_correction") {
+      setValue("correction_fields", []);
+      setValue("correction_reason", null);
+    }
   }, [requestType, setValue]);
 
   const residentQuery = useQuery({
@@ -341,6 +373,10 @@ function NewCredentialRequestPage() {
         supporting_document_content_type: values.supporting_document_content_type ?? null,
         duplicate_flag: duplicateFlag,
         duplicate_notes: duplicateFlag ? dupNotes.join("; ") : null,
+        police_report_number: values.police_report_number?.trim() || null,
+        correction_fields:
+          values.request_type === "reissue_correction" ? (values.correction_fields ?? []) : null,
+        correction_reason: values.correction_reason?.trim() || null,
         // request_number auto-assigned by trigger; provide empty to satisfy NOT NULL — trigger overrides
         request_number: "",
       };
@@ -663,6 +699,77 @@ function NewCredentialRequestPage() {
               {errors.prior_credential_id && (
                 <p className="mt-1 text-sm text-red-600">{errors.prior_credential_id.message}</p>
               )}
+            </div>
+          )}
+
+          {requestType === "reissue_stolen" && (
+            <div>
+              <Label className="font-noto-ethiopic" htmlFor="police-report-number">
+                የፖሊስ ሪፖርት ቁጥር / Police Report Number <span className="text-red-600">*</span>
+              </Label>
+              <Input
+                id="police-report-number"
+                className="mt-2"
+                {...register("police_report_number")}
+                placeholder="e.g. PR-2026-00123"
+              />
+              {errors.police_report_number && (
+                <p className="mt-1 text-sm text-red-600">{errors.police_report_number.message}</p>
+              )}
+            </div>
+          )}
+
+          {requestType === "reissue_correction" && (
+            <div className="space-y-3 rounded-md border border-slate-200 p-3">
+              <div>
+                <Label className="font-noto-ethiopic">
+                  የሚስተካከሉ መስኮች / Fields to Correct <span className="text-red-600">*</span>
+                </Label>
+                <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {CORRECTION_FIELD_OPTIONS.map((opt) => (
+                    <label key={opt.value} className="flex items-center gap-2 text-sm">
+                      <Controller
+                        control={control}
+                        name="correction_fields"
+                        render={({ field }) => (
+                          <Checkbox
+                            checked={(field.value ?? []).includes(opt.value)}
+                            onCheckedChange={(checked) => {
+                              const current = field.value ?? [];
+                              field.onChange(
+                                checked
+                                  ? [...current, opt.value]
+                                  : current.filter((v: string) => v !== opt.value),
+                              );
+                            }}
+                          />
+                        )}
+                      />
+                      <span>
+                        {opt.labelAm} / {opt.labelEn}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                {errors.correction_fields && (
+                  <p className="mt-1 text-sm text-red-600">{errors.correction_fields.message}</p>
+                )}
+              </div>
+              <div>
+                <Label className="font-noto-ethiopic" htmlFor="correction-reason">
+                  የማስተካከያ ምክንያት / Correction Reason <span className="text-red-600">*</span>
+                </Label>
+                <Textarea
+                  id="correction-reason"
+                  rows={3}
+                  className="mt-2"
+                  {...register("correction_reason")}
+                  placeholder="Explain what's wrong and what it should be"
+                />
+                {errors.correction_reason && (
+                  <p className="mt-1 text-sm text-red-600">{errors.correction_reason.message}</p>
+                )}
+              </div>
             </div>
           )}
 

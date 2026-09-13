@@ -498,6 +498,8 @@ export type Database = {
           approval_decision_at: string | null
           approved_by_user_id: string | null
           closed_at: string | null
+          correction_fields: string[] | null
+          correction_reason: string | null
           created_at: string
           credential_id: string | null
           credential_request_id: string
@@ -509,6 +511,7 @@ export type Database = {
           notes: string | null
           office_id: string | null
           payment_id: string | null
+          police_report_number: string | null
           prior_credential_id: string | null
           reject_reason: string | null
           request_number: string
@@ -531,6 +534,8 @@ export type Database = {
           approval_decision_at?: string | null
           approved_by_user_id?: string | null
           closed_at?: string | null
+          correction_fields?: string[] | null
+          correction_reason?: string | null
           created_at?: string
           credential_id?: string | null
           credential_request_id?: string
@@ -542,6 +547,7 @@ export type Database = {
           notes?: string | null
           office_id?: string | null
           payment_id?: string | null
+          police_report_number?: string | null
           prior_credential_id?: string | null
           reject_reason?: string | null
           request_number: string
@@ -564,6 +570,8 @@ export type Database = {
           approval_decision_at?: string | null
           approved_by_user_id?: string | null
           closed_at?: string | null
+          correction_fields?: string[] | null
+          correction_reason?: string | null
           created_at?: string
           credential_id?: string | null
           credential_request_id?: string
@@ -575,6 +583,7 @@ export type Database = {
           notes?: string | null
           office_id?: string | null
           payment_id?: string | null
+          police_report_number?: string | null
           prior_credential_id?: string | null
           reject_reason?: string | null
           request_number?: string

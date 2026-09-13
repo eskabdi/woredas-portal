@@ -249,6 +249,15 @@ The signing pipeline (`sign-credential` Edge Function) reads every payload
 field from the database itself, never the request — see
 [`docs/api-security.md`](./api-security.md).
 
+**Task 12 intake-conditional columns** (`00000000000055`): `credential_request`
+gained `police_report_number text` (required by the intake form's Zod schema
+iff `request_type = 'reissue_stolen'`), `correction_fields text[]` and
+`correction_reason text` (both required iff `request_type =
+'reissue_correction'`) — the fields-to-correct multi-select and its reason,
+per the spec's stage-1 conditional rules. All three are nullable at the
+schema level; the client-side `intakeConditionalSchema`
+(`src/lib/credentialWorkflowSchemas.ts`) enforces the actual requiredness.
+
 ---
 
 ## Civil Registration

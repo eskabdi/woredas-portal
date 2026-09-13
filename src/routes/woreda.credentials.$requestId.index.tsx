@@ -55,6 +55,7 @@ import {
   formatStructuredReason,
   type ReturnReasonCode,
 } from "@/lib/credentialWorkflowSchemas";
+import { useFeeSchedule } from "@/hooks/useCredentialRequests";
 
 export const Route = createFileRoute("/woreda/credentials/$requestId/")({
   ssr: false,
@@ -160,6 +161,7 @@ function CredentialRequestDetailPage() {
            verification_checklist, verified_by_user_id, verified_at,
            return_reason, submitted_at, created_at,
            duplicate_flag, duplicate_notes,
+           police_report_number, correction_fields, correction_reason,
            approved_by_user_id, approval_decision_at, reject_reason, payment_id,
            resident:resident_id (
              resident_id, resident_number, national_id_no, full_name, full_name_am, sex, date_of_birth, photo_url
@@ -783,6 +785,30 @@ function CredentialRequestDetailPage() {
                   </dd>
                 </>
               )}
+              {request.request_type === "reissue_stolen" && request.police_report_number && (
+                <>
+                  <dt className="font-noto-ethiopic text-slate-500">
+                    የፖሊስ ሪፖርት ቁጥር / Police Report Number
+                  </dt>
+                  <dd className="font-mono text-slate-800">{request.police_report_number}</dd>
+                </>
+              )}
+              {request.request_type === "reissue_correction" && (
+                <>
+                  <dt className="font-noto-ethiopic text-slate-500">
+                    የሚስተካከሉ መስኮች / Fields to Correct
+                  </dt>
+                  <dd className="text-slate-800">
+                    {(request.correction_fields ?? []).join(", ") || "—"}
+                  </dd>
+                  <dt className="font-noto-ethiopic text-slate-500">
+                    የማስተካከያ ምክንያት / Correction Reason
+                  </dt>
+                  <dd className="whitespace-pre-wrap text-slate-800">
+                    {request.correction_reason ?? "—"}
+                  </dd>
+                </>
+              )}
             </dl>
 
             {request.supporting_document_path && (
@@ -1346,22 +1372,16 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
   const canCollect = hasPermission(P.PAYMENT_COLLECT);
 
   // Task 12: fee comes from Task 11's per-service-type fee_schedule via the
-  // fail-closed resolve_credential_fee() RPC (00000000000054), not the old
-  // flat woreda_settings.credential_issuance_fee -- the RPC raises rather
-  // than silently falling back if the mapped fee_schedule row is missing or
-  // inactive, so a lookup failure must surface as an error state here, not
-  // resolve to 0 and let a waiver-free zero fee slip through.
-  const feeQuery = useQuery({
-    queryKey: ["credential-fee", woredaId, request.request_type],
-    enabled: !!woredaId && (status === "approved" || status === "awaiting_payment"),
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc("resolve_credential_fee", {
-        _request_type: request.request_type,
-      });
-      if (error) throw error;
-      return Number(data ?? 0);
-    },
-  });
+  // fail-closed useFeeSchedule hook (resolve_credential_fee() RPC,
+  // 00000000000054), not the old flat woreda_settings.credential_issuance_fee
+  // -- it raises rather than silently falling back if the mapped
+  // fee_schedule row is missing or inactive, so a lookup failure must
+  // surface as an error state here, not resolve to 0 and let a waiver-free
+  // zero fee slip through.
+  const feeQuery = useFeeSchedule(
+    request.request_type,
+    status === "approved" || status === "awaiting_payment",
+  );
 
   const paidQuery = useQuery({
     queryKey: ["credential-request-payment", request.payment_id],
