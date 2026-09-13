@@ -482,6 +482,26 @@ row per mapped `service_type` — the same "check the source, not a live DB"
 shape as `check-role-perms-drift`, and for the identical reason: there is no
 staging project and CI has no live database credentials.
 
+### Credential KPI counting (Task 12-B, `00000000000057`)
+
+The credential queue's 10 dashboard widgets (`KpiWidgetRow`) are backed by
+`get_credential_kpis()`, a single `SECURITY DEFINER` RPC returning all 10
+counts as one `jsonb` object — one round trip, one consistent read snapshot,
+tenant-scoped internally by `get_user_woreda_id()` exactly like
+`resolve_credential_fee()` above (no `woreda_id` parameter at all, so there
+is nothing for a client to spoof; a `super_admin`, whose `get_user_woreda_id()`
+is `NULL`, gets the same "no woreda context" raise `resolve_credential_fee()`
+gives it, deliberately). The client never derives any of these 10 numbers
+from a list page's own paginated query result.
+
+`avg_turnaround_days` reads `residence_credential.activated_at` and
+`credential_request.submitted_at` directly (both already written atomically
+by Task 10's activation trigger) rather than joining
+`credential_request_status_history` and `credential_status_history` — the
+two tables track two different entities' status changes, and a join across
+both for one number would add a maintenance surface without adding accuracy
+the columns don't already give directly.
+
 ---
 
 ## Cross-domain views
