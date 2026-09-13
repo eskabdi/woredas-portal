@@ -167,6 +167,7 @@ export type Database = {
       attachment: {
         Row: {
           attachment_id: string
+          attachment_type: string | null
           checksum: string
           entity: string
           entity_id: string
@@ -180,6 +181,7 @@ export type Database = {
         }
         Insert: {
           attachment_id?: string
+          attachment_type?: string | null
           checksum: string
           entity: string
           entity_id: string
@@ -193,6 +195,7 @@ export type Database = {
         }
         Update: {
           attachment_id?: string
+          attachment_type?: string | null
           checksum?: string
           entity?: string
           entity_id?: string

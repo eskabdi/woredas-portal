@@ -258,6 +258,23 @@ per the spec's stage-1 conditional rules. All three are nullable at the
 schema level; the client-side `intakeConditionalSchema`
 (`src/lib/credentialWorkflowSchemas.ts`) enforces the actual requiredness.
 
+**`supporting_document_path`/`_name`/`_content_type` are deprecated, not
+dropped** (`00000000000056`): Stage 1 intake now writes uploads through
+Task 11's generic `attachment` table (`entity = 'credential_request'`) as
+`photo` (new, required for `new_issue`), `supporting_doc`, or
+`correction_evidence` (for `reissue_correction`), each with a client-computed
+SHA-256 checksum (Web Crypto, `src/utils/fileChecksum.ts`) shown to the
+officer at confirmation. The three legacy columns stay on the table
+(guardrail 1: no `DROP`) as the historical record for requests created
+before this shipped; `00000000000056` also added `attachment.attachment_type`
+and backfilled every pre-existing `supporting_document_path` into an
+equivalent `attachment` row, with a `legacy-unchecked` checksum sentinel
+(not a valid hex digest — deliberately visually distinct from a real one)
+since there is no real checksum to compute for a file uploaded before this
+migration existed. The detail view renders both the legacy single-document
+panel and the new attachment list, since either can be populated depending
+on when a given request was created.
+
 ---
 
 ## Civil Registration

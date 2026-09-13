@@ -26,6 +26,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/integrations/supabase/client";
 import { P } from "@/config/permissions";
 import { calculateAgeYears, formatEthiopianDate, parseDateOnly } from "@/utils/ethiopianCalendar";
+import { sha256Hex } from "@/utils/fileChecksum";
 import {
   POLICE_REPORT_REQUIRED_TYPES,
   CORRECTION_FIELD_OPTIONS,
@@ -146,6 +147,24 @@ function NewCredentialRequestPage() {
   const [ackExistingReq, setAckExistingReq] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  // Task 12/11: the actual `attachment` row (checksum, size, mime) can only
+  // be written once the credential_request exists (entity_belongs_to_woreda()
+  // requires the referenced row to already be there) -- these hold the
+  // metadata from the moment of upload until onSubmit inserts the row(s)
+  // right after the request itself is created.
+  const [supportingDocMeta, setSupportingDocMeta] = useState<{
+    checksum: string;
+    size: number;
+    mime: string;
+  } | null>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoAttachment, setPhotoAttachment] = useState<{
+    path: string;
+    name: string;
+    mime: string;
+    checksum: string;
+    size: number;
+  } | null>(null);
 
   const {
     control,
@@ -187,6 +206,7 @@ function NewCredentialRequestPage() {
       setValue("correction_fields", []);
       setValue("correction_reason", null);
     }
+    if (requestType !== "new_issue") setPhotoAttachment(null);
   }, [requestType, setValue]);
 
   const residentQuery = useQuery({
@@ -323,13 +343,17 @@ function NewCredentialRequestPage() {
     try {
       const ext = file.name.split(".").pop() ?? "pdf";
       const path = `${woredaId}/${crypto.randomUUID()}.${ext}`;
-      const { error } = await supabase.storage
-        .from("credential-request-documents")
-        .upload(path, file, { upsert: false, contentType: file.type });
-      if (error) throw error;
+      const [checksum, uploadResult] = await Promise.all([
+        sha256Hex(file),
+        supabase.storage
+          .from("attachments")
+          .upload(path, file, { upsert: false, contentType: file.type }),
+      ]);
+      if (uploadResult.error) throw uploadResult.error;
       setValue("supporting_document_path", path, { shouldValidate: true });
       setValue("supporting_document_name", file.name);
       setValue("supporting_document_content_type", file.type);
+      setSupportingDocMeta({ checksum, size: file.size, mime: file.type });
       toast.success("ሰነድ ተጭኗል / Document uploaded");
     } catch (e) {
       toast.error(`ፋይል መጫን አልተሳካም / Upload failed: ${(e as Error).message}`);
@@ -338,10 +362,44 @@ function NewCredentialRequestPage() {
     }
   };
 
+  const handlePhotoUpload = async (file: File) => {
+    if (!woredaId) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("ፋይል ከ5MB መብለጥ የለበትም / File must be under 5MB");
+      return;
+    }
+    if (!["image/jpeg", "image/png"].includes(file.type)) {
+      toast.error("JPG ወይም PNG ብቻ / Only JPG or PNG");
+      return;
+    }
+    setPhotoUploading(true);
+    try {
+      const ext = file.name.split(".").pop() ?? "jpg";
+      const path = `${woredaId}/${crypto.randomUUID()}.${ext}`;
+      const [checksum, uploadResult] = await Promise.all([
+        sha256Hex(file),
+        supabase.storage
+          .from("attachments")
+          .upload(path, file, { upsert: false, contentType: file.type }),
+      ]);
+      if (uploadResult.error) throw uploadResult.error;
+      setPhotoAttachment({ path, name: file.name, mime: file.type, checksum, size: file.size });
+      toast.success("ፎቶ ተጭኗል / Photo uploaded");
+    } catch (e) {
+      toast.error(`ፎቶ መጫን አልተሳካም / Photo upload failed: ${(e as Error).message}`);
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
+
   const onSubmit = handleSubmit(async (values) => {
     if (!woredaId || !resident || !actorUserId) return;
     if (!resident.current_household_id) {
       toast.error("Resident is not in a household");
+      return;
+    }
+    if (values.request_type === "new_issue" && !photoAttachment) {
+      toast.error("Upload a photo before submitting");
       return;
     }
     // Fetch kebele from household
@@ -379,9 +437,10 @@ function NewCredentialRequestPage() {
         requested_by_user_id: actorUserId,
         status: "submitted",
         submitted_at: new Date().toISOString(),
-        supporting_document_path: values.supporting_document_path ?? null,
-        supporting_document_name: values.supporting_document_name ?? null,
-        supporting_document_content_type: values.supporting_document_content_type ?? null,
+        // Task 12: uploads now go through the attachment table (inserted
+        // below, once this row exists) instead of these legacy columns --
+        // kept on the table (guardrail 1: no DROP) but no longer written by
+        // new requests. See docs/erd.md.
         duplicate_flag: duplicateFlag,
         duplicate_notes: duplicateFlag ? dupNotes.join("; ") : null,
         police_report_number: values.police_report_number?.trim() || null,
@@ -398,6 +457,54 @@ function NewCredentialRequestPage() {
         .select("credential_request_id, request_number")
         .single();
       if (error) throw error;
+
+      // Task 11/12: attachment rows can only be written once the request
+      // they're about exists (entity_belongs_to_woreda() checks it), so
+      // this happens right after the insert above rather than as part of
+      // the same statement.
+      const attachmentRows: {
+        woreda_id: string;
+        entity: string;
+        entity_id: string;
+        file_name: string;
+        mime: string;
+        size_bytes: number;
+        checksum: string;
+        storage_path: string;
+        attachment_type: string;
+      }[] = [];
+      if (photoAttachment) {
+        attachmentRows.push({
+          woreda_id: woredaId,
+          entity: "credential_request",
+          entity_id: inserted.credential_request_id,
+          file_name: photoAttachment.name,
+          mime: photoAttachment.mime,
+          size_bytes: photoAttachment.size,
+          checksum: photoAttachment.checksum,
+          storage_path: photoAttachment.path,
+          attachment_type: "photo",
+        });
+      }
+      if (values.supporting_document_path && supportingDocMeta) {
+        attachmentRows.push({
+          woreda_id: woredaId,
+          entity: "credential_request",
+          entity_id: inserted.credential_request_id,
+          file_name: values.supporting_document_name ?? "document",
+          mime: supportingDocMeta.mime,
+          size_bytes: supportingDocMeta.size,
+          checksum: supportingDocMeta.checksum,
+          storage_path: values.supporting_document_path,
+          attachment_type:
+            values.request_type === "reissue_correction" ? "correction_evidence" : "supporting_doc",
+        });
+      }
+      if (attachmentRows.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error: attErr } = await supabase.from("attachment").insert(attachmentRows as any);
+        if (attErr) throw attErr;
+      }
 
       await supabase.from("credential_request_status_history").insert({
         credential_request_id: inserted.credential_request_id,
@@ -823,6 +930,57 @@ function NewCredentialRequestPage() {
             </div>
           )}
 
+          {requestType === "new_issue" && (
+            <div>
+              <Label className="font-noto-ethiopic">
+                ፎቶ / Photo <span className="text-red-600">*</span>
+              </Label>
+              <p className="mt-0.5 text-xs text-slate-500">JPG or PNG. Max 5MB.</p>
+              {photoAttachment ? (
+                <div className="mt-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2">
+                  <div className="flex items-center gap-3">
+                    <Upload className="h-5 w-5 text-blue-700" />
+                    <span className="flex-1 truncate text-sm text-slate-800">
+                      {photoAttachment.name}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setPhotoAttachment(null)}
+                      className="rounded p-1 text-slate-500 hover:bg-blue-100 hover:text-red-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <p className="mt-1 truncate font-mono text-[10px] text-slate-500">
+                    SHA-256: {photoAttachment.checksum}
+                  </p>
+                </div>
+              ) : (
+                <label className="mt-2 flex cursor-pointer items-center justify-center gap-2 rounded-md border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-600 hover:border-blue-400 hover:bg-blue-50">
+                  {photoUploading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="h-4 w-4" />
+                  )}
+                  <span className="font-noto-ethiopic">
+                    {photoUploading ? "በመጫን ላይ… / Uploading…" : "ፎቶ ይምረጡ / Choose photo"}
+                  </span>
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="image/jpeg,image/png"
+                    disabled={photoUploading}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handlePhotoUpload(f);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+          )}
+
           <div>
             <Label className="font-noto-ethiopic">
               ደጋፊ ሰነድ / Supporting Document{" "}
@@ -830,22 +988,30 @@ function NewCredentialRequestPage() {
             </Label>
             <p className="mt-0.5 text-xs text-slate-500">PDF, JPG, or PNG. Max 5MB.</p>
             {supportingDocPath ? (
-              <div className="mt-2 flex items-center gap-3 rounded-md border border-blue-200 bg-blue-50 px-3 py-2">
-                <FileText className="h-5 w-5 text-blue-700" />
-                <span className="flex-1 truncate text-sm text-slate-800">
-                  {supportingDocName ?? supportingDocPath}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setValue("supporting_document_path", null, { shouldValidate: true });
-                    setValue("supporting_document_name", null);
-                    setValue("supporting_document_content_type", null);
-                  }}
-                  className="rounded p-1 text-slate-500 hover:bg-blue-100 hover:text-red-600"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+              <div className="mt-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2">
+                <div className="flex items-center gap-3">
+                  <FileText className="h-5 w-5 text-blue-700" />
+                  <span className="flex-1 truncate text-sm text-slate-800">
+                    {supportingDocName ?? supportingDocPath}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setValue("supporting_document_path", null, { shouldValidate: true });
+                      setValue("supporting_document_name", null);
+                      setValue("supporting_document_content_type", null);
+                      setSupportingDocMeta(null);
+                    }}
+                    className="rounded p-1 text-slate-500 hover:bg-blue-100 hover:text-red-600"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                {supportingDocMeta && (
+                  <p className="mt-1 truncate font-mono text-[10px] text-slate-500">
+                    SHA-256: {supportingDocMeta.checksum}
+                  </p>
+                )}
               </div>
             ) : (
               <label className="mt-2 flex cursor-pointer items-center justify-center gap-2 rounded-md border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-600 hover:border-blue-400 hover:bg-blue-50">
@@ -909,7 +1075,13 @@ function NewCredentialRequestPage() {
           <Button
             type="button"
             onClick={onSubmit}
-            disabled={!formEnabled || submitting || uploading}
+            disabled={
+              !formEnabled ||
+              submitting ||
+              uploading ||
+              photoUploading ||
+              (requestType === "new_issue" && !photoAttachment)
+            }
             className="bg-blue-700 text-white hover:bg-blue-800"
           >
             {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

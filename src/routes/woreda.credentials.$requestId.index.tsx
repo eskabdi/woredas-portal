@@ -267,6 +267,46 @@ function CredentialRequestDetailPage() {
     }
   };
 
+  // Task 11/12: new requests attach through the generic `attachment` table
+  // instead of the legacy supporting_document_path/_name columns above,
+  // which stay populated only for rows created before this shipped.
+  // Additive display alongside the existing document panel rather than a
+  // replacement of it, so older requests keep rendering exactly as before.
+  const attachmentsQuery = useQuery({
+    queryKey: ["credential-request-attachments", requestId],
+    enabled: !!requestId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("attachment")
+        .select(
+          "attachment_id, attachment_type, file_name, mime, size_bytes, checksum, storage_path, uploaded_at",
+        )
+        .eq("entity", "credential_request")
+        .eq("entity_id", requestId)
+        .order("uploaded_at", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const openAttachment = async (storagePath: string) => {
+    const { data, error } = await supabase.storage
+      .from("attachments")
+      .createSignedUrl(storagePath, 600);
+    if (error || !data?.signedUrl) {
+      toast.error("Could not open attachment");
+      return;
+    }
+    window.open(data.signedUrl, "_blank", "noopener");
+  };
+
+  const ATTACHMENT_TYPE_LABEL: Record<string, string> = {
+    photo: "ፎቶ / Photo",
+    supporting_doc: "ደጋፊ ሰነድ / Supporting Document",
+    correction_evidence: "የማስተካከያ ማስረጃ / Correction Evidence",
+    police_report: "የፖሊስ ሪፖርት / Police Report",
+  };
+
   const status = request?.status ?? "";
   const isEditable = status === "submitted" || status === "under_review";
   // `approval_returned` is retired (migration 25 stopped writing it, and
@@ -324,8 +364,13 @@ function CredentialRequestDetailPage() {
   const [busy, setBusy] = useState(false);
 
   const allChecked = CHECKLIST_ITEMS.every((i) => checklist[i.key]);
+  const hasCorrectionEvidence = (attachmentsQuery.data ?? []).some(
+    (a) => a.attachment_type === "correction_evidence",
+  );
   const missingCorrectionDoc =
-    request?.request_type === "reissue_correction" && !request?.supporting_document_path;
+    request?.request_type === "reissue_correction" &&
+    !request?.supporting_document_path &&
+    !hasCorrectionEvidence;
 
   const dobDisplay = useMemo(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -834,6 +879,34 @@ function CredentialRequestDetailPage() {
                     reopen
                   </a>
                 )}
+              </div>
+            )}
+            {(attachmentsQuery.data ?? []).length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-slate-500">
+                  <span className="font-noto-ethiopic">አባሪዎች</span>
+                  <span className="ml-1">/ Attachments</span>
+                </p>
+                {(attachmentsQuery.data ?? []).map((a) => (
+                  <div key={a.attachment_id} className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openAttachment(a.storage_path)}
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      <span>
+                        {ATTACHMENT_TYPE_LABEL[a.attachment_type ?? ""] ?? a.attachment_type}
+                      </span>
+                      <span className="ml-2 text-xs text-slate-500">({a.file_name})</span>
+                    </Button>
+                    {a.checksum && a.checksum !== "legacy-unchecked" && (
+                      <span className="truncate font-mono text-[10px] text-slate-400">
+                        SHA-256: {a.checksum.slice(0, 16)}…
+                      </span>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </div>
