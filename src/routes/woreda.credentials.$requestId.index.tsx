@@ -1078,7 +1078,6 @@ function CredentialRequestDetailPage() {
             credentialRowId={request.credential_id}
             requestId={request.credential_request_id}
             requestStatus={status}
-            requestType={request.request_type}
             priorCredentialId={request.prior_credential_id}
             residentFullNameAm={resident?.full_name_am ?? ""}
             onDone={invalidateAll}
@@ -1935,7 +1934,6 @@ interface IssuanceCardProps {
   requestId: string;
   /** The REQUEST's status, not the credential's -- handover writes both rows. */
   requestStatus: string;
-  requestType: string;
   priorCredentialId: string | null;
   residentFullNameAm: string;
   onDone: () => void;
@@ -1945,7 +1943,6 @@ function IssuanceCard({
   credentialRowId,
   requestId,
   requestStatus,
-  requestType,
   priorCredentialId,
   residentFullNameAm,
   onDone,
@@ -2082,39 +2079,17 @@ function IssuanceCard({
         change_reason: `Issued to ${name}`,
       });
 
-      // 3. Prior credential replacement (non-new_issue with prior)
-      const priorRow = priorCredQuery.data;
-      // Only an ACTIVE prior credential is superseded. A prior card that is
-      // already expired, suspended, revoked or merely printed has no
-      // `-> replaced` transition, so attempting it raises -- and this call
-      // previously discarded the error, leaving the new card active while the
-      // old one stayed valid. Two live cards for one resident, silently.
-      if (requestType !== "new_issue" && priorCredentialId && priorRow?.status === "active") {
-        const priorOldStatus = priorRow.status;
-        const { data: replacedRow, error: replaceErr } = await supabase
-          .from("residence_credential")
-          .update({ status: "replaced", replaced_at: nowIso })
-          .eq("credential_id", priorCredentialId)
-          .select("credential_id")
-          .maybeSingle();
-        if (replaceErr) throw replaceErr;
-        if (!replacedRow) throw new Error("Prior credential was not superseded");
-
-        await supabase.from("credential_status_history").insert({
-          credential_id: priorCredentialId,
-          old_status: priorOldStatus,
-          new_status: "replaced",
-          changed_by_user_id: actorUserId,
-          change_reason: `Replaced by ${cred.credential_number}`,
-        });
-
-        await supabase.from("audit_log").insert({
-          actor_user_id: actorUserId,
-          entity_name: "residence_credential",
-          entity_id: priorCredentialId,
-          action_type: "CREDENTIAL_REPLACED",
-        });
-      }
+      // 3. Prior credential replacement is no longer a client step. Task 10's
+      // `enforce_workflow_transition()` now does this atomically, inside the
+      // same `printed -> active` update from step 1: it finds any OTHER
+      // `residence_credential` still `active` for this resident/woreda, sets
+      // it to `replaced` (+ `revoked_at`), and writes its own history + audit
+      // row -- all in the same transaction as the activation, backstopped by
+      // the `residence_credential_one_active_per_resident` partial unique
+      // index. A manual repeat of that update here would now hit the prior
+      // credential already at `replaced` (a terminal state) and raise,
+      // failing the whole handover after the real activation had already
+      // succeeded.
 
       // 4. Sync request to active
       const { data: reqActivateRow, error: reqActivateErr } = await supabase
@@ -2152,6 +2127,12 @@ function IssuanceCard({
 
       toast.success("ማስረጃው ርክክብ ተደርጓል / Credential issuance confirmed");
       await queryClient.invalidateQueries({ queryKey: ["issuance-cred-row", credentialRowId] });
+      // Refetch so the "prior credential replaced" banner reflects what the
+      // trigger actually did, not a pre-activation cache of this row's
+      // status -- see the status gate on the banner itself below.
+      await queryClient.invalidateQueries({
+        queryKey: ["issuance-prior-cred", priorCredentialId],
+      });
       onDone();
     } catch (e) {
       toast.error((e as Error).message);
@@ -2194,7 +2175,13 @@ function IssuanceCard({
                     {cred.activated_at ? formatEthiopianDate(new Date(cred.activated_at)) : "—"}
                   </dd>
                 </dl>
-                {priorCredQuery.data && (
+                {/* The trigger replaces whichever row is actually `active` for this
+                    resident, not necessarily `request.prior_credential_id` -- that
+                    field can be stale if the true active card changed between the
+                    request being created and this activation running. Gate on the
+                    fetched row's own status rather than its mere existence, so a
+                    stale reference never gets shown as "replaced" when it wasn't. */}
+                {priorCredQuery.data?.status === "replaced" && (
                   <p className="mt-2 text-xs text-slate-700">
                     <span className="font-noto-ethiopic">
                       ቀዳሚ ማስረጃ {priorCredQuery.data.credential_number} ተተክቷል
