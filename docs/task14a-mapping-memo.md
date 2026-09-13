@@ -365,7 +365,7 @@ registry_clerk never sees the button), but that's a client-side accident, not
 a server-side control.
 
 This is the same asymmetry §0.4/§9 already recorded as an explicit,
-deliberate scope decision: this PR widens *enforcement* (the FSM now actually
+deliberate scope decision: this PR widens _enforcement_ (the FSM now actually
 gates what it always should have), it does not widen or rebalance the
 existing permission grants those FSM rows key off. Fixing it would mean
 either granting `supervisor` `civil.return` or splitting `pending_approval`'s
@@ -374,3 +374,62 @@ return path onto its own permission distinct from the verification-stage
 owner, not something to change opportunistically inside a workflow-engine
 PR. Recorded here for the owner's explicit sign-off before go-live, not
 fixed in this PR.
+
+## 11. `/security-review` finding, fixed: payment gate wasn't bound to its own event
+
+**HIGH, fixed before merge.** `enforce_vital_event_payment_gate()` originally
+checked only `p.payment_id = NEW.payment_id AND p.woreda_id = NEW.woreda_id
+AND p.status = 'confirmed'` — it never checked `p.vital_event_id =
+NEW.vital_event_id`. Any staff member holding `civil.record_payment` can read
+every confirmed payment in their own tenant (`payment_select` RLS is
+woreda-scoped, not row-owner-scoped), including a payment originally recorded
+against a rental fee, a credential fee, or a *different* vital_event. Pointing
+`vital_event.payment_id` at that unrelated payment and transitioning to `paid`
+passed the gate, and the system's own `paid → registered` cascade then fired
+the birth/death side effects — finalizing a registration with no payment ever
+actually collected for it, directly defeating this migration's own stated
+invariant ("even a free registration must write a zero-value payment and
+receipt").
+
+Fixed in `00000000000059` by adding `AND p.vital_event_id =
+NEW.vital_event_id` to the gate's `EXISTS` check, plus a new partial unique
+index `payment_vital_event_id_unique ON payment(vital_event_id) WHERE
+vital_event_id IS NOT NULL` so one payment can never be attached to more than
+one event in the first place. Both re-applied live via `CREATE OR REPLACE`/
+`CREATE UNIQUE INDEX IF NOT EXISTS` (idempotent, no new migration number,
+since this was still pre-merge). A new regression probe,
+`civil_paid_with_unrelated_payment_row`, reuses a real, already-confirmed
+credential-fee payment from production and confirms the gate now rejects it
+(26/26 probes pass net-zero).
+
+The reviewing agent noted `generate_residence_credential_on_payment()` (the
+credential module's own equivalent gate, migration 25/29, pre-existing) has
+the identical missing binding for `credential_request_id` — a real gap, but
+out of this PR's scope to fix; flagged here for a follow-up task rather than
+silently expanded into.
+
+## 12. `code-review` findings, fixed
+
+1. **The final `paid` UPDATE in `PaymentCard.handleRecord` didn't verify a row
+   was actually affected**, unlike the `awaiting_payment` raise a few lines
+   above it in the same handler, which already does. PostgREST returns
+   `error: null` whether the `WHERE` matched 0 or 1 rows (the house rule this
+   codebase has hit before — see `CLAUDE.md`'s "every admin-facing mutation
+   verifies what it actually changed"). Since a `payment` + `receipt` already
+   exist by this point in the handler, a silent no-op here would mean money
+   collected with the event stuck at `awaiting_payment` forever, while the UI
+   tells the operator it succeeded. Fixed: the update now chains
+   `.select("vital_event_id").maybeSingle()` and throws a bilingual error
+   pointing at an administrator if nothing comes back.
+2. **`woreda.civil.index.tsx`'s status filter and `StatusChip` were never
+   updated for the new FSM.** `STATUSES` had no entry for `verified`,
+   `awaiting_payment`, `paid`, or `registered` — the four stages every event
+   now actually passes through — and still listed the now-dead
+   `approval_returned` value (no seed row targets it under the new FSM,
+   matching how `issued`/`approval_returned` are documented as legal-but-
+   retired in §1). `StatusChip` had entries for `verified`/`awaiting_payment`/
+   `paid` (added for the credential module) but none for `registered`, so a
+   completed civil event showed the unstyled default gray chip with the raw
+   English word instead of a colored, Amharic-labeled badge. Fixed both: the
+   filter list now matches the seeded FSM exactly, and `registered` got its
+   own emerald-styled, bilingual chip entry.

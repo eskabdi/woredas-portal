@@ -25,6 +25,13 @@ ALTER TABLE public.vital_event ADD COLUMN IF NOT EXISTS payment_id uuid REFERENC
 
 ALTER TABLE public.payment ADD COLUMN IF NOT EXISTS vital_event_id uuid REFERENCES public.vital_event(vital_event_id);
 
+-- One payment may finalize at most one vital_event -- without this, the
+-- same confirmed payment/receipt row could be pointed at multiple events'
+-- payment_id in turn, each one passing the gate below off a single real
+-- transaction.
+CREATE UNIQUE INDEX IF NOT EXISTS payment_vital_event_id_unique
+  ON public.payment (vital_event_id) WHERE vital_event_id IS NOT NULL;
+
 ALTER TABLE public.payment DROP CONSTRAINT payment_amount_check;
 ALTER TABLE public.payment ADD CONSTRAINT payment_amount_check CHECK (amount >= 0);
 
@@ -190,11 +197,18 @@ BEGIN
         USING ERRCODE = 'check_violation';
     END IF;
 
+    -- p.vital_event_id = NEW.vital_event_id is load-bearing, not redundant
+    -- with the payment_id match above: without it, any confirmed payment
+    -- the caller can read in this woreda (a rental fee, a credential fee,
+    -- an unrelated vital event's own payment) could be pointed at NEW here
+    -- to fast-track a different event to 'paid' -> 'registered' without a
+    -- payment ever actually being collected for it.
     SELECT EXISTS (
       SELECT 1
         FROM public.payment p
         JOIN public.receipt r ON r.payment_id = p.payment_id
        WHERE p.payment_id = NEW.payment_id
+         AND p.vital_event_id = NEW.vital_event_id
          AND p.woreda_id = NEW.woreda_id
          AND p.status = 'confirmed'
     ) INTO v_receipted;

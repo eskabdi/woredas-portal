@@ -46,10 +46,13 @@ const STATUSES = [
   { value: "all", label: "ሁሉም / All" },
   { value: "submitted", label: "ገብቷል / Submitted" },
   { value: "under_review", label: "በክለሳ ላይ / Under Review" },
+  { value: "verified", label: "ተረጋግጧል / Verified" },
   { value: "pending_approval", label: "ጸድቆ በሚጠበቅ / Pending Approval" },
   { value: "approved", label: "ፀድቋል / Approved" },
+  { value: "awaiting_payment", label: "ክፍያ በመጠባበቅ ላይ / Awaiting Payment" },
+  { value: "paid", label: "ተከፍሏል / Paid" },
+  { value: "registered", label: "ተመዝግቧል / Registered" },
   { value: "returned", label: "ተመልሷል / Returned" },
-  { value: "approval_returned", label: "ተመልሷል (ማጽደቅ) / Returned (Approval)" },
   { value: "rejected", label: "ውድቅ / Rejected" },
 ];
 

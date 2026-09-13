@@ -1271,11 +1271,21 @@ function PaymentCard({
       // cascade point: by the time this call resolves, the row is already
       // at `registered` (the AFTER UPDATE trigger advances it inside the
       // same transaction) -- invalidating below re-fetches that final state.
-      const { error: updErr } = await supabase
+      // A payment + receipt now exist, so an empty result here (a stale row,
+      // a concurrent edit) must surface as a failure, not a silent no-op --
+      // same house rule the `awaiting_payment` raise above already follows.
+      const { data: paidRow, error: updErr } = await supabase
         .from("vital_event")
         .update({ status: "paid", payment_id: paymentId })
-        .eq("vital_event_id", eventId);
+        .eq("vital_event_id", eventId)
+        .select("vital_event_id")
+        .maybeSingle();
       if (updErr) throw updErr;
+      if (!paidRow) {
+        throw new Error(
+          "ክፍያው ሊመዘገብ አልቻለም / Payment was collected but the event could not be marked paid — the event may have been moved by someone else. Contact an administrator before recording another payment.",
+        );
+      }
 
       toast.success("ክፍያው ተመዝግቧል / Payment recorded");
       onDone();

@@ -359,6 +359,50 @@ RESET role;
 ROLLBACK;
 -- EXPECT: ERROR (a confirmed payment with a receipt is required)
 
+-- === PROBE: civil_paid_with_unrelated_payment_row ===
+-- security-review finding (HIGH, fixed in 00000000000059): the payment gate
+-- originally checked only payment_id + woreda_id + status='confirmed', never
+-- p.vital_event_id = NEW.vital_event_id -- so any confirmed payment the
+-- caller could read in-tenant (here: a real, already-confirmed credential
+-- fee payment, unrelated to this vital_event) could be pointed at a civil
+-- event's payment_id to fast-track it to 'paid' -> 'registered' with no
+-- payment ever collected for it. Must now raise.
+BEGIN;
+SET LOCAL request.jwt.claim.sub = '35b307bd-c5f6-4925-ac14-231f934c3a00';
+SET LOCAL role authenticated;
+INSERT INTO public.vital_event
+  (vital_event_id, woreda_id, event_type, event_number, event_date, household_id,
+   requested_by_user_id, status, event_details)
+VALUES
+  ('00000000-0000-4000-8000-000000000018', '81ac2ad6-a320-4069-b8dc-0c43e358371b',
+   'birth', '', current_date, '9de75a40-7f23-4700-9b90-335a877d584c',
+   '35b307bd-c5f6-4925-ac14-231f934c3a00', 'submitted',
+   '{"child_first_name":"Probe","child_father_name":"Test","child_grandfather_name":"UnrelatedPayment","sex":"male"}');
+UPDATE public.vital_event SET status = 'under_review'
+ WHERE vital_event_id = '00000000-0000-4000-8000-000000000018';
+UPDATE public.vital_event
+   SET status = 'verified', verified_by_user_id = '35b307bd-c5f6-4925-ac14-231f934c3a00', verified_at = now()
+ WHERE vital_event_id = '00000000-0000-4000-8000-000000000018';
+RESET role;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+UPDATE public.vital_event SET status = 'pending_approval'
+ WHERE vital_event_id = '00000000-0000-4000-8000-000000000018';
+UPDATE public.vital_event
+   SET status = 'approved', approved_by_user_id = '64e0384a-d240-4302-8310-682f79a302ce', approval_decision_at = now()
+ WHERE vital_event_id = '00000000-0000-4000-8000-000000000018';
+UPDATE public.vital_event SET status = 'awaiting_payment'
+ WHERE vital_event_id = '00000000-0000-4000-8000-000000000018';
+-- 21f760c8-8272-4f9e-9ef0-d908a5c23334 is a real, already-confirmed
+-- credential_request payment in the same woreda -- never inserted or
+-- touched by this probe, only referenced.
+UPDATE public.vital_event
+   SET status = 'paid', payment_id = '21f760c8-8272-4f9e-9ef0-d908a5c23334'
+ WHERE vital_event_id = '00000000-0000-4000-8000-000000000018';
+RESET role;
+ROLLBACK;
+-- EXPECT: ERROR (a confirmed payment with a receipt is required)
+
 -- === PROBE: civil_paid_from_wrong_old_status ===
 -- The payment gate's own defensive OLD.status check: 'verified' skipping
 -- straight to 'paid' must raise even before the generic engine's own
