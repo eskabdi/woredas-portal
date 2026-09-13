@@ -25,7 +25,7 @@ import { ResidentSearchPicker } from "@/components/forms/ResidentSearchPicker";
 import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/integrations/supabase/client";
 import { P } from "@/config/permissions";
-import { formatEthiopianDate, parseDateOnly } from "@/utils/ethiopianCalendar";
+import { calculateAgeYears, formatEthiopianDate, parseDateOnly } from "@/utils/ethiopianCalendar";
 import {
   POLICE_REPORT_REQUIRED_TYPES,
   CORRECTION_FIELD_OPTIONS,
@@ -121,6 +121,7 @@ interface ResidentDetail {
   date_of_birth: string | null;
   photo_url: string | null;
   active_flag: boolean;
+  residency_status: string | null;
   current_household_id: string | null;
   household: {
     household_id: string;
@@ -195,7 +196,7 @@ function NewCredentialRequestPage() {
       const { data, error } = await supabase
         .from("resident")
         .select(
-          "resident_id, resident_number, full_name, full_name_am, sex, date_of_birth, photo_url, active_flag, current_household_id, household:current_household_id(household_id, house_number, kebele:kebele_id(kebele_id, kebele_name_am, kebele_name_en, kebele_number))",
+          "resident_id, resident_number, full_name, full_name_am, sex, date_of_birth, photo_url, active_flag, residency_status, current_household_id, household:current_household_id(household_id, house_number, kebele:kebele_id(kebele_id, kebele_name_am, kebele_name_en, kebele_number))",
         )
         .eq("resident_id", residentId)
         .maybeSingle();
@@ -275,19 +276,29 @@ function NewCredentialRequestPage() {
     };
   }, [resident?.photo_url]);
 
-  // Preconditions
+  // Task 12.1 PreConditionCard: the spec's five checks. active/household/
+  // deceased/age are advisory here (the server is the actual authority --
+  // this just gives the officer an early, specific reason instead of a
+  // generic rejection after submit); the conflicting-active-credential rule
+  // is a warning for renewal/reissue (those exist BECAUSE a credential
+  // already exists) but a hard block for new_issue, per spec.
   const notActive = !!resident && !resident.active_flag;
   const notInHousehold = !!resident && !resident.current_household_id;
-  const hardBlocked = notActive || notInHousehold;
+  const isDeceased = resident?.residency_status === "deceased";
+  const age = calculateAgeYears(resident?.date_of_birth ?? null);
+  const isUnder18 = age !== null && age < 18;
+  const hardBlocked = notActive || notInHousehold || isDeceased || isUnder18;
 
   const activeCred = activeCredQuery.data ?? null;
   const openReq = openReqQuery.data ?? null;
-  const needsAckCred = !!activeCred;
+  const activeCredBlocksNewIssue = !!activeCred && requestType === "new_issue";
+  const needsAckCred = !!activeCred && requestType !== "new_issue";
   const needsAckReq = !!openReq;
 
   const formEnabled =
     !!resident &&
     !hardBlocked &&
+    !activeCredBlocksNewIssue &&
     (!needsAckCred || ackExistingCred) &&
     (!needsAckReq || ackExistingReq);
 
@@ -489,7 +500,14 @@ function NewCredentialRequestPage() {
                         : "—"}
                   </dd>
                   <dt className="font-noto-ethiopic text-slate-500">የልደት ቀን / DOB</dt>
-                  <dd className="font-noto-ethiopic text-slate-800">{dobDisplay}</dd>
+                  <dd className="font-noto-ethiopic text-slate-800">
+                    {dobDisplay}
+                    {age !== null && (
+                      <span className={isUnder18 ? "ml-2 text-red-600" : "ml-2 text-slate-500"}>
+                        ({age} ዓመት / {age} yrs)
+                      </span>
+                    )}
+                  </dd>
                   <dt className="font-noto-ethiopic text-slate-500">ቤተሰብ / Household</dt>
                   <dd className="font-noto-ethiopic text-slate-800">
                     {resident.household
@@ -505,6 +523,10 @@ function NewCredentialRequestPage() {
             </div>
           )}
 
+          {/* Task 12.1 PreConditionCard: five checks, advisory only -- the
+              server (Task 1/9) is the actual authority. This just gives the
+              officer a specific reason before they hit submit and get a
+              generic rejection instead. */}
           {notActive && (
             <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-red-800">
               <p className="font-noto-ethiopic font-medium">ይህ ነዋሪ ንቁ አይደለም</p>
@@ -528,8 +550,36 @@ function NewCredentialRequestPage() {
               </Link>
             </div>
           )}
+          {isDeceased && !notActive && !notInHousehold && (
+            <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-red-800">
+              <p className="font-noto-ethiopic font-medium">ይህ ነዋሪ ሟች ተብሎ ተመዝግቧል</p>
+              <p className="text-sm">This resident is recorded as deceased.</p>
+            </div>
+          )}
+          {isUnder18 && !notActive && !notInHousehold && !isDeceased && (
+            <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-red-800">
+              <p className="font-noto-ethiopic font-medium">ይህ ነዋሪ ከ18 ዓመት በታች ነው ({age})</p>
+              <p className="text-sm">This resident is under 18 (age {age}).</p>
+            </div>
+          )}
 
-          {activeCred && !hardBlocked && (
+          {activeCredBlocksNewIssue && (
+            <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-red-800">
+              <p className="font-noto-ethiopic font-medium">
+                ይህ ነዋሪ ቀድሞውኑ ንቁ የመታወቂያ ማስረጃ አለው — “አዲስ አወጣጥ” መጠቀም አይቻልም
+              </p>
+              <p className="text-sm">
+                This resident already has an active credential — a "New Issue" request isn't allowed
+                while one is active. Use Renewal or a Reissue type instead.
+              </p>
+              <p className="mt-1 text-sm">
+                <span className="font-mono">{activeCred?.credential_number}</span> ·{" "}
+                {activeCred?.credential_type} · <StatusChip status={activeCred?.status ?? ""} />
+              </p>
+            </div>
+          )}
+
+          {needsAckCred && !hardBlocked && (
             <div className="rounded-lg border border-amber-300 bg-amber-50 p-4">
               <div className="flex items-start gap-3">
                 <AlertTriangle className="mt-0.5 h-5 w-5 text-amber-600" />
@@ -541,8 +591,8 @@ function NewCredentialRequestPage() {
                     This resident already has an active credential.
                   </p>
                   <p className="mt-1 text-sm text-amber-900">
-                    <span className="font-mono">{activeCred.credential_number}</span> ·{" "}
-                    {activeCred.credential_type} · <StatusChip status={activeCred.status} />
+                    <span className="font-mono">{activeCred?.credential_number}</span> ·{" "}
+                    {activeCred?.credential_type} · <StatusChip status={activeCred?.status ?? ""} />
                   </p>
                   <label className="mt-3 flex items-start gap-2 text-sm text-amber-900">
                     <input
@@ -560,7 +610,7 @@ function NewCredentialRequestPage() {
             </div>
           )}
 
-          {openReq && !hardBlocked && (
+          {openReq && !hardBlocked && !activeCredBlocksNewIssue && (
             <div className="rounded-lg border border-amber-300 bg-amber-50 p-4">
               <div className="flex items-start gap-3">
                 <AlertTriangle className="mt-0.5 h-5 w-5 text-amber-600" />
