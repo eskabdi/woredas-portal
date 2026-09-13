@@ -249,6 +249,32 @@ The signing pipeline (`sign-credential` Edge Function) reads every payload
 field from the database itself, never the request — see
 [`docs/api-security.md`](./api-security.md).
 
+**Task 12 intake-conditional columns** (`00000000000055`): `credential_request`
+gained `police_report_number text` (required by the intake form's Zod schema
+iff `request_type = 'reissue_stolen'`), `correction_fields text[]` and
+`correction_reason text` (both required iff `request_type =
+'reissue_correction'`) — the fields-to-correct multi-select and its reason,
+per the spec's stage-1 conditional rules. All three are nullable at the
+schema level; the client-side `intakeConditionalSchema`
+(`src/lib/credentialWorkflowSchemas.ts`) enforces the actual requiredness.
+
+**`supporting_document_path`/`_name`/`_content_type` are deprecated, not
+dropped** (`00000000000056`): Stage 1 intake now writes uploads through
+Task 11's generic `attachment` table (`entity = 'credential_request'`) as
+`photo` (new, required for `new_issue`), `supporting_doc`, or
+`correction_evidence` (for `reissue_correction`), each with a client-computed
+SHA-256 checksum (Web Crypto, `src/utils/fileChecksum.ts`) shown to the
+officer at confirmation. The three legacy columns stay on the table
+(guardrail 1: no `DROP`) as the historical record for requests created
+before this shipped; `00000000000056` also added `attachment.attachment_type`
+and backfilled every pre-existing `supporting_document_path` into an
+equivalent `attachment` row, with a `legacy-unchecked` checksum sentinel
+(not a valid hex digest — deliberately visually distinct from a real one)
+since there is no real checksum to compute for a file uploaded before this
+migration existed. The detail view renders both the legacy single-document
+panel and the new attachment list, since either can be populated depending
+on when a given request was created.
+
 ---
 
 ## Civil Registration
@@ -405,11 +431,11 @@ erDiagram
     }
 ```
 
-| Table              | Purpose                                                                                               | Key constraints                                                                                        |
-| ------------------ | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `payment`          | The revenue ledger. One row can fund a credential request, a rental request, **or** a service request | `payment_amount_check (amount > 0)`; `payment_source_exclusive_check` — see note below                 |
-| `receipt`          | Printed receipt for a confirmed payment                                                               | unique `(woreda_id, receipt_number)`; carries its own `verification_token` (added in `00000000000013`) |
-| `receipt_sequence` | Per-woreda, per-year counter                                                                          | composite PK                                                                                           |
+| Table              | Purpose                                                                                               | Key constraints                                                                                           |
+| ------------------ | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `payment`          | The revenue ledger. One row can fund a credential request, a rental request, **or** a service request | `payment_amount_check (amount > 0)`; `payment_source_exclusive_check` — see note below                    |
+| `receipt`          | Printed receipt for a confirmed payment                                                               | unique `(woreda_id, receipt_number)`; carries its own `verification_token` (added in `00000000000013`)    |
+| `receipt_sequence` | Per-woreda, per-year counter                                                                          | composite PK                                                                                              |
 | `fee_schedule`     | Per-woreda, per-service-type standard fee + penalty rate                                              | unique `(woreda_id, service_type)`; `effective_from date` added in Task 11 (`00000000000048`) — see below |
 
 **Document as it actually is, not as it should be:** `payment_source_exclusive_check`
@@ -418,6 +444,43 @@ reads `CHECK (NOT (credential_request_id IS NOT NULL AND rental_request_id IS NO
 is not part of that check, so a `payment` row can technically reference both
 a `service_request_id` and one of the other two simultaneously. No known
 call site does this, but the constraint does not prevent it.
+
+### Credential fee resolution (Task 12, `00000000000054`)
+
+Stage 4's `PaymentForm` used to read a single flat
+`woreda_settings.credential_issuance_fee` regardless of what kind of
+credential request it was. It now calls `resolve_credential_fee(_request_type)`
+(a `SECURITY DEFINER` RPC, tenant-scoped internally by `get_user_woreda_id()`
+— it takes no `woreda_id` parameter at all, so there is nothing for a caller
+to spoof), which maps `credential_request.request_type` onto the
+per-service-type `fee_schedule` rows Task 11 built:
+
+| `request_type`                                                               | `fee_schedule.service_type` |
+| ---------------------------------------------------------------------------- | --------------------------- |
+| `new_issue`                                                                  | `New ID Issuance`           |
+| `renewal`                                                                    | `ID Renewal`                |
+| `reissue_lost` / `reissue_damaged` / `reissue_stolen` / `reissue_correction` | `Lost ID Replacement`       |
+| _(the reprint exception flow, separately — not a `request_type` value)_      | `Internal Re-Print`         |
+
+The function is **strictly fail-closed**: it raises (naming the missing
+`service_type`, bilingually) unless exactly one **active** row exists for the
+caller's own woreda and the mapped `service_type` — no fallback to the old
+flat fee, and a `status = 'review_required'` row does not count as usable.
+
+That fail-closed design surfaced a real data gap before it ever shipped:
+5 of 6 woredas had `Lost ID Replacement` stuck at `review_required` and were
+missing `Internal Re-Print` entirely, and no woreda had a `New ID Issuance`
+row at all. `00000000000054` is a **data repair**, not a policy change —
+pre-production (D2: nothing issued yet), and every repaired/added row's
+amount matches what `woreda_settings.credential_issuance_fee` already
+charged, so no tenant's actual fee changed. `supabase/seed.sql` was fixed
+the same way (its `Lost ID Replacement` rows now seed as `active`, and the
+missing `Internal Re-Print`/`New ID Issuance` rows were added), and
+`bun run check:fee-catalog` (`scripts/check-fee-catalog.ts`, wired into CI)
+statically parses `seed.sql` to assert every woreda has exactly one active
+row per mapped `service_type` — the same "check the source, not a live DB"
+shape as `check-role-perms-drift`, and for the identical reason: there is no
+staging project and CI has no live database credentials.
 
 ---
 
@@ -477,7 +540,7 @@ are same-day hardening on top of it, in order:
   the existing RLS `WITH CHECK` then rejects the cross-tenant attempt on
   its own once the corrected value doesn't match the caller. Also locked
   down `entity_belongs_to_woreda()`'s `EXECUTE` grant (it was `SECURITY
-  DEFINER` and callable by `anon` as a bare PostgREST RPC — a cross-tenant
+DEFINER` and callable by `anon` as a bare PostgREST RPC — a cross-tenant
   existence oracle) and added same-woreda UPDATE/DELETE storage policies to
   the `attachments` bucket (it only had SELECT/INSERT + a super-admin-only
   DELETE, unlike every other bucket).
@@ -492,10 +555,10 @@ are same-day hardening on top of it, in order:
   its own table's columns.
 - **051** (spec conformance gap found during the same testing pass): the
   gap-fill table's own text says `credential_request.office_id (default:
-  the woreda's main office)`. `048` only backfilled *existing* rows; a
+the woreda's main office)`. `048` only backfilled _existing_ rows; a
   brand-new insert left `office_id`/`issuing_office_id` `NULL` since a
   plain column `DEFAULT` can't reference another table. Added a `BEFORE
-  INSERT` trigger per table that fills the column from the row's own
+INSERT` trigger per table that fills the column from the row's own
   woreda when the caller leaves it `NULL`. Ordering matters here: this
   default must run before `050`'s consistency check or an omitted
   `office_id` gets rejected before ever being filled in — Postgres fires
@@ -512,7 +575,7 @@ are same-day hardening on top of it, in order:
   user as a bare RPC with an arbitrary `_woreda_id` (a cross-tenant
   existence oracle) — `/security-review` initially suggested revoking
   `authenticated`'s `EXECUTE` grant, which would have been wrong (Postgres
-  checks `EXECUTE` for the *invoking* role even on a `SECURITY DEFINER`
+  checks `EXECUTE` for the _invoking_ role even on a `SECURITY DEFINER`
   function, and both approval/attachment `WITH CHECK` clauses call it, so
   that would have broken every insert into those tables); fixed instead
   with an internal guard that only answers for the caller's own woreda,
@@ -529,17 +592,17 @@ are same-day hardening on top of it, in order:
   entity type, the same shape `entity_belongs_to_woreda()` already used
   for tenancy.
 
-| Object                        | Classification              | Notes / column mapping                                                                                                                                                                                            |
-| ------------------------------ | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `office`                       | **Created**                  | `office_id PK, woreda_id FK UNIQUE, office_code, office_name, is_main, is_active`. Seeded 6 rows (one per existing woreda) plus a trigger on `woreda` insert (`seed_office_for_new_woreda`) so a future woreda always gets one — mirrors `seed_role_permission_for_new_woreda()` (`00000000000015`) rather than relying on a provisioning-wizard insert. `residence_credential.issuing_office_id` and `credential_request.office_id` were added and backfilled to each row's woreda's office, gated by a same-woreda consistency trigger (`00000000000050`) and defaulted to the woreda's main office on every future insert (`00000000000051`). |
-| `household_location`           | **Created**                  | `household_location_id PK, household_id FK UNIQUE, woreda_id, gps_lat, gps_lng, map_reference, captured_at, captured_by`. Backfilled from `household.gps_lat`/`gps_lng`. Kept in sync **both ways** by triggers on each table (`mirror_household_gps_to_location`, `mirror_location_gps_to_household`), each guarded by a value-changed check so the mirror settles in one hop — the legacy write path (writing `household.gps_*` directly) keeps working, and a future write straight to `household_location` doesn't go stale on old readers. |
-| `approval`                     | **Created**                  | Generic stage-level decision trail: `approval_id PK, woreda_id, entity, entity_id, approver_user_id (forced), decision, decision_at, stage_no, reason`. **Not** a duplicate of a workflow row's own `approved_by_user_id`/decision columns — those stay the source the FSM and maker≠checker checks read directly (Task 1/14); this table is the audit-grade record of the decision itself. A shared `entity_belongs_to_woreda()` function (its `EXECUTE` grant locked to `authenticated`/`service_role` in `00000000000049`) gates INSERT so a decision can't be attached to another tenant's row. Insert-only by convention, like `audit_log`. |
-| `attachment`                   | **Created**                  | Generic entity-bound upload: `attachment_id PK, woreda_id, entity, entity_id, file_name, mime, size_bytes, checksum, storage_path, uploaded_by (forced), uploaded_at`. `resident_document`, `service_request_attachment` and `rental_request_document` are module-local/entity-specific (each FKs to one entity type), not a generic `entity`+`entity_id` table — this is a new capability for the credential and (Task 14) civil workflows, which today have no multi-document table of their own. The module-local tables are untouched; nothing is consolidated by deletion. Storage bucket `attachments` (private), path-prefix-isolated via `storage_path_woreda_id()` and, since `00000000000049`, same-woreda UPDATE/DELETE like every other bucket (an upload can be replaced or cleaned up even though the `attachment` *row* itself is insert-only — that immutability is about the row being audit-grade evidence, not about orphaning the storage object). |
-| `fee_schedule`                 | **Extended, mapped**         | Already existed: `fee_schedule_id, woreda_id, service_type, standard_fee, penalty_rate, status, created_at, updated_at`. The gap-fill table's `amount` maps to the existing `standard_fee` column; `is_active` maps to `status = 'active'` — neither is duplicated as a new column. Only `effective_from date` (nullable; `NULL` = always effective) was added, since no existing column captured that. |
-| `credential_policy`            | **Created**                  | `credential_policy_id PK, woreda_id UNIQUE, expiry_months, renewal_window_days, max_reissue_count, enabled_request_types text[], updated_by (forced), created_at, updated_at`. Read by any staff in the woreda; write gated by `credential.configure_policy` (already `RESERVED_PERMISSION_KEYS`-locked to tenant_admin/super_admin since Task 4). Starts empty per woreda — a missing row means "no override, use the compiled default," the same convention as `tenant_module_config` and `role_permission`, not a gap for this migration to close. |
-| `audit_log` columns            | **Already satisfied**        | `old_value_json`, `new_value_json`, `source_ip` have existed since the baseline migration (`00000000000000`). No change needed. |
-| `credential_verification_log`  | **Already satisfied**        | Created in Task 3 (`00000000000034_task3_harden_credential_verification.sql`). No change needed. |
-| `user` / `service_request` bindings | **Documentation only** | `user` in the spec's vocabulary is this schema's `app_user`, keyed by `auth.uid()`. This module's "requests" are the existing `credential_request` table (IC-4). No schema change. |
+| Object                              | Classification         | Notes / column mapping                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ----------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `office`                            | **Created**            | `office_id PK, woreda_id FK UNIQUE, office_code, office_name, is_main, is_active`. Seeded 6 rows (one per existing woreda) plus a trigger on `woreda` insert (`seed_office_for_new_woreda`) so a future woreda always gets one — mirrors `seed_role_permission_for_new_woreda()` (`00000000000015`) rather than relying on a provisioning-wizard insert. `residence_credential.issuing_office_id` and `credential_request.office_id` were added and backfilled to each row's woreda's office, gated by a same-woreda consistency trigger (`00000000000050`) and defaulted to the woreda's main office on every future insert (`00000000000051`).                                                                                                                                                                                                                                                                                                                       |
+| `household_location`                | **Created**            | `household_location_id PK, household_id FK UNIQUE, woreda_id, gps_lat, gps_lng, map_reference, captured_at, captured_by`. Backfilled from `household.gps_lat`/`gps_lng`. Kept in sync **both ways** by triggers on each table (`mirror_household_gps_to_location`, `mirror_location_gps_to_household`), each guarded by a value-changed check so the mirror settles in one hop — the legacy write path (writing `household.gps_*` directly) keeps working, and a future write straight to `household_location` doesn't go stale on old readers.                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `approval`                          | **Created**            | Generic stage-level decision trail: `approval_id PK, woreda_id, entity, entity_id, approver_user_id (forced), decision, decision_at, stage_no, reason`. **Not** a duplicate of a workflow row's own `approved_by_user_id`/decision columns — those stay the source the FSM and maker≠checker checks read directly (Task 1/14); this table is the audit-grade record of the decision itself. A shared `entity_belongs_to_woreda()` function (its `EXECUTE` grant locked to `authenticated`/`service_role` in `00000000000049`) gates INSERT so a decision can't be attached to another tenant's row. Insert-only by convention, like `audit_log`.                                                                                                                                                                                                                                                                                                                       |
+| `attachment`                        | **Created**            | Generic entity-bound upload: `attachment_id PK, woreda_id, entity, entity_id, file_name, mime, size_bytes, checksum, storage_path, uploaded_by (forced), uploaded_at`. `resident_document`, `service_request_attachment` and `rental_request_document` are module-local/entity-specific (each FKs to one entity type), not a generic `entity`+`entity_id` table — this is a new capability for the credential and (Task 14) civil workflows, which today have no multi-document table of their own. The module-local tables are untouched; nothing is consolidated by deletion. Storage bucket `attachments` (private), path-prefix-isolated via `storage_path_woreda_id()` and, since `00000000000049`, same-woreda UPDATE/DELETE like every other bucket (an upload can be replaced or cleaned up even though the `attachment` _row_ itself is insert-only — that immutability is about the row being audit-grade evidence, not about orphaning the storage object). |
+| `fee_schedule`                      | **Extended, mapped**   | Already existed: `fee_schedule_id, woreda_id, service_type, standard_fee, penalty_rate, status, created_at, updated_at`. The gap-fill table's `amount` maps to the existing `standard_fee` column; `is_active` maps to `status = 'active'` — neither is duplicated as a new column. Only `effective_from date` (nullable; `NULL` = always effective) was added, since no existing column captured that.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `credential_policy`                 | **Created**            | `credential_policy_id PK, woreda_id UNIQUE, expiry_months, renewal_window_days, max_reissue_count, enabled_request_types text[], updated_by (forced), created_at, updated_at`. Read by any staff in the woreda; write gated by `credential.configure_policy` (already `RESERVED_PERMISSION_KEYS`-locked to tenant_admin/super_admin since Task 4). Starts empty per woreda — a missing row means "no override, use the compiled default," the same convention as `tenant_module_config` and `role_permission`, not a gap for this migration to close.                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `audit_log` columns                 | **Already satisfied**  | `old_value_json`, `new_value_json`, `source_ip` have existed since the baseline migration (`00000000000000`). No change needed.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `credential_verification_log`       | **Already satisfied**  | Created in Task 3 (`00000000000034_task3_harden_credential_verification.sql`). No change needed.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `user` / `service_request` bindings | **Documentation only** | `user` in the spec's vocabulary is this schema's `app_user`, keyed by `auth.uid()`. This module's "requests" are the existing `credential_request` table (IC-4). No schema change.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 
 Every new table above follows the house pattern used throughout this
 schema: `woreda_id` + RLS with `get_user_woreda_id()` in both `USING` and

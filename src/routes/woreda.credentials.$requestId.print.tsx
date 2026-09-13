@@ -46,6 +46,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { P } from "@/config/permissions";
 import { formatEthiopianDateOnly } from "@/utils/ethiopianCalendar";
 import { resolveDecryptedField } from "@/lib/decryptedFieldGuard";
+import {
+  REPRINT_REASONS,
+  formatStructuredReason,
+  type ReprintReasonCode,
+} from "@/lib/credentialWorkflowSchemas";
 
 export const Route = createFileRoute("/woreda/credentials/$requestId/print")({
   ssr: false,
@@ -508,7 +513,8 @@ function PrintPage() {
   );
   const allAuthorized = checks.every((c) => c.ok);
 
-  const [reprintReason, setReprintReason] = useState("");
+  const [reprintReasonCode, setReprintReasonCode] = useState<ReprintReasonCode | "">("");
+  const [reprintNote, setReprintNote] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -640,10 +646,19 @@ function PrintPage() {
   const handlePrint = async () => {
     if (!request || !cred || !actorUserId || !woredaId) return;
     if (!allAuthorized || !verified) return;
-    if (isReprint && reprintReason.trim().length < 5) {
-      toast.error("Reprint reason must be at least 5 characters");
+    if (isReprint && !reprintReasonCode) {
+      toast.error("ምክንያት ይምረጡ / Select a reprint reason");
       return;
     }
+    if (isReprint && reprintReasonCode === "other" && reprintNote.trim().length < 5) {
+      toast.error(
+        'ምክንያቱ "ሌላ" ሲሆን ማስታወሻ ያስፈልጋል (ቢያንስ 5 ፊደላት) / A note is required when the reason is "Other" (min 5 characters)',
+      );
+      return;
+    }
+    const reprintReasonText = isReprint
+      ? formatStructuredReason(REPRINT_REASONS, reprintReasonCode, reprintNote)
+      : "";
     setBusy(true);
     try {
       const nowIso = new Date().toISOString();
@@ -662,7 +677,7 @@ function PrintPage() {
           print_type: cred.credential_type ?? "card",
           print_reason: "reprint",
           is_reprint: true,
-          reprint_reason: reprintReason.trim(),
+          reprint_reason: reprintReasonText,
           copies_count: 1,
           printer_name: printerName,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -712,7 +727,7 @@ function PrintPage() {
           credential_number: cred.credential_number,
           credential_request_id: request.credential_request_id,
           request_number: request.request_number,
-          reprint_reason: isReprint ? reprintReason.trim() : null,
+          reprint_reason: isReprint ? reprintReasonText : null,
           reprint_index: isReprint ? priorCount + 1 : 0,
           printer_name: printerName,
           orientation,
@@ -725,7 +740,8 @@ function PrintPage() {
       doPrint?.();
       toast.success(`ህትመት ተጀምሯል / Printing job sent to ${printerName}`);
       setConfirmOpen(false);
-      setReprintReason("");
+      setReprintReasonCode("");
+      setReprintNote("");
       queryClient.invalidateQueries({ queryKey: ["credential-print-log", cred.credential_id] });
       queryClient.invalidateQueries({ queryKey: ["credential-for-print", cred.credential_id] });
       queryClient.invalidateQueries({
@@ -872,7 +888,11 @@ function PrintPage() {
   const expiryEth = cred.expiry_date ? formatEthiopianDateOnly(cred.expiry_date) : "";
 
   const canPrint =
-    allAuthorized && verified && !busy && (!isReprint || reprintReason.trim().length >= 5);
+    allAuthorized &&
+    verified &&
+    !busy &&
+    (!isReprint ||
+      (!!reprintReasonCode && (reprintReasonCode !== "other" || reprintNote.trim().length >= 5)));
 
   // Shared by the on-screen preview and the hidden print surface, so both
   // read the same field layout and the same resolved values -- previously
@@ -1135,18 +1155,35 @@ function PrintPage() {
                     / Reprint — previously printed {priorCount}{" "}
                     {priorCount === 1 ? "time" : "times"}
                   </div>
-                  <Label htmlFor="reprint-reason" className="mt-3 block text-[10px]">
+                  <Label htmlFor="reprint-reason-code" className="mt-3 block text-[10px]">
                     <span className="font-noto-ethiopic">የተደጋጋሚ ህትመት ምክንያት</span>
                     <span className="ml-1 text-slate-500">/ Reprint reason</span>
                   </Label>
-                  <Textarea
-                    id="reprint-reason"
-                    value={reprintReason}
-                    onChange={(e) => setReprintReason(e.target.value)}
-                    rows={3}
-                    className="mt-1"
-                    placeholder="Lost / damaged / reissue…"
-                  />
+                  <Select
+                    value={reprintReasonCode}
+                    onValueChange={(v) => setReprintReasonCode(v as ReprintReasonCode)}
+                  >
+                    <SelectTrigger id="reprint-reason-code" className="mt-1">
+                      <SelectValue placeholder="Select a reason" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {REPRINT_REASONS.map((r) => (
+                        <SelectItem key={r.value} value={r.value}>
+                          {r.labelAm} / {r.labelEn}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {reprintReasonCode === "other" && (
+                    <Textarea
+                      id="reprint-note"
+                      value={reprintNote}
+                      onChange={(e) => setReprintNote(e.target.value)}
+                      rows={2}
+                      className="mt-2"
+                      placeholder="Min 5 characters (required)"
+                    />
+                  )}
                 </div>
               )}
             </div>

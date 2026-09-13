@@ -181,3 +181,25 @@ export function isValidEthiopianDate(e: EthiopianDate): boolean {
   }
   return e.day <= 30;
 }
+
+/** Whole years elapsed since a date-of-birth, as of `asOf` (defaults to
+ * now). Age is a Gregorian day-count regardless of which calendar displays
+ * it -- someone born on a given Gregorian date turns a year older on that
+ * same Gregorian date every year, so this needs no Ethiopian conversion at
+ * all (see `formatEthiopianDate`/`gregorianToEthiopian` for DISPLAYING the
+ * birth date itself in Ethiopian terms, a separate concern from computing
+ * age). Returns `null` for a missing/malformed `dob` rather than throwing,
+ * since every call site of this needs to render "—" for that case, not
+ * crash the page a resident with no recorded birth date happens to be on. */
+export function calculateAgeYears(
+  dob: string | null | undefined,
+  asOf: Date = new Date(),
+): number | null {
+  if (!dob) return null;
+  const birth = parseStoredDate(dob);
+  if (!birth) return null;
+  let age = asOf.getFullYear() - birth.getFullYear();
+  const m = asOf.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && asOf.getDate() < birth.getDate())) age--;
+  return age;
+}

@@ -13,6 +13,7 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "check:role-perms-drift": "bun run scripts/check-role-perms-drift.ts",
+    "check:fee-catalog": "bun run scripts/check-fee-catalog.ts",
     "generate:permissions-doc": "bun run scripts/generate-permissions-doc.ts --write"
   },
   "dependencies": {

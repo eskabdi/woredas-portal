@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ETHIOPIAN_MONTHS_AM,
   ETHIOPIAN_MONTHS_EN,
+  calculateAgeYears,
   ethiopianToGregorian,
   formatEthiopianDate,
   formatEthiopianDateOnly,
@@ -176,5 +177,31 @@ describe("formatting helpers", () => {
   it("every Amharic month name has an English counterpart at the same index", () => {
     expect(ETHIOPIAN_MONTHS_AM.length).toBe(13);
     expect(ETHIOPIAN_MONTHS_EN.length).toBe(13);
+  });
+});
+
+describe("calculateAgeYears (Task 12's 18+ intake precondition)", () => {
+  it("returns null for a missing or malformed date of birth", () => {
+    expect(calculateAgeYears(null)).toBeNull();
+    expect(calculateAgeYears(undefined)).toBeNull();
+    expect(calculateAgeYears("garbage")).toBeNull();
+  });
+
+  it("counts a full year only once the birthday has passed this year", () => {
+    const asOf = new Date(2026, 5, 15); // 15 June 2026
+    // Birthday already passed this year -> a full 18.
+    expect(calculateAgeYears("2008-06-14", asOf)).toBe(18);
+    expect(calculateAgeYears("2008-06-15", asOf)).toBe(18); // birthday is today
+    // Birthday hasn't happened yet this year -> still 17.
+    expect(calculateAgeYears("2008-06-16", asOf)).toBe(17);
+  });
+
+  it("handles a February 29 birthday against a non-leap asOf year without throwing", () => {
+    const asOf = new Date(2026, 2, 1); // 1 March 2026 (2026 is not a leap year)
+    // JS Date normalizes Feb 29 in a non-leap context, so this must not throw
+    // or silently return an off-by-one -- exactly the class of bug the New
+    // Year boundary tests above exist to catch for the Ethiopian side.
+    expect(() => calculateAgeYears("2008-02-29", asOf)).not.toThrow();
+    expect(calculateAgeYears("2008-02-29", asOf)).toBe(18);
   });
 });
