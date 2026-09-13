@@ -23,6 +23,11 @@ const STATUS_STYLES: Record<string, string> = {
   verified: "bg-teal-100 text-teal-800",
   awaiting_payment: "bg-amber-100 text-amber-800",
   paid: "bg-green-100 text-green-800",
+  // Task 14-A: vital_event's own terminal success state (paid -> registered,
+  // system-driven) -- distinct from credential's `active`/`issued` chips
+  // since it's a different entity's own terminal, styled the same emerald
+  // success tone.
+  registered: "bg-emerald-100 text-emerald-800",
   ready_to_print: "bg-indigo-100 text-indigo-800",
   printing: "bg-indigo-100 text-indigo-800",
   printed: "bg-purple-100 text-purple-800",
@@ -55,6 +60,7 @@ const STATUS_LABELS_AM: Record<string, string> = {
   verified: "ተረጋግጧል",
   awaiting_payment: "ክፍያ በጥበቃ",
   paid: "ተከፍሏል",
+  registered: "ተመዝግቧል",
   ready_to_print: "ለህትመት ዝግጁ",
   printing: "በህትመት ላይ",
   printed: "ታትሟል",

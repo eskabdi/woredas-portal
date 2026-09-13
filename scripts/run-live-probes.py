@@ -39,11 +39,18 @@ TOUCHED_TABLES = [
     "vital_event",
     "role_permission",
     "user_permission_override",
+    "rental_occupancy_request",
+    "payment",
+    "receipt",
+    "resident",
+    "workflow_status_history",
+    "workflow_transition",
 ]
 TOUCHED_SEQUENCES = [
     "credential_request_sequence",
     "resident_number_sequence",
     "vital_event_sequence",
+    "rental_request_sequence",
 ]
 
 

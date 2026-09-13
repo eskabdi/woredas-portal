@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       app_user: {
@@ -1542,6 +1567,7 @@ export type Database = {
           resident_id: string | null
           service_request_id: string | null
           status: string
+          vital_event_id: string | null
           woreda_id: string
         }
         Insert: {
@@ -1560,6 +1586,7 @@ export type Database = {
           resident_id?: string | null
           service_request_id?: string | null
           status?: string
+          vital_event_id?: string | null
           woreda_id: string
         }
         Update: {
@@ -1578,6 +1605,7 @@ export type Database = {
           resident_id?: string | null
           service_request_id?: string | null
           status?: string
+          vital_event_id?: string | null
           woreda_id?: string
         }
         Relationships: [
@@ -1657,6 +1685,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "service_request_decrypted"
             referencedColumns: ["service_request_id"]
+          },
+          {
+            foreignKeyName: "payment_vital_event_id_fkey"
+            columns: ["vital_event_id"]
+            isOneToOne: false
+            referencedRelation: "vital_event"
+            referencedColumns: ["vital_event_id"]
           },
           {
             foreignKeyName: "payment_woreda_id_fkey"
@@ -3260,6 +3295,7 @@ export type Database = {
           issued_at: string | null
           issued_by_user_id: string | null
           notes: string | null
+          payment_id: string | null
           registration_date: string | null
           reject_reason: string | null
           requested_by_user_id: string | null
@@ -3286,6 +3322,7 @@ export type Database = {
           issued_at?: string | null
           issued_by_user_id?: string | null
           notes?: string | null
+          payment_id?: string | null
           registration_date?: string | null
           reject_reason?: string | null
           requested_by_user_id?: string | null
@@ -3312,6 +3349,7 @@ export type Database = {
           issued_at?: string | null
           issued_by_user_id?: string | null
           notes?: string | null
+          payment_id?: string | null
           registration_date?: string | null
           reject_reason?: string | null
           requested_by_user_id?: string | null
@@ -3354,6 +3392,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "app_user"
             referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "vital_event_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payment"
+            referencedColumns: ["payment_id"]
+          },
+          {
+            foreignKeyName: "vital_event_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payment_decrypted"
+            referencedColumns: ["payment_id"]
           },
           {
             foreignKeyName: "vital_event_requested_by_user_id_fkey"
@@ -3531,6 +3583,57 @@ export type Database = {
             foreignKeyName: "woreda_settings_woreda_id_fkey"
             columns: ["woreda_id"]
             isOneToOne: true
+            referencedRelation: "woreda"
+            referencedColumns: ["woreda_id"]
+          },
+        ]
+      }
+      workflow_status_history: {
+        Row: {
+          change_reason: string | null
+          changed_at: string
+          changed_by_user_id: string | null
+          entity: string
+          entity_id: string
+          id: string
+          new_status: string
+          old_status: string | null
+          woreda_id: string
+        }
+        Insert: {
+          change_reason?: string | null
+          changed_at?: string
+          changed_by_user_id?: string | null
+          entity: string
+          entity_id: string
+          id?: string
+          new_status: string
+          old_status?: string | null
+          woreda_id: string
+        }
+        Update: {
+          change_reason?: string | null
+          changed_at?: string
+          changed_by_user_id?: string | null
+          entity?: string
+          entity_id?: string
+          id?: string
+          new_status?: string
+          old_status?: string | null
+          woreda_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_status_history_changed_by_user_id_fkey"
+            columns: ["changed_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "app_user"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "workflow_status_history_woreda_id_fkey"
+            columns: ["woreda_id"]
+            isOneToOne: false
             referencedRelation: "woreda"
             referencedColumns: ["woreda_id"]
           },
@@ -4716,6 +4819,7 @@ export type Database = {
         }
         Returns: Json
       }
+      resolve_civil_fee: { Args: { _event_type: string }; Returns: number }
       resolve_credential_fee: {
         Args: { _request_type: string }
         Returns: number
@@ -4905,6 +5009,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },
