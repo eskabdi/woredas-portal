@@ -52,6 +52,20 @@ BEGIN
       USING ERRCODE = 'insufficient_privilege';
   END IF;
 
+  -- get_user_woreda_id() only reads app_user.woreda_id -- unlike
+  -- user_has_perm(), it does not check status='active' or any permission.
+  -- Being SECURITY DEFINER, this function bypasses RLS on credential_request/
+  -- residence_credential entirely, so without this check a pending/suspended
+  -- user, or an active one whose role lacks credential.read (viewer,
+  -- finance_clerk), would get the full operational picture of the woreda's
+  -- credential pipeline even though every equivalent table read returns
+  -- empty for them. Matches the same gate entity_read_perm_ok() already
+  -- applies to credential_request reads (00000000000053).
+  IF NOT (is_super_admin() OR user_has_any_perm(ARRAY['credential.read'])) THEN
+    RAISE EXCEPTION 'get_credential_kpis: permission denied'
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+
   SELECT jsonb_build_object(
     'new_today', (
       SELECT count(*) FROM public.credential_request

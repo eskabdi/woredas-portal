@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 import { CreditCard, Plus, ShieldCheck } from "lucide-react";
@@ -35,6 +35,7 @@ interface ExportRow {
   status: string;
   submitted_at: string | null;
   created_at: string;
+  credential: { status: string } | null;
   resident: {
     full_name: string | null;
     full_name_am: string | null;
@@ -48,13 +49,45 @@ function CredentialsListPage() {
   const [exporting, setExporting] = useState(false);
   const brandingQuery = useReportBranding();
 
+  // Export must reflect exactly what CredentialQueueTable is showing --
+  // reading the same URL params it writes (the same URL-state convention
+  // useUrlSort/useUrlFilter already use) rather than a second, independent
+  // filter state that could drift from what's on screen.
+  const search = useSearch({ strict: false }) as Record<string, unknown>;
+  const strParam = (key: string): string =>
+    typeof search[key] === "string" ? (search[key] as string) : "";
+  const activeFilters = {
+    q: strParam("q"),
+    status: strParam("status") || "all",
+    type: strParam("type") || "all",
+    kebele: strParam("kebele") || "all",
+    officer: strParam("officer") || "all",
+    from: strParam("from"),
+    to: strParam("to"),
+  };
+  const filterLabel = (() => {
+    const parts: string[] = [];
+    if (activeFilters.q) parts.push(`Search: "${activeFilters.q}"`);
+    if (activeFilters.status !== "all") parts.push(`Status: ${activeFilters.status}`);
+    if (activeFilters.type !== "all")
+      parts.push(`Type: ${REQUEST_TYPE_LABEL[activeFilters.type] ?? activeFilters.type}`);
+    if (activeFilters.kebele !== "all") parts.push(`Kebele: ${activeFilters.kebele}`);
+    if (activeFilters.officer !== "all") parts.push(`Officer: ${activeFilters.officer}`);
+    if (activeFilters.from) parts.push(`From: ${activeFilters.from}`);
+    if (activeFilters.to) parts.push(`To: ${activeFilters.to}`);
+    return parts.length ? parts.join(" • ") : "All credential requests";
+  })();
+
   const exportColumns: TableColumn<ExportRow>[] = [
     { header: "የጥያቄ ቁጥር / Request #", value: (r) => r.request_number },
     { header: "ስም / Resident (Am)", value: (r) => r.resident?.full_name_am },
     { header: "Resident (En)", value: (r) => r.resident?.full_name },
     { header: "የነዋሪ ቁጥር / Resident #", value: (r) => r.resident?.resident_number },
     { header: "ዓይነት / Type", value: (r) => REQUEST_TYPE_LABEL[r.request_type] ?? r.request_type },
-    { header: "ሁኔታ / Status", value: (r) => r.status },
+    {
+      header: "ሁኔታ / Status",
+      value: (r) => (r.credential?.status === "revoked" ? "revoked" : r.status),
+    },
     {
       header: "የቀረበበት ቀን / Submitted",
       value: (r) => formatEthiopianDateShort(new Date(r.submitted_at ?? r.created_at)),
@@ -62,16 +95,45 @@ function CredentialsListPage() {
   ];
 
   const fetchAllForExport = async (): Promise<ExportRow[]> => {
-    const { data, error } = await supabase
+    let q = supabase
       .from("credential_request")
       .select(
-        "request_number, request_type, status, submitted_at, created_at, resident:resident_id(full_name, full_name_am, resident_number)",
+        "request_number, request_type, status, submitted_at, created_at, issuing_kebele_id, requested_by_user_id, credential_id, credential:residence_credential!credential_request_credential_id_fkey(status), resident:resident_id(full_name, full_name_am, resident_number)",
       )
-      .eq("woreda_id", woredaId as string)
-      .order("created_at", { ascending: false })
-      .range(0, 4999);
+      .eq("woreda_id", woredaId as string);
+
+    if (activeFilters.type !== "all") q = q.eq("request_type", activeFilters.type);
+    // Mirrors CredentialQueueTable's own revoked-status handling exactly
+    // (including its known embedded-resource caveat) so export and the
+    // on-screen queue never disagree on what "revoked" matched.
+    if (activeFilters.status === "revoked") {
+      q = q.eq("credential.status", "revoked").not("credential_id", "is", null);
+    } else if (activeFilters.status !== "all") {
+      q = q.eq("status", activeFilters.status);
+    }
+    if (activeFilters.kebele !== "all") q = q.eq("issuing_kebele_id", activeFilters.kebele);
+    if (activeFilters.officer !== "all") q = q.eq("requested_by_user_id", activeFilters.officer);
+    if (activeFilters.from) q = q.gte("submitted_at", activeFilters.from);
+    if (activeFilters.to) q = q.lte("submitted_at", `${activeFilters.to}T23:59:59`);
+    if (activeFilters.q) {
+      const escaped = activeFilters.q.replace(/[%,]/g, "");
+      q = q.or(`request_number.ilike.%${escaped}%`);
+    }
+
+    const { data, error } = await q.order("created_at", { ascending: false }).range(0, 4999);
     if (error) throw error;
-    return (data ?? []) as unknown as ExportRow[];
+    let rows = (data ?? []) as unknown as ExportRow[];
+    if (activeFilters.q) {
+      const term = activeFilters.q.toLowerCase();
+      rows = rows.filter((r) => {
+        if (r.request_number?.toLowerCase().includes(term)) return true;
+        return (
+          (r.resident?.full_name ?? "").toLowerCase().includes(term) ||
+          (r.resident?.full_name_am ?? "").includes(activeFilters.q)
+        );
+      });
+    }
+    return rows;
   };
 
   const handleExportCsv = async () => {
@@ -82,7 +144,7 @@ function CredentialsListPage() {
         fileName: `credential-requests-${new Date().toISOString().slice(0, 10)}.csv`,
         columns: exportColumns,
         rows,
-        filterLabel: "All credential requests",
+        filterLabel,
         titleEn: "Credential Requests",
       });
       toast.success("CSV export ready");
@@ -102,7 +164,7 @@ function CredentialsListPage() {
         branding: brandingQuery.data ?? { nameAm: "ወረዳ አስተዳደር", nameEn: "Woreda Administration" },
         titleAm: "የመታወቂያ ጥያቄዎች",
         titleEn: "Credential Requests",
-        filterLabel: "All credential requests",
+        filterLabel,
         columns: exportColumns,
         rows,
       });
