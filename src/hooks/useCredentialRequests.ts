@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
+import { P } from "@/config/permissions";
 
 /**
  * Task 12.6: the credential workflow's typed data-layer hooks. Started with
@@ -56,9 +57,15 @@ export interface CredentialKpis {
  * slow-changing reference table like credential_policy above. */
 export function useCredentialKpis() {
   const woredaId = useAuthStore((s) => s.woredaId);
+  const hasPermission = useAuthStore((s) => s.hasPermission);
   return useQuery({
     queryKey: ["credential-kpis", woredaId],
-    enabled: !!woredaId,
+    // get_credential_kpis() now raises for a caller lacking credential.read
+    // (the same review finding that added its DB-side permission check) --
+    // gating here matches CredentialQueueTable's own `enabled` check, so a
+    // viewer/finance_clerk (or a pending/suspended user) never fires this
+    // RPC only to have it reject every 60s for as long as the page stays open.
+    enabled: !!woredaId && hasPermission(P.CREDENTIAL_READ),
     staleTime: 30_000,
     refetchInterval: 60_000,
     queryFn: async (): Promise<CredentialKpis> => {
