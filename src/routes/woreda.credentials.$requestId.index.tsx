@@ -1113,7 +1113,7 @@ function CredentialRequestDetailPage() {
             <div className="space-y-3">
               <div className="space-y-2">
                 <Label htmlFor="return-reason-code">
-                  <span className="font-noto-ethiopic">የመመለሻ ምክንያት</span>
+                  <span className="font-noto-ethiopic">ተመላሽ የሆነበት ምክንያት</span>
                   <span className="ml-2 text-slate-500">/ Return Reason</span>
                 </Label>
                 <Select
