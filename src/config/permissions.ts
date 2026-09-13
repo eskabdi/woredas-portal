@@ -31,6 +31,11 @@ export const P = {
   CREDENTIAL_READ: "credential.read",
   CREDENTIAL_PRINT: "credential.print",
   CREDENTIAL_VERIFY: "credential.verify",
+  // Task 10 (fix-task-production-readiness-v3): tenant_admin only.
+  // Previously also compiled into supervisor's default -- removed there so
+  // "revocation is tenant_admin only" holds as a real default, not just as
+  // an already-reserved key a tenant_admin can no longer reassign via the
+  // matrix (RESERVED_PERMISSION_KEYS below already covered the latter).
   CREDENTIAL_REVOKE: "credential.revoke",
   CREDENTIAL_RENEW: "credential.renew",
   CREDENTIAL_APPROVE: "credential.approve",
@@ -236,7 +241,6 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     P.HOUSEHOLD_READ,
     P.CREDENTIAL_READ,
     P.CREDENTIAL_VERIFY,
-    P.CREDENTIAL_REVOKE,
     P.CREDENTIAL_APPROVE,
     P.CIVIL_APPROVE,
     P.CIVIL_READ,

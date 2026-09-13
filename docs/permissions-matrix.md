@@ -34,7 +34,7 @@ INSA Enforcer Phase 2.3 / Phase 4 Access Control. Generated from `src/config/per
 | `credential.read`              |             | ✓            | ✓          | ✓               | ✓              | ✓             | ✓       | ✓      | ✓             |        |
 | `credential.print`             |             | ✓            |            | ✓               | ✓              |               |         |        |               |        |
 | `credential.verify`            |             | ✓            | ✓          | ✓               | ✓              | ✓             | ✓       | ✓      |               |        |
-| `credential.revoke`            |             | ✓            | ✓          |                 |                |               |         |        |               |        |
+| `credential.revoke`            |             | ✓            |            |                 |                |               |         |        |               |        |
 | `credential.renew`             |             | ✓            |            |                 |                |               |         |        |               |        |
 | `credential.approve`           |             | ✓            | ✓          |                 |                |               |         |        |               |        |
 | `credential.submit`            |             | ✓            |            | ✓               | ✓              |               |         |        |               |        |

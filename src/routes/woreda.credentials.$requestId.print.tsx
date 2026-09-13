@@ -647,32 +647,44 @@ function PrintPage() {
     setBusy(true);
     try {
       const nowIso = new Date().toISOString();
-      const { error: logErr } = await supabase.from("credential_print_log").insert({
-        woreda_id: woredaId,
-        credential_id: cred.credential_id,
-        printed_by_user_id: actorUserId,
-        print_type: cred.credential_type ?? "card",
-        print_reason: isReprint ? "reprint" : "initial_issue",
-        is_reprint: isReprint,
-        reprint_reason: isReprint ? reprintReason.trim() : null,
-        copies_count: 1,
-        printer_name: printerName,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any);
-      if (logErr) throw logErr;
+      // A reprint logs itself here, since the guaranteed row for an initial
+      // print is now written by `enforce_workflow_transition()` on the
+      // confirmed `printing -> printed` transition (Task 10) -- this insert
+      // would otherwise race that trigger's own row. The RLS policy on
+      // `credential_print_log` was narrowed to match: it now accepts only
+      // `is_reprint = true` inserts from a client, so an initial-issue
+      // attempt here would be rejected rather than double-logged.
+      if (isReprint) {
+        const { error: logErr } = await supabase.from("credential_print_log").insert({
+          woreda_id: woredaId,
+          credential_id: cred.credential_id,
+          printed_by_user_id: actorUserId,
+          print_type: cred.credential_type ?? "card",
+          print_reason: "reprint",
+          is_reprint: true,
+          reprint_reason: reprintReason.trim(),
+          copies_count: 1,
+          printer_name: printerName,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any);
+        if (logErr) throw logErr;
+      }
 
       // Sending the card to the printer moves it to `printing`, NOT `printed`.
       // A jammed or misfed printer used to leave the credential at `printed`
       // anyway, spending it and forcing the resident to start a new request.
       // An officer now confirms the physical card before it counts as printed.
       // Gate on the credential's own status, NOT on `!isReprint`. A retry
-      // after a failed print is a reprint by definition (a print-log row
-      // already exists), so `!isReprint` skipped the move to `printing` on
-      // exactly the attempt the confirmation step exists for -- the card
-      // stayed at `ready_to_print`, the confirm panel never rendered again,
-      // and the credential could never be completed. `ready_to_print` is the
-      // only FSM-legal source for `printing`, so this check is sufficient on
-      // its own: a genuine reprint of an already-`active` card does not move.
+      // after a failed print (`priorCount > 0`) sets `isReprint`, but the
+      // credential is still sitting at `ready_to_print` -- gating on
+      // `!isReprint` skipped the move to `printing` on exactly the attempt
+      // the confirmation step exists for, stranding the card there with the
+      // confirm panel never rendering again. `ready_to_print` is the only
+      // FSM-legal source for `printing`, so this check is sufficient on its
+      // own: a genuine reprint of an already-`active`/`printed` card does not
+      // move (and logs a `credential_print_log` row above, unlike a first
+      // attempt or a retry of one, whose guaranteed row instead comes from
+      // the DB trigger on the later `printing -> printed` confirmation).
       if (cred.status === "ready_to_print") {
         const { error: credErr } = await supabase
           .from("residence_credential")
