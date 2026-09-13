@@ -419,6 +419,43 @@ is not part of that check, so a `payment` row can technically reference both
 a `service_request_id` and one of the other two simultaneously. No known
 call site does this, but the constraint does not prevent it.
 
+### Credential fee resolution (Task 12, `00000000000054`)
+
+Stage 4's `PaymentForm` used to read a single flat
+`woreda_settings.credential_issuance_fee` regardless of what kind of
+credential request it was. It now calls `resolve_credential_fee(_request_type)`
+(a `SECURITY DEFINER` RPC, tenant-scoped internally by `get_user_woreda_id()`
+— it takes no `woreda_id` parameter at all, so there is nothing for a caller
+to spoof), which maps `credential_request.request_type` onto the
+per-service-type `fee_schedule` rows Task 11 built:
+
+| `request_type` | `fee_schedule.service_type` |
+| --- | --- |
+| `new_issue` | `New ID Issuance` |
+| `renewal` | `ID Renewal` |
+| `reissue_lost` / `reissue_damaged` / `reissue_stolen` / `reissue_correction` | `Lost ID Replacement` |
+| _(the reprint exception flow, separately — not a `request_type` value)_ | `Internal Re-Print` |
+
+The function is **strictly fail-closed**: it raises (naming the missing
+`service_type`, bilingually) unless exactly one **active** row exists for the
+caller's own woreda and the mapped `service_type` — no fallback to the old
+flat fee, and a `status = 'review_required'` row does not count as usable.
+
+That fail-closed design surfaced a real data gap before it ever shipped:
+5 of 6 woredas had `Lost ID Replacement` stuck at `review_required` and were
+missing `Internal Re-Print` entirely, and no woreda had a `New ID Issuance`
+row at all. `00000000000054` is a **data repair**, not a policy change —
+pre-production (D2: nothing issued yet), and every repaired/added row's
+amount matches what `woreda_settings.credential_issuance_fee` already
+charged, so no tenant's actual fee changed. `supabase/seed.sql` was fixed
+the same way (its `Lost ID Replacement` rows now seed as `active`, and the
+missing `Internal Re-Print`/`New ID Issuance` rows were added), and
+`bun run check:fee-catalog` (`scripts/check-fee-catalog.ts`, wired into CI)
+statically parses `seed.sql` to assert every woreda has exactly one active
+row per mapped `service_type` — the same "check the source, not a live DB"
+shape as `check-role-perms-drift`, and for the identical reason: there is no
+staging project and CI has no live database credentials.
+
 ---
 
 ## Cross-domain views

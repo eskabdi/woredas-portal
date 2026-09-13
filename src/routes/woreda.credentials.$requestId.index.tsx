@@ -1286,6 +1286,7 @@ interface PaymentCardProps {
     household_id: string | null;
     payment_id: string | null;
     request_number: string;
+    request_type: string;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resident: any;
   };
@@ -1299,17 +1300,21 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const canCollect = hasPermission(P.PAYMENT_COLLECT);
 
+  // Task 12: fee comes from Task 11's per-service-type fee_schedule via the
+  // fail-closed resolve_credential_fee() RPC (00000000000054), not the old
+  // flat woreda_settings.credential_issuance_fee -- the RPC raises rather
+  // than silently falling back if the mapped fee_schedule row is missing or
+  // inactive, so a lookup failure must surface as an error state here, not
+  // resolve to 0 and let a waiver-free zero fee slip through.
   const feeQuery = useQuery({
-    queryKey: ["woreda-settings-fee", woredaId],
+    queryKey: ["credential-fee", woredaId, request.request_type],
     enabled: !!woredaId && (status === "approved" || status === "awaiting_payment"),
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("woreda_settings")
-        .select("credential_issuance_fee")
-        .eq("woreda_id", woredaId!)
-        .maybeSingle();
+      const { data, error } = await supabase.rpc("resolve_credential_fee", {
+        _request_type: request.request_type,
+      });
       if (error) throw error;
-      return Number(data?.credential_issuance_fee ?? 0);
+      return Number(data ?? 0);
     },
   });
 
@@ -1357,12 +1362,13 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
   const canSubmit = useMemo(() => {
     if (!canCollect) return false;
     if (busy) return false;
+    if (feeQuery.isError) return false;
     if (waived) return waiverReason.trim().length >= 5;
     if (!channel) return false;
     if ((channel === "bank" || channel === "mobile") && referenceNo.trim().length === 0)
       return false;
     return true;
-  }, [canCollect, busy, waived, waiverReason, channel, referenceNo]);
+  }, [canCollect, busy, feeQuery.isError, waived, waiverReason, channel, referenceNo]);
 
   const handleRecord = async () => {
     if (!canSubmit || !woredaId || !actorUserId) return;
@@ -1489,6 +1495,14 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
             <>
               {feeQuery.isLoading ? (
                 <Skeleton className="h-8 w-40" />
+              ) : feeQuery.isError ? (
+                <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+                  <p className="font-noto-ethiopic font-medium">ክፍያ መርሃ ግብር አልተገኘም</p>
+                  <p>
+                    {(feeQuery.error as Error).message ||
+                      "No active fee schedule found for this request type — an administrator must add or activate it in Settings."}
+                  </p>
+                </div>
               ) : (
                 <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
                   <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">

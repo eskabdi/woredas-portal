@@ -4651,10 +4651,13 @@ export type Database = {
         Args: { _plain: string; _woreda_id: string }
         Returns: string
       }
+      entity_approve_perm_ok: { Args: { _entity: string }; Returns: boolean }
+      entity_attach_perm_ok: { Args: { _entity: string }; Returns: boolean }
       entity_belongs_to_woreda: {
         Args: { _entity: string; _entity_id: string; _woreda_id: string }
         Returns: boolean
       }
+      entity_read_perm_ok: { Args: { _entity: string }; Returns: boolean }
       gen_letter_verification_token: { Args: never; Returns: string }
       gen_receipt_verification_token: { Args: never; Returns: string }
       get_credential_live_status: {
@@ -4699,6 +4702,10 @@ export type Database = {
           _resident_id: string
         }
         Returns: Json
+      }
+      resolve_credential_fee: {
+        Args: { _request_type: string }
+        Returns: number
       }
       storage_path_woreda_id: { Args: { object_name: string }; Returns: string }
       user_has_any_perm: { Args: { _perms: string[] }; Returns: boolean }
