@@ -50,6 +50,11 @@ import {
   formatEthiopianDateOnly,
   parseDateOnly,
 } from "@/utils/ethiopianCalendar";
+import {
+  RETURN_REASONS,
+  formatStructuredReason,
+  type ReturnReasonCode,
+} from "@/lib/credentialWorkflowSchemas";
 
 export const Route = createFileRoute("/woreda/credentials/$requestId/")({
   ssr: false,
@@ -307,7 +312,8 @@ function CredentialRequestDetailPage() {
   }, [checklistInitialized, request, initialChecklist]);
 
   const [returnDialogOpen, setReturnDialogOpen] = useState(false);
-  const [returnReason, setReturnReason] = useState("");
+  const [returnReasonCode, setReturnReasonCode] = useState<ReturnReasonCode | "">("");
+  const [returnNote, setReturnNote] = useState("");
   const [approvalReturnOpen, setApprovalReturnOpen] = useState(false);
   const [approvalReturnReason, setApprovalReturnReason] = useState("");
   const [rejectOpen, setRejectOpen] = useState(false);
@@ -386,11 +392,15 @@ function CredentialRequestDetailPage() {
 
   const handleReturn = async () => {
     if (!request || !actorUserId || !woredaId) return;
-    const reason = returnReason.trim();
-    if (reason.length < 5) {
-      toast.error("Reason must be at least 5 characters");
+    if (!returnReasonCode) {
+      toast.error("Select a return reason");
       return;
     }
+    if (returnReasonCode === "other" && returnNote.trim().length < 5) {
+      toast.error('A note is required when the reason is "Other" (min 5 characters)');
+      return;
+    }
+    const reason = formatStructuredReason(RETURN_REASONS, returnReasonCode, returnNote);
     setBusy(true);
     try {
       const nowIso = new Date().toISOString();
@@ -414,13 +424,14 @@ function CredentialRequestDetailPage() {
         entity_name: "credential_request",
         entity_id: request.credential_request_id,
         action_type: "REQUEST_RETURNED",
-        new_value_json: { return_reason: reason } as never,
+        new_value_json: { return_reason: reason, return_reason_code: returnReasonCode } as never,
         action_at: nowIso,
       });
 
       toast.success("ጥያቄው ተመልሷል / Request returned");
       setReturnDialogOpen(false);
-      setReturnReason("");
+      setReturnReasonCode("");
+      setReturnNote("");
       queryClient.invalidateQueries({
         queryKey: ["credential-request", request.credential_request_id],
       });
@@ -1099,18 +1110,48 @@ function CredentialRequestDetailPage() {
                 Provide a reason. It will be visible to the intake officer.
               </AlertDialogDescription>
             </AlertDialogHeader>
-            <div className="space-y-2">
-              <Label htmlFor="return-reason">
-                <span className="font-noto-ethiopic">የመመለሻ ምክንያት</span>
-                <span className="ml-2 text-slate-500">/ Return Reason</span>
-              </Label>
-              <Textarea
-                id="return-reason"
-                rows={4}
-                value={returnReason}
-                onChange={(e) => setReturnReason(e.target.value)}
-                placeholder="Min 5 characters"
-              />
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="return-reason-code">
+                  <span className="font-noto-ethiopic">የመመለሻ ምክንያት</span>
+                  <span className="ml-2 text-slate-500">/ Return Reason</span>
+                </Label>
+                <Select
+                  value={returnReasonCode}
+                  onValueChange={(v) => setReturnReasonCode(v as ReturnReasonCode)}
+                >
+                  <SelectTrigger id="return-reason-code">
+                    <SelectValue placeholder="Select a reason / ምክንያት ይምረጡ" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RETURN_REASONS.map((r) => (
+                      <SelectItem key={r.value} value={r.value}>
+                        {r.labelAm} / {r.labelEn}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="return-note">
+                  <span className="font-noto-ethiopic">ማስታወሻ</span>
+                  <span className="ml-2 text-slate-500">
+                    / Note
+                    {returnReasonCode === "other" ? " (required, min 5 characters)" : " (optional)"}
+                  </span>
+                </Label>
+                <Textarea
+                  id="return-note"
+                  rows={3}
+                  value={returnNote}
+                  onChange={(e) => setReturnNote(e.target.value)}
+                  placeholder={
+                    returnReasonCode === "other"
+                      ? "Min 5 characters"
+                      : "Additional detail (optional)"
+                  }
+                />
+              </div>
             </div>
             <AlertDialogFooter>
               <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
@@ -1119,7 +1160,11 @@ function CredentialRequestDetailPage() {
                   e.preventDefault();
                   handleReturn();
                 }}
-                disabled={busy || returnReason.trim().length < 5}
+                disabled={
+                  busy ||
+                  !returnReasonCode ||
+                  (returnReasonCode === "other" && returnNote.trim().length < 5)
+                }
               >
                 {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Confirm Return
