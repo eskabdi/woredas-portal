@@ -348,3 +348,29 @@ pattern already used throughout this route.
   exactly as it is; this PR only wires enforcement onto what already exists.
 - Any change to `service_request`'s or `residence_credential`'s own trigger
   bodies beyond what's already documented in Task 12's memo.
+
+## 10. `workflow-fsm-review` finding, reviewed and left as-is
+
+`pending_approval → returned` is seeded with `required_permission = 'civil.return'`
+(§3's FSM table), which `civil_registrar`/`registry_clerk` hold and `supervisor`
+does not (§0.4). `enforce_workflow_transition()` checks only the single
+`required_permission` on the row being applied — it has no notion that
+`pending_approval` is "the supervisor's queue" — so a registry_clerk/
+civil_registrar holding `civil.return` can `PATCH` an event they submitted
+straight back out of the supervisor's approval queue via a direct API call,
+without the supervisor's involvement. The UI happens to mask this (the
+Approve/Return/Reject block at `pending_approval` is gated behind one
+`P.CIVIL_APPROVE` `<PermissionGate>` in `woreda.civil.$eventId.tsx`, so a
+registry_clerk never sees the button), but that's a client-side accident, not
+a server-side control.
+
+This is the same asymmetry §0.4/§9 already recorded as an explicit,
+deliberate scope decision: this PR widens *enforcement* (the FSM now actually
+gates what it always should have), it does not widen or rebalance the
+existing permission grants those FSM rows key off. Fixing it would mean
+either granting `supervisor` `civil.return` or splitting `pending_approval`'s
+return path onto its own permission distinct from the verification-stage
+`under_review → returned` edge — both are permission-matrix decisions for the
+owner, not something to change opportunistically inside a workflow-engine
+PR. Recorded here for the owner's explicit sign-off before go-live, not
+fixed in this PR.
