@@ -1531,12 +1531,28 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
     if (!canCollect) return false;
     if (busy) return false;
     if (feeQuery.isError) return false;
+    // A waiver bypasses the fee entirely, but a non-waived payment must not
+    // be recordable before resolve_credential_fee() has actually resolved --
+    // fee defaulting to 0 while feeQuery is still loading would otherwise
+    // record a zero-amount, unwaived payment (the same failure mode the
+    // fail-closed RPC exists to prevent).
+    if (!waived && (feeQuery.isLoading || feeQuery.data === undefined)) return false;
     if (waived) return waiverReason.trim().length >= 5;
     if (!channel) return false;
     if ((channel === "bank" || channel === "mobile") && referenceNo.trim().length === 0)
       return false;
     return true;
-  }, [canCollect, busy, feeQuery.isError, waived, waiverReason, channel, referenceNo]);
+  }, [
+    canCollect,
+    busy,
+    feeQuery.isError,
+    feeQuery.isLoading,
+    feeQuery.data,
+    waived,
+    waiverReason,
+    channel,
+    referenceNo,
+  ]);
 
   const handleRecord = async () => {
     if (!canSubmit || !woredaId || !actorUserId) return;

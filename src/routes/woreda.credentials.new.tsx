@@ -506,7 +506,18 @@ function NewCredentialRequestPage() {
       if (attachmentRows.length > 0) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { error: attErr } = await supabase.from("attachment").insert(attachmentRows as any);
-        if (attErr) throw attErr;
+        if (attErr) {
+          // The credential_request row above already committed and this
+          // officer's role (credential.issue) has no DELETE grant on it
+          // (credential_request_delete requires credential.approve), so
+          // there is no client-side rollback available -- resubmitting the
+          // form would create a duplicate request rather than fixing this
+          // one. Surface the request number so the officer can find and
+          // report the specific row instead of guessing.
+          throw new Error(
+            `ጥያቄ ${inserted.request_number} ተፈጥሯል፤ ፎቶ/ሰነድ ማያያዝ አልተሳካም። እባክዎ ይህን ቁጥር ለሱፐርቫይዘር ያሳውቁ፣ እንደገና አያስገቡ / Request ${inserted.request_number} was created but its attachment failed to save (${attErr.message}). Report this request number to a supervisor — do not resubmit.`,
+          );
+        }
       }
 
       await supabase.from("credential_request_status_history").insert({
