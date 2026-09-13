@@ -268,6 +268,63 @@ These fire on both INSERT and UPDATE (a party could be linked after initial
 submission) but only actually check the fields that are set — a spouse recorded
 as free text (no `resident_id`) doesn't trigger the tenant check for that party.
 
+**Bug found live, fixed before merge**: the death precondition
+(`resident.residency_status <> 'deceased'`) re-validates on every UPDATE, not
+just initial submission. `trg_apply_death_on_approval` (BEFORE UPDATE, fires
+first alphabetically — `apply` < `enforce`) legitimately flips the resident to
+`deceased` inside the same nested `paid → registered` system-transition
+cascade, moments before `trg_enforce_vital_event_preconditions` re-runs on
+that same UPDATE — so the precondition rejected the very transition
+finalizing that death. Fixed by short-circuiting the whole precondition
+function when `current_setting('app.system_transition', true) = 'on'`: every
+precondition was already enforced when the event was first submitted or
+reviewed, so the system's own finalization step re-validates nothing. Caught
+by `civil_death_side_effect_tenant_scoped`, confirmed fixed with 25/25 probes
+passing net-zero.
+
+## 8b. UI wiring — implemented
+
+`woreda.civil.$eventId.tsx` rewritten per §8. Stage mapping actually shipped:
+
+- Verification card (`submitted`/`under_review`/`returned`): "Pass
+  Verification" chains `submitted → under_review → verified` in one click
+  when starting from `submitted` (both hops are `civil.verify`); "Return"
+  chains the same hop before landing on `returned` (`civil.return`);
+  "Resubmit" is `returned → under_review` (`civil.resubmit`).
+- Approval card (`verified`/`pending_approval`): a `civil.approve`-gated "Send
+  for Approval" button drives `verified → pending_approval` (the supervisor
+  pulling the item into their own queue) before Approve/Return/Reject appear
+  for `pending_approval`. Return and Reject buttons are independently gated
+  on `civil.return`/`civil.reject` — per §0.4/§9, `supervisor` was left
+  without `civil.return` in this PR, so the Return button legitimately does
+  not render for that role; this is the existing permission matrix, not a
+  bug.
+- Payment card (`approved`/`awaiting_payment`): mirrors credential's
+  `PaymentCard` — raises `approved → awaiting_payment` on first submit, then
+  records a `payment` (`payment_type='civil_registration_fee'`,
+  `vital_event_id` set) + `receipt` and updates to `paid`. No waiver toggle:
+  `resolve_civil_fee()` always resolves to 0 under B2, so there's nothing to
+  waive. The `paid → registered` system cascade fires inside the same
+  transaction as this last UPDATE, so the client's next read already sees
+  `registered`.
+- The manual "Close" button is removed; a read-only "Registered" outcome
+  card replaces the old "Approved/Issued" one, with the resident link for
+  birth/death.
+- A new "Status History" card reads `workflow_status_history` directly
+  (ordered by `changed_at`), separate from the existing client-side
+  `audit_log` writes this route still makes on each transition.
+
+`src/integrations/supabase/types.ts` regenerated against the live project
+(`npx supabase gen types typescript --project-id tugzuexfyzbdnghbmrjl`) to
+pick up `vital_event.payment_id`, `payment.vital_event_id`,
+`workflow_status_history`, `workflow_transition`, and `resolve_civil_fee()` —
+this is what unblocked `tsc --noEmit` after the route rewrite.
+
+`scripts/check-fee-catalog.ts`'s `MAPPED_SERVICE_TYPES` extended with the
+three `Civil Registration - *` rows so a fresh environment seeded from
+`supabase/seed.sql` (which now also carries those 18 rows, synced from the
+live values migration 059 inserted) passes `bun run check:fee-catalog` too.
+
 ## 8. UI wiring scope
 
 `woreda.civil.$eventId.tsx` is rewritten to drive the new stages: the existing

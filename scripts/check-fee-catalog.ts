@@ -34,6 +34,13 @@ export const MAPPED_SERVICE_TYPES = [
   "ID Renewal",
   "Lost ID Replacement",
   "Internal Re-Print",
+  // Task 14-A: resolve_civil_fee() (00000000000059) -- distinct from the
+  // pre-existing "Birth Certificate"/"Death Certificate"/"Marriage
+  // Registration" rows, which price the 14-B certificate/letter service,
+  // not the registration event itself.
+  "Civil Registration - Birth",
+  "Civil Registration - Death",
+  "Civil Registration - Marriage",
 ];
 
 export interface FeeRow {

@@ -10,7 +10,9 @@ import {
   FileText,
   Heart,
   HeartCrack,
+  History,
   Loader2,
+  Receipt as ReceiptIcon,
   Scale,
   ShieldCheck,
   UserCheck,
@@ -22,6 +24,14 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { StatusChip } from "@/components/common/StatusChip";
 import { PermissionGate } from "@/components/common/PermissionGate";
 import {
@@ -139,6 +149,51 @@ const EVENT_TITLES: Record<
   divorce: { am: "የፍቺ ማጠቃለያ", en: "Divorce Summary", icon: Scale },
 };
 
+// Task 14-A: resolve_civil_fee() (00000000000059) -- same fail-closed,
+// tenant-internal RPC pattern as useFeeSchedule() (credential module), but
+// keyed by event_type. B2's zero-fee rule means every civil fee_schedule row
+// this resolves to is seeded at 0, but the lookup itself still fails closed
+// if a woreda's row is ever deleted or deactivated.
+function useCivilFee(eventType: string | undefined, enabled: boolean) {
+  const woredaId = useAuthStore((s) => s.woredaId);
+  return useQuery({
+    queryKey: ["civil-fee", woredaId, eventType],
+    enabled: enabled && !!woredaId && !!eventType,
+    queryFn: async (): Promise<number> => {
+      const { data, error } = await supabase.rpc("resolve_civil_fee", {
+        _event_type: eventType!,
+      });
+      if (error) throw error;
+      return Number(data ?? 0);
+    },
+  });
+}
+
+interface HistoryRow {
+  id: string;
+  old_status: string | null;
+  new_status: string;
+  changed_at: string;
+  change_reason: string | null;
+}
+
+function useWorkflowHistory(eventId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["vital-event-history", eventId],
+    enabled,
+    queryFn: async (): Promise<HistoryRow[]> => {
+      const { data, error } = await supabase
+        .from("workflow_status_history")
+        .select("id, old_status, new_status, changed_at, change_reason")
+        .eq("entity", "vital_event")
+        .eq("entity_id", eventId)
+        .order("changed_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as HistoryRow[];
+    },
+  });
+}
+
 function CivilEventDetailPage() {
   const { eventId } = Route.useParams();
   const navigate = useNavigate();
@@ -146,8 +201,12 @@ function CivilEventDetailPage() {
   const woredaId = useAuthStore((s) => s.woredaId);
   const actorUserId = useAuthStore((s) => s.appUser?.user_id ?? null);
   const hasPermission = useAuthStore((s) => s.hasPermission);
+  const canVerify = hasPermission(P.CIVIL_VERIFY);
   const canApprove = hasPermission(P.CIVIL_APPROVE);
-  const canRegister = hasPermission(P.CIVIL_REGISTER);
+  const canReturn = hasPermission(P.CIVIL_RETURN);
+  const canReject = hasPermission(P.CIVIL_REJECT);
+  const canResubmit = hasPermission(P.CIVIL_RESUBMIT);
+  const canRecordPayment = hasPermission(P.CIVIL_RECORD_PAYMENT);
 
   const eventQuery = useQuery({
     queryKey: ["vital-event", eventId, woredaId],
@@ -159,7 +218,7 @@ function CivilEventDetailPage() {
           `vital_event_id, event_number, event_type, event_date, registration_date, status, notes,
            event_details, verification_checklist, verified_by_user_id, verified_at,
            approved_by_user_id, approval_decision_at, return_reason, reject_reason,
-           requested_by_user_id, created_at, resident_id,
+           requested_by_user_id, created_at, resident_id, payment_id,
            resident:resident_id (resident_id, resident_number, full_name, full_name_am)`,
         )
         .eq("vital_event_id", eventId)
@@ -180,6 +239,8 @@ function CivilEventDetailPage() {
   const deathD = rawDetails as DeathDetails;
   const marriageD = rawDetails as MarriageDetails;
   const divorceD = rawDetails as DivorceDetails;
+
+  const historyQuery = useWorkflowHistory(eventId, !!event);
 
   // Fetch linked residents for parent/spouse links (birth parents, marriage/divorce spouses)
   const linkedIds = [
@@ -238,8 +299,6 @@ function CivilEventDetailPage() {
 
   const [returnOpen, setReturnOpen] = useState(false);
   const [returnReason, setReturnReason] = useState("");
-  const [approvalReturnOpen, setApprovalReturnOpen] = useState(false);
-  const [approvalReturnReason, setApprovalReturnReason] = useState("");
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [busy, setBusy] = useState(false);
@@ -249,6 +308,7 @@ function CivilEventDetailPage() {
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["vital-event", eventId] });
     queryClient.invalidateQueries({ queryKey: ["vital-events"] });
+    queryClient.invalidateQueries({ queryKey: ["vital-event-history", eventId] });
   };
 
   const audit = async (action_type: string, new_value_json: unknown = null) => {
@@ -264,15 +324,26 @@ function CivilEventDetailPage() {
     });
   };
 
+  // Stage 2: submitted -> under_review -> verified (civil.verify). A single
+  // "Pass Verification" action still drives both hops of the seeded FSM
+  // (docs/task14a-mapping-memo.md §8) -- one actor, one permission, two
+  // persisted transitions so workflow_status_history records both.
   const handlePass = async () => {
     if (!event || !actorUserId || !allChecked) return;
     setBusy(true);
     try {
+      if (status === "submitted") {
+        const { error: hopErr } = await supabase
+          .from("vital_event")
+          .update({ status: "under_review" })
+          .eq("vital_event_id", eventId);
+        if (hopErr) throw hopErr;
+      }
       const nowIso = new Date().toISOString();
       const { error } = await supabase
         .from("vital_event")
         .update({
-          status: "pending_approval",
+          status: "verified",
           verified_by_user_id: actorUserId,
           verified_at: nowIso,
           verification_checklist: {
@@ -284,7 +355,7 @@ function CivilEventDetailPage() {
         .eq("vital_event_id", eventId);
       if (error) throw error;
       await audit("EVENT_VERIFIED", { checklist });
-      toast.success("ተረጋግጦ ወደ ማጽደቅ ተልኳል / Verified and sent for approval");
+      toast.success("ተረጋግጧል / Verified");
       invalidate();
     } catch (e) {
       toast.error(`Update failed: ${(e as Error).message}`);
@@ -293,6 +364,11 @@ function CivilEventDetailPage() {
     }
   };
 
+  // Return, from either the verification stage (under_review) or the
+  // approval stage (pending_approval) -- the seeded FSM only has one
+  // `returned` target either way (civil.return), so both call sites land
+  // the same way. From `submitted`, hop into `under_review` first since no
+  // direct submitted -> returned edge exists.
   const handleReturn = async () => {
     if (!event || !actorUserId) return;
     const reason = returnReason.trim();
@@ -302,6 +378,13 @@ function CivilEventDetailPage() {
     }
     setBusy(true);
     try {
+      if (status === "submitted") {
+        const { error: hopErr } = await supabase
+          .from("vital_event")
+          .update({ status: "under_review" })
+          .eq("vital_event_id", eventId);
+        if (hopErr) throw hopErr;
+      }
       const { error } = await supabase
         .from("vital_event")
         .update({ status: "returned", return_reason: reason })
@@ -319,6 +402,30 @@ function CivilEventDetailPage() {
     }
   };
 
+  // Stage 3a: verified -> pending_approval (civil.approve) -- the supervisor
+  // pulls the item into their own approval queue before deciding on it.
+  const handleSendForApproval = async () => {
+    if (!event || !actorUserId) return;
+    setBusy(true);
+    try {
+      const { error } = await supabase
+        .from("vital_event")
+        .update({ status: "pending_approval" })
+        .eq("vital_event_id", eventId);
+      if (error) throw error;
+      await audit("EVENT_SENT_FOR_APPROVAL");
+      toast.success("ለማጽደቅ ተልኳል / Sent for approval");
+      invalidate();
+    } catch (e) {
+      toast.error(`Update failed: ${(e as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Stage 3b: pending_approval -> approved (civil.approve). Side effects no
+  // longer fire here (B2) -- they fire only at the system's own `registered`
+  // terminal, after payment.
   const handleApprove = async () => {
     if (!event || !actorUserId) return;
     setBusy(true);
@@ -334,36 +441,10 @@ function CivilEventDetailPage() {
         .eq("vital_event_id", eventId);
       if (error) throw error;
       await audit("EVENT_APPROVED");
-      toast.success("ፀድቋል / Approved — new resident record generated");
+      toast.success("ፀድቋል / Approved — payment collection is next");
       invalidate();
     } catch (e) {
       toast.error(`Approve failed: ${(e as Error).message}`);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleApprovalReturn = async () => {
-    if (!event || !actorUserId) return;
-    const reason = approvalReturnReason.trim();
-    if (reason.length < 5) {
-      toast.error("Reason must be at least 5 characters");
-      return;
-    }
-    setBusy(true);
-    try {
-      const { error } = await supabase
-        .from("vital_event")
-        .update({ status: "approval_returned", return_reason: reason })
-        .eq("vital_event_id", eventId);
-      if (error) throw error;
-      await audit("EVENT_APPROVAL_RETURNED", { return_reason: reason });
-      toast.success("ተመልሷል / Returned to registrar");
-      setApprovalReturnOpen(false);
-      setApprovalReturnReason("");
-      invalidate();
-    } catch (e) {
-      toast.error(`Return failed: ${(e as Error).message}`);
     } finally {
       setBusy(false);
     }
@@ -390,25 +471,6 @@ function CivilEventDetailPage() {
       invalidate();
     } catch (e) {
       toast.error(`Reject failed: ${(e as Error).message}`);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleClose = async () => {
-    if (!event || !actorUserId) return;
-    setBusy(true);
-    try {
-      const { error } = await supabase
-        .from("vital_event")
-        .update({ status: "issued" })
-        .eq("vital_event_id", eventId);
-      if (error) throw error;
-      await audit("EVENT_CLOSED");
-      toast.success("ተዘግቷል / Closed");
-      invalidate();
-    } catch (e) {
-      toast.error(`Close failed: ${(e as Error).message}`);
     } finally {
       setBusy(false);
     }
@@ -467,7 +529,8 @@ function CivilEventDetailPage() {
     .join(" ");
 
   const isVerifiable = status === "submitted" || status === "under_review";
-  const isApprovable = status === "pending_approval";
+  const isApprovable = status === "verified" || status === "pending_approval";
+  const isPayable = status === "approved" || status === "awaiting_payment";
 
   const findParent = (id?: string | null) => parentsQuery.data?.find((p) => p.resident_id === id);
 
@@ -687,7 +750,7 @@ function CivilEventDetailPage() {
         );
       })()}
 
-      {/* Card 2 — Verification */}
+      {/* Card 2 — Verification (submitted / under_review / returned) */}
       {(isVerifiable || status === "returned") && (
         <Card title="ማረጋገጫ" titleEn="Verification" icon={ClipboardCheck}>
           {status === "returned" ? (
@@ -696,8 +759,8 @@ function CivilEventDetailPage() {
                 <div className="font-medium">Returned for correction</div>
                 <div className="mt-1 font-noto-ethiopic">ምክንያት: {event.return_reason || "—"}</div>
               </div>
-              <PermissionGate permission={P.CIVIL_REGISTER}>
-                <Button onClick={handleResubmit} disabled={busy}>
+              <PermissionGate permission={P.CIVIL_RESUBMIT}>
+                <Button onClick={handleResubmit} disabled={busy || !canResubmit}>
                   {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   <span className="font-noto-ethiopic">እንደገና ላክ</span>
                   <span className="ml-2 opacity-80">/ Resubmit</span>
@@ -715,7 +778,7 @@ function CivilEventDetailPage() {
                       onCheckedChange={(v) =>
                         setChecklist((c) => ({ ...c, [item.key]: v === true }))
                       }
-                      disabled={!canRegister}
+                      disabled={!canVerify}
                     />
                     <label htmlFor={item.key} className="cursor-pointer text-sm leading-tight">
                       <div className="font-noto-ethiopic text-slate-800">{item.am}</div>
@@ -724,7 +787,7 @@ function CivilEventDetailPage() {
                   </li>
                 ))}
               </ul>
-              <PermissionGate permission={P.CIVIL_REGISTER}>
+              <PermissionGate permission={P.CIVIL_VERIFY}>
                 <div className="flex flex-wrap gap-2 pt-2">
                   <Button
                     onClick={handlePass}
@@ -736,10 +799,12 @@ function CivilEventDetailPage() {
                     <span className="font-noto-ethiopic">አልፏል</span>
                     <span className="ml-2 opacity-80">/ Pass Verification</span>
                   </Button>
-                  <Button variant="outline" onClick={() => setReturnOpen(true)} disabled={busy}>
-                    <span className="font-noto-ethiopic">መልስ</span>
-                    <span className="ml-2 opacity-80">/ Return</span>
-                  </Button>
+                  {canReturn && (
+                    <Button variant="outline" onClick={() => setReturnOpen(true)} disabled={busy}>
+                      <span className="font-noto-ethiopic">መልስ</span>
+                      <span className="ml-2 opacity-80">/ Return</span>
+                    </Button>
+                  )}
                 </div>
               </PermissionGate>
             </div>
@@ -747,60 +812,73 @@ function CivilEventDetailPage() {
         </Card>
       )}
 
-      {/* Card 3 — Approval */}
-      {(isApprovable || status === "approval_returned") && (
+      {/* Card 3 — Approval (verified / pending_approval) */}
+      {isApprovable && (
         <Card title="ማጽደቅ" titleEn="Approval" icon={ShieldCheck}>
-          {status === "approval_returned" ? (
-            <div className="space-y-4">
-              <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                <div className="font-medium">Returned by supervisor</div>
-                <div className="mt-1 font-noto-ethiopic">ምክንያት: {event.return_reason || "—"}</div>
-              </div>
-              <PermissionGate permission={P.CIVIL_REGISTER}>
-                <Button onClick={handleResubmit} disabled={busy}>
-                  {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  <span className="font-noto-ethiopic">እንደገና ላክ</span>
-                  <span className="ml-2 opacity-80">/ Resubmit</span>
-                </Button>
-              </PermissionGate>
-            </div>
-          ) : (
+          {status === "verified" ? (
             <PermissionGate
               permission={P.CIVIL_APPROVE}
               fallback={
                 <p className="text-sm text-slate-500">
-                  Awaiting supervisor approval. You do not have approval permission.
+                  Verified — awaiting a supervisor to accept it into the approval queue.
                 </p>
               }
             >
-              <div className="space-y-4">
-                {eventType === "birth" && (
-                  <>
-                    <p className="font-noto-ethiopic text-sm text-slate-700">
-                      በዚህ ማጽደቅ ላይ አዲስ የነዋሪ መዝገብ ይፈጠራል።
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      Approving this event will automatically create a new resident record.
-                    </p>
-                  </>
-                )}
-                {eventType === "death" && (
-                  <>
-                    <p className="font-noto-ethiopic text-sm text-slate-700">
-                      በዚህ ማጽደቅ ላይ የነዋሪ ሁኔታ "የተሞተ" ተብሎ ይመዘገባል።
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      Approving will mark the linked resident as deceased and revoke any active
-                      credentials.
-                    </p>
-                  </>
-                )}
-                {(eventType === "marriage" || eventType === "divorce") && (
-                  <p className="text-xs text-slate-500">
-                    Approving records the event and links it to the parties.
+              <div className="space-y-3">
+                <p className="font-noto-ethiopic text-sm text-slate-700">ተረጋግጧል፤ ለማጽደቅ ይላኩ።</p>
+                <p className="text-xs text-slate-500">
+                  Verified. Send it into your approval queue to decide.
+                </p>
+                <Button
+                  onClick={handleSendForApproval}
+                  disabled={busy || !canApprove}
+                  className="bg-blue-700 text-white hover:bg-blue-800"
+                >
+                  {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  <span className="font-noto-ethiopic">ለማጽደቅ ላክ</span>
+                  <span className="ml-2 opacity-80">/ Send for Approval</span>
+                </Button>
+              </div>
+            </PermissionGate>
+          ) : (
+            <div className="space-y-4">
+              {eventType === "birth" && (
+                <>
+                  <p className="font-noto-ethiopic text-sm text-slate-700">
+                    ክፍያ ከተጠናቀቀ በኋላ አዲስ የነዋሪ መዝገብ ይፈጠራል።
                   </p>
-                )}
+                  <p className="text-xs text-slate-500">
+                    A new resident record is created once payment is completed and the registration
+                    is finalized.
+                  </p>
+                </>
+              )}
+              {eventType === "death" && (
+                <>
+                  <p className="font-noto-ethiopic text-sm text-slate-700">
+                    ክፍያ ከተጠናቀቀ በኋላ የነዋሪ ሁኔታ "የተሞተ" ተብሎ ይመዘገባል።
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    The resident is marked deceased and any active credentials revoked once payment
+                    is completed and the registration is finalized.
+                  </p>
+                </>
+              )}
+              {(eventType === "marriage" || eventType === "divorce") && (
+                <p className="text-xs text-slate-500">
+                  Approving records the event and links it to the parties; payment finalizes
+                  registration.
+                </p>
+              )}
 
+              <PermissionGate
+                permission={P.CIVIL_APPROVE}
+                fallback={
+                  <p className="text-sm text-slate-500">
+                    You do not have permission to approve this event.
+                  </p>
+                }
+              >
                 <div className="flex flex-wrap gap-2">
                   <Button
                     onClick={handleApprove}
@@ -812,31 +890,51 @@ function CivilEventDetailPage() {
                     <span className="font-noto-ethiopic">አጽድቅ</span>
                     <span className="ml-2 opacity-80">/ Approve</span>
                   </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setApprovalReturnOpen(true)}
-                    disabled={busy}
-                  >
-                    <span className="font-noto-ethiopic">መልስ</span>
-                    <span className="ml-2 opacity-80">/ Return</span>
-                  </Button>
-                  <Button variant="destructive" onClick={() => setRejectOpen(true)} disabled={busy}>
-                    <XCircle className="mr-2 h-4 w-4" />
-                    <span className="font-noto-ethiopic">ውድቅ</span>
-                    <span className="ml-2 opacity-80">/ Reject</span>
-                  </Button>
+                  {canReturn && (
+                    <Button variant="outline" onClick={() => setReturnOpen(true)} disabled={busy}>
+                      <span className="font-noto-ethiopic">መልስ</span>
+                      <span className="ml-2 opacity-80">/ Return</span>
+                    </Button>
+                  )}
+                  {canReject && (
+                    <Button
+                      variant="destructive"
+                      onClick={() => setRejectOpen(true)}
+                      disabled={busy}
+                    >
+                      <XCircle className="mr-2 h-4 w-4" />
+                      <span className="font-noto-ethiopic">ውድቅ</span>
+                      <span className="ml-2 opacity-80">/ Reject</span>
+                    </Button>
+                  )}
                 </div>
-              </div>
-            </PermissionGate>
+              </PermissionGate>
+            </div>
           )}
         </Card>
       )}
 
-      {/* Card 4 — Outcome (approved / issued / rejected) */}
-      {(status === "approved" || status === "issued" || status === "rejected") && (
+      {/* Card 4 — Payment (approved / awaiting_payment). Registration
+          finalizes automatically once paid (system transition to
+          `registered`) -- no manual "Close" step. */}
+      {isPayable && (
+        <PaymentCard
+          eventId={eventId}
+          eventType={eventType}
+          resident={event.resident}
+          status={status}
+          woredaId={woredaId!}
+          actorUserId={actorUserId}
+          canRecordPayment={canRecordPayment}
+          onDone={invalidate}
+        />
+      )}
+
+      {/* Card 5 — Outcome (registered / rejected) */}
+      {(status === "registered" || status === "rejected") && (
         <Card
-          title={status === "rejected" ? "ውጤት — ውድቅ" : "ውጤት — ጸድቋል"}
-          titleEn={status === "rejected" ? "Outcome — Rejected" : "Outcome — Approved"}
+          title={status === "rejected" ? "ውጤት — ውድቅ" : "ውጤት — ተመዝግቧል"}
+          titleEn={status === "rejected" ? "Outcome — Rejected" : "Outcome — Registered"}
           icon={UserCheck}
           tone={status === "rejected" ? "danger" : "success"}
         >
@@ -849,9 +947,9 @@ function CivilEventDetailPage() {
               {eventType === "birth" && (
                 <>
                   <div className="text-slate-700">
-                    <span className="font-noto-ethiopic">ክስተቱ ጸድቋል። አዲስ የነዋሪ መዝገብ ተፈጥሯል።</span>
+                    <span className="font-noto-ethiopic">ክስተቱ ተመዝግቧል። አዲስ የነዋሪ መዝገብ ተፈጥሯል።</span>
                     <div className="text-xs text-slate-500">
-                      Event approved. A new resident record has been generated.
+                      Event registered. A new resident record has been generated.
                     </div>
                   </div>
                   {event.resident_id && (
@@ -871,9 +969,9 @@ function CivilEventDetailPage() {
               {eventType === "death" && (
                 <>
                   <div className="text-slate-700">
-                    <span className="font-noto-ethiopic">የሞት ክስተት ጸድቋል። የነዋሪ ሁኔታ ተሻሽሏል።</span>
+                    <span className="font-noto-ethiopic">የሞት ክስተት ተመዝግቧል። የነዋሪ ሁኔታ ተሻሽሏል።</span>
                     <div className="text-xs text-slate-500">
-                      Death approved. Resident status updated and active credentials revoked.
+                      Death registered. Resident status updated and active credentials revoked.
                     </div>
                   </div>
                   {event.resident_id && (
@@ -893,36 +991,45 @@ function CivilEventDetailPage() {
               {(eventType === "marriage" || eventType === "divorce") && (
                 <div className="text-slate-700">
                   <span className="font-noto-ethiopic">
-                    {eventType === "marriage" ? "የጋብቻ ክስተት ጸድቋል።" : "የፍቺ ክስተት ጸድቋል።"}
+                    {eventType === "marriage" ? "የጋብቻ ክስተት ተመዝግቧል።" : "የፍቺ ክስተት ተመዝግቧል።"}
                   </span>
                   <div className="text-xs text-slate-500">
                     {eventType === "marriage"
-                      ? "Marriage approved and recorded."
-                      : "Divorce approved and recorded."}
+                      ? "Marriage registered and recorded."
+                      : "Divorce registered and recorded."}
                   </div>
                 </div>
-              )}
-
-              {status === "approved" && (
-                <PermissionGate permission={P.CIVIL_APPROVE}>
-                  <Button variant="outline" onClick={handleClose} disabled={busy} className="mt-2">
-                    {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    <CheckCircle2 className="mr-2 h-4 w-4" />
-                    <span className="font-noto-ethiopic">ዝጋ</span>
-                    <span className="ml-2 opacity-80">/ Close</span>
-                  </Button>
-                </PermissionGate>
-              )}
-
-              {status === "issued" && (
-                <p className="text-xs text-slate-500">Closed by the office · workflow complete.</p>
               )}
             </div>
           )}
         </Card>
       )}
 
-      {/* Return dialog */}
+      {/* Card 6 — History timeline, read from workflow_status_history */}
+      {historyQuery.data && historyQuery.data.length > 0 && (
+        <Card title="የሁኔታ ታሪክ" titleEn="Status History" icon={History}>
+          <ol className="space-y-3">
+            {historyQuery.data.map((h) => (
+              <li key={h.id} className="flex items-start gap-3 text-sm">
+                <div className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-blue-600" />
+                <div>
+                  <div className="text-slate-800">
+                    {h.old_status ? `${h.old_status} → ${h.new_status}` : h.new_status}
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    {new Date(h.changed_at).toLocaleString()}
+                  </div>
+                  {h.change_reason && (
+                    <div className="mt-0.5 text-xs text-slate-500">{h.change_reason}</div>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </Card>
+      )}
+
+      {/* Return dialog (shared by the verification and approval stages) */}
       <AlertDialog open={returnOpen} onOpenChange={setReturnOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -940,29 +1047,6 @@ function CivilEventDetailPage() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleReturn} disabled={busy}>
-              Return
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={approvalReturnOpen} onOpenChange={setApprovalReturnOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Return to registrar</AlertDialogTitle>
-            <AlertDialogDescription>
-              Provide a reason (minimum 5 characters).
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <Textarea
-            value={approvalReturnReason}
-            onChange={(e) => setApprovalReturnReason(e.target.value)}
-            placeholder="Reason…"
-            rows={4}
-          />
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleApprovalReturn} disabled={busy}>
               Return
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -1072,4 +1156,212 @@ function SpouseView({
     );
   }
   return <span className="font-noto-ethiopic">{party.name || "—"}</span>;
+}
+
+interface PaymentCardProps {
+  eventId: string;
+  eventType: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  resident: any;
+  status: string;
+  woredaId: string;
+  actorUserId: string | null;
+  canRecordPayment: boolean;
+  onDone: () => void;
+}
+
+// Mirrors credential's PaymentCard (woreda.credentials.$requestId.index.tsx)
+// exactly in shape: raise the fee at `approved` (-> awaiting_payment), then
+// record a payment + receipt to reach `paid`. Because every civil
+// fee_schedule row is seeded at 0 (B2's zero-fee rule), this always records
+// a zero-value payment + receipt rather than offering a waiver toggle --
+// there is nothing to waive when the catalog price is already zero.
+function PaymentCard({
+  eventId,
+  eventType,
+  resident,
+  status,
+  woredaId,
+  actorUserId,
+  canRecordPayment,
+  onDone,
+}: PaymentCardProps) {
+  const feeQuery = useCivilFee(eventType, status === "approved" || status === "awaiting_payment");
+
+  const [channel, setChannel] = useState<"cash" | "bank" | "mobile" | "">("");
+  const [referenceNo, setReferenceNo] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const fee = feeQuery.data ?? 0;
+
+  const canSubmit = useMemo(() => {
+    if (!canRecordPayment) return false;
+    if (busy) return false;
+    if (feeQuery.isError) return false;
+    if (feeQuery.isLoading || feeQuery.data === undefined) return false;
+    if (!channel) return false;
+    if ((channel === "bank" || channel === "mobile") && referenceNo.trim().length === 0)
+      return false;
+    return true;
+  }, [
+    canRecordPayment,
+    busy,
+    feeQuery.isError,
+    feeQuery.isLoading,
+    feeQuery.data,
+    channel,
+    referenceNo,
+  ]);
+
+  const handleRecord = async () => {
+    if (!canSubmit || !woredaId || !actorUserId) return;
+    setBusy(true);
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+
+      // approved -> awaiting_payment is its own transition (civil.record_payment)
+      // -- raise the fee before recording it, mirroring credential's hand-off.
+      if (status === "approved") {
+        const { data: raiseRow, error: raiseErr } = await supabase
+          .from("vital_event")
+          .update({ status: "awaiting_payment" })
+          .eq("vital_event_id", eventId)
+          .select("vital_event_id")
+          .maybeSingle();
+        if (raiseErr) throw raiseErr;
+        if (!raiseRow) {
+          throw new Error(
+            "ክፍያው ሊጠየቅ አልቻለም / Could not raise the fee — the event may have been moved by someone else",
+          );
+        }
+      }
+
+      const { data: pay, error: payErr } = await supabase
+        .from("payment")
+        .insert({
+          woreda_id: woredaId,
+          resident_id: resident?.resident_id ?? null,
+          household_id: null,
+          payment_type: "civil_registration_fee",
+          amount: fee,
+          payment_date: today,
+          channel: channel as "cash" | "bank" | "mobile",
+          reference_no: channel === "cash" ? referenceNo.trim() || null : referenceNo.trim(),
+          status: "confirmed",
+          posted_by_user_id: actorUserId,
+          vital_event_id: eventId,
+        } as never)
+        .select("payment_id")
+        .single();
+      if (payErr) throw payErr;
+      const paymentId = (pay as { payment_id: string }).payment_id;
+
+      const { error: recErr } = await supabase.from("receipt").insert({
+        woreda_id: woredaId,
+        payment_id: paymentId,
+        receipt_date: today,
+        total_amount: fee,
+        cash_bank_channel: channel,
+        receipt_number: "",
+      } as never);
+      if (recErr) throw recErr;
+
+      // This UPDATE is the payment gate + system transition trigger's own
+      // cascade point: by the time this call resolves, the row is already
+      // at `registered` (the AFTER UPDATE trigger advances it inside the
+      // same transaction) -- invalidating below re-fetches that final state.
+      const { error: updErr } = await supabase
+        .from("vital_event")
+        .update({ status: "paid", payment_id: paymentId })
+        .eq("vital_event_id", eventId);
+      if (updErr) throw updErr;
+
+      toast.success("ክፍያው ተመዝግቧል / Payment recorded");
+      onDone();
+    } catch (e) {
+      toast.error(`Payment failed: ${(e as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-center gap-3 bg-amber-600 px-5 py-4 text-white">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 ring-1 ring-white/25">
+          <ReceiptIcon className="h-5 w-5" />
+        </div>
+        <div className="leading-tight">
+          <h2 className="font-noto-ethiopic text-lg font-semibold">ክፍያ</h2>
+          <p className="text-sm text-white/80">Payment</p>
+        </div>
+      </div>
+      <div className="space-y-4 p-5 md:p-6">
+        {feeQuery.isError ? (
+          <p className="text-sm text-red-700">{(feeQuery.error as Error).message}</p>
+        ) : (
+          <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm">
+            <span className="font-noto-ethiopic font-medium">የክፍያ መጠን</span>
+            <span className="ml-2 text-slate-500">/ Fee amount</span>
+            <div className="mt-1 text-lg font-semibold">
+              {feeQuery.isLoading ? "…" : `${fee.toFixed(2)} ETB`}
+            </div>
+          </div>
+        )}
+
+        <PermissionGate
+          permission={P.CIVIL_RECORD_PAYMENT}
+          fallback={
+            <p className="text-sm text-slate-500">
+              You do not have permission to record payment for this event.
+            </p>
+          }
+        >
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="civil-payment-channel">
+                <span className="font-noto-ethiopic">የክፍያ መንገድ</span>
+                <span className="ml-2 text-slate-500">/ Channel</span>
+              </Label>
+              <Select value={channel} onValueChange={(v) => setChannel(v as typeof channel)}>
+                <SelectTrigger id="civil-payment-channel">
+                  <SelectValue placeholder="Select / ይምረጡ" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">ጥሬ ገንዘብ / Cash</SelectItem>
+                  <SelectItem value="bank">ባንክ / Bank</SelectItem>
+                  <SelectItem value="mobile">የሞባይል ገንዘብ / Mobile</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {(channel === "bank" || channel === "mobile") && (
+              <div className="space-y-2">
+                <Label htmlFor="civil-payment-ref">
+                  <span className="font-noto-ethiopic">የማጣቀሻ ቁጥር</span>
+                  <span className="ml-2 text-slate-500">/ Reference No.</span>
+                </Label>
+                <input
+                  id="civil-payment-ref"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  value={referenceNo}
+                  onChange={(e) => setReferenceNo(e.target.value)}
+                  placeholder="Reference number"
+                />
+              </div>
+            )}
+          </div>
+          <Button
+            onClick={handleRecord}
+            disabled={!canSubmit}
+            className="bg-emerald-700 text-white hover:bg-emerald-800"
+          >
+            {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <CheckCircle2 className="mr-2 h-4 w-4" />
+            <span className="font-noto-ethiopic">ክፍያ መዝግብ</span>
+            <span className="ml-2 opacity-80">/ Record Payment</span>
+          </Button>
+        </PermissionGate>
+      </div>
+    </section>
+  );
 }
