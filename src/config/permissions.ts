@@ -299,8 +299,10 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     P.CIVIL_VIEW,
     P.SERVICE_SUBMIT,
     P.SERVICE_RESUBMIT,
+    P.SERVICE_VERIFY,
     P.SERVICE_RETURN,
     P.SERVICE_ISSUE_LETTER,
+    P.SERVICE_COMPLETE,
   ],
   registry_clerk: [
     P.RESIDENT_CREATE,
@@ -338,8 +340,10 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     P.CIVIL_VIEW,
     P.SERVICE_SUBMIT,
     P.SERVICE_RESUBMIT,
+    P.SERVICE_VERIFY,
     P.SERVICE_RETURN,
     P.SERVICE_ISSUE_LETTER,
+    P.SERVICE_COMPLETE,
   ],
   finance_clerk: [
     P.PAYMENT_COLLECT,

@@ -4780,6 +4780,7 @@ export type Database = {
         Args: { _credential_number: string }
         Returns: string
       }
+      get_service_kpis: { Args: never; Returns: Json }
       get_user_woreda_id: { Args: never; Returns: string }
       is_active_app_user: { Args: never; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
@@ -4822,6 +4823,10 @@ export type Database = {
       resolve_civil_fee: { Args: { _event_type: string }; Returns: number }
       resolve_credential_fee: {
         Args: { _request_type: string }
+        Returns: number
+      }
+      resolve_service_fee: {
+        Args: { _service_type_id: string }
         Returns: number
       }
       storage_path_woreda_id: { Args: { object_name: string }; Returns: string }

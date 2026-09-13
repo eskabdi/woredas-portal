@@ -16,7 +16,7 @@ this PR actually implements.
    complaint `service_type` row has `requires_payment = false`) that the task
    text never actually describes (its 8-stage spec ends at `issued → completed`,
    which has no complaint analogue; complaints go `approved → in_progress →
-   resolved → closed`, a materially different shape). Rather than force
+resolved → closed`, a materially different shape). Rather than force
    complaints through a payment gate and an `issued`/letter step they were
    never designed to need, this PR treats complaints exactly like Task
    14-A treated `rental_occupancy_request`: **enforcement only, zero behavior
@@ -62,13 +62,13 @@ this PR actually implements.
    `woreda.settings.woreda-configuration.tsx`'s Services/Complaints tabs) —
    there is no fixed universal list to check `fee_schedule` against, and
    `service_type.fee_amount` is `NOT NULL DEFAULT 0`, so "fee unresolvable"
-   structurally cannot happen for an existing row the way a *missing*
+   structurally cannot happen for an existing row the way a _missing_
    `fee_schedule` row can. Duplicating the same amount into a second catalog
    table would add a synchronization-drift risk (two sources of truth for one
    price) for no correctness gain. This PR keeps `service_type.fee_amount` as
    the sole fee source and writes `resolve_service_fee(_service_type_id)` to
    mirror `resolve_civil_fee()`'s fail-closed/tenant-scoped/permission-checked
-   *shape* (raises if the id doesn't resolve to an active row in the caller's
+   _shape_ (raises if the id doesn't resolve to an active row in the caller's
    own woreda) without introducing a redundant catalog. §5 covers the actual
    check script this PR adds instead of extending `check-fee-catalog.ts`
    (which stays untouched — it validates `fee_schedule`, which this module
@@ -86,7 +86,7 @@ this PR actually implements.
    Grepped: no literal `INV-08` string, no `woreda_settings` table. What
    actually exists and is checked instead: `service_type.is_active` (the
    real per-type enable flag) and `tenant_module_config` (`module_key =
-   'services'`, whole-module toggle, currently `is_enabled = true` for all 6
+'services'`, whole-module toggle, currently `is_enabled = true` for all 6
    woredas, "missing row = enabled" convention per `useTenantModules.ts:46`).
    This PR's precondition trigger checks both, server-side, for the first
    time (currently only the client-side `<ModuleGate>` on the end-user routes
@@ -116,7 +116,7 @@ this PR actually implements.
    real work (rendering + persisting the letter), and it is **not** a hidden
    `is_system` transition the way civil's `paid → registered` is — `issued`
    stays a normal, permission-gated (`service.issue_letter`), user-driven
-   transition. Only the *content generation* (rendering the sanitized letter
+   transition. Only the _content generation_ (rendering the sanitized letter
    HTML) needs to move server-side to close the gating gap (§3) — the
    transition itself needs no GUC trick.
 
@@ -146,13 +146,13 @@ value, matching civil's own precedent exactly).
 
 ### Existing triggers (all as named)
 
-| Trigger | Timing | Function | Notes |
-| ------- | ------ | -------- | ----- |
-| `trg_assign_service_request_number` | BEFORE INSERT | `assign_service_request_number()` | Unchanged |
-| `trg_assign_letter_verification_token` | BEFORE INSERT | `assign_letter_verification_token()` | **Unconditionally** assigns a token at INSERT, regardless of category or eventual status — harmless in isolation since `verify_service_letter()` independently gates on `status IN ('issued','resolved','closed') AND issued_at IS NOT NULL` (confirmed live), but confusingly early. Left unchanged — not a security gap once the real gap (§3) is closed, and changing INSERT-time behavior risks the token column being null on other legitimate read paths that don't expect it. |
-| `trg_force_actor` | BEFORE INSERT/UPDATE | `force_actor_columns(...)` | Already covers the 4 actor columns the FSM needs (§0.7) |
-| `service_request_pii_sync_trg` | BEFORE INSERT/UPDATE | `service_request_pii_sync()` | Unrelated to this task, untouched |
-| `service_request_set_updated_at` | BEFORE UPDATE | `set_updated_at()` | Unrelated, untouched |
+| Trigger                                | Timing               | Function                             | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| -------------------------------------- | -------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `trg_assign_service_request_number`    | BEFORE INSERT        | `assign_service_request_number()`    | Unchanged                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `trg_assign_letter_verification_token` | BEFORE INSERT        | `assign_letter_verification_token()` | **Unconditionally** assigns a token at INSERT, regardless of category or eventual status — harmless in isolation since `verify_service_letter()` independently gates on `status IN ('issued','resolved','closed') AND issued_at IS NOT NULL` (confirmed live), but confusingly early. Left unchanged — not a security gap once the real gap (§3) is closed, and changing INSERT-time behavior risks the token column being null on other legitimate read paths that don't expect it. |
+| `trg_force_actor`                      | BEFORE INSERT/UPDATE | `force_actor_columns(...)`           | Already covers the 4 actor columns the FSM needs (§0.7)                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `service_request_pii_sync_trg`         | BEFORE INSERT/UPDATE | `service_request_pii_sync()`         | Unrelated to this task, untouched                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `service_request_set_updated_at`       | BEFORE UPDATE        | `set_updated_at()`                   | Unrelated, untouched                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 
 No workflow-engine trigger exists yet — `enforce_workflow_transition()` has
 never been attached to `service_request`.
@@ -163,7 +163,7 @@ never been attached to `service_request`.
 `{service.create, service.verify, service.approve, service.issue,
 complaint.manage, tenant.manage}` — **`service.record_payment` is not in
 this list**, meaning `collectPayment()`'s `.update()` today is gated only by
-whichever *other* coarse permission the caller happens to hold, not a
+whichever _other_ coarse permission the caller happens to hold, not a
 payment-specific one. `service_request_insert` only checks `{service.create,
 complaint.manage, tenant.manage}`. Neither policy currently references any
 of the 7 granular verbs already sitting unused in `permissions.ts`
