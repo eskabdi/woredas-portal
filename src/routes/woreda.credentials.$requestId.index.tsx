@@ -1125,6 +1125,10 @@ function CredentialRequestDetailPage() {
           <RevocationCard credentialRowId={request.credential_id} onDone={invalidateAll} />
         )}
 
+        {request.credential_id && (
+          <SuspendCard credentialRowId={request.credential_id} onDone={invalidateAll} />
+        )}
+
         <AlertDialog open={returnDialogOpen} onOpenChange={setReturnDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -2346,6 +2350,7 @@ function RevocationCard({ credentialRowId, onDone }: RevocationCardProps) {
 
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
+  const [reference, setReference] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const credQuery = useQuery({
@@ -2391,7 +2396,8 @@ function RevocationCard({ credentialRowId, onDone }: RevocationCardProps) {
     setSubmitting(true);
     try {
       const nowIso = new Date().toISOString();
-      const r = reason.trim();
+      const ref = reference.trim();
+      const r = ref ? `${reason.trim()} (Ref: ${ref})` : reason.trim();
 
       const { error: credErr } = await supabase
         .from("residence_credential")
@@ -2417,7 +2423,7 @@ function RevocationCard({ credentialRowId, onDone }: RevocationCardProps) {
         entity_name: "residence_credential",
         entity_id: credentialRowId,
         action_type: "CREDENTIAL_REVOKED",
-        new_value_json: { reason: r },
+        new_value_json: { reason: reason.trim(), reference: ref || null },
       });
 
       toast.success("ማስረጃው ተሽሯል / Credential revoked");
@@ -2426,6 +2432,7 @@ function RevocationCard({ credentialRowId, onDone }: RevocationCardProps) {
       });
       setOpen(false);
       setReason("");
+      setReference("");
       onDone();
     } catch (e) {
       toast.error((e as Error).message);
@@ -2500,18 +2507,33 @@ function RevocationCard({ credentialRowId, onDone }: RevocationCardProps) {
               </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="revoke-reason">
-              <span className="font-noto-ethiopic">የመሻሪያ ምክንያት</span>
-              <span className="ml-2 text-slate-500">/ Revocation Reason</span>
-            </Label>
-            <Textarea
-              id="revoke-reason"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              rows={4}
-              disabled={submitting}
-            />
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="revoke-reason">
+                <span className="font-noto-ethiopic">የመሻሪያ ምክንያት</span>
+                <span className="ml-2 text-slate-500">/ Revocation Reason</span>
+              </Label>
+              <Textarea
+                id="revoke-reason"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                rows={4}
+                disabled={submitting}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="revoke-reference">
+                <span className="font-noto-ethiopic">ማጣቀሻ</span>
+                <span className="ml-2 text-slate-500">/ Reference (optional)</span>
+              </Label>
+              <Input
+                id="revoke-reference"
+                value={reference}
+                onChange={(e) => setReference(e.target.value)}
+                disabled={submitting}
+                placeholder="e.g. court order or case number"
+              />
+            </div>
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={submitting}>Cancel</AlertDialogCancel>
@@ -2526,6 +2548,196 @@ function RevocationCard({ credentialRowId, onDone }: RevocationCardProps) {
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               <span className="font-noto-ethiopic">መሻር አረጋግጥ</span>
               <span className="ml-2 text-xs text-white/80">/ Confirm Revocation</span>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </section>
+  );
+}
+
+interface SuspendCardProps {
+  credentialRowId: string;
+  onDone: () => void;
+}
+
+/** Task 12.1 exception flow: suspend/lift, built from scratch -- the DB
+ * side (suspended_reason required both ways, credential.suspend gating,
+ * reversibility) already existed since Task 10, but no client UI ever
+ * called it. Mirrors RevocationCard's shape, since both are a reason-gated
+ * status change on the same table. */
+function SuspendCard({ credentialRowId, onDone }: SuspendCardProps) {
+  const queryClient = useQueryClient();
+  const actorUserId = useAuthStore((s) => s.appUser?.user_id ?? null);
+  const hasPermission = useAuthStore((s) => s.hasPermission);
+  const canSuspend = hasPermission(P.CREDENTIAL_SUSPEND);
+
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const credQuery = useQuery({
+    queryKey: ["suspend-cred-row", credentialRowId],
+    enabled: !!credentialRowId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("residence_credential")
+        .select("credential_id, credential_number, status, suspended_reason")
+        .eq("credential_id", credentialRowId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const cred = credQuery.data;
+  if (credQuery.isLoading || !cred) return null;
+  if (cred.status !== "active" && cred.status !== "suspended") return null;
+
+  const isSuspended = cred.status === "suspended";
+  const targetStatus = isSuspended ? "active" : "suspended";
+  const reasonValid = reason.trim().length >= 5;
+  const canSubmit = canSuspend && reasonValid && !submitting;
+
+  const handleConfirm = async () => {
+    if (!canSubmit || !actorUserId) return;
+    setSubmitting(true);
+    try {
+      const r = reason.trim();
+      const { data: updated, error: credErr } = await supabase
+        .from("residence_credential")
+        .update({ status: targetStatus, suspended_reason: r })
+        .eq("credential_id", credentialRowId)
+        .select("credential_id")
+        .maybeSingle();
+      if (credErr) throw credErr;
+      if (!updated) {
+        throw new Error(
+          "ሁኔታው ሊቀየር አልቻለም / The status was not changed — it may have been moved by someone else",
+        );
+      }
+
+      await supabase.from("credential_status_history").insert({
+        credential_id: credentialRowId,
+        old_status: cred.status,
+        new_status: targetStatus,
+        changed_by_user_id: actorUserId,
+        change_reason: r,
+      });
+
+      await supabase.from("audit_log").insert({
+        actor_user_id: actorUserId,
+        entity_name: "residence_credential",
+        entity_id: credentialRowId,
+        action_type: isSuspended ? "CREDENTIAL_REACTIVATED" : "CREDENTIAL_SUSPENDED",
+        new_value_json: { reason: r },
+      });
+
+      toast.success(
+        isSuspended ? "ማገድ ተነስቷል / Suspension lifted" : "ማስረጃው ታግዷል / Credential suspended",
+      );
+      await queryClient.invalidateQueries({ queryKey: ["suspend-cred-row", credentialRowId] });
+      setOpen(false);
+      setReason("");
+      onDone();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <section className="rounded-xl border-2 border-orange-300 bg-white shadow-sm">
+      <div className="flex items-center gap-2 rounded-t-xl bg-orange-600 px-5 py-3 text-white">
+        <ShieldOff className="h-5 w-5" />
+        <span className="font-noto-ethiopic text-base font-semibold">
+          {isSuspended ? "ታግዷል" : "ማገድ"}
+        </span>
+        <span className="ml-1 text-sm text-white/80">
+          / {isSuspended ? "Suspended" : "Suspension"}
+        </span>
+      </div>
+      <div className="space-y-4 p-5">
+        {isSuspended && (
+          <div className="rounded-md border border-orange-200 bg-orange-50 p-4 text-sm">
+            <dl className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
+              <dt className="font-noto-ethiopic text-slate-600">ማስረጃ / Credential</dt>
+              <dd className="font-mono text-slate-900">{cred.credential_number}</dd>
+              <dt className="font-noto-ethiopic text-slate-600">የማገጃ ምክንያት / Suspension Reason</dt>
+              <dd className="text-slate-900">{cred.suspended_reason ?? "—"}</dd>
+            </dl>
+          </div>
+        )}
+        <p className="text-xs text-slate-500">
+          {isSuspended
+            ? "Suspension is reversible — lifting it requires its own reason."
+            : "Suspension is reversible, unlike revocation — it can be lifted later."}
+        </p>
+        <div className="flex justify-end">
+          <Button
+            variant={isSuspended ? "default" : "outline"}
+            className={isSuspended ? "" : "border-orange-400 text-orange-700 hover:bg-orange-50"}
+            disabled={!canSuspend}
+            onClick={() => setOpen(true)}
+          >
+            <ShieldOff className="mr-2 h-4 w-4" />
+            <span className="font-noto-ethiopic">{isSuspended ? "ማገድ አንሳ" : "አግድ"}</span>
+            <span className="ml-2 text-xs opacity-80">/ {isSuspended ? "Lift" : "Suspend"}</span>
+          </Button>
+        </div>
+        {!canSuspend && (
+          <p className="text-xs text-amber-700">
+            You do not have permission to suspend/lift credentials.
+          </p>
+        )}
+      </div>
+
+      <AlertDialog open={open} onOpenChange={(v) => !submitting && setOpen(v)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              <span className="font-noto-ethiopic">
+                {isSuspended ? "ማገድ ማንሳት ማረጋገጫ" : "ማገድ ማረጋገጫ"}
+              </span>
+              <span className="ml-2 text-sm text-slate-500">
+                / {isSuspended ? "Confirm Lift Suspension" : "Confirm Suspension"}
+              </span>
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {isSuspended
+                ? "The credential becomes active again."
+                : "The credential becomes invalid until the suspension is lifted."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="suspend-reason">
+              <span className="font-noto-ethiopic">ምክንያት</span>
+              <span className="ml-2 text-slate-500">/ Reason</span>
+            </Label>
+            <Textarea
+              id="suspend-reason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={4}
+              disabled={submitting}
+              placeholder="Min 5 characters"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={submitting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleConfirm();
+              }}
+              disabled={!canSubmit}
+            >
+              {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <span className="font-noto-ethiopic">{isSuspended ? "ማንሳት አረጋግጥ" : "ማገድ አረጋግጥ"}</span>
+              <span className="ml-2 text-xs opacity-80">
+                / {isSuspended ? "Confirm Lift" : "Confirm Suspend"}
+              </span>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
