@@ -923,11 +923,21 @@ function PrintPage() {
           titleAm="የመታወቂያ ህትመት"
           titleEn="Credential Printing"
           actions={
-            <Button asChild variant="outline">
-              <Link to="/woreda/credentials/$requestId" params={{ requestId }}>
-                <ArrowLeft className="mr-2 h-4 w-4" /> Back to request
-              </Link>
-            </Button>
+            <div className="flex items-center gap-2">
+              {request?.credential_id && (
+                <Button asChild variant="outline">
+                  <Link to="/woreda/credentials/$requestId/certificate" params={{ requestId }}>
+                    <span className="font-noto-ethiopic">A4 ሰርተፍኬት</span>
+                    <span className="ml-1.5 opacity-70">/ A4 Certificate</span>
+                  </Link>
+                </Button>
+              )}
+              <Button asChild variant="outline">
+                <Link to="/woreda/credentials/$requestId" params={{ requestId }}>
+                  <ArrowLeft className="mr-2 h-4 w-4" /> Back to request
+                </Link>
+              </Button>
+            </div>
           }
         />
       </div>

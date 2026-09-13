@@ -58,6 +58,7 @@ import { Route as WoredaCivilDeathNewRouteImport } from './routes/woreda.civil.d
 import { Route as WoredaCivilDivorceNewRouteImport } from './routes/woreda.civil.divorce.new'
 import { Route as WoredaCivilMarriageNewRouteImport } from './routes/woreda.civil.marriage.new'
 import { Route as WoredaCredentialsRequestIdIndexRouteImport } from './routes/woreda.credentials.$requestId.index'
+import { Route as WoredaCredentialsRequestIdCertificateRouteImport } from './routes/woreda.credentials.$requestId.certificate'
 import { Route as WoredaCredentialsRequestIdPrintRouteImport } from './routes/woreda.credentials.$requestId.print'
 import { Route as WoredaHouseholdsHouseholdIdIndexRouteImport } from './routes/woreda.households.$householdId.index'
 import { Route as WoredaHouseholdsHouseholdIdEditRouteImport } from './routes/woreda.households.$householdId.edit'
@@ -326,6 +327,12 @@ const WoredaCredentialsRequestIdIndexRoute =
     path: '/$requestId/',
     getParentRoute: () => WoredaCredentialsRoute,
   } as any)
+const WoredaCredentialsRequestIdCertificateRoute =
+  WoredaCredentialsRequestIdCertificateRouteImport.update({
+    id: '/$requestId/certificate',
+    path: '/$requestId/certificate',
+    getParentRoute: () => WoredaCredentialsRoute,
+  } as any)
 const WoredaCredentialsRequestIdPrintRoute =
   WoredaCredentialsRequestIdPrintRouteImport.update({
     id: '/$requestId/print',
@@ -477,6 +484,7 @@ export interface FileRoutesByFullPath {
   '/woreda/civil/death/new': typeof WoredaCivilDeathNewRoute
   '/woreda/civil/divorce/new': typeof WoredaCivilDivorceNewRoute
   '/woreda/civil/marriage/new': typeof WoredaCivilMarriageNewRoute
+  '/woreda/credentials/$requestId/certificate': typeof WoredaCredentialsRequestIdCertificateRoute
   '/woreda/credentials/$requestId/print': typeof WoredaCredentialsRequestIdPrintRoute
   '/woreda/households/$householdId/edit': typeof WoredaHouseholdsHouseholdIdEditRoute
   '/woreda/households/$householdId/print': typeof WoredaHouseholdsHouseholdIdPrintRoute
@@ -538,6 +546,7 @@ export interface FileRoutesByTo {
   '/woreda/civil/death/new': typeof WoredaCivilDeathNewRoute
   '/woreda/civil/divorce/new': typeof WoredaCivilDivorceNewRoute
   '/woreda/civil/marriage/new': typeof WoredaCivilMarriageNewRoute
+  '/woreda/credentials/$requestId/certificate': typeof WoredaCredentialsRequestIdCertificateRoute
   '/woreda/credentials/$requestId/print': typeof WoredaCredentialsRequestIdPrintRoute
   '/woreda/households/$householdId/edit': typeof WoredaHouseholdsHouseholdIdEditRoute
   '/woreda/households/$householdId/print': typeof WoredaHouseholdsHouseholdIdPrintRoute
@@ -607,6 +616,7 @@ export interface FileRoutesById {
   '/woreda/civil/death/new': typeof WoredaCivilDeathNewRoute
   '/woreda/civil/divorce/new': typeof WoredaCivilDivorceNewRoute
   '/woreda/civil/marriage/new': typeof WoredaCivilMarriageNewRoute
+  '/woreda/credentials/$requestId/certificate': typeof WoredaCredentialsRequestIdCertificateRoute
   '/woreda/credentials/$requestId/print': typeof WoredaCredentialsRequestIdPrintRoute
   '/woreda/households/$householdId/edit': typeof WoredaHouseholdsHouseholdIdEditRoute
   '/woreda/households/$householdId/print': typeof WoredaHouseholdsHouseholdIdPrintRoute
@@ -677,6 +687,7 @@ export interface FileRouteTypes {
     | '/woreda/civil/death/new'
     | '/woreda/civil/divorce/new'
     | '/woreda/civil/marriage/new'
+    | '/woreda/credentials/$requestId/certificate'
     | '/woreda/credentials/$requestId/print'
     | '/woreda/households/$householdId/edit'
     | '/woreda/households/$householdId/print'
@@ -738,6 +749,7 @@ export interface FileRouteTypes {
     | '/woreda/civil/death/new'
     | '/woreda/civil/divorce/new'
     | '/woreda/civil/marriage/new'
+    | '/woreda/credentials/$requestId/certificate'
     | '/woreda/credentials/$requestId/print'
     | '/woreda/households/$householdId/edit'
     | '/woreda/households/$householdId/print'
@@ -806,6 +818,7 @@ export interface FileRouteTypes {
     | '/woreda/civil/death/new'
     | '/woreda/civil/divorce/new'
     | '/woreda/civil/marriage/new'
+    | '/woreda/credentials/$requestId/certificate'
     | '/woreda/credentials/$requestId/print'
     | '/woreda/households/$householdId/edit'
     | '/woreda/households/$householdId/print'
@@ -1183,6 +1196,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WoredaCredentialsRequestIdIndexRouteImport
       parentRoute: typeof WoredaCredentialsRoute
     }
+    '/woreda/credentials/$requestId/certificate': {
+      id: '/woreda/credentials/$requestId/certificate'
+      path: '/$requestId/certificate'
+      fullPath: '/woreda/credentials/$requestId/certificate'
+      preLoaderRoute: typeof WoredaCredentialsRequestIdCertificateRouteImport
+      parentRoute: typeof WoredaCredentialsRoute
+    }
     '/woreda/credentials/$requestId/print': {
       id: '/woreda/credentials/$requestId/print'
       path: '/$requestId/print'
@@ -1353,6 +1373,7 @@ interface WoredaCredentialsRouteChildren {
   WoredaCredentialsNewRoute: typeof WoredaCredentialsNewRoute
   WoredaCredentialsVerifyRoute: typeof WoredaCredentialsVerifyRoute
   WoredaCredentialsIndexRoute: typeof WoredaCredentialsIndexRoute
+  WoredaCredentialsRequestIdCertificateRoute: typeof WoredaCredentialsRequestIdCertificateRoute
   WoredaCredentialsRequestIdPrintRoute: typeof WoredaCredentialsRequestIdPrintRoute
   WoredaCredentialsRequestIdIndexRoute: typeof WoredaCredentialsRequestIdIndexRoute
 }
@@ -1361,6 +1382,8 @@ const WoredaCredentialsRouteChildren: WoredaCredentialsRouteChildren = {
   WoredaCredentialsNewRoute: WoredaCredentialsNewRoute,
   WoredaCredentialsVerifyRoute: WoredaCredentialsVerifyRoute,
   WoredaCredentialsIndexRoute: WoredaCredentialsIndexRoute,
+  WoredaCredentialsRequestIdCertificateRoute:
+    WoredaCredentialsRequestIdCertificateRoute,
   WoredaCredentialsRequestIdPrintRoute: WoredaCredentialsRequestIdPrintRoute,
   WoredaCredentialsRequestIdIndexRoute: WoredaCredentialsRequestIdIndexRoute,
 }

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
+import { P } from "@/config/permissions";
 
 /**
  * Task 12.6: the credential workflow's typed data-layer hooks. Started with
@@ -30,6 +31,47 @@ export function useFeeSchedule(requestType: string | undefined, enabled = true) 
       });
       if (error) throw error;
       return Number(data ?? 0);
+    },
+  });
+}
+
+export interface CredentialKpis {
+  new_today: number;
+  pending_verification: number;
+  pending_approval: number;
+  awaiting_payment: number;
+  ready_or_printing: number;
+  issued_this_month: number;
+  returned_rate_pct: number | null;
+  rejected_this_month: number;
+  blocked: number;
+  avg_turnaround_days: number | null;
+}
+
+/** Task 12.3's 10 KPI widgets, all server-counted in one round trip by
+ * get_credential_kpis() (00000000000057) -- woreda_id is resolved from
+ * get_user_woreda_id() inside the RPC, never sent by the client, so there is
+ * nothing here to spoof across tenants. A short staleTime rather than a long
+ * one: these are dashboard counts an officer expects to reflect what just
+ * happened (a request just submitted, a payment just recorded), not a
+ * slow-changing reference table like credential_policy above. */
+export function useCredentialKpis() {
+  const woredaId = useAuthStore((s) => s.woredaId);
+  const hasPermission = useAuthStore((s) => s.hasPermission);
+  return useQuery({
+    queryKey: ["credential-kpis", woredaId],
+    // get_credential_kpis() now raises for a caller lacking credential.read
+    // (the same review finding that added its DB-side permission check) --
+    // gating here matches CredentialQueueTable's own `enabled` check, so a
+    // viewer/finance_clerk (or a pending/suspended user) never fires this
+    // RPC only to have it reject every 60s for as long as the page stays open.
+    enabled: !!woredaId && hasPermission(P.CREDENTIAL_READ),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    queryFn: async (): Promise<CredentialKpis> => {
+      const { data, error } = await supabase.rpc("get_credential_kpis");
+      if (error) throw error;
+      return data as unknown as CredentialKpis;
     },
   });
 }

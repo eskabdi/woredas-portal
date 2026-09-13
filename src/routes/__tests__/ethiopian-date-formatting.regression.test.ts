@@ -96,19 +96,38 @@ describe("Ethiopian date formatting (F-QA-2026-09-02 regression lock)", () => {
   });
 
   describe("woreda.credentials.index.tsx — submitted_at/created_at (ISSUE-005)", () => {
-    const src = readRoute("woreda.credentials.index.tsx");
+    // Task 12-B extracted the on-screen queue table into
+    // CredentialQueueTable.tsx (src/components/credentials/), reused by the
+    // route; the export column definition stayed in the route file. The
+    // regression lock now checks one occurrence in each, rather than two in
+    // a single file, since that's where the code actually lives post-refactor.
+    const routeSrc = readRoute("woreda.credentials.index.tsx");
+    const queueTableSrc = readFileSync(
+      join(ROUTES_DIR, "..", "components", "credentials", "CredentialQueueTable.tsx"),
+      "utf-8",
+    );
 
     it("does not reintroduce raw toLocaleDateString() for submitted_at/created_at", () => {
-      expect(src).not.toMatch(GREGORIAN_TOLOCALE_DATE);
+      expect(routeSrc).not.toMatch(GREGORIAN_TOLOCALE_DATE);
+      expect(queueTableSrc).not.toMatch(GREGORIAN_TOLOCALE_DATE);
     });
 
-    it("formats Submitted (on-screen and export) with the Ethiopian short formatter, falling back to created_at, twice", () => {
+    it("formats Submitted with the Ethiopian short formatter in the export column, falling back to created_at", () => {
       const matches = [
-        ...src.matchAll(
+        ...routeSrc.matchAll(
           /formatEthiopianDateShort\(new Date\(r\.submitted_at\s*\?\?\s*r\.created_at\)\)/g,
         ),
       ];
-      expect(matches.length).toBe(2);
+      expect(matches.length).toBe(1);
+    });
+
+    it("formats Submitted with the Ethiopian short formatter in the on-screen queue table, falling back to created_at", () => {
+      const matches = [
+        ...queueTableSrc.matchAll(
+          /formatEthiopianDateShort\(new Date\(r\.submitted_at\s*\?\?\s*r\.created_at\)\)/g,
+        ),
+      ];
+      expect(matches.length).toBe(1);
     });
   });
 });
