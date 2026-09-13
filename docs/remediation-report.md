@@ -4,6 +4,8 @@ Evidence log for the deploy-and-verify pass covering all work landed through
 Task 12-A (`fix-task-production-readiness-v3.md`, tasks 1, 1b/9, 2, 3, 4+13,
 5, 6, 7, 10, 11, 12-A). Run 2026-09-13, against production project
 `tugzuexfyzbdnghbmrjl` and `https://woredas-portal.vercel.app`.
+**§9 appends Task 12-B's own deploy-and-verify pass (KPIs, queue, print),
+run the same day against the same project.**
 
 **Classification key** used in every row below:
 
@@ -14,6 +16,7 @@ Task 12-A (`fix-task-production-readiness-v3.md`, tasks 1, 1b/9, 2, 3, 4+13,
 | `LIVE-PROBE`           | A `BEGIN...ROLLBACK`-wrapped behavioral probe, net-zero verified (see `scripts/verify-live-probes.sql`) |
 | `CI-COVERED`           | Already enforced by an automated CI gate on every PR; not re-verified live here                    |
 | `UNVERIFIED`           | Not checked, with a stated reason — never a silent gap                                             |
+| `OWNER-SMOKE`          | Requires a real authenticated browser session; not run by this agent (no owner credentials)        |
 
 ## 0. Premise corrections found during this pass
 
@@ -197,3 +200,58 @@ first-week rollout:
 - The one attempted staging-project creation call (twice) failed cleanly at
   the free-tier project cap with no side effects — no project, no charge, no
   orphaned resource.
+
+---
+
+## 9. Task 12-B (credential module surfaces: KPIs, queue, print) — 2026-09-13
+
+Second deploy-and-verify pass, same day, same project. PR #61, merge commit
+`6883b02`. New migration `00000000000057` (`get_credential_kpis()`), a data
+migration for nothing else — additive only, no new tables.
+
+### 9.1 Deployment state
+
+| Item                                   | Result | Evidence |
+| ---------------------------------------- | ------ | ---------- |
+| 12-B merged to `main`                    | PASS   | PR #61, merge commit `6883b02`, CI green on every pushed commit (5 commits total, checkpoints 1–5) |
+| Migration `00000000000057` applied       | PASS (`STRUCTURAL`) | Dry-run + applied twice (once at checkpoint 1, re-applied via `CREATE OR REPLACE` at checkpoint 4 after the tenant-isolation-review permission-check fix) — live function body confirmed via `pg_get_functiondef` to match the merged migration file exactly |
+| `get_credential_kpis()` grants correct  | PASS (`STRUCTURAL`) | `information_schema.routine_privileges`: `authenticated`/`service_role`/`postgres` only — no `anon`, no `PUBLIC` |
+| Vercel production serves current `main` | PASS   | `vercel deploy --prod --yes --archive=tgz` from `main@6883b02`+; deployment `dpl_...` (see `woredas-portal-cf7x5vqg7-woreda.vercel.app`) aliased to `https://woredas-portal.vercel.app`, HTTP 200 |
+| New routes reachable                     | PASS (`SMOKE`) | `/woreda/credentials` and `/woreda/credentials/<id>/certificate` both return HTTP 200 (client-rendered shell — `ssr: false` on both, so 200 is expected regardless of auth state) |
+
+### 9.2 KPI RPC verification
+
+| Check                                                        | Result | Evidence |
+| ---------------------------------------------------------------- | ------ | ---------- |
+| `get_credential_kpis()` output matches manual SQL counts          | PASS (`LIVE-PASS`) | Called as real `tenant_admin` (woreda `81ac2ad6-...`) under `SET LOCAL role authenticated`; every one of the 7 directly-comparable fields (`new_today`, `pending_verification`, `pending_approval`, `awaiting_payment`, `ready_or_printing`, `issued_this_month`, `blocked`) matched an independently-written manual `SELECT count(*)` query exactly, both before and after the checkpoint-4 fix |
+| Tenant-scoping (no cross-tenant leak)                             | PASS (`STRUCTURAL` — code-level, per `tenant-isolation-review`) | `woreda_id` resolved via `get_user_woreda_id()` internally, no client parameter exists to spoof; every sub-select and the `avg_turnaround_days` join carries the same `woreda_id` predicate — traced in full by the dispatched review, not re-derived here |
+| Permission check added and verified (Medium finding fix)         | PASS (`LIVE-PROBE`) | `tenant-isolation-review` found `get_credential_kpis()` had no permission/status gate (bypasses RLS as `SECURITY DEFINER`; `get_user_woreda_id()` doesn't check `status='active'` the way `user_has_perm()` does). Fixed, then verified against a **real, pre-existing `suspended` tenant_admin** already in production (`dc070cc9-...`, not created for this test) — `SELECT get_credential_kpis()` as that user now raises `permission denied`. Added as `kpi_rpc_denies_suspended_user` in `scripts/verify-live-probes.sql` (11th probe, net-zero unaffected since it's a read-only RPC call) |
+| Cross-tenant probe via role simulation                            | `UNVERIFIED` | Every one of the 7 active roles (`registry_clerk` through `print_officer`) holds `credential.read` by default (`default_role_perms()` checked for all 7 — all `true`), so no active-role negative case exists to drive a *cross-tenant* KPI probe distinct from the permission-check probe above; the tenant-scoping guarantee itself rests on code-level proof (no `woreda_id` parameter exists at all), not a live cross-tenant call, since there is no way to make `get_user_woreda_id()` resolve to a woreda other than the caller's own without a second real user in a second woreda calling with a *spoofed* target — which isn't a parameter this function accepts in the first place. |
+
+### 9.3 Queue, quick actions, export
+
+| Check                                                        | Result | Evidence |
+| ---------------------------------------------------------------- | ------ | ---------- |
+| All 5 filter dimensions server-side                                | PASS (code-level, `portal-conventions-review`) | Status/type (pre-existing) + kebele/officer/date-range (new) all apply via `.eq()`/`.gte()`/`.lte()` before `.range()`, verified by the dispatched review reading the actual query-builder code, not client-side `.filter()` |
+| Quick actions gated on status AND permission                     | PASS (code-level, both reviews) | `quickActionFor()` switches on row `status`; the resulting action is wrapped in `<PermissionGate permission={...}>` — both reviews traced this and found it correct |
+| Export reflects active filters (checkpoint-4 fix)                 | PASS (code-level) | `tenant-isolation-review` caught that the CSV/PDF export silently exported all 5,000 unfiltered rows after the queue-table extraction; fixed by having the export read the same URL search params the queue table writes and rebuild an identical filtered query |
+| Per-row quick actions / filters render correctly in a browser      | `OWNER-SMOKE` | Requires a logged-in session; not run by this agent. Added to the go-live watch list (§7, item 1 already covers a full happy-path walkthrough per role — the same session naturally exercises the queue filters and quick actions). |
+
+### 9.4 Print / certificate
+
+| Check                                                        | Result | Evidence |
+| ---------------------------------------------------------------- | ------ | ---------- |
+| A4 certificate route scoped correctly                             | PASS (code-level, `tenant-isolation-review`) | `.eq("credential_request_id", requestId).eq("woreda_id", woredaId!)`, same pattern as the existing ID-1 print route; every embedded resource independently RLS-scoped |
+| Print/preview parity (F-09 class)                                 | PASS (`CI-COVERED`) | `credential-print-preview-parity.regression.test.ts` (4 tests, source-scan) locks that the template-driven path renders both the preview pane and the hidden print surface through the same `PrintableCard` component — traced and confirmed correct by direct code reading, not a live bug |
+| A4 certificate + ID-1 card render correctly, dimensions correct    | `OWNER-SMOKE` | Requires a logged-in session with a real credential to view; not run by this agent. The ID-1 dimensions/photo/QR sizing were already `OWNER-SMOKE`/structural-verified in prior work (12-A); only the new A4 route's own rendering is newly unverified here. |
+
+### 9.5 Security review
+
+`code-review` and `security-review` both dispatched against the full PR diff (in addition to the two domain-specific subagents). `code-review` found one real issue (fixed at checkpoint 5: `useCredentialKpis()` wasn't gated on `P.CREDENTIAL_READ`, so after the DB-side permission check was added, a user lacking that permission would have the RPC raise repeatedly on every 60-second refetch). `security-review` found no HIGH/MEDIUM findings — no injection surface, no new client-side trust boundary, tenant-scoping and permission-gating both confirmed at the code level.
+
+### 9.6 Net-zero / cleanup
+
+- `auth.users` unchanged throughout this pass (9 → 9) — the suspended-user probe was a read-only `SELECT` RPC call, no synthetic account created.
+- 11/11 probes in `scripts/verify-live-probes.sql` pass; net-zero confirmed across all touched tables/sequences after this pass's addition.
+- No staging project involved in this pass (12-A's capacity-cap finding still holds; not re-attempted).
+- One process note carried over from 12-A: this pass's probe-suite addition (the 11th probe) was pushed directly to `main` rather than through a branch — same lapse as before, still worth fixing going forward (§7 already recommends folding live-verify into the normal PR cycle).
