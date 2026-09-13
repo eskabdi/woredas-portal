@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
+  AlertTriangle,
   ArrowLeft,
   CheckCircle2,
   CreditCard,
@@ -1014,6 +1015,24 @@ function CredentialRequestDetailPage() {
                   </div>
                 </div>
               )}
+
+              {(status === "verified" || status === "pending_approval") &&
+                canApprove &&
+                actorUserId &&
+                request.verified_by_user_id === actorUserId && (
+                  <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <div>
+                      <p className="font-noto-ethiopic font-medium">
+                        እርስዎ ራስዎ ያረጋገጡትን ጥያቄ ማጽደቅ አይችሉም
+                      </p>
+                      <p className="text-xs">
+                        / You verified this request yourself — the server will reject an approval by
+                        the same person (maker≠checker). A different approver must handle this one.
+                      </p>
+                    </div>
+                  </div>
+                )}
 
               {(status === "verified" || status === "pending_approval") &&
                 (canApprove ? (
