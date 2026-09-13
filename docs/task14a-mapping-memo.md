@@ -251,11 +251,13 @@ on every subquery, never trusting `NEW.woreda_id` as an assertion but always
 re-deriving from the FK target the same way `assert_vital_event_woreda_consistency`
 already does), bilingual raises:
 
-- **birth**: if `NEW.household_id` is set, it must resolve to a household in the
-  same woreda with `occupancy_status <> 'demolished'`... actually per the task's
-  literal wording ("household linked and active") the check is: a `household_id`
-  must be present (birth registration requires a linked household) and that
-  household must exist in `NEW.woreda_id`.
+- **birth**: as originally written here, a `household_id` was required to be
+  present (per the task's literal wording, "household linked and active").
+  **This was found live to break every real birth registration** — the actual
+  intake form never collects a `household_id` — and was fixed in
+  `00000000000060` (§13 below) to match its death/marriage siblings: only
+  validate `household_id` when it's actually supplied (must then resolve to a
+  household in `NEW.woreda_id`), never require its presence.
 - **death**: `NEW.resident_id` must resolve to a `resident` row in `NEW.woreda_id`
   with `active_flag = true` and `residency_status <> 'deceased'`, and there must be
   no other **open** (non-terminal) death-type `vital_event` for the same resident
@@ -383,7 +385,7 @@ AND p.status = 'confirmed'` — it never checked `p.vital_event_id =
 NEW.vital_event_id`. Any staff member holding `civil.record_payment` can read
 every confirmed payment in their own tenant (`payment_select` RLS is
 woreda-scoped, not row-owner-scoped), including a payment originally recorded
-against a rental fee, a credential fee, or a *different* vital_event. Pointing
+against a rental fee, a credential fee, or a _different_ vital_event. Pointing
 `vital_event.payment_id` at that unrelated payment and transitioning to `paid`
 passed the gate, and the system's own `paid → registered` cascade then fired
 the birth/death side effects — finalizing a registration with no payment ever
@@ -433,3 +435,34 @@ silently expanded into.
    English word instead of a colored, Amharic-labeled badge. Fixed both: the
    filter list now matches the seeded FSM exactly, and `registered` got its
    own emerald-styled, bilingual chip entry.
+
+## 13. Go-live follow-up: real production bug found during two-actor verification (fixed, `00000000000060`)
+
+The first real registry_clerk account onboarded post-merge (see
+`docs/remediation-report.md` §10) submitted a birth event through the exact
+insert shape the real intake form (`src/routes/woreda.civil.birth.new.tsx`)
+has always used — and it was rejected: `enforce_vital_event_preconditions()`'s
+birth clause required `NEW.household_id IS NOT NULL`, but that form has never
+collected a `household_id` at all (grepped: zero references in the file).
+Every real birth registration was completely blocked in production from the
+moment `00000000000059` shipped, and none of this PR's own probes caught it
+because every probe manually supplied `household_id` in its `INSERT`,
+never testing the real UI's actual (household-less) insert shape.
+
+Fixed in `00000000000060`: the birth clause now only validates `household_id`
+when it's actually supplied (`NEW.household_id IS NOT NULL` guards the whole
+check, not just half of it), matching how the death clause
+(`AND NEW.resident_id IS NOT NULL`) and marriage clause
+(`IF v_spouse1_id IS NOT NULL`) already behave in the same function — both
+were already permissive-when-absent; only birth was written as a hard
+requirement, inconsistently with its own siblings and with the real,
+unchanged UI. `household_id` is nullable at the schema level, confirming it
+was always meant to be optional data.
+
+Verified live: the exact failing REST call (mirroring the real form's insert)
+now succeeds. Two probes updated in `scripts/verify-live-probes.sql`:
+`civil_precondition_birth_no_household_now_allowed` (renamed from the old
+`..._no_household`, now expects SUCCESS) and the new
+`civil_precondition_birth_household_wrong_woreda` (still expects ERROR when
+a household_id IS supplied but doesn't resolve in-tenant). 27/27 probes pass
+net-zero after this fix.

@@ -577,7 +577,15 @@ SELECT
 ROLLBACK;
 -- EXPECT: SUCCESS (event_status=registered, resident_status=deceased, revoked_count>=1)
 
--- === PROBE: civil_precondition_birth_no_household ===
+-- === PROBE: civil_precondition_birth_no_household_now_allowed ===
+-- Regression probe for a real production bug found live during the Task
+-- 14-A go-live two-actor verification: the real, pre-existing birth intake
+-- form (woreda.civil.birth.new.tsx) has never collected household_id, so
+-- the original "household_id must be present" precondition blocked EVERY
+-- real birth submission the moment it shipped. Fixed in
+-- 00000000000060 to only validate household_id when it IS supplied
+-- (matching the death/marriage clauses' own pattern in the same function).
+-- This probe locks the fix: a birth with no household_id must now succeed.
 BEGIN;
 SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
 SET LOCAL role authenticated;
@@ -591,7 +599,27 @@ VALUES
    '{"child_first_name":"Probe","child_father_name":"Test","child_grandfather_name":"NoHousehold","sex":"male"}');
 RESET role;
 ROLLBACK;
--- EXPECT: ERROR (a birth registration requires a linked household)
+-- EXPECT: SUCCESS (no household_id -- must not raise)
+
+-- === PROBE: civil_precondition_birth_household_wrong_woreda ===
+-- The still-enforced half of the same clause: a household_id that IS
+-- supplied but does not resolve to a household in this tenant must still
+-- be rejected (a nonexistent id fails the same EXISTS check a real
+-- cross-tenant id would -- both simply fail to resolve within NEW.woreda_id).
+BEGIN;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+INSERT INTO public.vital_event
+  (vital_event_id, woreda_id, event_type, event_number, event_date, household_id,
+   requested_by_user_id, status, event_details)
+VALUES
+  ('00000000-0000-4000-8000-000000000025', '81ac2ad6-a320-4069-b8dc-0c43e358371b',
+   'birth', '', current_date, '11111111-1111-4111-8111-111111111111',
+   '64e0384a-d240-4302-8310-682f79a302ce', 'submitted',
+   '{"child_first_name":"Probe","child_father_name":"Test","child_grandfather_name":"WrongWoredaHousehold","sex":"male"}');
+RESET role;
+ROLLBACK;
+-- EXPECT: ERROR (the linked household does not belong to this woreda)
 
 -- === PROBE: civil_precondition_death_duplicate_open_event ===
 -- A second, concurrent death event for the same resident who already has
