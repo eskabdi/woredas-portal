@@ -25,6 +25,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -1017,7 +1018,7 @@ function CivilEventDetailPage() {
                     {h.old_status ? `${h.old_status} → ${h.new_status}` : h.new_status}
                   </div>
                   <div className="text-xs text-slate-500">
-                    {new Date(h.changed_at).toLocaleString()}
+                    {new Date(h.changed_at).toLocaleString("en-GB", { hour12: false })}
                   </div>
                   {h.change_reason && (
                     <div className="mt-0.5 text-xs text-slate-500">{h.change_reason}</div>
@@ -1325,7 +1326,7 @@ function PaymentCard({
               </Label>
               <Select value={channel} onValueChange={(v) => setChannel(v as typeof channel)}>
                 <SelectTrigger id="civil-payment-channel">
-                  <SelectValue placeholder="Select / ይምረጡ" />
+                  <SelectValue placeholder="ይምረጡ / Select" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="cash">ጥሬ ገንዘብ / Cash</SelectItem>
@@ -1340,9 +1341,8 @@ function PaymentCard({
                   <span className="font-noto-ethiopic">የማጣቀሻ ቁጥር</span>
                   <span className="ml-2 text-slate-500">/ Reference No.</span>
                 </Label>
-                <input
+                <Input
                   id="civil-payment-ref"
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                   value={referenceNo}
                   onChange={(e) => setReferenceNo(e.target.value)}
                   placeholder="Reference number"
