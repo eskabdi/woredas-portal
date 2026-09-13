@@ -34,6 +34,41 @@ export function useFeeSchedule(requestType: string | undefined, enabled = true) 
   });
 }
 
+export interface CredentialKpis {
+  new_today: number;
+  pending_verification: number;
+  pending_approval: number;
+  awaiting_payment: number;
+  ready_or_printing: number;
+  issued_this_month: number;
+  returned_rate_pct: number | null;
+  rejected_this_month: number;
+  blocked: number;
+  avg_turnaround_days: number | null;
+}
+
+/** Task 12.3's 10 KPI widgets, all server-counted in one round trip by
+ * get_credential_kpis() (00000000000057) -- woreda_id is resolved from
+ * get_user_woreda_id() inside the RPC, never sent by the client, so there is
+ * nothing here to spoof across tenants. A short staleTime rather than a long
+ * one: these are dashboard counts an officer expects to reflect what just
+ * happened (a request just submitted, a payment just recorded), not a
+ * slow-changing reference table like credential_policy above. */
+export function useCredentialKpis() {
+  const woredaId = useAuthStore((s) => s.woredaId);
+  return useQuery({
+    queryKey: ["credential-kpis", woredaId],
+    enabled: !!woredaId,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    queryFn: async (): Promise<CredentialKpis> => {
+      const { data, error } = await supabase.rpc("get_credential_kpis");
+      if (error) throw error;
+      return data as unknown as CredentialKpis;
+    },
+  });
+}
+
 export interface CredentialPolicyRow {
   credential_policy_id: string;
   woreda_id: string;

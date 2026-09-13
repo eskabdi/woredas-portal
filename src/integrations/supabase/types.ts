@@ -4672,6 +4672,7 @@ export type Database = {
       entity_read_perm_ok: { Args: { _entity: string }; Returns: boolean }
       gen_letter_verification_token: { Args: never; Returns: string }
       gen_receipt_verification_token: { Args: never; Returns: string }
+      get_credential_kpis: { Args: never; Returns: Json }
       get_credential_live_status: {
         Args: { _credential_number: string }
         Returns: string
