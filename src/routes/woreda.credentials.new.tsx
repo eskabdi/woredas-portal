@@ -399,7 +399,7 @@ function NewCredentialRequestPage() {
       return;
     }
     if (values.request_type === "new_issue" && !photoAttachment) {
-      toast.error("Upload a photo before submitting");
+      toast.error("ፎቶ ይጫኑ / Upload a photo before submitting");
       return;
     }
     // Fetch kebele from household
@@ -472,6 +472,7 @@ function NewCredentialRequestPage() {
         checksum: string;
         storage_path: string;
         attachment_type: string;
+        uploaded_by: string;
       }[] = [];
       if (photoAttachment) {
         attachmentRows.push({
@@ -484,6 +485,7 @@ function NewCredentialRequestPage() {
           checksum: photoAttachment.checksum,
           storage_path: photoAttachment.path,
           attachment_type: "photo",
+          uploaded_by: actorUserId,
         });
       }
       if (values.supporting_document_path && supportingDocMeta) {
@@ -498,6 +500,7 @@ function NewCredentialRequestPage() {
           storage_path: values.supporting_document_path,
           attachment_type:
             values.request_type === "reissue_correction" ? "correction_evidence" : "supporting_doc",
+          uploaded_by: actorUserId,
         });
       }
       if (attachmentRows.length > 0) {

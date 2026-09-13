@@ -289,10 +289,15 @@ function CredentialRequestDetailPage() {
     },
   });
 
-  const openAttachment = async (storagePath: string) => {
-    const { data, error } = await supabase.storage
-      .from("attachments")
-      .createSignedUrl(storagePath, 600);
+  // Rows backfilled by migration 56 (checksum === 'legacy-unchecked') point at
+  // objects that still live in the pre-Task-11 `credential-request-documents`
+  // bucket, since the backfill only copies the path -- it doesn't move the
+  // file. Every attachment written by this app's own upload code afterwards
+  // lands in the `attachments` bucket, so the bucket is derived from the
+  // sentinel rather than stored as its own column.
+  const openAttachment = async (storagePath: string, checksum: string) => {
+    const bucket = checksum === "legacy-unchecked" ? "credential-request-documents" : "attachments";
+    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(storagePath, 600);
     if (error || !data?.signedUrl) {
       toast.error("Could not open attachment");
       return;
@@ -441,11 +446,13 @@ function CredentialRequestDetailPage() {
   const handleReturn = async () => {
     if (!request || !actorUserId || !woredaId) return;
     if (!returnReasonCode) {
-      toast.error("Select a return reason");
+      toast.error("ምክንያት ይምረጡ / Select a return reason");
       return;
     }
     if (returnReasonCode === "other" && returnNote.trim().length < 5) {
-      toast.error('A note is required when the reason is "Other" (min 5 characters)');
+      toast.error(
+        'ምክንያቱ "ሌላ" ሲሆን ማስታወሻ ያስፈልጋል (ቢያንስ 5 ፊደላት) / A note is required when the reason is "Other" (min 5 characters)',
+      );
       return;
     }
     const reason = formatStructuredReason(RETURN_REASONS, returnReasonCode, returnNote);
@@ -892,7 +899,7 @@ function CredentialRequestDetailPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => openAttachment(a.storage_path)}
+                      onClick={() => openAttachment(a.storage_path, a.checksum)}
                     >
                       <FileText className="mr-2 h-4 w-4" />
                       <span>

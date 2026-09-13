@@ -647,11 +647,13 @@ function PrintPage() {
     if (!request || !cred || !actorUserId || !woredaId) return;
     if (!allAuthorized || !verified) return;
     if (isReprint && !reprintReasonCode) {
-      toast.error("Select a reprint reason");
+      toast.error("ምክንያት ይምረጡ / Select a reprint reason");
       return;
     }
     if (isReprint && reprintReasonCode === "other" && reprintNote.trim().length < 5) {
-      toast.error('A note is required when the reason is "Other" (min 5 characters)');
+      toast.error(
+        'ምክንያቱ "ሌላ" ሲሆን ማስታወሻ ያስፈልጋል (ቢያንስ 5 ፊደላት) / A note is required when the reason is "Other" (min 5 characters)',
+      );
       return;
     }
     const reprintReasonText = isReprint
