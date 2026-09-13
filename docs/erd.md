@@ -454,7 +454,7 @@ Phase B) is the same fixed-window-counter shape —
 
 ---
 
-## Task 11 — schema gap-fill (`00000000000048`–`00000000000051`)
+## Task 11 — schema gap-fill (`00000000000048`–`00000000000053`)
 
 Task 11 of `fix-task-production-readiness-v3.md` (D1) required every object
 in its gap-fill table to exist, following its own reconciliation addendum:
@@ -462,7 +462,7 @@ enumerate the live schema first, and never create a duplicate of a table
 that already covers the same capability. This section is the classification
 and column mapping the addendum requires be recorded here.
 
-`00000000000048` is the gap-fill migration itself; `00000000000049`–`051`
+`00000000000048` is the gap-fill migration itself; `00000000000049`–`053`
 are same-day hardening on top of it, in order:
 
 - **049** (`tenant-isolation-review` findings): `household_location`'s
@@ -503,6 +503,31 @@ are same-day hardening on top of it, in order:
   check triggers were renamed with a `zz_` prefix (the same convention
   `00000000000025`/`026` use to order `enforce_workflow_transition` after
   `trg_force_actor`) rather than relying on alphabetical luck.
+- **053** (`/code-review` + `/security-review` on the PR, both run before
+  merge): `052`'s own fix for the household-transfer staleness bug didn't
+  actually work — its `ON CONFLICT DO UPDATE` guard only compared GPS
+  columns, so a `woreda_id`-only transfer still left `household_location`
+  pointing at the old tenant; the `WHERE` clause now compares `woreda_id`
+  too. `entity_belongs_to_woreda()` was still callable by any authenticated
+  user as a bare RPC with an arbitrary `_woreda_id` (a cross-tenant
+  existence oracle) — `/security-review` initially suggested revoking
+  `authenticated`'s `EXECUTE` grant, which would have been wrong (Postgres
+  checks `EXECUTE` for the *invoking* role even on a `SECURITY DEFINER`
+  function, and both approval/attachment `WITH CHECK` clauses call it, so
+  that would have broken every insert into those tables); fixed instead
+  with an internal guard that only answers for the caller's own woreda,
+  which every real RLS call site already passes anyway.
+  `household_location_insert` accepted `household.create` OR
+  `household.update`, but its `SECURITY DEFINER` mirror into `household`
+  bypasses `household`'s own RLS (which requires `.update`) — narrowed to
+  `.update` only. `approval`/`attachment`'s INSERT (and `attachment`'s
+  SELECT) policies OR'd every module's permission together regardless of
+  the row's own `entity`, so e.g. a `service.create`-only holder could
+  attach a file to a `resident` row — three new per-entity permission
+  functions (`entity_read_perm_ok`, `entity_attach_perm_ok`,
+  `entity_approve_perm_ok`) now gate the check against the specific
+  entity type, the same shape `entity_belongs_to_woreda()` already used
+  for tenancy.
 
 | Object                        | Classification              | Notes / column mapping                                                                                                                                                                                            |
 | ------------------------------ | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
