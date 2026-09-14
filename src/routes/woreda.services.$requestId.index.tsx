@@ -25,7 +25,7 @@ import { Select } from "@/components/forms/FormSection";
 import { PermissionGate } from "@/components/common/PermissionGate";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
-import { formatEthiopianDate } from "@/utils/ethiopianCalendar";
+import { formatEthiopianDate, formatEthiopianDateTime } from "@/utils/ethiopianCalendar";
 import {
   letterSummary,
   plainTextToHtml,
@@ -726,28 +726,41 @@ function ServiceRequestDetailPage() {
               </ol>
             </Card>
 
-            {isLetter && (workflowHistoryQuery.data ?? []).length > 0 && (
+            {isLetter && (
               <Card className="p-5">
                 <h3 className="font-noto-ethiopic mb-3 text-base font-semibold">
                   የስርዓት ታሪክ / System workflow history
                 </h3>
-                <ol className="space-y-3">
-                  {(workflowHistoryQuery.data ?? []).map((h) => (
-                    <li key={h.id} className="flex gap-3">
-                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
-                      <div>
-                        <div className="font-noto-ethiopic text-sm">
-                          {h.old_status ? `${serviceStatusLabel(h.old_status)} → ` : ""}
-                          {serviceStatusLabel(h.new_status)}
+                {workflowHistoryQuery.isLoading && (
+                  <p className="text-sm text-slate-500">በመጫን ላይ... / Loading…</p>
+                )}
+                {workflowHistoryQuery.isError && (
+                  <p className="text-sm text-rose-600">
+                    ታሪኩን መጫን አልተቻለም / Could not load workflow history
+                  </p>
+                )}
+                {!workflowHistoryQuery.isLoading && !workflowHistoryQuery.isError && (
+                  <ol className="space-y-3">
+                    {(workflowHistoryQuery.data ?? []).map((h) => (
+                      <li key={h.id} className="flex gap-3">
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+                        <div>
+                          <div className="font-noto-ethiopic text-sm">
+                            {h.old_status ? `${serviceStatusLabel(h.old_status)} → ` : ""}
+                            {serviceStatusLabel(h.new_status)}
+                          </div>
+                          <div className="text-xs text-slate-500">
+                            {formatEthiopianDateTime(new Date(h.changed_at))}
+                            {h.change_reason ? ` — ${h.change_reason}` : ""}
+                          </div>
                         </div>
-                        <div className="text-xs text-slate-500">
-                          {new Date(h.changed_at).toLocaleString("en-GB", { hour12: false })}
-                          {h.change_reason ? ` — ${h.change_reason}` : ""}
-                        </div>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
+                      </li>
+                    ))}
+                    {(workflowHistoryQuery.data ?? []).length === 0 && (
+                      <li className="text-sm text-slate-500">—</li>
+                    )}
+                  </ol>
+                )}
               </Card>
             )}
           </div>
@@ -1196,6 +1209,24 @@ function ServiceLetterPaymentCard({
             "ክፍያው ሊጠየቅ አልቻለም / Could not raise the fee — the request may have been moved by someone else",
           );
         }
+
+        await supabase.from("service_request_status_history").insert({
+          service_request_id: requestId,
+          old_status: "approved",
+          new_status: "awaiting_payment",
+          changed_by_user_id: actorUserId,
+          change_reason: "Fee raised for payment",
+        } as never);
+
+        await supabase.from("audit_log").insert({
+          woreda_id: woredaId,
+          actor_user_id: actorUserId,
+          entity_name: "service_request",
+          entity_id: requestId,
+          action_type: "SERVICE_REQUEST_AWAITING_PAYMENT",
+          new_value_json: { status: "awaiting_payment", fee } as never,
+          action_at: new Date().toISOString(),
+        });
       }
 
       const { data: pay, error: payErr } = await supabase
@@ -1217,15 +1248,22 @@ function ServiceLetterPaymentCard({
       if (payErr) throw payErr;
       const paymentId = (pay as { payment_id: string }).payment_id;
 
-      const { error: recErr } = await supabase.from("receipt").insert({
-        woreda_id: woredaId,
-        payment_id: paymentId,
-        receipt_date: today,
-        total_amount: fee,
-        cash_bank_channel: channel,
-        receipt_number: "",
-      } as never);
+      const { data: receiptRow, error: recErr } = await supabase
+        .from("receipt")
+        .insert({
+          woreda_id: woredaId,
+          payment_id: paymentId,
+          receipt_date: today,
+          total_amount: fee,
+          cash_bank_channel: channel,
+          receipt_number: "",
+        } as never)
+        .select("receipt_id")
+        .single();
       if (recErr) throw recErr;
+      if (!receiptRow) {
+        throw new Error("ደረሰኝ ሊፈጠር አልቻለም / The payment was recorded but no receipt was created");
+      }
 
       const { data: paidRow, error: updErr } = await supabase
         .from("service_request")
@@ -1239,6 +1277,24 @@ function ServiceLetterPaymentCard({
           "ክፍያው ሊመዘገብ አልቻለም / Payment was collected but the request could not be marked paid — the request may have been moved by someone else. Contact an administrator before recording another payment.",
         );
       }
+
+      await supabase.from("service_request_status_history").insert({
+        service_request_id: requestId,
+        old_status: "awaiting_payment",
+        new_status: "paid",
+        changed_by_user_id: actorUserId,
+        change_reason: "Payment recorded",
+      } as never);
+
+      await supabase.from("audit_log").insert({
+        woreda_id: woredaId,
+        actor_user_id: actorUserId,
+        entity_name: "service_request",
+        entity_id: requestId,
+        action_type: "SERVICE_REQUEST_PAID",
+        new_value_json: { status: "paid", payment_id: paymentId, amount: fee } as never,
+        action_at: new Date().toISOString(),
+      });
 
       toast.success("ክፍያው ተመዝግቧል / Payment recorded");
       onDone();
@@ -1265,8 +1321,8 @@ function ServiceLetterPaymentCard({
       <PermissionGate
         permission={P.SERVICE_RECORD_PAYMENT}
         fallback={
-          <p className="text-sm text-slate-500">
-            You do not have permission to record payment for this request.
+          <p className="font-noto-ethiopic text-sm text-slate-500">
+            ክፍያ ለመመዝገብ ፈቃድ የለዎትም / You do not have permission to record payment for this request.
           </p>
         }
       >
