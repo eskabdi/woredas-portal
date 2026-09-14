@@ -21,6 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { EthiopianDateInput } from "@/components/common/EthiopianDateInput";
 import { Section, Grid, FieldWrap, Select } from "@/components/forms/FormSection";
 import { Stepper } from "@/components/forms/Stepper";
+import { SquircleUpload } from "@/components/forms/SquircleUpload";
 import { supabase } from "@/integrations/supabase/client";
 import { toWebp, storageExtension, PHOTO_WEBP } from "@/utils/imageCompression";
 import { useWoredaInfo } from "@/hooks/useWoredaInfo";
@@ -482,41 +483,16 @@ export function ResidentWizardSteps({
             </Grid>
 
             <div className="flex flex-col items-center gap-3 lg:items-stretch">
-              <div className="mx-auto flex h-40 w-40 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 lg:mx-0 lg:h-44 lg:w-full">
-                {photoPreview ? (
-                  <div className="relative h-full w-full">
-                    <img src={photoPreview} alt="" className="h-full w-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => setValue("photo_url", "")}
-                      className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                ) : (
-                  <UserCircle2 className="h-20 w-20 text-slate-300" />
-                )}
-              </div>
-              <div className="w-full space-y-2">
-                <label className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
-                  {uploadingPhoto ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Upload className="h-4 w-4" />
-                  )}
-                  <span className="font-am-body">ፎቶ ጫን / Upload Photo</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) handlePhotoUpload(f);
-                    }}
-                  />
-                </label>
-              </div>
+              <SquircleUpload
+                previewUrl={photoPreview}
+                uploading={uploadingPhoto}
+                labelAm="ፎቶ ጫን"
+                labelEn="Upload Photo"
+                shape="circle"
+                size={160}
+                onFileSelect={handlePhotoUpload}
+                onRemove={() => setValue("photo_url", "")}
+              />
             </div>
           </div>
         </Section>

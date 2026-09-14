@@ -5,19 +5,10 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import {
-  Building2,
-  Image as ImageIcon,
-  Hash,
-  Banknote,
-  Save,
-  Upload,
-  Loader2,
-  Pencil,
-  Plus,
-} from "lucide-react";
+import { Building2, Hash, Banknote, Save, Loader2, Pencil, Plus } from "lucide-react";
 
 import { PageHeader } from "@/components/common/PageHeader";
+import { SquircleUpload } from "@/components/forms/SquircleUpload";
 import { PermissionGate } from "@/components/common/PermissionGate";
 import { StatusChip } from "@/components/common/StatusChip";
 import { Button } from "@/components/ui/button";
@@ -619,41 +610,22 @@ function ImageUploadCard({
         <p className="text-xs text-slate-500">{titleEn}</p>
       </div>
 
-      <label className="group flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-6 transition hover:border-blue-400 hover:bg-blue-50/40">
-        {signedUrl ? (
-          <img
-            src={signedUrl}
-            alt={titleEn}
-            className={`h-32 w-32 object-cover ${shape === "circle" ? "rounded-full" : "rounded-md"} ring-2 ring-white shadow-sm`}
-          />
-        ) : (
-          <div
-            className={`flex h-32 w-32 items-center justify-center bg-white text-slate-300 ${shape === "circle" ? "rounded-full" : "rounded-md"} border border-slate-200`}
-          >
-            <ImageIcon className="h-10 w-10" />
-          </div>
-        )}
-        <div className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-blue-700">
-          {uploading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Upload className="h-4 w-4" />
-          )}
+      <div className="flex flex-col items-center gap-2">
+        <SquircleUpload
+          previewUrl={signedUrl}
+          uploading={uploading}
+          labelAm="ምስል ጫን"
+          labelEn="Upload Image"
+          accept="image/png,image/jpeg"
+          shape={shape}
+          size={128}
+          onFileSelect={onFile}
+        />
+        <div className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-700">
           <span className="font-am-body">ምስል አዘምን</span>
           <span className="text-xs text-slate-500">/ Update Image</span>
         </div>
-        <input
-          type="file"
-          accept="image/png,image/jpeg"
-          className="hidden"
-          disabled={uploading}
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) onFile(f);
-            e.target.value = "";
-          }}
-        />
-      </label>
+      </div>
 
       {(helperAm || helperEn) && (
         <p className="mt-3 text-xs text-slate-500">
