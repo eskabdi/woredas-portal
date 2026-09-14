@@ -45,6 +45,9 @@ TOUCHED_TABLES = [
     "resident",
     "workflow_status_history",
     "workflow_transition",
+    "service_request",
+    "service_request_sequence",
+    "tenant_module_config",
 ]
 TOUCHED_SEQUENCES = [
     "credential_request_sequence",

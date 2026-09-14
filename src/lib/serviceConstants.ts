@@ -6,6 +6,7 @@ export const SERVICE_STATUS_LABEL: Record<string, string> = {
   draft: "ረቂቅ / Draft",
   submitted: "ገብቷል / Submitted",
   under_review: "በክለሳ ላይ / Under review",
+  verified: "ተረጋግጧል / Verified",
   returned: "ተመልሷል / Returned",
   pending_approval: "ጸድቆ በሚጠበቅ / Pending approval",
   approval_returned: "ተመልሷል (ማጽደቅ) / Returned (approval)",
@@ -14,6 +15,7 @@ export const SERVICE_STATUS_LABEL: Record<string, string> = {
   awaiting_payment: "ክፍያ በጥበቃ / Awaiting payment",
   paid: "ተከፍሏል / Paid",
   issued: "ተሰጥቷል / Issued",
+  completed: "ተጠናቋል / Completed",
   in_progress: "በሂደት ላይ / In progress",
   resolved: "ተፈትቷል / Resolved",
   closed: "ተዘግቷል / Closed",
@@ -23,6 +25,7 @@ export const SERVICE_STATUS_STYLE: Record<string, string> = {
   draft: "bg-slate-100 text-slate-600",
   submitted: "bg-blue-100 text-blue-800",
   under_review: "bg-indigo-100 text-indigo-800",
+  verified: "bg-teal-100 text-teal-800",
   returned: "bg-amber-100 text-amber-800",
   pending_approval: "bg-amber-100 text-amber-800",
   approval_returned: "bg-amber-100 text-amber-800",
@@ -31,6 +34,7 @@ export const SERVICE_STATUS_STYLE: Record<string, string> = {
   awaiting_payment: "bg-orange-100 text-orange-800",
   paid: "bg-teal-100 text-teal-800",
   issued: "bg-green-100 text-green-800",
+  completed: "bg-emerald-100 text-emerald-800",
   in_progress: "bg-indigo-100 text-indigo-800",
   resolved: "bg-green-100 text-green-800",
   closed: "bg-slate-100 text-slate-500",
@@ -54,15 +58,15 @@ export const LETTER_STATUS_OPTIONS = [
   "all",
   "submitted",
   "under_review",
+  "verified",
   "returned",
   "pending_approval",
-  "approval_returned",
   "approved",
   "awaiting_payment",
   "paid",
   "issued",
+  "completed",
   "rejected",
-  "closed",
 ] as const;
 
 export const COMPLAINT_STATUS_OPTIONS = [
@@ -109,11 +113,13 @@ export function stageIndex(status: string, category: ServiceCategory) {
   const letter = [
     "submitted",
     "under_review",
+    "verified",
     "pending_approval",
     "approved",
     "awaiting_payment",
     "paid",
     "issued",
+    "completed",
   ];
   const complaint = [
     "submitted",

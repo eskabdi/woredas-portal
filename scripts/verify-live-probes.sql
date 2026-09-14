@@ -755,3 +755,390 @@ SELECT get_credential_kpis() AS kpis;
 RESET role;
 ROLLBACK;
 -- EXPECT: ERROR (get_credential_kpis: permission denied)
+
+-- =============================================================================
+-- Task 14-B: service_request 8-stage FSM (category='letter') + letter
+-- issuance gating. See docs/task14b-mapping-memo.md. Real IDs reused:
+-- registry_clerk 35b307bd (Aboker, has service.verify/.submit/.resubmit/
+-- .return/.issue_letter but NOT .approve/.reject/.record_payment), tenant_admin
+-- 64e0384a (Aboker, holds every service.* permission). RESIDENCE letter type
+-- in Aboker: 5e3f18d0-3ddc-48ca-ac44-1495cb337d96 (fee_amount=50).
+-- =============================================================================
+
+-- === PROBE: service_unauthorized_transition ===
+BEGIN;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+INSERT INTO public.service_request
+  (service_request_id, woreda_id, request_number, service_type_id, category, status,
+   subject, requested_by_user_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000030', '81ac2ad6-a320-4069-b8dc-0c43e358371b', '',
+   '5e3f18d0-3ddc-48ca-ac44-1495cb337d96', 'letter', 'submitted',
+   'Probe unauthorized transition', '64e0384a-d240-4302-8310-682f79a302ce');
+UPDATE public.service_request SET status = 'approved'
+ WHERE service_request_id = '00000000-0000-4000-8000-000000000030';
+RESET role;
+ROLLBACK;
+-- EXPECT: ERROR (service_request may not move from submitted to approved)
+
+-- === PROBE: service_maker_equals_checker ===
+BEGIN;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+INSERT INTO public.service_request
+  (service_request_id, woreda_id, request_number, service_type_id, category, status,
+   subject, requested_by_user_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000031', '81ac2ad6-a320-4069-b8dc-0c43e358371b', '',
+   '5e3f18d0-3ddc-48ca-ac44-1495cb337d96', 'letter', 'submitted',
+   'Probe maker=checker', '64e0384a-d240-4302-8310-682f79a302ce');
+UPDATE public.service_request SET status = 'under_review'
+ WHERE service_request_id = '00000000-0000-4000-8000-000000000031';
+UPDATE public.service_request
+   SET status = 'verified', verified_by_user_id = '64e0384a-d240-4302-8310-682f79a302ce', verified_at = now()
+ WHERE service_request_id = '00000000-0000-4000-8000-000000000031';
+UPDATE public.service_request SET status = 'pending_approval'
+ WHERE service_request_id = '00000000-0000-4000-8000-000000000031';
+UPDATE public.service_request
+   SET status = 'approved', approved_by_user_id = '64e0384a-d240-4302-8310-682f79a302ce', approval_decision_at = now()
+ WHERE service_request_id = '00000000-0000-4000-8000-000000000031';
+RESET role;
+ROLLBACK;
+-- EXPECT: ERROR (the approver and the verifier must be two different people)
+
+-- === PROBE: service_terminal_rejected_locked ===
+BEGIN;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+INSERT INTO public.service_request
+  (service_request_id, woreda_id, request_number, service_type_id, category, status,
+   subject, requested_by_user_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000032', '81ac2ad6-a320-4069-b8dc-0c43e358371b', '',
+   '5e3f18d0-3ddc-48ca-ac44-1495cb337d96', 'letter', 'rejected',
+   'Probe terminal locked', '64e0384a-d240-4302-8310-682f79a302ce');
+UPDATE public.service_request SET status = 'submitted'
+ WHERE service_request_id = '00000000-0000-4000-8000-000000000032';
+RESET role;
+ROLLBACK;
+-- EXPECT: ERROR (service_request may not move from rejected to submitted)
+
+-- === PROBE: service_paid_without_payment_row ===
+BEGIN;
+SET LOCAL request.jwt.claim.sub = '35b307bd-c5f6-4925-ac14-231f934c3a00';
+SET LOCAL role authenticated;
+INSERT INTO public.service_request
+  (service_request_id, woreda_id, request_number, service_type_id, category, status,
+   subject, requested_by_user_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000033', '81ac2ad6-a320-4069-b8dc-0c43e358371b', '',
+   '5e3f18d0-3ddc-48ca-ac44-1495cb337d96', 'letter', 'submitted',
+   'Probe paid without payment', '35b307bd-c5f6-4925-ac14-231f934c3a00');
+UPDATE public.service_request SET status = 'under_review'
+ WHERE service_request_id = '00000000-0000-4000-8000-000000000033';
+UPDATE public.service_request
+   SET status = 'verified', verified_by_user_id = '35b307bd-c5f6-4925-ac14-231f934c3a00', verified_at = now()
+ WHERE service_request_id = '00000000-0000-4000-8000-000000000033';
+RESET role;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+UPDATE public.service_request SET status = 'pending_approval'
+ WHERE service_request_id = '00000000-0000-4000-8000-000000000033';
+UPDATE public.service_request
+   SET status = 'approved', approved_by_user_id = '64e0384a-d240-4302-8310-682f79a302ce', approval_decision_at = now()
+ WHERE service_request_id = '00000000-0000-4000-8000-000000000033';
+UPDATE public.service_request SET status = 'awaiting_payment'
+ WHERE service_request_id = '00000000-0000-4000-8000-000000000033';
+UPDATE public.service_request SET status = 'paid'
+ WHERE service_request_id = '00000000-0000-4000-8000-000000000033';
+RESET role;
+ROLLBACK;
+-- EXPECT: ERROR (a confirmed payment with a receipt is required)
+
+-- === PROBE: service_paid_with_unrelated_payment_row ===
+-- Regression probe for the exact cross-entity payment-reuse class of bug
+-- Task 14-A's security-review found (HIGH) in the civil registration payment
+-- gate -- built into this gate from the start this time (mapping memo §2),
+-- but locked here as a probe too. 21f760c8-8272-4f9e-9ef0-d908a5c23334 is a
+-- real, already-confirmed credential-fee payment in the same woreda, never
+-- inserted or touched by this probe, only referenced.
+BEGIN;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+INSERT INTO public.service_request
+  (service_request_id, woreda_id, request_number, service_type_id, category, status,
+   subject, requested_by_user_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000034', '81ac2ad6-a320-4069-b8dc-0c43e358371b', '',
+   '5e3f18d0-3ddc-48ca-ac44-1495cb337d96', 'letter', 'awaiting_payment',
+   'Probe unrelated payment reuse', '64e0384a-d240-4302-8310-682f79a302ce');
+UPDATE public.service_request
+   SET status = 'paid', payment_id = '21f760c8-8272-4f9e-9ef0-d908a5c23334'
+ WHERE service_request_id = '00000000-0000-4000-8000-000000000034';
+RESET role;
+ROLLBACK;
+-- EXPECT: ERROR (a confirmed payment with a receipt is required)
+
+-- === PROBE: service_issuance_from_approved_unpaid ===
+BEGIN;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+INSERT INTO public.service_request
+  (service_request_id, woreda_id, request_number, service_type_id, category, status,
+   subject, requested_by_user_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000035', '81ac2ad6-a320-4069-b8dc-0c43e358371b', '',
+   '5e3f18d0-3ddc-48ca-ac44-1495cb337d96', 'letter', 'approved',
+   'Probe issuance while unpaid', '64e0384a-d240-4302-8310-682f79a302ce');
+UPDATE public.service_request
+   SET status = 'issued', issued_by_user_id = '64e0384a-d240-4302-8310-682f79a302ce', issued_at = now()
+ WHERE service_request_id = '00000000-0000-4000-8000-000000000035';
+RESET role;
+ROLLBACK;
+-- EXPECT: ERROR (a letter can only be issued after payment is complete)
+
+-- === PROBE: service_issuance_from_wrong_old_status ===
+BEGIN;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+INSERT INTO public.service_request
+  (service_request_id, woreda_id, request_number, service_type_id, category, status,
+   subject, requested_by_user_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000036', '81ac2ad6-a320-4069-b8dc-0c43e358371b', '',
+   '5e3f18d0-3ddc-48ca-ac44-1495cb337d96', 'letter', 'awaiting_payment',
+   'Probe issuance skipping paid', '64e0384a-d240-4302-8310-682f79a302ce');
+UPDATE public.service_request
+   SET status = 'issued', issued_by_user_id = '64e0384a-d240-4302-8310-682f79a302ce', issued_at = now()
+ WHERE service_request_id = '00000000-0000-4000-8000-000000000036';
+RESET role;
+ROLLBACK;
+-- EXPECT: ERROR (a letter can only be issued after payment is complete)
+
+-- === PROBE: service_precondition_inactive_resident ===
+-- Deactivates a real resident WITHIN this rolled-back transaction only
+-- (never committed) to exercise the "resident must be active" check.
+BEGIN;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+RESET role;
+UPDATE public.resident SET active_flag = false
+ WHERE resident_id = '51fcd835-9430-4b87-a738-db17eec51f2f';
+SET LOCAL role authenticated;
+INSERT INTO public.service_request
+  (service_request_id, woreda_id, request_number, service_type_id, category, status,
+   resident_id, subject, requested_by_user_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000037', '81ac2ad6-a320-4069-b8dc-0c43e358371b', '',
+   '5e3f18d0-3ddc-48ca-ac44-1495cb337d96', 'letter', 'submitted',
+   '51fcd835-9430-4b87-a738-db17eec51f2f',
+   'Probe inactive resident', '64e0384a-d240-4302-8310-682f79a302ce');
+RESET role;
+ROLLBACK;
+-- EXPECT: ERROR (the linked resident is not an active resident)
+
+-- === PROBE: service_precondition_wrong_woreda_service_type ===
+-- e4472daa-651b-4306-99b6-73a04031476b is Hakim woreda's own RESIDENCE
+-- service_type -- referenced (never modified) from an Aboker-woreda insert.
+BEGIN;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+INSERT INTO public.service_request
+  (service_request_id, woreda_id, request_number, service_type_id, category, status,
+   subject, requested_by_user_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000038', '81ac2ad6-a320-4069-b8dc-0c43e358371b', '',
+   'e4472daa-651b-4306-99b6-73a04031476b', 'letter', 'submitted',
+   'Probe cross-tenant service_type', '64e0384a-d240-4302-8310-682f79a302ce');
+RESET role;
+ROLLBACK;
+-- EXPECT: ERROR (the selected service type is inactive or does not belong to this woreda)
+
+-- === PROBE: service_precondition_module_disabled ===
+-- Disables the 'services' module for Aboker WITHIN this rolled-back
+-- transaction only (never committed).
+BEGIN;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+RESET role;
+UPDATE public.tenant_module_config SET is_enabled = false
+ WHERE woreda_id = '81ac2ad6-a320-4069-b8dc-0c43e358371b' AND module_key = 'services';
+SET LOCAL role authenticated;
+INSERT INTO public.service_request
+  (service_request_id, woreda_id, request_number, service_type_id, category, status,
+   subject, requested_by_user_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000039', '81ac2ad6-a320-4069-b8dc-0c43e358371b', '',
+   '5e3f18d0-3ddc-48ca-ac44-1495cb337d96', 'letter', 'submitted',
+   'Probe module disabled', '64e0384a-d240-4302-8310-682f79a302ce');
+RESET role;
+ROLLBACK;
+-- EXPECT: ERROR (the Services module is disabled for this woreda)
+
+-- === PROBE: service_precondition_household_unresolvable ===
+-- household_id supplied but doesn't resolve in-tenant -- must still be
+-- rejected (the still-enforced half of the "only validate if supplied" rule).
+BEGIN;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+INSERT INTO public.service_request
+  (service_request_id, woreda_id, request_number, service_type_id, category, status,
+   household_id, subject, requested_by_user_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000040', '81ac2ad6-a320-4069-b8dc-0c43e358371b', '',
+   '5e3f18d0-3ddc-48ca-ac44-1495cb337d96', 'letter', 'submitted',
+   '11111111-1111-4111-8111-111111111111',
+   'Probe unresolvable household', '64e0384a-d240-4302-8310-682f79a302ce');
+RESET role;
+ROLLBACK;
+-- EXPECT: ERROR (the linked household does not belong to this woreda)
+
+-- === PROBE: service_cross_tenant_insert_rejected ===
+-- tenant_admin of Aboker (81ac2ad6) attempting to insert a service_request
+-- with woreda_id spoofed to Hakim (d43c7fea) -- RLS WITH CHECK must reject
+-- since woreda_id must equal get_user_woreda_id().
+BEGIN;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+INSERT INTO public.service_request
+  (service_request_id, woreda_id, request_number, service_type_id, category, status,
+   subject, requested_by_user_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000041', 'd43c7fea-c2bb-491c-99e7-56c76aa577f1', '',
+   'e4472daa-651b-4306-99b6-73a04031476b', 'letter', 'submitted',
+   'Probe cross-tenant insert', '64e0384a-d240-4302-8310-682f79a302ce');
+RESET role;
+ROLLBACK;
+-- EXPECT: ERROR (row-level security policy)
+
+-- === PROBE: service_zero_fee_writes_payment_and_issues ===
+-- Full cycle through the zero-fee payment path to 'issued' -- confirms the
+-- universal zero-fee rule (B3): even a free letter must write a real
+-- zero-value payment + receipt before issuance. NOINCOME is a real,
+-- zero-fee, active letter type in Aboker.
+BEGIN;
+SET LOCAL request.jwt.claim.sub = '35b307bd-c5f6-4925-ac14-231f934c3a00';
+SET LOCAL role authenticated;
+INSERT INTO public.service_request
+  (service_request_id, woreda_id, request_number, service_type_id, category, status,
+   subject, requested_by_user_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000042', '81ac2ad6-a320-4069-b8dc-0c43e358371b', '',
+   '9ea4c022-f917-4ae4-b0e7-0ae8f5b0dc43', 'letter', 'submitted',
+   'Probe zero-fee issuance', '35b307bd-c5f6-4925-ac14-231f934c3a00');
+UPDATE public.service_request SET status = 'under_review'
+ WHERE service_request_id = '00000000-0000-4000-8000-000000000042';
+UPDATE public.service_request
+   SET status = 'verified', verified_by_user_id = '35b307bd-c5f6-4925-ac14-231f934c3a00', verified_at = now()
+ WHERE service_request_id = '00000000-0000-4000-8000-000000000042';
+RESET role;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+UPDATE public.service_request SET status = 'pending_approval'
+ WHERE service_request_id = '00000000-0000-4000-8000-000000000042';
+UPDATE public.service_request
+   SET status = 'approved', approved_by_user_id = '64e0384a-d240-4302-8310-682f79a302ce', approval_decision_at = now()
+ WHERE service_request_id = '00000000-0000-4000-8000-000000000042';
+UPDATE public.service_request SET status = 'awaiting_payment'
+ WHERE service_request_id = '00000000-0000-4000-8000-000000000042';
+INSERT INTO public.payment
+  (payment_id, woreda_id, payment_type, amount, payment_date, channel, status, posted_by_user_id, service_request_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000142', '81ac2ad6-a320-4069-b8dc-0c43e358371b',
+   'service_fee', 0, current_date, 'cash', 'confirmed',
+   '64e0384a-d240-4302-8310-682f79a302ce', '00000000-0000-4000-8000-000000000042');
+INSERT INTO public.receipt
+  (receipt_id, woreda_id, payment_id, receipt_date, total_amount, cash_bank_channel, receipt_number)
+VALUES
+  ('00000000-0000-4000-8000-000000000242', '81ac2ad6-a320-4069-b8dc-0c43e358371b',
+   '00000000-0000-4000-8000-000000000142', current_date, 0, 'cash', 'PROBE-SRV-RECEIPT-0001');
+UPDATE public.service_request
+   SET payment_id = '00000000-0000-4000-8000-000000000142'
+ WHERE service_request_id = '00000000-0000-4000-8000-000000000042';
+UPDATE public.service_request SET status = 'paid'
+ WHERE service_request_id = '00000000-0000-4000-8000-000000000042';
+UPDATE public.service_request
+   SET status = 'issued', issued_by_user_id = '64e0384a-d240-4302-8310-682f79a302ce', issued_at = now()
+ WHERE service_request_id = '00000000-0000-4000-8000-000000000042';
+RESET role;
+SELECT
+  (SELECT status FROM public.service_request WHERE service_request_id = '00000000-0000-4000-8000-000000000042') AS request_status,
+  (SELECT amount FROM public.payment WHERE payment_id = '00000000-0000-4000-8000-000000000142') AS payment_amount;
+ROLLBACK;
+-- EXPECT: SUCCESS (request_status=issued, payment_amount=0.00)
+
+-- === PROBE: service_complaint_as_built_transition_still_succeeds ===
+-- Zero-behavior-change proof for the complaint path, mirroring 14-A's own
+-- rental_as_built_transition_still_succeeds pattern.
+BEGIN;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+INSERT INTO public.service_request
+  (service_request_id, woreda_id, request_number, service_type_id, category, status,
+   subject, requested_by_user_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000043', '81ac2ad6-a320-4069-b8dc-0c43e358371b', '',
+   '2c351bc2-3ad0-49e6-99d9-94e51ac4d670', 'complaint', 'submitted',
+   'Probe complaint as-built', '64e0384a-d240-4302-8310-682f79a302ce');
+UPDATE public.service_request SET status = 'under_review'
+ WHERE service_request_id = '00000000-0000-4000-8000-000000000043';
+UPDATE public.service_request SET status = 'pending_approval'
+ WHERE service_request_id = '00000000-0000-4000-8000-000000000043';
+RESET role;
+ROLLBACK;
+-- EXPECT: SUCCESS (as-built complaint verify path unaffected)
+
+-- === PROBE: service_complaint_approve_skips_to_in_progress ===
+-- Regression probe for a bug found while attaching the engine: the real
+-- Approve button for complaints (nextAfterApproval(), always false for
+-- requires_payment on every complaint type) calls transition("in_progress")
+-- DIRECTLY from pending_approval, skipping 'approved' entirely -- 'approved'
+-- is never actually written for a real complaint. The FSM must allow this
+-- exact as-built jump or the very first real complaint approval breaks.
+BEGIN;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+INSERT INTO public.service_request
+  (service_request_id, woreda_id, request_number, service_type_id, category, status,
+   subject, requested_by_user_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000045', '81ac2ad6-a320-4069-b8dc-0c43e358371b', '',
+   '2c351bc2-3ad0-49e6-99d9-94e51ac4d670', 'complaint', 'submitted',
+   'Probe complaint approve skips to in_progress', '64e0384a-d240-4302-8310-682f79a302ce');
+UPDATE public.service_request SET status = 'under_review'
+ WHERE service_request_id = '00000000-0000-4000-8000-000000000045';
+UPDATE public.service_request SET status = 'pending_approval'
+ WHERE service_request_id = '00000000-0000-4000-8000-000000000045';
+UPDATE public.service_request SET status = 'in_progress'
+ WHERE service_request_id = '00000000-0000-4000-8000-000000000045';
+SELECT status FROM public.service_request WHERE service_request_id = '00000000-0000-4000-8000-000000000045';
+RESET role;
+ROLLBACK;
+-- EXPECT: SUCCESS (status=in_progress, matching the real Approve button's own behavior)
+
+-- === PROBE: service_complaint_out_of_path_now_raises ===
+BEGIN;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+INSERT INTO public.service_request
+  (service_request_id, woreda_id, request_number, service_type_id, category, status,
+   subject, requested_by_user_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000044', '81ac2ad6-a320-4069-b8dc-0c43e358371b', '',
+   '2c351bc2-3ad0-49e6-99d9-94e51ac4d670', 'complaint', 'submitted',
+   'Probe complaint out-of-path', '64e0384a-d240-4302-8310-682f79a302ce');
+UPDATE public.service_request SET status = 'approved'
+ WHERE service_request_id = '00000000-0000-4000-8000-000000000044';
+RESET role;
+ROLLBACK;
+-- EXPECT: ERROR (service_request may not move from submitted to approved)
+
+-- === PROBE: service_kpi_rpc_denies_suspended_user ===
+BEGIN;
+SET LOCAL request.jwt.claim.sub = 'dc070cc9-24f6-4d19-b3e7-34c42e2f6b6f';
+SET LOCAL role authenticated;
+SELECT get_service_kpis() AS kpis;
+RESET role;
+ROLLBACK;
+-- EXPECT: ERROR (get_service_kpis: permission denied)
