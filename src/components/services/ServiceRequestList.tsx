@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
 import { P } from "@/config/permissions";
 import { StatusChip } from "@/components/common/StatusChip";
+import { PermissionGate } from "@/components/common/PermissionGate";
 import { ExportButtons } from "@/components/common/TableToolbar";
 import { exportRowsToCsv, exportRowsToPdf, type TableColumn } from "@/utils/tableExport";
 import { useReportBranding } from "@/hooks/useReportBranding";
@@ -408,14 +409,16 @@ export function ServiceRequestList({ category, titleAm, titleEn, descriptionAm }
               onPdf={() => doExport("pdf")}
               busy={exporting}
             />
-            <Link to="/woreda/services/new" search={{ category } as never}>
-              <Button>
-                <Plus className="mr-1 h-4 w-4" />
-                <span className="font-noto-ethiopic">
-                  {category === "complaint" ? "አዲስ ቅሬታ" : "አዲስ ጥያቄ"}
-                </span>
-              </Button>
-            </Link>
+            <PermissionGate permission={P.SERVICE_CREATE}>
+              <Link to="/woreda/services/new" search={{ category } as never}>
+                <Button>
+                  <Plus className="mr-1 h-4 w-4" />
+                  <span className="font-noto-ethiopic">
+                    {category === "complaint" ? "አዲስ ቅሬታ" : "አዲስ ጥያቄ"}
+                  </span>
+                </Button>
+              </Link>
+            </PermissionGate>
           </div>
         }
       />

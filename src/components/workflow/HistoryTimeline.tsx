@@ -99,7 +99,7 @@ export function HistoryTimeline({
           <div className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full bg-blue-600" />
           <div className="flex-1">
             <div className="flex flex-wrap items-center gap-1.5">
-              {h.old_status && <StatusChip status={h.old_status} showAmharic={false} />}
+              {h.old_status && <StatusChip status={h.old_status} />}
               {h.old_status && <span className="text-slate-400">→</span>}
               <StatusChip status={h.new_status} />
             </div>

@@ -5,7 +5,6 @@ import {
   ArrowLeft,
   Banknote,
   Check,
-  CheckCircle2,
   Download,
   FileText,
   Paperclip,
@@ -25,7 +24,7 @@ import { Select } from "@/components/forms/FormSection";
 import { PermissionGate } from "@/components/common/PermissionGate";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
-import { formatEthiopianDate, formatEthiopianDateTime } from "@/utils/ethiopianCalendar";
+import { formatEthiopianDate } from "@/utils/ethiopianCalendar";
 import {
   letterSummary,
   plainTextToHtml,
