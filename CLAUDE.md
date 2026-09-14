@@ -376,11 +376,12 @@ checklist before assuming a screen already uses the new patterns:
   unauthenticated-redirect behavior rather than visually confirmed — see the
   report's "residual risks" section), and deviations from the plan.
 
-As of the last update: Phase 0 (fonts, tokens, `AppShell`) and half of Phase 1
-(`TableToolbar` across Cluster A, `Stepper` across both wizards) are done;
-`DetailHeader`/`WorkflowStepper`, `charts/`, and Phases 2–4 are not started.
-Continuing this work means reading the roadmap's current status first, not
-re-deriving it from the code.
+As of the last update: Phase 0 (fonts, tokens, `AppShell`) is done, and Phase 1
+is down to its last component family — `TableToolbar` (Cluster A),
+`Stepper` (both wizards), and `DetailHeader`/`WorkflowStepper` (2 of Cluster
+C's ~13 screens) are built and verified; only `charts/` (Cluster E) remains.
+Phases 2–4 are not started. Continuing this work means reading the roadmap's
+current status first, not re-deriving it from the code.
 
 ### Build and server entry
 

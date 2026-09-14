@@ -165,6 +165,38 @@ correctly redirect unauthenticated traffic to `/login`, confirming the bundle co
 without a runtime crash (the same import-safety verification used for `TableToolbar`, given the same
 no-real-backend constraint described below).
 
+### `DetailHeader` + `WorkflowStepper` (`ux_restructure_plan.md`, Cluster C)
+
+Built the two components called for by the design spec's §3.C: `DetailHeader` (photo/avatar, bilingual
+title block, status chip, permission-gated action row) replacing ~8 independently hand-rolled detail-screen
+headers, and `WorkflowStepper` for the four workflow-style detail screens (Credential, Civil Event, Service
+Request, Rental Request) that each hand-rolled their own stage stepper/timeline before this.
+
+- `src/components/common/DetailHeader.tsx` (new) — `photoUrl`/`initials` (photo falls back to initials),
+  `titleAm`/`titleEn`, an optional `meta` array of icon+label facts, a `status` slot for a `StatusChip`, and
+  an `actions` slot for the button row. Uses the `--shell-header` design token from Phase 0 instead of the
+  hardcoded `bg-blue-700` every hand-rolled header used.
+- `src/components/common/WorkflowStepper.tsx` (new) — `stages: {key, am, en}[]`, `currentStage`, and an
+  optional `exception: {am, en, tone}` for off-the-happy-path outcomes (rejected, returned for correction)
+  that a linear stepper can't represent as just "further along." Deliberately not built on top of the
+  Cluster B `Stepper` component: a workflow stage advances only through a permission-gated action elsewhere
+  on the page, never by clicking the indicator, so it's read-only with no `onJump`, and needs the exception
+  affordance a form wizard never does.
+- Wired into two screens with different shapes, per the same "prototype against more than one shape"
+  discipline used for `Stepper`:
+  - `woreda.residents.$residentId.index.tsx` — `DetailHeader` only (a resident profile has no workflow
+    stage concept). Replaced the hand-rolled `bg-blue-700` header block; removed the `PageHeader` import
+    (now redundant with `DetailHeader`'s own title).
+  - `woreda.credentials.$requestId.index.tsx` — `DetailHeader` + `WorkflowStepper` covering the full
+    `submitted → under_review → pending_approval → awaiting_payment → paid → active` happy path (derived
+    from the actual status-history writes in this file, not guessed) plus the `rejected`/`returned`
+    exception states. Removed the unused `PageHeader` and `CreditCard` icon imports.
+
+Smoke-tested `/woreda/residents/$id` and `/woreda/credentials/$id` via headless Chromium — both correctly
+redirect unauthenticated traffic to `/login`, confirming the bundle loads without a runtime crash (same
+constraint as above: full visual verification of the workflow stepper's exception-state styling needs a
+real backend session to reach a request in a `rejected`/`returned` state).
+
 ## Verification performed
 
 | Check | Result |
@@ -221,10 +253,11 @@ portals' navigation before Phase 1 begins.
 
 ## What's not done (and why), with concrete next steps
 
-- **Phase 1 — Shared patterns**: `TableToolbar` (done, all of Cluster A) and `Stepper` (done, both wizards
-  it needs to generalize across) are complete. `DetailHeader`/`WorkflowStepper` (Cluster C, ~13 detail
-  screens) and `charts/` (Cluster E) are **not started**. Next step: build and manually verify each against
-  2–3 real screens before any broader rollout, per the roadmap's own Phase 1 workflow.
+- **Phase 1 — Shared patterns**: `TableToolbar` (done, all of Cluster A), `Stepper` (done, both wizards it
+  needs to generalize across), and `DetailHeader`/`WorkflowStepper` (done, verified against 2 of Cluster
+  C's ~13 screens) are complete. `charts/` (Cluster E) is the **only remaining Phase 1 component family**,
+  not started. Next step: build and manually verify it against 2–3 real dashboard/report screens before any
+  broader rollout, per the roadmap's own Phase 1 workflow.
 - **Phase 2 — Screen-by-screen adoption** (all 55 screens): not started; depends on Phase 1 existing
   first.
 - **Phase 3 — Print documents & dashboards**: not started; lower urgency per the audit (Cluster D already
