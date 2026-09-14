@@ -391,3 +391,56 @@ pattern from Task 14-A:
   built.
 - Touching Settings' service-type CRUD screen's missing module-gate (§0.6) —
   a real, separate, pre-existing gap, not this PR's to fix.
+
+## 9. Review findings deferred, not fixed (mirror pre-existing Task 14-A patterns)
+
+Four review passes ran against this branch (`workflow-fsm-review`,
+`tenant-isolation-review`, `portal-conventions-review`, plus this memo's own
+design decisions). All Critical/High-shaped findings were fixed
+(checkpoint 2 commit): the letter payment card's two transitions now write
+`service_request_status_history` + `audit_log` like every other transition
+on the page, and the portal-conventions gaps (English-only fallback,
+Gregorian date in the new history card, an unverified `receipt` insert, a
+missing loading/error branch) were all closed.
+
+The following Low/Medium findings were deliberately **not** fixed here,
+because each one reproduces a pattern Task 14-A already shipped for civil
+registration — fixing only the service-request side would create asymmetric
+behavior between two sibling modules rather than closing the actual gap:
+
+- **Payment amount not compared to the resolved fee.** Both
+  `enforce_service_request_payment_gate()` (this PR) and
+  `enforce_vital_event_payment_gate()` (Task 14-A) only require a confirmed
+  payment + receipt linked to the request — neither compares `payment.amount`
+  against the catalog fee. A `service.record_payment`/`civil.record_payment`
+  holder could post a `0`-amount payment for a fee-bearing request and still
+  reach `paid`. Revenue-integrity gap, not a tenant-isolation one; if closed,
+  close it in both modules together (and in the shared engine's fee-checking
+  shape, if one gets built) rather than one at a time.
+- **In-flight requests can freeze if a service type or resident is
+  deactivated mid-flow.** `enforce_service_request_preconditions()` re-checks
+  `is_active`/`active_flag` on every `UPDATE`, not only when the referencing
+  column changes — same as `enforce_vital_event_preconditions()`. A resident
+  or service type deactivated while a request is mid-pipeline blocks every
+  further transition on that specific row. Both would need the same fix
+  (scope the re-check to `INSERT` or to a change of the referencing FK).
+- **`workflow_transition` is entity-scoped, not category-scoped.** The
+  shared engine keys transitions on `(entity, from_status, to_status)`, with
+  no `category` dimension — so a `category='complaint'` row is not actually
+  *prevented* from taking a letter-only edge (e.g. `approved -> awaiting_payment`)
+  by the engine itself, only by the real UI never offering the button and by
+  `enforce_service_request_preconditions()`'s `category <> 'letter'` early
+  return skipping the tenant-scoped resident/household re-validation for
+  complaints. No cross-tenant effect (RLS still binds), but true category
+  separation would need a schema change to the shared `workflow_transition`
+  table used by four entities — out of scope for a single-entity PR.
+- **`finance_clerk` gains a same-tenant UPDATE path on `service_request`
+  columns beyond `status`/`payment_id`**, since `service.record_payment` is
+  now in the widened UPDATE policy's verb array and `enforce_workflow_transition()`
+  only fires on an actual status change. Same shape as Task 14-A's
+  `vital_event` UPDATE-policy widening for `finance_clerk` — an accepted
+  systemic tradeoff there, carried forward here rather than re-litigated
+  per-module.
+
+These four items are added to `docs/remediation-report.md`'s consolidated
+watch list (§11) rather than fixed asymmetrically in this PR alone.
