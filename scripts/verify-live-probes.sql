@@ -1692,6 +1692,48 @@ END $$;
 ROLLBACK;
 -- EXPECT: ERROR (resident has no phone number on file -- a residence credential cannot be issued)
 
+-- === PROBE: age_guard_rejects_deceased_resident ===
+-- Migration 00000000000069's mint guard checked active_flag but not
+-- residency_status <> 'deceased' -- found by /code-review on this PR's own
+-- diff. apply_death_on_approval() (baseline migration) sets
+-- residency_status='deceased' on an approved death event but never touches
+-- active_flag, so a deceased resident's active_flag stays true and would
+-- have slipped past migration 69's check alone. Migration
+-- 00000000000070 adds the missing predicate, matching
+-- enforce_service_request_preconditions()'s own eligibility check
+-- (migrations 65:243, 66:448: `active_flag = true AND residency_status <>
+-- 'deceased'`).
+BEGIN;
+ALTER TABLE public.credential_request DISABLE TRIGGER zz_enforce_workflow_insert;
+ALTER TABLE public.credential_request DISABLE TRIGGER zz_enforce_workflow_transition;
+ALTER TABLE public.credential_request DISABLE TRIGGER zz_log_workflow_transition;
+ALTER TABLE public.residence_credential DISABLE TRIGGER zz_enforce_workflow_insert;
+ALTER TABLE public.residence_credential DISABLE TRIGGER zz_enforce_workflow_transition;
+ALTER TABLE public.residence_credential DISABLE TRIGGER zz_log_workflow_transition;
+DO $$
+DECLARE
+  v_woreda_id uuid := '8e94339e-7588-43c2-a93f-3124bc4a8be9';
+  v_kebele_id uuid := '87bfd8c5-42bf-47ce-aa33-31ca78c49d2e';
+  v_resident_id uuid;
+  v_req_id uuid;
+  v_pay_id uuid;
+BEGIN
+  INSERT INTO public.resident (woreda_id, resident_number, full_name, sex, date_of_birth, marital_status, phone_number, photo_url, active_flag, residency_status)
+  VALUES (v_woreda_id, 'PROBE-DECEASED-1', 'Probe Deceased Adult', 'male', CURRENT_DATE - INTERVAL '40 years', 'single', '933333333', 'probe/deceased.jpg', true, 'deceased')
+  RETURNING resident_id INTO v_resident_id;
+  INSERT INTO public.credential_request (woreda_id, request_number, resident_id, issuing_kebele_id, request_type, status)
+  VALUES (v_woreda_id, 'PROBE-REQ-DECEASED', v_resident_id, v_kebele_id, 'new_issue', 'awaiting_payment')
+  RETURNING credential_request_id INTO v_req_id;
+  INSERT INTO public.payment (woreda_id, resident_id, payment_type, amount, payment_date, channel, status, credential_request_id)
+  VALUES (v_woreda_id, v_resident_id, 'credential_fee', 150, CURRENT_DATE, 'cash', 'confirmed', v_req_id)
+  RETURNING payment_id INTO v_pay_id;
+  INSERT INTO public.receipt (woreda_id, payment_id, receipt_date, total_amount, cash_bank_channel, receipt_number)
+  VALUES (v_woreda_id, v_pay_id, CURRENT_DATE, 150, 'cash', '');
+  UPDATE public.credential_request SET status = 'paid', payment_id = v_pay_id WHERE credential_request_id = v_req_id;
+END $$;
+ROLLBACK;
+-- EXPECT: ERROR (resident is not active -- a residence credential cannot be issued) -- active_flag=true but residency_status='deceased' must still reject
+
 -- === PROBE: age_guard_accepts_exact_18th_birthday_today ===
 -- The boundary case: calculateAgeYears()'s own client-side JS logic (and
 -- this trigger's date_part('year', age(...)) equivalent) both treat a

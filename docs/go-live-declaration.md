@@ -116,6 +116,20 @@ flagged as missing: `resident.active_flag = true`. Verified live via a
 direct `pg_proc.prosrc` query confirming every required element is present
 in the deployed function body.
 
+**Migration 69's own fourth check was itself incomplete: `active_flag =
+true` without `residency_status <> 'deceased'`.** `apply_death_on_approval()`
+(baseline migration) sets `residency_status = 'deceased'` on an approved
+death event but never touches `active_flag`, so a deceased resident's
+`active_flag` stays `true` and would have slipped past migration 69's check
+alone. Found by `/code-review` run against this PR's own diff — a third,
+independent check beyond the two dispatched agents, which also caught
+something real — by cross-referencing `enforce_service_request_preconditions()`
+(migrations 65, 66), which tests both conditions together and is what
+migration 69's own header comment claimed to match. Fixed via
+`00000000000070_mint_guard_deceased_check.sql` (`CREATE OR REPLACE` again),
+verified live via the same `pg_proc.prosrc` method, with a new dedicated
+probe, `age_guard_rejects_deceased_resident`.
+
 The review also found the original three probes were not genuine positive
 controls: all three disabled `residence_credential`'s own
 `zz_enforce_workflow_insert` trigger during setup, which happens to mask the
@@ -124,13 +138,14 @@ all three also expected `ERROR`, none could have caught it. Fixed by
 rewriting `age_guard_accepts_exact_18th_birthday_today` to leave that
 trigger enabled, and adding two new probes that also leave it enabled.
 
-Evidence (`LIVE-PROBE`, rollback-wrapped, net-zero — full 65-probe suite:
+Evidence (`LIVE-PROBE`, rollback-wrapped, net-zero — full 66-probe suite:
 PASS, `scripts/verify-live-probes.sql`):
 
 | Probe                                                | Setup                                                                    | Result                                                                                                                    |
 | ----------------------------------------------------- | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
 | `age_guard_rejects_minor`                             | Resident, age 10, phone+photo present                                     | `ERROR 23514: credential: resident is under 18`                                                                            |
 | `age_guard_rejects_missing_phone`                     | Resident, age 30, no phone number                                         | `ERROR 23514: credential: resident has no phone number on file`                                                            |
+| `age_guard_rejects_deceased_resident`                 | Resident, `active_flag = true`, `residency_status = 'deceased'`           | `ERROR 23514: credential: resident is not active` — confirms migration 70's fix                                            |
 | `age_guard_accepts_exact_18th_birthday_today`         | Resident whose 18th birthday is exactly today, **all guard triggers enabled** | Accepted — confirms the boundary is inclusive, matching client-side `calculateAgeYears()`, and that no guard spuriously blocks it |
 | `credential_happy_path_mint_with_guards_enabled`      | Full valid mint, every guard trigger enabled                              | Accepted, `residence_credential` row created — the genuine positive control the original three probes lacked               |
 | `credential_paid_with_unrelated_payment_row`          | Request B tries to satisfy its payment gate with request A's confirmed payment | `ERROR`: "a confirmed payment with a receipt is required" — confirms migration 69 restored the payment-linkage predicate   |
@@ -259,13 +274,14 @@ REPLACE`s the affected function back to its prior body (schema-preserving
   structural rollback would risk data loss this project's guardrails
   specifically forbid.
 - **Specifically for the age/identity mint guard** (migrations
-  `00000000000068`/`00000000000069`): rolling back would mean `CREATE OR
-REPLACE FUNCTION generate_residence_credential_on_payment()` back to its
-  pre-Task-8 body — not recommended, since that reopens the exact
-  minor-credential gap this PR closes (and, if rolled back only as far as
-  68 rather than past 69, would reopen the cross-request payment-fraud gap
-  69 fixed too), but mechanically available if a false-positive rejection
-  ever blocks a legitimate real case in a way that needs an emergency
+  `00000000000068`/`00000000000069`/`00000000000070`): rolling back would
+  mean `CREATE OR REPLACE FUNCTION generate_residence_credential_on_payment()`
+  back to its pre-Task-8 body — not recommended, since that reopens the
+  exact minor-credential gap this PR closes (and, if rolled back only as
+  far as 68 or 69 rather than past 70, would reopen the cross-request
+  payment-fraud gap 69 fixed or the deceased-resident gap 70 fixed), but
+  mechanically available if a false-positive rejection ever blocks a
+  legitimate real case in a way that needs an emergency
   reversal before a proper fix ships.
 - **Edge Functions**: `scripts/deploy-functions.sh` redeploys from any
   checked-out commit; a function's own prior version is recovered by
@@ -300,8 +316,9 @@ Dispatched against this PR's own claims before presenting for sign-off:
 `workflow-fsm-review` (the age/identity mint-guard migration and its
 interaction with the workflow engine) and `tenant-isolation-review` (the
 new migration's tenant scoping, and the resident-schema requiredness
-change). Both raised findings, and both are fixed, not merely recorded —
-see `docs/remediation-report.md` §17a for the full account:
+change), plus `/code-review` as a third, independent pass over the same
+diff before merge. All raised findings, and all are fixed, not merely
+recorded — see `docs/remediation-report.md` §17a for the full account:
 
 1. **CRITICAL** — migration 68 was based on a stale (migration-25) function
    body and silently reverted migration 66's payment-linkage predicates,
@@ -324,8 +341,14 @@ see `docs/remediation-report.md` §17a for the full account:
 6. **LOW** — `offlineSync.ts`'s `syncRecordPaymentDraft` had an
    error-message parity gap for a failed final status update after an
    already-recorded payment. Fixed to match the adjacent branch's guidance.
+7. **HIGH** (found by `/code-review`, after findings 1–6 were already
+   fixed) — migration 69's own fourth check (`active_flag = true`) was
+   itself incomplete: it omitted `residency_status <> 'deceased'`, which
+   `apply_death_on_approval()` never syncs to `active_flag`, so a deceased
+   resident could still mint a credential. Fixed in migration
+   `00000000000070`, with a new dedicated probe.
 
-All six confirmed fixed and re-verified (65/65 live probes, `bun run test`,
+All seven confirmed fixed and re-verified (66/66 live probes, `bun run test`,
 `tsc --noEmit`, `bun run build`, `bun run lint` all green) before this PR
 was opened — none are open items carried into go-live.
 

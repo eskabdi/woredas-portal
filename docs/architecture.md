@@ -260,7 +260,8 @@ PostgREST call, or a replayed Task 12-C offline-sync item, driving
 `credential_request` straight to `paid` had no database-side gate stopping a
 credential from being minted for a minor.
 
-Closed by migration `00000000000068`, corrected by `00000000000069`:
+Closed by migration `00000000000068`, corrected by `00000000000069` and
+`00000000000070`:
 `generate_residence_credential_on_payment()` — the one `SECURITY DEFINER`
 trigger that actually inserts the `residence_credential` row on every path
 that can reach `paid` (the UI, a direct API call, and the offline-sync
@@ -272,9 +273,9 @@ verifies, immediately before minting:
    `calculateAgeYears()`) is at least 18.
 2. The resident has a non-empty `phone_number` on file.
 3. The resident has a non-empty `photo_url` on file.
-4. The resident's `active_flag` is `true`.
+4. The resident's `active_flag` is `true` and `residency_status <> 'deceased'`.
 
-All four fail **closed**: a resident row that can't even be found, or whose
+All checks fail **closed**: a resident row that can't even be found, or whose
 `date_of_birth` is somehow `NULL` (the column is `NOT NULL` today, but the
 check defends the invariant even if that ever changes), is rejected the same
 as an under-18 resident — never treated as "unknown, so allow."
@@ -302,18 +303,33 @@ controls for this guard — all three disabled `residence_credential`'s own
 exactly the `insufficient_privilege` failure mode migration 68 introduced.
 Fixed: `age_guard_accepts_exact_18th_birthday_today` now leaves that trigger
 enabled, and two new probes (`credential_happy_path_mint_with_guards_enabled`,
-`credential_paid_with_unrelated_payment_row`) do the same. Live-probed
-(rollback-wrapped, net-zero) — the full suite now covers a 10-year-old
-resident (rejected on age), a 30-year-old resident with no phone number on
-file (rejected on phone), a resident whose 18th birthday is exactly today
-with every guard trigger left enabled (accepted — confirming both the
-inclusive boundary and that the guard doesn't spuriously reject a valid
-mint), a full happy-path mint with every guard enabled (accepted), and a
-request attempting to pay with a different request's already-confirmed
-payment row (rejected). **65/65 probes `PASS`, net-zero.** See
-`scripts/verify-live-probes.sql`'s "Task 8: age + identity-completeness
-guard" section for the exact probes and `docs/go-live-declaration.md` for
-the evidence-class citation.
+`credential_paid_with_unrelated_payment_row`) do the same. **Migration 69 itself was incomplete: it ported `active_flag = true` but not
+`residency_status <> 'deceased'`.** `apply_death_on_approval()` (baseline
+migration) sets a resident's `residency_status` to `'deceased'` on an
+approved death event but never touches `active_flag`, so a deceased
+resident's `active_flag` stays `true` — migration 69's check alone would not
+have stopped a credential mint for a deceased resident. Found by
+`/code-review` against this PR's own diff (not one of the two dispatched
+agents — a third, independent check that also caught something), by
+cross-referencing every sibling eligibility check in the codebase:
+`enforce_service_request_preconditions()` (migrations 65, 66) tests both
+conditions together, and migration 69 only ported half. Fixed by migration
+`00000000000070` (`CREATE OR REPLACE` on the same function again), with a
+new dedicated probe, `age_guard_rejects_deceased_resident` (a resident with
+`active_flag = true` but `residency_status = 'deceased'`, expects `ERROR`).
+
+Live-probed (rollback-wrapped, net-zero) — the full suite now covers a
+10-year-old resident (rejected on age), a 30-year-old resident with no
+phone number on file (rejected on phone), a deceased resident with
+`active_flag` still `true` (rejected — the migration 70 fix), a resident
+whose 18th birthday is exactly today with every guard trigger left enabled
+(accepted — confirming both the inclusive boundary and that the guard
+doesn't spuriously reject a valid mint), a full happy-path mint with every
+guard enabled (accepted), and a request attempting to pay with a different
+request's already-confirmed payment row (rejected). **66/66 probes `PASS`,
+net-zero.** See `scripts/verify-live-probes.sql`'s "Task 8: age +
+identity-completeness guard" section for the exact probes and
+`docs/go-live-declaration.md` for the evidence-class citation.
 
 Deliberately **not** a table-wide `NOT NULL` on `resident.phone_number`/
 `resident.photo_url`: `generate_resident_on_birth_approval()` (migration 59)
