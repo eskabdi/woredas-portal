@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
 import { useFormDraft } from "@/hooks/useFormDraft";
 import {
-  residentSchema,
+  residentCreateSchema,
   RESIDENT_STEP_FIELDS,
   buildResidentPayloadCore,
   type ResidentFormInput,
@@ -33,7 +33,7 @@ function NewResidentPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const form = useForm<ResidentFormInput, unknown, ResidentFormValues>({
-    resolver: zodResolver(residentSchema),
+    resolver: zodResolver(residentCreateSchema),
     defaultValues: {
       bp_same_as_current: "no",
       has_former_residence: "no",

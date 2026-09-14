@@ -123,6 +123,7 @@ interface ResidentDetail {
   sex: string | null;
   date_of_birth: string | null;
   photo_url: string | null;
+  phone_number: string | null;
   active_flag: boolean;
   residency_status: string | null;
   current_household_id: string | null;
@@ -220,7 +221,7 @@ function NewCredentialRequestPage() {
       const { data, error } = await supabase
         .from("resident")
         .select(
-          "resident_id, resident_number, full_name, full_name_am, sex, date_of_birth, photo_url, active_flag, residency_status, current_household_id, household:current_household_id(household_id, house_number, kebele:kebele_id(kebele_id, kebele_name_am, kebele_name_en, kebele_number))",
+          "resident_id, resident_number, full_name, full_name_am, sex, date_of_birth, photo_url, phone_number, active_flag, residency_status, current_household_id, household:current_household_id(household_id, house_number, kebele:kebele_id(kebele_id, kebele_name_am, kebele_name_en, kebele_number))",
         )
         .eq("resident_id", residentId)
         .maybeSingle();
@@ -311,7 +312,14 @@ function NewCredentialRequestPage() {
   const isDeceased = resident?.residency_status === "deceased";
   const age = calculateAgeYears(resident?.date_of_birth ?? null);
   const isUnder18 = age !== null && age < 18;
-  const hardBlocked = notActive || notInHousehold || isDeceased || isUnder18;
+  // Task 8: the server (generate_residence_credential_on_payment(), migration
+  // 00000000000068/69) now fail-closes a mint for a resident with no phone
+  // number or photo on file, matching the age check above -- surfaced here
+  // too so an officer sees the reason at intake, not after a payment has
+  // already been collected and the request stalls at the last step.
+  const noPhone = !!resident && !resident.phone_number;
+  const noPhoto = !!resident && !resident.photo_url;
+  const hardBlocked = notActive || notInHousehold || isDeceased || isUnder18 || noPhone || noPhoto;
 
   const activeCred = activeCredQuery.data ?? null;
   const openReq = openReqQuery.data ?? null;
@@ -711,6 +719,32 @@ function NewCredentialRequestPage() {
             <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-red-800">
               <p className="font-noto-ethiopic font-medium">ይህ ነዋሪ ከ18 ዓመት በታች ነው ({age})</p>
               <p className="text-sm">This resident is under 18 (age {age}).</p>
+            </div>
+          )}
+          {noPhone && !notActive && !notInHousehold && !isDeceased && !isUnder18 && (
+            <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-red-800">
+              <p className="font-noto-ethiopic font-medium">ይህ ነዋሪ ስልክ ቁጥር የለውም፤ መጀመሪያ ይመዝግቡ</p>
+              <p className="text-sm">This resident has no phone number on file — add one first.</p>
+              <Link
+                to="/woreda/residents/$residentId/edit"
+                params={{ residentId: resident!.resident_id }}
+                className="mt-2 inline-block text-sm font-medium text-red-900 underline"
+              >
+                Edit resident profile →
+              </Link>
+            </div>
+          )}
+          {noPhoto && !notActive && !notInHousehold && !isDeceased && !isUnder18 && !noPhone && (
+            <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-red-800">
+              <p className="font-noto-ethiopic font-medium">ይህ ነዋሪ ፎቶ የለውም፤ መጀመሪያ ይመዝግቡ</p>
+              <p className="text-sm">This resident has no photo on file — add one first.</p>
+              <Link
+                to="/woreda/residents/$residentId/edit"
+                params={{ residentId: resident!.resident_id }}
+                className="mt-2 inline-block text-sm font-medium text-red-900 underline"
+              >
+                Edit resident profile →
+              </Link>
             </div>
           )}
 

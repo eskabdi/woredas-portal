@@ -18,37 +18,37 @@ against production project `tugzuexfyzbdnghbmrjl` and
 Re-scored against `docs/system-review-2026-09.md`'s original 12-dimension
 health rating (2026-09-07, commit `679b4f2`).
 
-| Dim | Area | 2026-09-07 | Now | Basis for the flip | Evidence |
-| - | - | - | - | - | - |
-| A | Multi-tenant isolation & RLS | 🟡 Amber | 🟢 **Green** | F-03 closed: `apply_death_on_approval()`/`apply_rental_occupancy_on_approval()` now scope every write by `woreda_id = NEW.woreda_id` (migration `00000000000032`); `vital_event.resident_id`/`.household_id` cross-tenant links now checked. Live enumeration: 52/52 tables RLS-enabled, 139 policies, zero drift. | `LIVE-PROBE` (§4 #7-8) + `STRUCTURAL` (§17c) |
-| B | RBAC & authorization | 🟡 Amber | 🟢 **Green** | F-05 closed: the workflow-verb collision resolved by renaming to `credential.review` (D-3, `docs/architecture.md`), not reusing `credential.verify`. `check:role-perms-drift` green in CI on every PR. Reserved-role/permission guards live-probed. | `LIVE-PROBE` (§4 #9-10) + `CI-COVERED` |
-| C | **Workflow integrity** | 🔴 Red | 🟢 **Green** | F-01 (the review's one Critical finding) closed: `enforce_workflow_transition()` blocks every illegal status change, maker≠checker enforced, `generate_residence_credential_on_payment()` requires `OLD.status = 'awaiting_payment'` and a confirmed payment+receipt before minting. | `LIVE-PROBE` (§4 #1-6, §17 rows 1-6) |
-| D | Data model & constraints | 🟢 Green | 🟢 Green (held) | No regression found. Luhn check digit, FK completeness, one-active-household structural guarantee (`INV-09`) all re-confirmed. | `STRUCTURAL` |
-| E | Security & INSA compliance | 🟡 Amber | 🟢 **Green** | F-02 closed: `verify_credential_token` hardened (anon path requires the signed QR payload, not a guessable sequential number; rate-limited 30/60s; every attempt logged to `credential_verification_log`). F-07 closed: `resident.national_id_no` is now in the PII-encryption scope alongside phone/email. | `LIVE-PASS`/`SMOKE` (§3) + `docs/security-functionality.md` |
-| F | Localization & Ethiopian calendar | 🟢 Green | 🟢 Green (held) | Conversion harness re-confirmed correct; regression-locked in `ethiopianCalendar.test.ts`. | `CI-COVERED` |
-| G | Credential & QR system | 🟢 Green | 🟢 Green (held) | ES256 signing, no key material in the client bundle, QR/barcode density guards all re-confirmed unchanged. | `STRUCTURAL` |
-| H | Frontend & routing quality | 🟢 Green | 🟢 Green (held) | `ssr:false` on all 74 route files (up from 66 at the last count — new routes added since all carry it), cache keys remain tenant-scoped. | `portal-conventions-review` (per-PR, code-level) |
-| I | Audit & traceability | 🟡 Amber | 🟢 **Green** | F-06 closed: `resident_audit_created AFTER INSERT` trigger (migration `00000000000043`) — a DB-level guarantee, not a client-side insert that could be skipped by a direct API call. | `STRUCTURAL` |
-| J | Performance & resilience | 🟡 Amber | 🟢 **Green** | F-12 closed: wizard drafts persist to `localStorage` (`useFormDraft.ts`), swept on sign-out. Task 12-C additionally shipped an offline mutation queue (unrelated to F-12 but the same "resilience" dimension) — see its own evidence class below, since it carries its own residue. | `CI-COVERED` (unit tests) + code-level |
-| K | Schema drift & migrations | 🟢 Green | 🟢 Green (held) | Repo remains the single source of truth; live enumeration confirms 52/52 tables match `supabase/migrations/*.sql` exactly, zero drift either direction. | `STRUCTURAL` (§17c) |
-| L | Documentation & operability | 🟢 Green | 🟢 Green (held, strengthened) | ERD/DFD/OpenAPI/security docs not just present but re-verified against live enumeration this pass (Task 8); the governing brief's six stale facts corrected. | This PR |
+| Dim | Area                              | 2026-09-07 | Now                           | Basis for the flip                                                                                                                                                                                                                                                                                                 | Evidence                                                    |
+| --- | --------------------------------- | ---------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------- |
+| A   | Multi-tenant isolation & RLS      | 🟡 Amber   | 🟢 **Green**                  | F-03 closed: `apply_death_on_approval()`/`apply_rental_occupancy_on_approval()` now scope every write by `woreda_id = NEW.woreda_id` (migration `00000000000032`); `vital_event.resident_id`/`.household_id` cross-tenant links now checked. Live enumeration: 52/52 tables RLS-enabled, 139 policies, zero drift. | `LIVE-PROBE` (§4 #7-8) + `STRUCTURAL` (§17c)                |
+| B   | RBAC & authorization              | 🟡 Amber   | 🟢 **Green**                  | F-05 closed: the workflow-verb collision resolved by renaming to `credential.review` (D-3, `docs/architecture.md`), not reusing `credential.verify`. `check:role-perms-drift` green in CI on every PR. Reserved-role/permission guards live-probed.                                                                | `LIVE-PROBE` (§4 #9-10) + `CI-COVERED`                      |
+| C   | **Workflow integrity**            | 🔴 Red     | 🟢 **Green**                  | F-01 (the review's one Critical finding) closed: `enforce_workflow_transition()` blocks every illegal status change, maker≠checker enforced, `generate_residence_credential_on_payment()` requires `OLD.status = 'awaiting_payment'` and a confirmed payment+receipt before minting.                               | `LIVE-PROBE` (§4 #1-6, §17 rows 1-6)                        |
+| D   | Data model & constraints          | 🟢 Green   | 🟢 Green (held)               | No regression found. Luhn check digit, FK completeness, one-active-household structural guarantee (`INV-09`) all re-confirmed.                                                                                                                                                                                     | `STRUCTURAL`                                                |
+| E   | Security & INSA compliance        | 🟡 Amber   | 🟢 **Green**                  | F-02 closed: `verify_credential_token` hardened (anon path requires the signed QR payload, not a guessable sequential number; rate-limited 30/60s; every attempt logged to `credential_verification_log`). F-07 closed: `resident.national_id_no` is now in the PII-encryption scope alongside phone/email.        | `LIVE-PASS`/`SMOKE` (§3) + `docs/security-functionality.md` |
+| F   | Localization & Ethiopian calendar | 🟢 Green   | 🟢 Green (held)               | Conversion harness re-confirmed correct; regression-locked in `ethiopianCalendar.test.ts`.                                                                                                                                                                                                                         | `CI-COVERED`                                                |
+| G   | Credential & QR system            | 🟢 Green   | 🟢 Green (held)               | ES256 signing, no key material in the client bundle, QR/barcode density guards all re-confirmed unchanged.                                                                                                                                                                                                         | `STRUCTURAL`                                                |
+| H   | Frontend & routing quality        | 🟢 Green   | 🟢 Green (held)               | `ssr:false` on all 74 route files (up from 66 at the last count — new routes added since all carry it), cache keys remain tenant-scoped.                                                                                                                                                                           | `portal-conventions-review` (per-PR, code-level)            |
+| I   | Audit & traceability              | 🟡 Amber   | 🟢 **Green**                  | F-06 closed: `resident_audit_created AFTER INSERT` trigger (migration `00000000000043`) — a DB-level guarantee, not a client-side insert that could be skipped by a direct API call.                                                                                                                               | `STRUCTURAL`                                                |
+| J   | Performance & resilience          | 🟡 Amber   | 🟢 **Green**                  | F-12 closed: wizard drafts persist to `localStorage` (`useFormDraft.ts`), swept on sign-out. Task 12-C additionally shipped an offline mutation queue (unrelated to F-12 but the same "resilience" dimension) — see its own evidence class below, since it carries its own residue.                                | `CI-COVERED` (unit tests) + code-level                      |
+| K   | Schema drift & migrations         | 🟢 Green   | 🟢 Green (held)               | Repo remains the single source of truth; live enumeration confirms 52/52 tables match `supabase/migrations/*.sql` exactly, zero drift either direction.                                                                                                                                                            | `STRUCTURAL` (§17c)                                         |
+| L   | Documentation & operability       | 🟢 Green   | 🟢 Green (held, strengthened) | ERD/DFD/OpenAPI/security docs not just present but re-verified against live enumeration this pass (Task 8); the governing brief's six stale facts corrected.                                                                                                                                                       | This PR                                                     |
 
 **12/12 green.**
 
 ## 2. Invariant table
 
-| ID | Invariant | 2026-09-07 | Now | Evidence |
-| - | - | - | - | - |
-| INV-01 | Every tenant-scoped table has `woreda_id` + enforcing RLS | ✅ PASS | ✅ **PASS (held)** | `STRUCTURAL`: 52/52 tables, 139 policies live |
-| INV-02 | No cross-tenant data via any surface | ⚠️ PARTIAL | ✅ **PASS (flipped)** | `LIVE-PROBE`: cross-woreda `vital_event` INSERT rejected (§4 #7); cross-tenant `credential_request` read returns zero rows under real RLS (§4 #8) |
-| INV-03 | No kebele-level workflow actor | ✅ PASS | ✅ **PASS (held)** | No regression; unchanged code path |
-| INV-04 | Portal separation at nav *and* route level | ✅ PASS | ✅ **PASS (held)** | No regression |
-| INV-05 | Maker ≠ checker, enforced beyond UI | ❌ FAIL | ✅ **PASS (flipped)** | `LIVE-PROBE`: `ERROR 42501: workflow: the approver and the verifier must be two different people` (§4 #2) |
-| INV-06 | Payment cannot precede approval; credential only via trigger | ❌ FAIL | ✅ **PASS (flipped)** | `LIVE-PROBE`: unauthorized transition rejected (§4 #1), no-payment mint rejected (§4 #4), direct `residence_credential` INSERT rejected (§4 #5) |
-| INV-07 | `permissions.ts` ↔ `role_permission` consistent; `tenant_admin` protected | ⚠️ PARTIAL | ✅ **PASS (flipped)** | `CI-COVERED`: `check:role-perms-drift` green; workflow verb renamed to `credential.review` (D-3), no more seed drift on `credential.verify` |
-| INV-08 | Tenant IDs immutable; module toggles at nav + route | ✅ PASS | ✅ **PASS (held)** | No regression |
-| INV-09 | ≤1 active household membership per resident | ✅ PASS | ✅ **PASS (held)** | Structural (scalar FK), unchanged |
-| INV-10 | Every critical write produces an audit record | ⚠️ PARTIAL | ✅ **PASS (flipped)** | `STRUCTURAL`: `resident_audit_created AFTER INSERT` trigger (migration `00000000000043`) closes the one gap (F-06) the original review found |
+| ID     | Invariant                                                                 | 2026-09-07 | Now                   | Evidence                                                                                                                                          |
+| ------ | ------------------------------------------------------------------------- | ---------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| INV-01 | Every tenant-scoped table has `woreda_id` + enforcing RLS                 | ✅ PASS    | ✅ **PASS (held)**    | `STRUCTURAL`: 52/52 tables, 139 policies live                                                                                                     |
+| INV-02 | No cross-tenant data via any surface                                      | ⚠️ PARTIAL | ✅ **PASS (flipped)** | `LIVE-PROBE`: cross-woreda `vital_event` INSERT rejected (§4 #7); cross-tenant `credential_request` read returns zero rows under real RLS (§4 #8) |
+| INV-03 | No kebele-level workflow actor                                            | ✅ PASS    | ✅ **PASS (held)**    | No regression; unchanged code path                                                                                                                |
+| INV-04 | Portal separation at nav _and_ route level                                | ✅ PASS    | ✅ **PASS (held)**    | No regression                                                                                                                                     |
+| INV-05 | Maker ≠ checker, enforced beyond UI                                       | ❌ FAIL    | ✅ **PASS (flipped)** | `LIVE-PROBE`: `ERROR 42501: workflow: the approver and the verifier must be two different people` (§4 #2)                                         |
+| INV-06 | Payment cannot precede approval; credential only via trigger              | ❌ FAIL    | ✅ **PASS (flipped)** | `LIVE-PROBE`: unauthorized transition rejected (§4 #1), no-payment mint rejected (§4 #4), direct `residence_credential` INSERT rejected (§4 #5)   |
+| INV-07 | `permissions.ts` ↔ `role_permission` consistent; `tenant_admin` protected | ⚠️ PARTIAL | ✅ **PASS (flipped)** | `CI-COVERED`: `check:role-perms-drift` green; workflow verb renamed to `credential.review` (D-3), no more seed drift on `credential.verify`       |
+| INV-08 | Tenant IDs immutable; module toggles at nav + route                       | ✅ PASS    | ✅ **PASS (held)**    | No regression                                                                                                                                     |
+| INV-09 | ≤1 active household membership per resident                               | ✅ PASS    | ✅ **PASS (held)**    | Structural (scalar FK), unchanged                                                                                                                 |
+| INV-10 | Every critical write produces an audit record                             | ⚠️ PARTIAL | ✅ **PASS (flipped)** | `STRUCTURAL`: `resident_audit_created AFTER INSERT` trigger (migration `00000000000043`) closes the one gap (F-06) the original review found      |
 
 **10/10 PASS**, 5 flipped with live probe/structural evidence, 5 held with no
 regression found.
@@ -96,22 +96,62 @@ claiming server-side authority. Closed by migration
 mints a `residence_credential` row on **every** path that can move
 `credential_request.status` to `paid`, including the offline-sync replay in
 `src/lib/offlineSync.ts` (same table, same column, same trigger) — to
-reject fail-closed on age, missing phone, or missing photo.
+reject fail-closed on age, missing phone, missing photo, or an inactive
+resident.
 
-Evidence (`LIVE-PROBE`, rollback-wrapped, net-zero — full 63-probe suite
-including these three: PASS, `scripts/verify-live-probes.sql`):
+**Migration 68 shipped with two critical regressions, found by dispatching
+`workflow-fsm-review` and `tenant-isolation-review` against it before push,
+and corrected within this same PR** — recorded honestly here rather than
+presenting only the final state. It was written against migration 25's
+version of the function instead of the live one, so it silently reverted
+migration 66's payment-linkage predicates (opening a cross-request payment
+fraud vector) and migration 29's `set_config('app.minting_credential', ...)`
+calls (which would have made every credential mint in production fail with
+`insufficient_privilege`). Both agents converged on the same two findings
+independently. Fixed via corrective migration
+`00000000000069_age_guard_fix_stale_base.sql` (`CREATE OR REPLACE` on the
+same function; migration 68 itself is not reverted, per the additive-only
+guardrail), which restores both, and adds a fourth check the same review
+flagged as missing: `resident.active_flag = true`. Verified live via a
+direct `pg_proc.prosrc` query confirming every required element is present
+in the deployed function body.
 
-| Probe | Setup | Result |
-| - | - | - |
-| `age_guard_rejects_minor` | Resident, age 10, phone+photo present | `ERROR 23514: credential: resident is under 18` |
-| `age_guard_rejects_missing_phone` | Resident, age 30, no phone number | `ERROR 23514: credential: resident has no phone number on file` |
-| `age_guard_accepts_exact_18th_birthday_today` | Resident whose 18th birthday is exactly today | Accepted — confirms the boundary is inclusive, matching the client-side `calculateAgeYears()` semantics |
+The review also found the original three probes were not genuine positive
+controls: all three disabled `residence_credential`'s own
+`zz_enforce_workflow_insert` trigger during setup, which happens to mask the
+exact `insufficient_privilege` regression migration 68 introduced — since
+all three also expected `ERROR`, none could have caught it. Fixed by
+rewriting `age_guard_accepts_exact_18th_birthday_today` to leave that
+trigger enabled, and adding two new probes that also leave it enabled.
 
-Client-side reinforcement: `residentSchema.ts` now requires a phone number
-(new `requiredPhoneDigitsSchema()`, same 9-digit `+251`-prefixed format
-every other phone field already uses) and a photo for the resident-intake
-and resident-edit forms — so an officer is told at intake time, not only
-discovers the gap when a credential mint later fails.
+Evidence (`LIVE-PROBE`, rollback-wrapped, net-zero — full 65-probe suite:
+PASS, `scripts/verify-live-probes.sql`):
+
+| Probe                                                | Setup                                                                    | Result                                                                                                                    |
+| ----------------------------------------------------- | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| `age_guard_rejects_minor`                             | Resident, age 10, phone+photo present                                     | `ERROR 23514: credential: resident is under 18`                                                                            |
+| `age_guard_rejects_missing_phone`                     | Resident, age 30, no phone number                                         | `ERROR 23514: credential: resident has no phone number on file`                                                            |
+| `age_guard_accepts_exact_18th_birthday_today`         | Resident whose 18th birthday is exactly today, **all guard triggers enabled** | Accepted — confirms the boundary is inclusive, matching client-side `calculateAgeYears()`, and that no guard spuriously blocks it |
+| `credential_happy_path_mint_with_guards_enabled`      | Full valid mint, every guard trigger enabled                              | Accepted, `residence_credential` row created — the genuine positive control the original three probes lacked               |
+| `credential_paid_with_unrelated_payment_row`          | Request B tries to satisfy its payment gate with request A's confirmed payment | `ERROR`: "a confirmed payment with a receipt is required" — confirms migration 69 restored the payment-linkage predicate   |
+
+Client-side reinforcement: a separate `residentCreateSchema`
+(`residentSchema.ts`, base schema plus `.superRefine()` so its
+`z.input`/`z.output` types stay identical to what `ResidentWizardSteps`
+expects) now requires a phone number (new `requiredPhoneDigitsSchema()`,
+same 9-digit `+251`-prefixed format every other phone field already uses)
+and a photo — applied **only** to the resident-intake form
+(`woreda.residents.new.tsx`). The shared base `residentSchema` used by the
+edit form was deliberately left with both fields optional: an earlier draft
+made them required on the shared schema and would have made every existing
+newborn resident un-editable, since `generate_resident_on_birth_approval()`
+(migration 59) creates newborn residents with neither field — caught by the
+same review and fixed before push; `src/lib/__tests__/residentSchema.test.ts`
+locks the create-vs-edit split in with 5 tests.
+`woreda.credentials.new.tsx` additionally surfaces `noPhone`/`noPhoto`
+warnings (matching the existing `notActive`/`isUnder18` pattern, each
+linking to the resident's edit page) so an officer is told before attempting
+payment, not only when a credential mint later fails.
 
 Deliberately **not** a table-wide `NOT NULL` on `resident.phone_number`/
 `photo_url`: `generate_resident_on_birth_approval()` (migration 59) inserts
@@ -194,7 +234,7 @@ every role's UI, which requires people with real jobs to do, not a script.
    sequence (branch → CI → review → merge) — no hotfixes directly against
    `main`.
 9. Once the first-users pass completes cleanly, a real staging project (per
-   `docs/staging-runbook.md`) becomes the right tool for *future* regression
+   `docs/staging-runbook.md`) becomes the right tool for _future_ regression
    testing, not a same-day blocker for this declaration.
 10. Fold deploy + live-verify into every future PR's landing cycle (already
     the practice since Task 12-A; keep it that way).
@@ -213,18 +253,20 @@ every role's UI, which requires people with real jobs to do, not a script.
 - **Migrations**: every migration in this project is additive-only (no
   `DROP`, `CREATE OR REPLACE` for functions/triggers) — see CLAUDE.md and
   `.claude/skills/fsm-migration/SKILL.md`. Reverting a migration's
-  *behavior* means writing a new additive migration that `CREATE OR
-  REPLACE`s the affected function back to its prior body (schema-preserving
+  _behavior_ means writing a new additive migration that `CREATE OR
+REPLACE`s the affected function back to its prior body (schema-preserving
   rollback, never a `DROP`/`ALTER ... DROP COLUMN`), since a genuine
   structural rollback would risk data loss this project's guardrails
   specifically forbid.
-- **Specifically for the age/identity mint guard** (migration `00000000000068`):
-  rolling back would mean `CREATE OR REPLACE FUNCTION
-  generate_residence_credential_on_payment()` back to its pre-Task-8 body —
-  not recommended, since that reopens the exact minor-credential gap this
-  PR closes, but mechanically available if a false-positive rejection ever
-  blocks a legitimate real case in a way that needs an emergency reversal
-  before a proper fix ships.
+- **Specifically for the age/identity mint guard** (migrations
+  `00000000000068`/`00000000000069`): rolling back would mean `CREATE OR
+REPLACE FUNCTION generate_residence_credential_on_payment()` back to its
+  pre-Task-8 body — not recommended, since that reopens the exact
+  minor-credential gap this PR closes (and, if rolled back only as far as
+  68 rather than past 69, would reopen the cross-request payment-fraud gap
+  69 fixed too), but mechanically available if a false-positive rejection
+  ever blocks a legitimate real case in a way that needs an emergency
+  reversal before a proper fix ships.
 - **Edge Functions**: `scripts/deploy-functions.sh` redeploys from any
   checked-out commit; a function's own prior version is recovered by
   redeploying from that commit.
@@ -245,22 +287,47 @@ every role's UI, which requires people with real jobs to do, not a script.
 Collected 2026-09-14, reflected throughout this declaration and
 `docs/architecture.md`:
 
-| Input | Owner decision | Reflected where |
-| - | - | - |
-| Public-repo posture | **Stay public**, secrets-enforced-out-by-CI (existing `secret-sweep` subagent + CI posture) | No repo-setting change made |
-| DMARC policy | **`p=none`** (monitoring-only, ramp planned) | §6 watch-list item 6, `docs/architecture.md` DMARC section |
+| Input                           | Owner decision                                                                                 | Reflected where                                                                                                               |
+| ------------------------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Public-repo posture             | **Stay public**, secrets-enforced-out-by-CI (existing `secret-sweep` subagent + CI posture)    | No repo-setting change made                                                                                                   |
+| DMARC policy                    | **`p=none`** (monitoring-only, ramp planned)                                                   | §6 watch-list item 6, `docs/architecture.md` DMARC section                                                                    |
 | Amharic native-speaker sign-off | **Not yet complete** — owner requested the full Amharic/English string set as a CSV for review | `docs/amharic-strings-glossary.csv` delivered; §6 watch-list item 7; this declaration does not claim Amharic sign-off is done |
-| Token rotation | **Confirmed complete** (matches PR #72's record) | No further action; `docs/remediation-report.md` §14 |
+| Token rotation                  | **Confirmed complete** (matches PR #72's record)                                               | No further action; `docs/remediation-report.md` §14                                                                           |
 
 ## 8. Final review-agent pass
 
-Dispatched against this declaration's own claims before presenting for
-sign-off: `workflow-fsm-review` (the age/identity mint-guard migration and
-its interaction with the workflow engine) and `tenant-isolation-review`
-(the new migration's tenant scoping, and the resident-schema requiredness
-change). Findings are fixed or recorded in
-`docs/remediation-report.md` before this section is considered satisfied —
-see that document's own findings log for this PR if any were raised.
+Dispatched against this PR's own claims before presenting for sign-off:
+`workflow-fsm-review` (the age/identity mint-guard migration and its
+interaction with the workflow engine) and `tenant-isolation-review` (the
+new migration's tenant scoping, and the resident-schema requiredness
+change). Both raised findings, and both are fixed, not merely recorded —
+see `docs/remediation-report.md` §17a for the full account:
+
+1. **CRITICAL** — migration 68 was based on a stale (migration-25) function
+   body and silently reverted migration 66's payment-linkage predicates,
+   reopening a cross-request payment-fraud gap. Fixed in migration 69.
+2. **CRITICAL** — migration 68 also dropped migration 29's
+   `set_config('app.minting_credential', ...)` calls, which would have made
+   every credential mint in production fail with `insufficient_privilege`.
+   Fixed in migration 69.
+3. **MEDIUM** — the original three probes disabled the exact guard trigger
+   that would have caught findings 1–2, so none of them were genuine
+   positive controls. Fixed: one probe rewritten, two new probes added,
+   all three leaving that trigger enabled.
+4. **MEDIUM** — an earlier draft made `photo_url`/`phone_digits` required
+   on the shared `residentSchema`, which would have made every existing
+   newborn resident un-editable. Fixed by splitting a separate
+   `residentCreateSchema` used only by the intake form.
+5. **LOW** — `woreda.credentials.new.tsx` didn't surface the phone/photo
+   gap client-side before payment. Fixed with `noPhone`/`noPhoto` warnings
+   matching the existing pattern.
+6. **LOW** — `offlineSync.ts`'s `syncRecordPaymentDraft` had an
+   error-message parity gap for a failed final status update after an
+   already-recorded payment. Fixed to match the adjacent branch's guidance.
+
+All six confirmed fixed and re-verified (65/65 live probes, `bun run test`,
+`tsc --noEmit`, `bun run build`, `bun run lint` all green) before this PR
+was opened — none are open items carried into go-live.
 
 ## Owner sign-off
 

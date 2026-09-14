@@ -105,14 +105,14 @@ Six factual corrections to the review brief's stated ground truth — full
 detail and evidence in `docs/brief-reconciliation-memo.md`, summarized here
 since that memo's own opening line points back to this section:
 
-| # | Brief asserted | As-built | Why |
-| - | - | - | - |
-| 1 | RS256 signing | **ES256** (ECDSA P-256) | A 64-byte signature vs. RS256's 256 bytes is a QR module-density constraint on an 85.6×54mm card. |
-| 2 | Credential number `WW-KK-YY-NNNNNN-C`, mod-11 | **13 digits, Luhn (mod-10)** | Migration `00000000000002` explicitly replaced the bespoke mod-11 scheme. |
-| 3 | `safeBase64Encode`/`Decode` mandatory | **Do not exist** — byte-level `atob`/`btoa` + `TextEncoder`/`TextDecoder` instead | The Unicode-corruption hazard the brief's naming implies genuinely doesn't occur here (see KD-2 in the review). |
-| 4 | Revenue/Reporting/Audit UI, credential-template editor not yet built | **All built and routed** | Live since before the review; the brief was stale, not the app. |
-| 5 | DFD/Security-Functionality docs missing | **Present** (`docs/dfd.md`, `docs/security-functionality.md`, `docs/erd.md`, `docs/openapi.yaml`) | Same. |
-| 6 | QR budget ~1.8 KB | **~500 characters** | `sign-credential`'s own header comment: the real constraint is printer module density, not an arbitrary size cap. |
+| #   | Brief asserted                                                       | As-built                                                                                          | Why                                                                                                               |
+| --- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| 1   | RS256 signing                                                        | **ES256** (ECDSA P-256)                                                                           | A 64-byte signature vs. RS256's 256 bytes is a QR module-density constraint on an 85.6×54mm card.                 |
+| 2   | Credential number `WW-KK-YY-NNNNNN-C`, mod-11                        | **13 digits, Luhn (mod-10)**                                                                      | Migration `00000000000002` explicitly replaced the bespoke mod-11 scheme.                                         |
+| 3   | `safeBase64Encode`/`Decode` mandatory                                | **Do not exist** — byte-level `atob`/`btoa` + `TextEncoder`/`TextDecoder` instead                 | The Unicode-corruption hazard the brief's naming implies genuinely doesn't occur here (see KD-2 in the review).   |
+| 4   | Revenue/Reporting/Audit UI, credential-template editor not yet built | **All built and routed**                                                                          | Live since before the review; the brief was stale, not the app.                                                   |
+| 5   | DFD/Security-Functionality docs missing                              | **Present** (`docs/dfd.md`, `docs/security-functionality.md`, `docs/erd.md`, `docs/openapi.yaml`) | Same.                                                                                                             |
+| 6   | QR budget ~1.8 KB                                                    | **~500 characters**                                                                               | `sign-credential`'s own header comment: the real constraint is printer module density, not an arbitrary size cap. |
 
 ### Ignored/resolved contradictions between the fix-task spec and the as-built system
 
@@ -191,7 +191,7 @@ both verify and approve the same row) and blocks a system-only transition
 from firing off a live user session.
 
 `workflow_transition` deliberately carries **no `woreda_id`**: which state
-changes are legal is fixed for the whole platform. A tenant can change *who*
+changes are legal is fixed for the whole platform. A tenant can change _who_
 holds a permission (`role_permission`), but never remove a
 verification/approval/payment gate — that asymmetry is the load-bearing
 design choice underneath the whole engine.
@@ -260,40 +260,80 @@ PostgREST call, or a replayed Task 12-C offline-sync item, driving
 `credential_request` straight to `paid` had no database-side gate stopping a
 credential from being minted for a minor.
 
-Closed by migration `00000000000068`: `generate_residence_credential_on_payment()`
-— the one `SECURITY DEFINER` trigger that actually inserts the
-`residence_credential` row on every path that can reach `paid` (the UI, a
-direct API call, and the offline-sync replay all update the same column
-through the same trigger) — now also verifies, immediately before minting:
+Closed by migration `00000000000068`, corrected by `00000000000069`:
+`generate_residence_credential_on_payment()` — the one `SECURITY DEFINER`
+trigger that actually inserts the `residence_credential` row on every path
+that can reach `paid` (the UI, a direct API call, and the offline-sync
+replay all update the same column through the same trigger) — now also
+verifies, immediately before minting:
 
 1. The resident's age (`date_part('year', age(CURRENT_DATE, date_of_birth))`,
    the same exact-date-boundary semantics as the client's own
    `calculateAgeYears()`) is at least 18.
 2. The resident has a non-empty `phone_number` on file.
 3. The resident has a non-empty `photo_url` on file.
+4. The resident's `active_flag` is `true`.
 
-All three fail **closed**: a resident row that can't even be found, or whose
+All four fail **closed**: a resident row that can't even be found, or whose
 `date_of_birth` is somehow `NULL` (the column is `NOT NULL` today, but the
 check defends the invariant even if that ever changes), is rejected the same
-as an under-18 resident — never treated as "unknown, so allow." Live-probed
-(rollback-wrapped, net-zero) against three cases: a 10-year-old resident
-(rejected on age), a 30-year-old resident with no phone number on file
-(rejected on phone), and a resident whose 18th birthday is exactly today
-(accepted — confirming the boundary is inclusive, matching the client-side
-semantics). See `scripts/verify-live-probes.sql`'s "Task 8: age +
-identity-completeness guard" section for the exact probes and
-`docs/go-live-declaration.md` for the evidence-class citation.
+as an under-18 resident — never treated as "unknown, so allow."
+
+**Migration 68 was written against a stale base and had to be corrected.**
+It based the new function body on migration 25's version rather than the
+live one, silently reverting two later changes to the same function:
+migration 66's payment-linkage predicates (`p.credential_request_id =
+NEW.credential_request_id AND p.payment_type = 'credential_fee'` — without
+them, any confirmed payment anywhere in the woreda could satisfy a different
+request's payment gate) and migration 29's `set_config('app.minting_credential',
+...)` calls around the INSERT (without them, `residence_credential`'s own
+`BEFORE INSERT` guard would reject every mint with `insufficient_privilege`).
+Both were caught by dispatching `workflow-fsm-review` and
+`tenant-isolation-review` against the migration before push, and both agents
+converged on the same two findings independently. `00000000000069` restores
+both predicates via `CREATE OR REPLACE` on the same function (migration 68
+itself is not reverted, per the additive-only guardrail) and adds the
+`active_flag` check above, which the same review pass flagged as also
+missing. Verified live via a direct `pg_proc.prosrc` query.
+
+The review also found the original three probes were not real positive
+controls for this guard — all three disabled `residence_credential`'s own
+`zz_enforce_workflow_insert` trigger during setup, which happens to mask
+exactly the `insufficient_privilege` failure mode migration 68 introduced.
+Fixed: `age_guard_accepts_exact_18th_birthday_today` now leaves that trigger
+enabled, and two new probes (`credential_happy_path_mint_with_guards_enabled`,
+`credential_paid_with_unrelated_payment_row`) do the same. Live-probed
+(rollback-wrapped, net-zero) — the full suite now covers a 10-year-old
+resident (rejected on age), a 30-year-old resident with no phone number on
+file (rejected on phone), a resident whose 18th birthday is exactly today
+with every guard trigger left enabled (accepted — confirming both the
+inclusive boundary and that the guard doesn't spuriously reject a valid
+mint), a full happy-path mint with every guard enabled (accepted), and a
+request attempting to pay with a different request's already-confirmed
+payment row (rejected). **65/65 probes `PASS`, net-zero.** See
+`scripts/verify-live-probes.sql`'s "Task 8: age + identity-completeness
+guard" section for the exact probes and `docs/go-live-declaration.md` for
+the evidence-class citation.
 
 Deliberately **not** a table-wide `NOT NULL` on `resident.phone_number`/
 `resident.photo_url`: `generate_resident_on_birth_approval()` (migration 59)
 inserts a resident row for a newborn from civil registration with neither a
 phone number nor a photo — correctly, since a newborn has neither. A
-blanket `NOT NULL` would break every future birth registration. The
-resident-intake form (`residentSchema.ts`) requires both fields for a
-staff-entered adult resident; the mint-time guard above is what makes the
-requirement airtight regardless of how a `credential_request` reached
-`paid`, without constraining the one legitimate case where a resident
-record is created without them.
+blanket `NOT NULL` would break every future birth registration — this is
+also why phone/photo requiredness lives on a separate `residentCreateSchema`
+(`residentSchema.ts`, built via `.superRefine()` over the base schema so its
+`z.input`/`z.output` types stay identical) used only by the intake form
+(`woreda.residents.new.tsx`), not on the shared `residentSchema` that the
+edit form also uses — an earlier draft required both fields on the shared
+schema directly and would have made every existing newborn resident
+un-editable; caught by the same review pass and fixed before push. The
+mint-time guard above is what makes the requirement airtight regardless of
+how a `credential_request` reached `paid`, without constraining the one
+legitimate case where a resident record is created without them.
+`woreda.credentials.new.tsx` also surfaces `noPhone`/`noPhoto` warnings
+client-side, matching the existing `notActive`/`isUnder18` pattern, so an
+officer sees the gap before attempting payment rather than only at the
+DB rejection.
 
 ### One office per woreda
 
@@ -376,15 +416,15 @@ migration restored the old behavior.
 Every verification claim in `docs/remediation-report.md` carries one of a
 fixed set of evidence-class tags — never an unqualified "verified":
 
-| Tag | Meaning |
-| --- | --- |
-| `LIVE-PASS` | A direct, non-rollback-wrapped API/RPC call against production, confirmed correct. |
-| `LIVE-PROBE` | A `BEGIN…ROLLBACK`-wrapped behavioral probe (`scripts/verify-live-probes.sql`), net-zero verified against production. |
-| `SAMPLE-DATA` | Verified via committed-then-cleaned real writes (not rolled back) — used when the effect under test only manifests on commit. |
-| `OWNER-SMOKE` | Requires a real authenticated browser session this agent cannot mint; performed and reported by the system owner. |
-| `STRUCTURAL` | A read-only catalog/row-count check against the live database. |
-| `CI-COVERED` | Already enforced by an automated CI gate on every PR; not re-verified live here. |
-| `UNVERIFIED-with-reason` | Not checked, with a stated reason — never a silent gap. |
+| Tag                      | Meaning                                                                                                                       |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| `LIVE-PASS`              | A direct, non-rollback-wrapped API/RPC call against production, confirmed correct.                                            |
+| `LIVE-PROBE`             | A `BEGIN…ROLLBACK`-wrapped behavioral probe (`scripts/verify-live-probes.sql`), net-zero verified against production.         |
+| `SAMPLE-DATA`            | Verified via committed-then-cleaned real writes (not rolled back) — used when the effect under test only manifests on commit. |
+| `OWNER-SMOKE`            | Requires a real authenticated browser session this agent cannot mint; performed and reported by the system owner.             |
+| `STRUCTURAL`             | A read-only catalog/row-count check against the live database.                                                                |
+| `CI-COVERED`             | Already enforced by an automated CI gate on every PR; not re-verified live here.                                              |
+| `UNVERIFIED-with-reason` | Not checked, with a stated reason — never a silent gap.                                                                       |
 
 Two constraints shaped this taxonomy, both owner decisions rather than
 engineering shortcuts. **Staging was declined**: the one attempted
