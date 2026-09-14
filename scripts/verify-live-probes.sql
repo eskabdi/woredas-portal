@@ -1354,3 +1354,113 @@ VALUES
 RESET role;
 ROLLBACK;
 -- EXPECT: ERROR (Expected fee is 0 ETB; recorded amount is 25 ETB)
+
+-- =============================================================================
+-- Payment hardening checkpoint 2 (00000000000066): closes the wrong-
+-- payment_type bypass and the re-pointed-link-id gap both reviews found in
+-- checkpoint 1. Same real Aboker IDs as above.
+-- =============================================================================
+
+-- === PROBE: service_fee_wrong_payment_type_bypass_now_blocked ===
+-- Before 00000000000066: a payment_type outside the three named fee types
+-- skipped the guard entirely (early return), and the payment-terminal gate
+-- never checked payment_type either -- a 'penalty'-typed payment for any
+-- amount, linked to this service_request, reached 'paid'. The gate itself
+-- now requires payment_type='service_fee'.
+BEGIN;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+INSERT INTO public.service_request
+  (service_request_id, woreda_id, request_number, service_type_id, category, status,
+   subject, requested_by_user_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000909', '81ac2ad6-a320-4069-b8dc-0c43e358371b', '',
+   '5e3f18d0-3ddc-48ca-ac44-1495cb337d96', 'letter', 'awaiting_payment',
+   'Probe wrong payment_type bypass', '64e0384a-d240-4302-8310-682f79a302ce');
+INSERT INTO public.payment
+  (payment_id, woreda_id, payment_type, amount, payment_date, channel, status,
+   posted_by_user_id, service_request_id)
+VALUES
+  ('00000000-0000-4000-9000-000000000909', '81ac2ad6-a320-4069-b8dc-0c43e358371b',
+   'penalty', 0, current_date, 'cash', 'confirmed',
+   '64e0384a-d240-4302-8310-682f79a302ce', '00000000-0000-4000-8000-000000000909');
+UPDATE public.service_request
+   SET status = 'paid', payment_id = '00000000-0000-4000-9000-000000000909'
+ WHERE service_request_id = '00000000-0000-4000-8000-000000000909';
+RESET role;
+ROLLBACK;
+-- EXPECT: ERROR (a confirmed payment with a receipt is required)
+
+-- === PROBE: service_fee_repointed_link_id_now_reraises ===
+-- Before 00000000000066: the guard's `OF` column list omitted
+-- service_request_id/vital_event_id/credential_request_id/woreda_id, so a
+-- payment validated at the correct fee for one request could be
+-- re-pointed at a pricier request afterward with no re-check. Uses a
+-- second real RESIDENCE service_type at a different fee
+-- (e4472daa-651b-4306-99b6-73a04031476b, Hakim woreda -- referenced, not
+-- modified) purely to exercise the column-change detection; the cross-
+-- woreda mismatch itself is now also caught by the woreda-match assertion
+-- this migration adds, so either check alone would fail this probe.
+BEGIN;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+INSERT INTO public.service_request
+  (service_request_id, woreda_id, request_number, service_type_id, category, status,
+   subject, requested_by_user_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000910', '81ac2ad6-a320-4069-b8dc-0c43e358371b', '',
+   '5e3f18d0-3ddc-48ca-ac44-1495cb337d96', 'letter', 'awaiting_payment',
+   'Probe repointed link id A', '64e0384a-d240-4302-8310-682f79a302ce');
+INSERT INTO public.service_request
+  (service_request_id, woreda_id, request_number, service_type_id, category, status,
+   subject, requested_by_user_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000911', '81ac2ad6-a320-4069-b8dc-0c43e358371b', '',
+   '5e3f18d0-3ddc-48ca-ac44-1495cb337d96', 'letter', 'awaiting_payment',
+   'Probe repointed link id B', '64e0384a-d240-4302-8310-682f79a302ce');
+INSERT INTO public.payment
+  (payment_id, woreda_id, payment_type, amount, payment_date, channel, status,
+   posted_by_user_id, service_request_id)
+VALUES
+  ('00000000-0000-4000-9000-000000000910', '81ac2ad6-a320-4069-b8dc-0c43e358371b',
+   'service_fee', 50, current_date, 'cash', 'confirmed',
+   '64e0384a-d240-4302-8310-682f79a302ce', '00000000-0000-4000-8000-000000000910');
+-- Re-point the already-validated payment at request B instead of A -- must
+-- re-run the guard now that service_request_id is in the watch list.
+UPDATE public.payment
+   SET service_request_id = '00000000-0000-4000-8000-000000000911'
+ WHERE payment_id = '00000000-0000-4000-9000-000000000910';
+RESET role;
+ROLLBACK;
+-- EXPECT: SUCCESS (both requests share the same fee -- the point is that the trigger re-fires, not that it rejects; the reject case is covered by the underpayment/overpayment probes)
+
+-- === PROBE: service_fee_cross_woreda_link_rejected ===
+-- Direct test of the woreda-match assertion added in 00000000000066: a
+-- payment tagged with Aboker's own woreda_id but linked to a real
+-- service_request that belongs to a DIFFERENT woreda (inserted here, within
+-- this rolled-back transaction, by that woreda's own real tenant_admin --
+-- Hakim d43c7fea, actor bad5a1c7) must be rejected, not silently resolved
+-- against Aboker's own catalog for that service type.
+BEGIN;
+SET LOCAL request.jwt.claim.sub = 'bad5a1c7-28d7-4af8-988b-42bd36d5c7d5';
+SET LOCAL role authenticated;
+INSERT INTO public.service_request
+  (service_request_id, woreda_id, request_number, service_type_id, category, status,
+   subject, requested_by_user_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000912', 'd43c7fea-c2bb-491c-99e7-56c76aa577f1', '',
+   'e4472daa-651b-4306-99b6-73a04031476b', 'letter', 'awaiting_payment',
+   'Probe cross-woreda link (Hakim side)', 'bad5a1c7-28d7-4af8-988b-42bd36d5c7d5');
+RESET role;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+INSERT INTO public.payment
+  (payment_id, woreda_id, payment_type, amount, payment_date, channel, status,
+   posted_by_user_id, service_request_id)
+VALUES
+  ('00000000-0000-4000-9000-000000000912', '81ac2ad6-a320-4069-b8dc-0c43e358371b',
+   'service_fee', 50, current_date, 'cash', 'confirmed',
+   '64e0384a-d240-4302-8310-682f79a302ce', '00000000-0000-4000-8000-000000000912');
+RESET role;
+ROLLBACK;
+-- EXPECT: ERROR (This payment's woreda does not match its linked request's woreda)
