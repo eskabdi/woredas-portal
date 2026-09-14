@@ -29,6 +29,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
 import { P } from "@/config/permissions";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { useOfflineQueue } from "@/hooks/useOfflineQueue";
 import { useServiceTypes, requiredDocList } from "@/hooks/useServiceTypes";
 import { kebeleOptionLabel, useKebeleOptions } from "@/hooks/useKebeleOptions";
 import {
@@ -63,6 +65,8 @@ function NewServiceRequestPage() {
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const isOnline = useOnlineStatus();
+  const { enqueue } = useOfflineQueue(woredaId);
 
   const presetResidentId = typeof search["residentId"] === "string" ? search["residentId"] : "";
 
@@ -172,33 +176,52 @@ function NewServiceRequestPage() {
     return Object.keys(e).length === 0;
   };
 
+  const buildInsertPayload = () => ({
+    woreda_id: woredaId,
+    service_type_id: selectedType!.service_type_id,
+    category,
+    status: "submitted",
+    priority,
+    resident_id: residentId || null,
+    kebele_id: kebeleId || null,
+    applicant_name: applicantName.trim() || null,
+    applicant_phone: phoneDigitsToE164(applicantPhone),
+    subject: subject.trim(),
+    purpose: purpose.trim() || null,
+    addressed_to: addressedTo.trim() || null,
+    details: details.trim(),
+    respondent_name: category === "complaint" ? respondentName.trim() || null : null,
+    incident_date: category === "complaint" && incidentDate ? incidentDate : null,
+    incident_place: category === "complaint" ? incidentPlace.trim() || null : null,
+    fee_amount: selectedType!.requires_payment ? selectedType!.fee_amount : 0,
+    request_number: "",
+    requested_by_user_id: actorUserId,
+  });
+
   const handleSubmit = async () => {
     if (!woredaId || !selectedType) return;
+
+    if (!isOnline) {
+      if (files.length > 0) {
+        toast.error(
+          "ማስረጃ ሰነድ ያለው ጥያቄ ከመስመር ውጭ ሆኖ ማስገባት አይቻልም / A request with attachments cannot be queued offline",
+        );
+        return;
+      }
+      enqueue("service_request", "submit_intake", buildInsertPayload(), "service-new");
+      toast.success(
+        "ከመስመር ውጭ ተቀምጧል፣ ሲገናኙ በራስ ሰር ይላካል / Saved offline — will submit automatically once reconnected",
+      );
+      setConfirmOpen(false);
+      navigate({ to: isComplaint ? "/woreda/complaints" : "/woreda/services" });
+      return;
+    }
+
     setBusy(true);
     try {
       const { data, error } = await supabase
         .from("service_request")
-        .insert({
-          woreda_id: woredaId,
-          service_type_id: selectedType.service_type_id,
-          category,
-          status: "submitted",
-          priority,
-          resident_id: residentId || null,
-          kebele_id: kebeleId || null,
-          applicant_name: applicantName.trim() || null,
-          applicant_phone: phoneDigitsToE164(applicantPhone),
-          subject: subject.trim(),
-          purpose: purpose.trim() || null,
-          addressed_to: addressedTo.trim() || null,
-          details: details.trim(),
-          respondent_name: category === "complaint" ? respondentName.trim() || null : null,
-          incident_date: category === "complaint" && incidentDate ? incidentDate : null,
-          incident_place: category === "complaint" ? incidentPlace.trim() || null : null,
-          fee_amount: selectedType.requires_payment ? selectedType.fee_amount : 0,
-          request_number: "",
-          requested_by_user_id: actorUserId,
-        } as never)
+        .insert(buildInsertPayload() as never)
         .select("service_request_id, request_number")
         .single();
       if (error) throw error;

@@ -18,6 +18,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { P } from "@/config/permissions";
 import { phoneDigitsSchema, phoneDigitsToE164 } from "@/lib/phoneNumber";
 import { PhoneDigitsInput } from "@/components/forms/PhoneDigitsInput";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { useOfflineQueue } from "@/hooks/useOfflineQueue";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -51,6 +53,38 @@ const schema = z
 type In = z.input<typeof schema>;
 type Out = z.output<typeof schema>;
 
+function buildDeathEventDetails(v: Out) {
+  return {
+    deceased_resident_id: v.deceased_resident_id || null,
+    deceased_name: v.deceased_name || null,
+    sex: v.sex || null,
+    place_of_death: v.place_of_death || null,
+    cause_of_death: v.cause_of_death || null,
+    facility_name: v.facility_name || null,
+    certified_by: v.certified_by || null,
+    informant: {
+      name: v.informant_name,
+      relation: v.informant_relation || null,
+      phone: phoneDigitsToE164(v.informant_phone ?? ""),
+    },
+  };
+}
+
+function buildDeathInsertPayload(woredaId: string, actorUserId: string, v: Out) {
+  return {
+    woreda_id: woredaId,
+    event_type: "death" as const,
+    event_number: "",
+    event_date: v.date_of_death,
+    registration_date: todayIso(),
+    status: "submitted" as const,
+    requested_by_user_id: actorUserId,
+    resident_id: v.deceased_resident_id || null,
+    notes: v.notes || null,
+    event_details: buildDeathEventDetails(v),
+  };
+}
+
 export const Route = createFileRoute("/woreda/civil/death/new")({
   ssr: false,
   component: () => (
@@ -72,6 +106,8 @@ function DeathNewPage() {
   const navigate = useNavigate();
   const woredaId = useAuthStore((s) => s.woredaId);
   const actorUserId = useAuthStore((s) => s.appUser?.user_id ?? null);
+  const isOnline = useOnlineStatus();
+  const { enqueue } = useOfflineQueue(woredaId);
 
   const form = useForm<In>({
     resolver: zodResolver(schema),
@@ -105,35 +141,11 @@ function DeathNewPage() {
     mutationFn: async (v: Out) => {
       if (!woredaId || !actorUserId) throw new Error("Missing session");
 
-      const event_details = {
-        deceased_resident_id: v.deceased_resident_id || null,
-        deceased_name: v.deceased_name || null,
-        sex: v.sex || null,
-        place_of_death: v.place_of_death || null,
-        cause_of_death: v.cause_of_death || null,
-        facility_name: v.facility_name || null,
-        certified_by: v.certified_by || null,
-        informant: {
-          name: v.informant_name,
-          relation: v.informant_relation || null,
-          phone: phoneDigitsToE164(v.informant_phone ?? ""),
-        },
-      };
+      const insertPayload = buildDeathInsertPayload(woredaId, actorUserId, v);
 
       const { data, error } = await supabase
         .from("vital_event")
-        .insert({
-          woreda_id: woredaId,
-          event_type: "death",
-          event_number: "",
-          event_date: v.date_of_death,
-          registration_date: todayIso(),
-          status: "submitted",
-          requested_by_user_id: actorUserId,
-          resident_id: v.deceased_resident_id || null,
-          notes: v.notes || null,
-          event_details,
-        })
+        .insert(insertPayload)
         .select("vital_event_id")
         .single();
       if (error) throw error;
@@ -144,7 +156,7 @@ function DeathNewPage() {
         entity_name: "vital_event",
         entity_id: data.vital_event_id,
         action_type: "DEATH_REGISTERED",
-        new_value_json: event_details as never,
+        new_value_json: insertPayload.event_details as never,
         action_at: new Date().toISOString(),
       });
 
@@ -157,7 +169,27 @@ function DeathNewPage() {
     onError: (e) => toast.error(`Submit failed: ${(e as Error).message}`),
   });
 
-  const onSubmit = handleSubmit((raw) => mutation.mutate(schema.parse(raw)));
+  const onSubmit = handleSubmit((raw) => {
+    const parsed = schema.parse(raw);
+    if (!isOnline) {
+      if (!woredaId || !actorUserId) {
+        toast.error("ክፍለ ጊዜ ጠፍቷል / Missing session");
+        return;
+      }
+      enqueue(
+        "vital_event",
+        "submit_intake",
+        buildDeathInsertPayload(woredaId, actorUserId, parsed),
+        "civil-death-new",
+      );
+      toast.success(
+        "ከመስመር ውጭ ተቀምጧል፣ ሲገናኙ በራስ ሰር ይላካል / Saved offline — will submit automatically once reconnected",
+      );
+      navigate({ to: "/woreda/civil" });
+      return;
+    }
+    mutation.mutate(parsed);
+  });
 
   return (
     <div className="space-y-6">

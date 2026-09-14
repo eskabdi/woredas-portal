@@ -18,6 +18,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { P } from "@/config/permissions";
 import { phoneDigitsSchema, phoneDigitsToE164 } from "@/lib/phoneNumber";
 import { PhoneDigitsInput } from "@/components/forms/PhoneDigitsInput";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { useOfflineQueue } from "@/hooks/useOfflineQueue";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -59,6 +61,42 @@ const schema = z
 type In = z.input<typeof schema>;
 type Out = z.output<typeof schema>;
 
+function buildDivorceEventDetails(v: Out) {
+  return {
+    spouse1: {
+      resident_id: v.spouse1.resident_id || null,
+      name: v.spouse1.name || null,
+    },
+    spouse2: {
+      resident_id: v.spouse2.resident_id || null,
+      name: v.spouse2.name || null,
+    },
+    marriage_date: v.marriage_date || null,
+    court_name: v.court_name || null,
+    decree_reference: v.decree_reference,
+    grounds: v.grounds || null,
+    informant: {
+      name: v.informant_name,
+      phone: phoneDigitsToE164(v.informant_phone ?? ""),
+    },
+  };
+}
+
+function buildDivorceInsertPayload(woredaId: string, actorUserId: string, v: Out) {
+  return {
+    woreda_id: woredaId,
+    event_type: "divorce" as const,
+    event_number: "",
+    event_date: v.event_date,
+    registration_date: todayIso(),
+    status: "submitted" as const,
+    requested_by_user_id: actorUserId,
+    resident_id: v.spouse1.resident_id || v.spouse2.resident_id || null,
+    notes: v.notes || null,
+    event_details: buildDivorceEventDetails(v),
+  };
+}
+
 export const Route = createFileRoute("/woreda/civil/divorce/new")({
   ssr: false,
   component: () => (
@@ -80,6 +118,8 @@ function DivorceNewPage() {
   const navigate = useNavigate();
   const woredaId = useAuthStore((s) => s.woredaId);
   const actorUserId = useAuthStore((s) => s.appUser?.user_id ?? null);
+  const isOnline = useOnlineStatus();
+  const { enqueue } = useOfflineQueue(woredaId);
 
   const form = useForm<In>({
     resolver: zodResolver(schema),
@@ -113,39 +153,11 @@ function DivorceNewPage() {
     mutationFn: async (v: Out) => {
       if (!woredaId || !actorUserId) throw new Error("Missing session");
 
-      const event_details = {
-        spouse1: {
-          resident_id: v.spouse1.resident_id || null,
-          name: v.spouse1.name || null,
-        },
-        spouse2: {
-          resident_id: v.spouse2.resident_id || null,
-          name: v.spouse2.name || null,
-        },
-        marriage_date: v.marriage_date || null,
-        court_name: v.court_name || null,
-        decree_reference: v.decree_reference,
-        grounds: v.grounds || null,
-        informant: {
-          name: v.informant_name,
-          phone: phoneDigitsToE164(v.informant_phone ?? ""),
-        },
-      };
+      const insertPayload = buildDivorceInsertPayload(woredaId, actorUserId, v);
 
       const { data, error } = await supabase
         .from("vital_event")
-        .insert({
-          woreda_id: woredaId,
-          event_type: "divorce",
-          event_number: "",
-          event_date: v.event_date,
-          registration_date: todayIso(),
-          status: "submitted",
-          requested_by_user_id: actorUserId,
-          resident_id: v.spouse1.resident_id || v.spouse2.resident_id || null,
-          notes: v.notes || null,
-          event_details,
-        })
+        .insert(insertPayload)
         .select("vital_event_id")
         .single();
       if (error) throw error;
@@ -156,7 +168,7 @@ function DivorceNewPage() {
         entity_name: "vital_event",
         entity_id: data.vital_event_id,
         action_type: "DIVORCE_REGISTERED",
-        new_value_json: event_details as never,
+        new_value_json: insertPayload.event_details as never,
         action_at: new Date().toISOString(),
       });
 
@@ -169,7 +181,27 @@ function DivorceNewPage() {
     onError: (e) => toast.error(`Submit failed: ${(e as Error).message}`),
   });
 
-  const onSubmit = handleSubmit((raw) => mutation.mutate(schema.parse(raw)));
+  const onSubmit = handleSubmit((raw) => {
+    const parsed = schema.parse(raw);
+    if (!isOnline) {
+      if (!woredaId || !actorUserId) {
+        toast.error("ክፍለ ጊዜ ጠፍቷል / Missing session");
+        return;
+      }
+      enqueue(
+        "vital_event",
+        "submit_intake",
+        buildDivorceInsertPayload(woredaId, actorUserId, parsed),
+        "civil-divorce-new",
+      );
+      toast.success(
+        "ከመስመር ውጭ ተቀምጧል፣ ሲገናኙ በራስ ሰር ይላካል / Saved offline — will submit automatically once reconnected",
+      );
+      navigate({ to: "/woreda/civil" });
+      return;
+    }
+    mutation.mutate(parsed);
+  });
 
   return (
     <div className="space-y-6">
