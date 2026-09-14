@@ -882,3 +882,189 @@ Both agents independently found the same real regression:
 `get_service_kpis()`'s KPI shape (completed-this-month, 30d rejection rate);
 `ServiceRequestList`'s submitted-at column rendering Gregorian dates
 (pre-existing, surfaced by this PR's review — not this PR's to fix).
+
+## 16. Task 12-C: offline queue and sync for the workflow modules — 2026-09-14
+
+Builds the offline mutation queue and sync engine per the Task 12 full
+spec §12.4: entity-agnostic infrastructure built once, wired fully for
+credentials (intake + payment drafts + all authoritative-action gating on
+the detail page), intake queueing wired for civil registration (all four
+event types) and services via the same components. Full design record in
+`docs/task12c-mapping-memo.md`, including two premise corrections found
+during investigation (no PWA/Workbox existed in this stack before this PR;
+"Stage-2 checklist saves" don't exist as an independent mutation in this
+codebase) and the complete review-findings table (§6a of that memo); this
+section is evidence.
+
+### What shipped
+
+- **`src/lib/offlineQueue.ts`**: entity-agnostic localStorage-backed queue,
+  keyed `offline-queue:<woredaId>`, mirroring `useFormDraft.ts`'s
+  `wizard-draft:` pattern exactly (per-woreda key, `clearAll*()` swept from
+  both shells' sign-out handlers). FIFO by insertion order; `enqueue`/
+  `dequeue`/`bumpAttempt`/`getQueue`/`clearOfflineQueue`/`subscribe`.
+- **`src/lib/offlineSync.ts`**: the sequential, FIFO sync engine
+  (`runSync`). Two action handlers: `syncSubmitIntake` (generic across all
+  three entities — replays the exact insert the online form would have
+  made, writes the matching status-history row where the online path does,
+  and an `audit_log` row with the same `action_type` the online path uses)
+  and `syncRecordPaymentDraft` (credential_request only — full replay of
+  `PaymentCard.handleRecord()`'s sequence: raise the fee if `approved`,
+  resolve the fee live via `resolve_credential_fee()` — never a
+  client-cached amount — insert payment + receipt, transition to `paid`,
+  write status history and the audit row). A definitive server rejection
+  removes the item and surfaces the server's own message per-item; a
+  transient failure (network, or an auth/connection/resource error class)
+  leaves it queued with `attemptCount` bumped for the next sync attempt.
+  Every row-changing update chains `.select(...).maybeSingle()` and treats
+  a null row as failure (CLAUDE.md's house rule), matching the online paths
+  it replays.
+- **`useOnlineStatus`**: `navigator.onLine` layered with a 15s-polled
+  reachability probe (`${SUPABASE_URL}/auth/v1/settings`,
+  `AbortSignal.timeout(5000)`) — catches "online per the OS but this
+  network can't reach Supabase" (captive portal, corporate proxy).
+- **`useOfflineQueue`** (`useSyncExternalStore`) and **`useOfflineGuard`**
+  (the shared "disable this authoritative button offline, with a bilingual
+  reason" hook) — both thin, composable hooks over the two modules above.
+- **`OfflineStatusBar`**, mounted once in `WoredaShell` (not `AdminShell` —
+  the console never writes to the queue): offline pill, queued count,
+  manual "Sync now", last-sync timestamp in Ethiopian calendar via
+  `formatEthiopianDateTime`. Auto-syncs exactly on the offline→online
+  transition, never on every render; a per-item toast for every sync
+  result, never a single summary that could paper over one item's
+  rejection; a distinct toast when sync can't run because the session has
+  expired (queue untouched either way).
+- **Intake queueing wired**: `woreda.credentials.new.tsx`,
+  `woreda.civil.{birth,death,marriage,divorce}.new.tsx`,
+  `woreda.services.new.tsx` — each branches on `useOnlineStatus()`; offline
+  calls `enqueue(...)` with the identical insert payload the online path
+  builds (four `buildXInsertPayload` helpers extracted from the civil
+  forms' `mutationFn` bodies specifically so both paths share one payload
+  builder, verified field-by-field against the original `mutationFn`).
+  `new_issue` credential requests are the one case that can never be
+  queued (a photo requires a live Storage upload regardless of queue
+  design) — blocked with a bilingual explanation, not silently degraded.
+- **Payment drafts wired**: `PaymentCard.handleRecord()` branches offline
+  to `enqueue("credential_request", "record_payment_draft", ...)` instead
+  of mutating the request live; `canSubmit` no longer gates the button
+  behind `resolve_credential_fee()` succeeding when offline, since that RPC
+  needs a network the payment draft doesn't.
+- **Authoritative-action gating wired on the credential detail page**:
+  Verify/Return/Resubmit (verification card), Reject/Return/Approve
+  (approval card), Confirm Issuance (`IssuanceCard`), Revoke
+  (`RevocationCard`), Suspend/Lift (`SuspendCard`) all disable via
+  `useOfflineGuard()` with a visible bilingual reason when offline — per
+  the task's own list of actions that must never be queued. Civil/service
+  detail pages keep their existing (already-online-only) action buttons
+  unchanged — deferred as a fast-follow, since the task's own step 3 scope
+  line frames civil/services as intake-queueing only for this PR.
+- **Lifecycle**: `clearOfflineQueue()` added to both shells' sign-out
+  handlers alongside the existing `queryClient.clear()` (F-08) and
+  `clearAllWizardDrafts()` — same reasoning, same call sites, including the
+  idle-timeout-triggered sign-out path. Auth-expired-while-offline:
+  `runSync()` checks `supabase.auth.getSession()` before touching the
+  queue and returns a distinct `"no-session"` outcome rather than silently
+  no-op'ing; the queue is left untouched either way.
+- **PWA scope**: hand-written `public/sw.js` (~40 lines, not
+  `vite-plugin-pwa` — see the memo's §0 for why), precaching only `/` and
+  `/favicon.png`, serving the cached shell only as a fallback for a failed
+  top-level navigation. Every Supabase request (`/rest/v1/`, `/auth/v1/`,
+  `/functions/v1/`, `/storage/v1/`) is never intercepted — "no API response
+  caching" is a property of the code, not a policy note. Registered once,
+  client-side, from a new `useServiceWorker()` hook mounted in
+  `__root.tsx` alongside `useAuthBootstrap`; registration failure is
+  swallowed since the app must work identically without a service worker.
+
+### Deferred, recorded not silently dropped
+
+- Offline-disabling authoritative actions on the civil and service detail
+  pages (approve/reject/issue-letter equivalents) — not built in this PR;
+  the task's own scope line limits civil/services to intake queueing.
+  Watch-list item below.
+- A server-side idempotency key tying a queued item to the row it creates
+  — mitigated (dequeue moved to immediately after the row-creating write,
+  before the history/audit follow-ups) but not eliminated; a full fix needs
+  a schema change (a `client_queue_item_id` column + unique constraint),
+  out of this client-only PR's scope. Watch-list item below.
+
+### Verification
+
+- **Unit/CI** (`bun run test`, 194 tests, 11 new in
+  `offlineQueue.test.ts`/`offlineSync.test.ts`): FIFO ordering (insertion
+  order preserved through enqueue/dequeue), per-woreda scoping, sign-out
+  clearing, `useSyncExternalStore` subscriber notification, a definitive
+  server rejection surfacing its own message and being removed from the
+  queue (never swallowed), a transient failure staying queued with
+  `attemptCount` bumped, sequential FIFO processing, the auth-expired abort
+  path leaving the queue untouched, `record_payment_draft`'s row-verification
+  failure and success paths, and a regression lock on the exact `.select()`
+  column list per entity (the bug described below).
+- **Full local gate suite green**: `bun run build`, `npx tsc --noEmit`,
+  `bun run lint` (0 errors, pre-existing fast-refresh warnings only),
+  `bun run test` (194 tests), `check:role-perms-drift`.
+  No migration in this PR (client-only), so no live-DB dry-run/apply step
+  and no new probes in `scripts/verify-live-probes.sql` — the sync engine's
+  server-side re-validation is exercised by the existing FSM/precondition/
+  fee-guard probes already in that suite (Task 13's payment hardening,
+  Task 14-A/B's FSM probes); this PR proves the *client* surfaces those
+  guards' rejections rather than swallowing them, which is what the unit
+  tests above assert directly against a mocked rejection.
+- **OWNER-SMOKE required, not yet performed**: the task's own step 8 asks
+  for a live browser-devtools-offline-toggle walkthrough (queue a
+  submission offline → verify badge/count → reconnect → sync succeeds →
+  item gone; then queue a submission for a resident made ineligible in the
+  meantime → sync → server rejection surfaced per-item, with screenshots).
+  This session cannot drive a real authenticated browser session against
+  the live Supabase project (the standing limitation recorded since Task
+  12-B: in-session UI driving is blocked by anon-key exposure). **Recorded
+  as OWNER-SMOKE-PENDING** on the watch list below — the system owner needs
+  to perform and confirm both the success and stale-rejection paths on a
+  real workstation before this feature is considered field-verified, even
+  though every server-side guard it depends on is independently
+  probe-verified and the client-side surfacing logic is unit-tested against
+  a mocked rejection.
+- **True device-level offline (installed PWA, real network loss):
+  UNVERIFIED-with-reason**, per the task's own explicit instruction — added
+  to the go-live watch list for a first-week check on a real workstation.
+
+### Review findings (portal-conventions-review + tenant-isolation-review, dispatched in parallel)
+
+Tenant isolation came back clean — no cross-tenant read/write path, no RLS
+bypass, no permission shortcut — but both agents found real correctness
+bugs in the sync engine itself, all fixed before this PR. Full detail in
+the mapping memo §6a; summarized here:
+
+| #   | Finding                                                                                                                                       | Severity | Reviewer(s)               | Fix                                                                                                                                                                                              |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------- | -------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `syncSubmitIntake`'s `.select()` named both `request_number` and `event_number` for every entity, but no table has both — every queued intake sync failed with `42703` and was then discarded as a definitive rejection | High     | tenant-isolation-review   | Select the correct column per entity (`ENTITY_NUMBER_COLUMN`); locked in with a new per-entity regression test asserting the exact `.select()` string                                            |
+| 2   | `syncRecordPaymentDraft`'s two status-transition updates checked only `error`, not the returned row — the exact house-rule bug CLAUDE.md documents, on a path with no human watching the outcome | Medium   | tenant-isolation-review   | Both now chain `.select(...).maybeSingle()` and fail with a specific message on a null row, matching `PaymentCard.handleRecord()`                                                                 |
+| 3   | `syncRecordPaymentDraft` wrote no `audit_log` row — every offline-originated payment or fee waiver was invisible in `/woreda/audit`             | Medium   | tenant-isolation-review   | Added the matching `PAYMENT_COLLECTED`/`PAYMENT_WAIVED` audit insert                                                                                                                               |
+| 4   | Synced credential-request audit `action_type` (`CREDENTIAL_REQUEST_SUBMITTED`) didn't match the online form's actual `REQUEST_SUBMITTED`        | Low      | tenant-isolation-review   | Corrected to match                                                                                                                                                                                  |
+| 5   | `isTransient()` treated any error carrying a `code` as definitive, which would discard an item on a JWT-expiry or transient Postgres condition   | Medium   | tenant-isolation-review   | Narrowed to the specific transient classes (`PGRST301`/`PGRST302`, `08*`/`53*`/`57*`); everything else with a code stays a definitive rejection                                                    |
+| 6   | `PaymentCard`'s `canSubmit` gated the Record button behind `feeQuery` succeeding, making the offline payment-draft branch unreachable            | Low      | tenant-isolation-review   | Split `canSubmit` so fee-related checks apply only online                                                                                                                                          |
+| 7   | The credential-intake refactor could feed `null` into `issuing_kebele_id` (`NOT NULL`) via `?? null`                                             | Low      | tenant-isolation-review   | Explicit pre-submit guard with a clear bilingual message instead of a raw not-null-violation surfacing later as a discarded sync item                                                              |
+| 8   | No idempotency key ties a queued item to the row it creates — a kill between insert and dequeue could in principle duplicate on next sync        | Medium   | tenant-isolation-review   | **Mitigated, not eliminated** — `dequeue()` moved to immediately after the row-creating write, before history/audit follow-ups; a full fix needs a schema change, out of this PR's scope (watch list) |
+| 9   | While offline, permission resolution falls back to the compiled `ROLE_PERMISSIONS` default (existing F7 behavior) — a tenant/user-level *denial* could still let an item be enqueued | Info     | tenant-isolation-review   | **Not a bypass** — the same `user_has_any_perm()` check every online insert already goes through still rejects it at sync time; noted for awareness only                                          |
+| 10  | Four newly-introduced English-only toasts (`"Missing session"` ×4, `"Provide mother..."`) broke the bilingual-labels convention                 | Low      | portal-conventions-review | Made bilingual                                                                                                                                                                                      |
+| 11  | `OfflineStatusBar`'s "Sync now" control hand-rolled a `<button>` instead of the shared `Button` component                                        | Nit      | portal-conventions-review | Replaced with `Button`                                                                                                                                                                             |
+| 12  | Dropping the live household re-fetch in `woreda.credentials.new.tsx` (to share one payload builder between online/offline) removes a freshness check the online path used to have | Medium, flagged, not reverted | portal-conventions-review | Accepted tradeoff — `household_id`/`kebele_id` are denormalized routing fields, not permission-critical, and the freshness window (between resident search and submit, same session) is narrow; reverting would break payload parity between the two paths. Noted, not fixed |
+
+### Watch list
+
+New items from this PR:
+
+- **OWNER-SMOKE-PENDING**: the live browser-devtools-offline-toggle
+  walkthrough (both the reconnect-success path and the stale-rejection
+  path) needs the system owner to perform and confirm on a real
+  workstation — this session cannot drive an authenticated browser against
+  the live project. See Verification above.
+- **UNVERIFIED-with-reason**: true device-level offline (installed PWA,
+  real network loss) — first-week check on a real workstation, per the
+  task's own instruction.
+- Offline-disabling authoritative actions on civil/service detail pages —
+  deferred, in scope for a future PR per this PR's own task-scope reading.
+- A server-side idempotency key for queued-item replay (`client_queue_item_id`
+  + unique constraint) — mitigated by dequeue-ordering in this PR, not
+  eliminated; would need its own additive migration.
+- Carried from Task 14-C: widening `get_service_kpis()`'s KPI shape;
+  `ServiceRequestList`'s submitted-at column rendering Gregorian dates.

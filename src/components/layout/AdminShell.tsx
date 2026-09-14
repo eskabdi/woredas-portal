@@ -19,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ChangePasswordDialog } from "@/components/common/ChangePasswordDialog";
 import { useIdleTimeout } from "@/hooks/useIdleTimeout";
 import { clearAllWizardDrafts } from "@/hooks/useFormDraft";
+import { clearOfflineQueue } from "@/lib/offlineQueue";
 
 const ICON_MAP: Record<string, LucideIcon> = {
   LayoutDashboard,
@@ -57,6 +58,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     // otherwise still be readable after an admin signs in. See
     // useFormDraft.ts's own comment.
     clearAllWizardDrafts();
+    // Task 12-C: same shared-origin reasoning -- no offline queue is ever
+    // written from the admin console, but this is still the point where a
+    // leftover woreda-portal queue item would otherwise be readable (and
+    // syncable) after an admin signs in on the same browser.
+    clearOfflineQueue();
     navigate({ to: "/login" });
   };
 

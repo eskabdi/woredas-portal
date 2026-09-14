@@ -31,6 +31,8 @@ import {
   POLICE_REPORT_REQUIRED_TYPES,
   CORRECTION_FIELD_OPTIONS,
 } from "@/lib/credentialWorkflowSchemas";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { useOfflineQueue } from "@/hooks/useOfflineQueue";
 
 const searchSchema = z.object({
   residentId: z.string().optional(),
@@ -142,6 +144,8 @@ function NewCredentialRequestPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { residentId: presetResidentId } = Route.useSearch();
+  const isOnline = useOnlineStatus();
+  const { enqueue } = useOfflineQueue(woredaId);
 
   const [ackExistingCred, setAckExistingCred] = useState(false);
   const [ackExistingReq, setAckExistingReq] = useState(false);
@@ -394,22 +398,31 @@ function NewCredentialRequestPage() {
 
   const onSubmit = handleSubmit(async (values) => {
     if (!woredaId || !resident || !actorUserId) return;
-    if (!resident.current_household_id) {
+    if (!resident.current_household_id || !resident.household) {
       toast.error("Resident is not in a household");
       return;
     }
-    if (values.request_type === "new_issue" && !photoAttachment) {
-      toast.error("ፎቶ ይጫኑ / Upload a photo before submitting");
+    if (!resident.household.kebele?.kebele_id) {
+      // issuing_kebele_id is NOT NULL on credential_request -- fail here with
+      // a clear message rather than let a missing kebele reach the insert as
+      // a raw not-null-violation (which, offline, would only surface at sync
+      // time and discard the queued item as a definitive rejection).
+      toast.error(
+        "የነዋሪው ቤተሰብ ቀበሌ የለውም / This resident's household has no assigned kebele — fix it in Households before submitting",
+      );
       return;
     }
-    // Fetch kebele from household
-    const { data: hh, error: hhErr } = await supabase
-      .from("household")
-      .select("household_id, kebele_id")
-      .eq("household_id", resident.current_household_id)
-      .maybeSingle();
-    if (hhErr || !hh) {
-      toast.error("Could not resolve household");
+    if (values.request_type === "new_issue" && !photoAttachment) {
+      // Task 12-C: a new-issue credential requires a photo, and uploading
+      // one requires a live network call to Supabase Storage regardless of
+      // queue design -- so this specific request type can never be queued
+      // offline, only online. Every other request type has no such
+      // requirement and can be queued.
+      toast.error(
+        isOnline
+          ? "ፎቶ ይጫኑ / Upload a photo before submitting"
+          : "አዲስ መታወቂያ ጥያቄ ፎቶ ይፈልጋል፣ ከመስመር ውጭ ሆኖ ማስገባት አይቻልም / A new-issue request needs a photo and cannot be queued offline",
+      );
       return;
     }
 
@@ -426,11 +439,14 @@ function NewCredentialRequestPage() {
       }
       const duplicateFlag = dupNotes.length > 0;
 
+      // resident.household is already loaded client-side from the earlier
+      // resident-search query -- no separate live fetch needed for either
+      // the online or the offline path.
       const insertPayload = {
         woreda_id: woredaId,
         resident_id: values.resident_id,
-        household_id: hh.household_id,
-        issuing_kebele_id: hh.kebele_id,
+        household_id: resident.household.household_id,
+        issuing_kebele_id: resident.household.kebele?.kebele_id ?? null,
         request_type: values.request_type,
         credential_type: values.credential_type,
         prior_credential_id: values.prior_credential_id ?? null,
@@ -450,6 +466,20 @@ function NewCredentialRequestPage() {
         // request_number auto-assigned by trigger; provide empty to satisfy NOT NULL — trigger overrides
         request_number: "",
       };
+
+      if (!isOnline) {
+        // Task 12-C: no attachment (values.supporting_document_path, if
+        // any, requires the same live upload photoAttachment does, and is
+        // simply omitted here) -- queued exactly as intake, synced by
+        // src/lib/offlineSync.ts once reconnected, with every server-side
+        // guard re-run in full at that point.
+        enqueue("credential_request", "submit_intake", insertPayload, "credential-new");
+        toast.success(
+          "ከመስመር ውጭ ተቀምጧል፣ ሲገናኙ በራስ ሰር ይላካል / Saved offline — will submit automatically once reconnected",
+        );
+        navigate({ to: "/woreda/credentials" });
+        return;
+      }
 
       const { data: inserted, error } = await supabase
         .from("credential_request")

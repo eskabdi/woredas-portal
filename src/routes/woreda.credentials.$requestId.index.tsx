@@ -62,6 +62,9 @@ import {
   type ReturnReasonCode,
 } from "@/lib/credentialWorkflowSchemas";
 import { useFeeSchedule } from "@/hooks/useCredentialRequests";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { useOfflineQueue } from "@/hooks/useOfflineQueue";
+import { useOfflineGuard } from "@/hooks/useOfflineGuard";
 
 export const Route = createFileRoute("/woreda/credentials/$requestId/")({
   ssr: false,
@@ -151,6 +154,7 @@ function CredentialRequestDetailPage() {
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const canAct = hasPermission(P.CREDENTIAL_ISSUE);
   const canApprove = hasPermission(P.CREDENTIAL_APPROVE);
+  const { isOffline, offlineReason } = useOfflineGuard();
   const navigate = useNavigate();
   const requestHistoryQuery = useCredentialRequestHistory(requestId, !!requestId);
   const requestHistoryActorNamesQuery = useActorNames(
@@ -974,10 +978,15 @@ function CredentialRequestDetailPage() {
 
                 {canAct ? (
                   <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-4">
+                    {isOffline && (
+                      <p className="font-noto-ethiopic w-full text-right text-xs text-amber-700">
+                        {offlineReason}
+                      </p>
+                    )}
                     <Button
                       variant="outline"
                       onClick={() => setReturnDialogOpen(true)}
-                      disabled={busy}
+                      disabled={busy || isOffline}
                     >
                       <RotateCcw className="mr-2 h-4 w-4" />
                       <span className="font-noto-ethiopic">መልስ</span>
@@ -985,7 +994,7 @@ function CredentialRequestDetailPage() {
                     </Button>
                     <Button
                       onClick={handlePass}
-                      disabled={!allChecked || missingCorrectionDoc || busy}
+                      disabled={!allChecked || missingCorrectionDoc || busy || isOffline}
                       className="bg-blue-700 text-white hover:bg-blue-800"
                     >
                       {busy ? (
@@ -1005,10 +1014,13 @@ function CredentialRequestDetailPage() {
               </>
             ) : isReturned ? (
               canAct ? (
-                <div className="flex justify-end border-t border-slate-200 pt-4">
+                <div className="flex flex-col items-end gap-2 border-t border-slate-200 pt-4">
+                  {isOffline && (
+                    <p className="font-noto-ethiopic text-xs text-amber-700">{offlineReason}</p>
+                  )}
                   <Button
                     onClick={handleResubmit}
-                    disabled={busy}
+                    disabled={busy || isOffline}
                     className="bg-blue-700 text-white hover:bg-blue-800"
                   >
                     {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -1126,10 +1138,15 @@ function CredentialRequestDetailPage() {
               {(status === "verified" || status === "pending_approval") &&
                 (canApprove ? (
                   <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-4">
+                    {isOffline && (
+                      <p className="font-noto-ethiopic w-full text-right text-xs text-amber-700">
+                        {offlineReason}
+                      </p>
+                    )}
                     <Button
                       variant="destructive"
                       onClick={() => setRejectOpen(true)}
-                      disabled={busy}
+                      disabled={busy || isOffline}
                     >
                       <XCircle className="mr-2 h-4 w-4" />
                       <span className="font-noto-ethiopic">አትቀበል</span>
@@ -1138,7 +1155,7 @@ function CredentialRequestDetailPage() {
                     <Button
                       variant="outline"
                       onClick={() => setApprovalReturnOpen(true)}
-                      disabled={busy}
+                      disabled={busy || isOffline}
                     >
                       <RotateCcw className="mr-2 h-4 w-4" />
                       <span className="font-noto-ethiopic">መልስ</span>
@@ -1146,7 +1163,7 @@ function CredentialRequestDetailPage() {
                     </Button>
                     <Button
                       onClick={handleApprove}
-                      disabled={busy}
+                      disabled={busy || isOffline}
                       className="bg-emerald-700 text-white hover:bg-emerald-800"
                     >
                       {busy ? (
@@ -1501,6 +1518,8 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
   const actorUserId = useAuthStore((s) => s.appUser?.user_id ?? null);
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const canCollect = hasPermission(P.PAYMENT_COLLECT);
+  const isOnline = useOnlineStatus();
+  const { enqueue } = useOfflineQueue(woredaId);
 
   // Task 12: fee comes from Task 11's per-service-type fee_schedule via the
   // fail-closed useFeeSchedule hook (resolve_credential_fee() RPC,
@@ -1558,6 +1577,18 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
   const canSubmit = useMemo(() => {
     if (!canCollect) return false;
     if (busy) return false;
+    // Offline, the fee is never resolved client-side at all -- runSync's
+    // syncRecordPaymentDraft resolves it live from the server at sync time,
+    // exactly like the online path, just later. Gating the button on
+    // feeQuery here would make every offline payment draft unqueueable,
+    // since resolve_credential_fee() can't be called without a network.
+    if (!isOnline) {
+      if (waived) return waiverReason.trim().length >= 5;
+      if (!channel) return false;
+      if ((channel === "bank" || channel === "mobile") && referenceNo.trim().length === 0)
+        return false;
+      return true;
+    }
     if (feeQuery.isError) return false;
     // A waiver bypasses the fee entirely, but a non-waived payment must not
     // be recordable before resolve_credential_fee() has actually resolved --
@@ -1573,6 +1604,7 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
   }, [
     canCollect,
     busy,
+    isOnline,
     feeQuery.isError,
     feeQuery.isLoading,
     feeQuery.data,
@@ -1584,12 +1616,41 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
 
   const handleRecord = async () => {
     if (!canSubmit || !woredaId || !actorUserId) return;
+
+    const paymentChannel = waived ? "cash" : channel;
+    const refNo =
+      waived || paymentChannel === "cash" ? referenceNo.trim() || null : referenceNo.trim();
+
+    // Task 12-C: a payment DRAFT is queueable offline (never a payment
+    // record itself -- see docs/task12c-mapping-memo.md §2/§4). The fee
+    // raise, the payment insert, the receipt and the paid transition all
+    // happen server-side at sync time (offlineSync.ts's
+    // syncRecordPaymentDraft), re-resolving the fee live rather than
+    // trusting this client's cached `fee` value -- nothing here mutates the
+    // request while offline.
+    if (!isOnline) {
+      enqueue(
+        "credential_request",
+        "record_payment_draft",
+        {
+          credential_request_id: request.credential_request_id,
+          channel: paymentChannel as "cash" | "bank" | "mobile",
+          reference_no: waived ? null : refNo,
+          waived,
+          waiver_reason: waived ? waiverReason.trim() : null,
+        },
+        "credential-payment",
+      );
+      toast.success(
+        "ከመስመር ውጭ ተቀምጧል፣ ሲገናኙ በራስ ሰር ይላካል / Saved offline — will submit automatically once reconnected",
+      );
+      onDone();
+      return;
+    }
+
     setBusy(true);
     try {
       const today = new Date().toISOString().slice(0, 10);
-      const paymentChannel = waived ? "cash" : channel;
-      const refNo =
-        waived || paymentChannel === "cash" ? referenceNo.trim() || null : referenceNo.trim();
 
       // The fee is raised as its own transition: `approved -> awaiting_payment`
       // is the moment the amount is fixed, and the FSM requires it before a
@@ -1709,7 +1770,14 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
               request with no control able to move it. */}
           {(status === "approved" || status === "awaiting_payment") && (
             <>
-              {feeQuery.isLoading ? (
+              {!isOnline ? (
+                <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                  <p className="font-noto-ethiopic font-medium">ክፍያው ሲገናኙ በአገልጋይ በኩል ይሰላል</p>
+                  <p className="text-xs opacity-80">
+                    / The fee will be resolved by the server once you reconnect
+                  </p>
+                </div>
+              ) : feeQuery.isLoading ? (
                 <Skeleton className="h-8 w-40" />
               ) : feeQuery.isError ? (
                 <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
@@ -2181,6 +2249,7 @@ function IssuanceCard({
   const actorUserId = useAuthStore((s) => s.appUser?.user_id ?? null);
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const canPrint = hasPermission(P.CREDENTIAL_PRINT);
+  const { isOffline, offlineReason } = useOfflineGuard();
 
   const [recipientName, setRecipientName] = useState("");
   const [confirmed, setConfirmed] = useState(false);
@@ -2270,7 +2339,7 @@ function IssuanceCard({
 
   const isActive = cred.status === "active";
   const nameValid = recipientName.trim().length >= 2;
-  const canSubmit = canPrint && nameValid && confirmed && !submitting;
+  const canSubmit = canPrint && nameValid && confirmed && !submitting && !isOffline;
 
   const handleSubmit = async () => {
     if (!canSubmit || !actorUserId) return;
@@ -2477,6 +2546,9 @@ function IssuanceCard({
                 You do not have permission to confirm issuance.
               </p>
             )}
+            {isOffline && (
+              <p className="font-noto-ethiopic text-xs text-amber-700">{offlineReason}</p>
+            )}
           </div>
         )}
       </div>
@@ -2494,6 +2566,7 @@ function RevocationCard({ credentialRowId, onDone }: RevocationCardProps) {
   const actorUserId = useAuthStore((s) => s.appUser?.user_id ?? null);
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const canRevoke = hasPermission(P.CREDENTIAL_REVOKE);
+  const { isOffline, offlineReason } = useOfflineGuard();
 
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
@@ -2536,7 +2609,7 @@ function RevocationCard({ credentialRowId, onDone }: RevocationCardProps) {
 
   const isRevoked = cred.status === "revoked";
   const reasonValid = reason.trim().length >= 5;
-  const canSubmit = canRevoke && reasonValid && !submitting;
+  const canSubmit = canRevoke && reasonValid && !submitting && !isOffline;
 
   const handleConfirm = async () => {
     if (!canSubmit || !actorUserId) return;
@@ -2623,7 +2696,11 @@ function RevocationCard({ credentialRowId, onDone }: RevocationCardProps) {
               <span className="ml-2 font-mono text-slate-900">{cred.credential_number}</span>
             </p>
             <div className="flex justify-end">
-              <Button variant="destructive" disabled={!canRevoke} onClick={() => setOpen(true)}>
+              <Button
+                variant="destructive"
+                disabled={!canRevoke || isOffline}
+                onClick={() => setOpen(true)}
+              >
                 <ShieldOff className="mr-2 h-4 w-4" />
                 <span className="font-noto-ethiopic">መሻር</span>
                 <span className="ml-2 text-xs text-white/80">/ Revoke</span>
@@ -2633,6 +2710,9 @@ function RevocationCard({ credentialRowId, onDone }: RevocationCardProps) {
               <p className="text-xs text-amber-700">
                 You do not have permission to revoke credentials.
               </p>
+            )}
+            {canRevoke && isOffline && (
+              <p className="font-noto-ethiopic text-xs text-amber-700">{offlineReason}</p>
             )}
           </>
         )}
@@ -2718,6 +2798,7 @@ function SuspendCard({ credentialRowId, onDone }: SuspendCardProps) {
   const actorUserId = useAuthStore((s) => s.appUser?.user_id ?? null);
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const canSuspend = hasPermission(P.CREDENTIAL_SUSPEND);
+  const { isOffline, offlineReason } = useOfflineGuard();
 
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
@@ -2744,7 +2825,7 @@ function SuspendCard({ credentialRowId, onDone }: SuspendCardProps) {
   const isSuspended = cred.status === "suspended";
   const targetStatus = isSuspended ? "active" : "suspended";
   const reasonValid = reason.trim().length >= 5;
-  const canSubmit = canSuspend && reasonValid && !submitting;
+  const canSubmit = canSuspend && reasonValid && !submitting && !isOffline;
 
   const handleConfirm = async () => {
     if (!canSubmit || !actorUserId) return;
@@ -2825,7 +2906,7 @@ function SuspendCard({ credentialRowId, onDone }: SuspendCardProps) {
           <Button
             variant={isSuspended ? "default" : "outline"}
             className={isSuspended ? "" : "border-orange-400 text-orange-700 hover:bg-orange-50"}
-            disabled={!canSuspend}
+            disabled={!canSuspend || isOffline}
             onClick={() => setOpen(true)}
           >
             <ShieldOff className="mr-2 h-4 w-4" />
@@ -2837,6 +2918,9 @@ function SuspendCard({ credentialRowId, onDone }: SuspendCardProps) {
           <p className="text-xs text-amber-700">
             You do not have permission to suspend/lift credentials.
           </p>
+        )}
+        {canSuspend && isOffline && (
+          <p className="font-noto-ethiopic text-xs text-amber-700">{offlineReason}</p>
         )}
       </div>
 

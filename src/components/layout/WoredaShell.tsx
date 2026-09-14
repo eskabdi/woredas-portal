@@ -33,6 +33,8 @@ import { useWoredaLogo } from "@/hooks/useWoredaLogo";
 import { useTenantModules } from "@/hooks/useTenantModules";
 import { useIdleTimeout } from "@/hooks/useIdleTimeout";
 import { clearAllWizardDrafts } from "@/hooks/useFormDraft";
+import { clearOfflineQueue } from "@/lib/offlineQueue";
+import { OfflineStatusBar } from "@/components/common/OfflineStatusBar";
 import { ChangePasswordDialog } from "@/components/common/ChangePasswordDialog";
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -97,6 +99,10 @@ export function WoredaShell({ children }: { children: React.ReactNode }) {
     // it would otherwise still be sitting there (and readable) for whoever
     // signs in next on this browser. See useFormDraft.ts's own comment.
     clearAllWizardDrafts();
+    // Task 12-C: localStorage is per-origin, not per-session -- a queued
+    // offline submission left behind would otherwise sync under the NEXT
+    // person's identity the moment they reconnect on the same browser.
+    clearOfflineQueue();
     navigate({ to: "/login" });
   };
 
@@ -247,6 +253,8 @@ export function WoredaShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </header>
+
+        <OfflineStatusBar />
 
         <motion.main
           initial={{ opacity: 0, y: 8 }}
