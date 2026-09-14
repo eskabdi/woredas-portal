@@ -1568,6 +1568,8 @@ export type Database = {
           service_request_id: string | null
           status: string
           vital_event_id: string | null
+          waived: boolean
+          waiver_reason: string | null
           woreda_id: string
         }
         Insert: {
@@ -1587,6 +1589,8 @@ export type Database = {
           service_request_id?: string | null
           status?: string
           vital_event_id?: string | null
+          waived?: boolean
+          waiver_reason?: string | null
           woreda_id: string
         }
         Update: {
@@ -1606,6 +1610,8 @@ export type Database = {
           service_request_id?: string | null
           status?: string
           vital_event_id?: string | null
+          waived?: boolean
+          waiver_reason?: string | null
           woreda_id?: string
         }
         Relationships: [

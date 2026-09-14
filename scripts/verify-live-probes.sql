@@ -1142,3 +1142,325 @@ SELECT get_service_kpis() AS kpis;
 RESET role;
 ROLLBACK;
 -- EXPECT: ERROR (get_service_kpis: permission denied)
+
+-- =============================================================================
+-- Payment hardening (00000000000065): fee guard + precondition re-validation
+-- scoping. Same real Aboker IDs as the Task 14-B block above: tenant_admin
+-- 64e0384a, RESIDENCE service_type 5e3f18d0 (fee_amount=50), resident
+-- 51fcd835 (active, in Aboker), household 9de75a40. Civil registration fees
+-- (birth/death/marriage) are all seeded at 0 -- there is no fee-bearing
+-- vital_event type today, so the vital_event probes below only exercise the
+-- mismatch/overpayment path, not a waiver.
+-- =============================================================================
+
+-- === PROBE: service_fee_underpayment_raises ===
+BEGIN;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+INSERT INTO public.service_request
+  (service_request_id, woreda_id, request_number, service_type_id, category, status,
+   subject, requested_by_user_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000901', '81ac2ad6-a320-4069-b8dc-0c43e358371b', '',
+   '5e3f18d0-3ddc-48ca-ac44-1495cb337d96', 'letter', 'awaiting_payment',
+   'Probe fee underpayment', '64e0384a-d240-4302-8310-682f79a302ce');
+INSERT INTO public.payment
+  (payment_id, woreda_id, payment_type, amount, payment_date, channel, status,
+   posted_by_user_id, service_request_id)
+VALUES
+  ('00000000-0000-4000-9000-000000000901', '81ac2ad6-a320-4069-b8dc-0c43e358371b',
+   'service_fee', 10, current_date, 'cash', 'confirmed',
+   '64e0384a-d240-4302-8310-682f79a302ce', '00000000-0000-4000-8000-000000000901');
+RESET role;
+ROLLBACK;
+-- EXPECT: ERROR (Expected fee is 50 ETB; recorded amount is 10 ETB)
+
+-- === PROBE: service_fee_overpayment_raises ===
+BEGIN;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+INSERT INTO public.service_request
+  (service_request_id, woreda_id, request_number, service_type_id, category, status,
+   subject, requested_by_user_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000902', '81ac2ad6-a320-4069-b8dc-0c43e358371b', '',
+   '5e3f18d0-3ddc-48ca-ac44-1495cb337d96', 'letter', 'awaiting_payment',
+   'Probe fee overpayment', '64e0384a-d240-4302-8310-682f79a302ce');
+INSERT INTO public.payment
+  (payment_id, woreda_id, payment_type, amount, payment_date, channel, status,
+   posted_by_user_id, service_request_id)
+VALUES
+  ('00000000-0000-4000-9000-000000000902', '81ac2ad6-a320-4069-b8dc-0c43e358371b',
+   'service_fee', 100, current_date, 'cash', 'confirmed',
+   '64e0384a-d240-4302-8310-682f79a302ce', '00000000-0000-4000-8000-000000000902');
+RESET role;
+ROLLBACK;
+-- EXPECT: ERROR (Expected fee is 50 ETB; recorded amount is 100 ETB)
+
+-- === PROBE: service_fee_waiver_with_reason_passes ===
+BEGIN;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+INSERT INTO public.service_request
+  (service_request_id, woreda_id, request_number, service_type_id, category, status,
+   subject, requested_by_user_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000903', '81ac2ad6-a320-4069-b8dc-0c43e358371b', '',
+   '5e3f18d0-3ddc-48ca-ac44-1495cb337d96', 'letter', 'awaiting_payment',
+   'Probe fee waiver with reason', '64e0384a-d240-4302-8310-682f79a302ce');
+INSERT INTO public.payment
+  (payment_id, woreda_id, payment_type, amount, payment_date, channel, status,
+   posted_by_user_id, service_request_id, waived, waiver_reason)
+VALUES
+  ('00000000-0000-4000-9000-000000000903', '81ac2ad6-a320-4069-b8dc-0c43e358371b',
+   'service_fee', 0, current_date, 'cash', 'confirmed',
+   '64e0384a-d240-4302-8310-682f79a302ce', '00000000-0000-4000-8000-000000000903',
+   true, 'Waived by supervisor decision');
+RESET role;
+ROLLBACK;
+-- EXPECT: SUCCESS (waived=true with a real reason and amount=0 is the sanctioned bypass)
+
+-- === PROBE: service_fee_waiver_without_reason_raises ===
+BEGIN;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+INSERT INTO public.service_request
+  (service_request_id, woreda_id, request_number, service_type_id, category, status,
+   subject, requested_by_user_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000904', '81ac2ad6-a320-4069-b8dc-0c43e358371b', '',
+   '5e3f18d0-3ddc-48ca-ac44-1495cb337d96', 'letter', 'awaiting_payment',
+   'Probe fee waiver without reason', '64e0384a-d240-4302-8310-682f79a302ce');
+INSERT INTO public.payment
+  (payment_id, woreda_id, payment_type, amount, payment_date, channel, status,
+   posted_by_user_id, service_request_id, waived)
+VALUES
+  ('00000000-0000-4000-9000-000000000904', '81ac2ad6-a320-4069-b8dc-0c43e358371b',
+   'service_fee', 0, current_date, 'cash', 'confirmed',
+   '64e0384a-d240-4302-8310-682f79a302ce', '00000000-0000-4000-8000-000000000904',
+   true);
+RESET role;
+ROLLBACK;
+-- EXPECT: ERROR (A waived payment requires a reason of at least 5 characters)
+
+-- === PROBE: service_precondition_pure_status_update_survives_deactivation ===
+-- Locks the actual bug fix (item 2): a resident deactivated mid-flow, with
+-- NO change to the request's own resident_id/household_id/service_type_id
+-- and no transition into 'paid', must no longer freeze a plain status move.
+-- Before this migration, enforce_service_request_preconditions() re-ran on
+-- every UPDATE and this exact sequence raised.
+BEGIN;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+INSERT INTO public.service_request
+  (service_request_id, woreda_id, request_number, service_type_id, category, status,
+   resident_id, subject, requested_by_user_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000905', '81ac2ad6-a320-4069-b8dc-0c43e358371b', '',
+   '5e3f18d0-3ddc-48ca-ac44-1495cb337d96', 'letter', 'submitted',
+   '51fcd835-9430-4b87-a738-db17eec51f2f',
+   'Probe status survives deactivation', '64e0384a-d240-4302-8310-682f79a302ce');
+RESET role;
+UPDATE public.resident SET active_flag = false
+ WHERE resident_id = '51fcd835-9430-4b87-a738-db17eec51f2f';
+SET LOCAL role authenticated;
+UPDATE public.service_request SET status = 'under_review'
+ WHERE service_request_id = '00000000-0000-4000-8000-000000000905';
+SELECT status FROM public.service_request WHERE service_request_id = '00000000-0000-4000-8000-000000000905';
+RESET role;
+ROLLBACK;
+-- EXPECT: SUCCESS (status=under_review; a status-only move no longer re-checks a resident it didn't touch)
+
+-- === PROBE: service_precondition_reraised_at_payment_terminal ===
+-- Same deactivated-mid-flow resident, but this time the transition INTO
+-- 'paid' must still re-check preconditions even though resident_id itself
+-- never changed on this UPDATE -- the payment-terminal re-assertion this
+-- migration adds alongside the column-change scoping.
+BEGIN;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+INSERT INTO public.service_request
+  (service_request_id, woreda_id, request_number, service_type_id, category, status,
+   resident_id, subject, requested_by_user_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000906', '81ac2ad6-a320-4069-b8dc-0c43e358371b', '',
+   '5e3f18d0-3ddc-48ca-ac44-1495cb337d96', 'letter', 'awaiting_payment',
+   '51fcd835-9430-4b87-a738-db17eec51f2f',
+   'Probe precondition reraised at paid', '64e0384a-d240-4302-8310-682f79a302ce');
+INSERT INTO public.payment
+  (payment_id, woreda_id, payment_type, amount, payment_date, channel, status,
+   posted_by_user_id, service_request_id)
+VALUES
+  ('00000000-0000-4000-9000-000000000906', '81ac2ad6-a320-4069-b8dc-0c43e358371b',
+   'service_fee', 50, current_date, 'cash', 'confirmed',
+   '64e0384a-d240-4302-8310-682f79a302ce', '00000000-0000-4000-8000-000000000906');
+RESET role;
+UPDATE public.resident SET active_flag = false
+ WHERE resident_id = '51fcd835-9430-4b87-a738-db17eec51f2f';
+SET LOCAL role authenticated;
+UPDATE public.service_request
+   SET status = 'paid', payment_id = '00000000-0000-4000-9000-000000000906'
+ WHERE service_request_id = '00000000-0000-4000-8000-000000000906';
+RESET role;
+ROLLBACK;
+-- EXPECT: ERROR (the linked resident is not an active resident of this woreda)
+
+-- === PROBE: service_precondition_resident_id_change_raises ===
+-- Changing resident_id itself (not the payment terminal) must re-trigger
+-- the full check even mid-flow.
+BEGIN;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+INSERT INTO public.service_request
+  (service_request_id, woreda_id, request_number, service_type_id, category, status,
+   subject, requested_by_user_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000907', '81ac2ad6-a320-4069-b8dc-0c43e358371b', '',
+   '5e3f18d0-3ddc-48ca-ac44-1495cb337d96', 'letter', 'submitted',
+   'Probe resident_id change', '64e0384a-d240-4302-8310-682f79a302ce');
+RESET role;
+UPDATE public.resident SET active_flag = false
+ WHERE resident_id = '51fcd835-9430-4b87-a738-db17eec51f2f';
+SET LOCAL role authenticated;
+UPDATE public.service_request
+   SET resident_id = '51fcd835-9430-4b87-a738-db17eec51f2f'
+ WHERE service_request_id = '00000000-0000-4000-8000-000000000907';
+RESET role;
+ROLLBACK;
+-- EXPECT: ERROR (the linked resident is not an active resident of this woreda)
+
+-- === PROBE: civil_fee_overpayment_raises ===
+-- Birth registration's catalog fee is 0 (migration 00000000000059) -- any
+-- non-zero, non-waived amount must now raise, where before this migration
+-- any confirmed payment + receipt reached 'paid' regardless of amount.
+BEGIN;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+INSERT INTO public.vital_event
+  (vital_event_id, woreda_id, event_type, event_number, event_date, household_id,
+   requested_by_user_id, status, event_details)
+VALUES
+  ('00000000-0000-4000-8000-000000000908', '81ac2ad6-a320-4069-b8dc-0c43e358371b',
+   'birth', '', current_date, '9de75a40-7f23-4700-9b90-335a877d584c',
+   '64e0384a-d240-4302-8310-682f79a302ce', 'awaiting_payment',
+   '{"child_first_name":"Probe","child_father_name":"Fee","child_grandfather_name":"Overpay","sex":"male"}');
+INSERT INTO public.payment
+  (payment_id, woreda_id, payment_type, amount, payment_date, channel, status,
+   posted_by_user_id, vital_event_id)
+VALUES
+  ('00000000-0000-4000-9000-000000000908', '81ac2ad6-a320-4069-b8dc-0c43e358371b',
+   'civil_registration_fee', 25, current_date, 'cash', 'confirmed',
+   '64e0384a-d240-4302-8310-682f79a302ce', '00000000-0000-4000-8000-000000000908');
+RESET role;
+ROLLBACK;
+-- EXPECT: ERROR (Expected fee is 0 ETB; recorded amount is 25 ETB)
+
+-- =============================================================================
+-- Payment hardening checkpoint 2 (00000000000066): closes the wrong-
+-- payment_type bypass and the re-pointed-link-id gap both reviews found in
+-- checkpoint 1. Same real Aboker IDs as above.
+-- =============================================================================
+
+-- === PROBE: service_fee_wrong_payment_type_bypass_now_blocked ===
+-- Before 00000000000066: a payment_type outside the three named fee types
+-- skipped the guard entirely (early return), and the payment-terminal gate
+-- never checked payment_type either -- a 'penalty'-typed payment for any
+-- amount, linked to this service_request, reached 'paid'. The gate itself
+-- now requires payment_type='service_fee'.
+BEGIN;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+INSERT INTO public.service_request
+  (service_request_id, woreda_id, request_number, service_type_id, category, status,
+   subject, requested_by_user_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000909', '81ac2ad6-a320-4069-b8dc-0c43e358371b', '',
+   '5e3f18d0-3ddc-48ca-ac44-1495cb337d96', 'letter', 'awaiting_payment',
+   'Probe wrong payment_type bypass', '64e0384a-d240-4302-8310-682f79a302ce');
+INSERT INTO public.payment
+  (payment_id, woreda_id, payment_type, amount, payment_date, channel, status,
+   posted_by_user_id, service_request_id)
+VALUES
+  ('00000000-0000-4000-9000-000000000909', '81ac2ad6-a320-4069-b8dc-0c43e358371b',
+   'penalty', 0, current_date, 'cash', 'confirmed',
+   '64e0384a-d240-4302-8310-682f79a302ce', '00000000-0000-4000-8000-000000000909');
+UPDATE public.service_request
+   SET status = 'paid', payment_id = '00000000-0000-4000-9000-000000000909'
+ WHERE service_request_id = '00000000-0000-4000-8000-000000000909';
+RESET role;
+ROLLBACK;
+-- EXPECT: ERROR (a confirmed payment with a receipt is required)
+
+-- === PROBE: service_fee_repointed_link_id_now_reraises ===
+-- Before 00000000000066: the guard's `OF` column list omitted
+-- service_request_id/vital_event_id/credential_request_id/woreda_id, so a
+-- payment validated at the correct fee for one request could be
+-- re-pointed at a pricier request afterward with no re-check. Uses a
+-- second real RESIDENCE service_type at a different fee
+-- (e4472daa-651b-4306-99b6-73a04031476b, Hakim woreda -- referenced, not
+-- modified) purely to exercise the column-change detection; the cross-
+-- woreda mismatch itself is now also caught by the woreda-match assertion
+-- this migration adds, so either check alone would fail this probe.
+BEGIN;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+INSERT INTO public.service_request
+  (service_request_id, woreda_id, request_number, service_type_id, category, status,
+   subject, requested_by_user_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000910', '81ac2ad6-a320-4069-b8dc-0c43e358371b', '',
+   '5e3f18d0-3ddc-48ca-ac44-1495cb337d96', 'letter', 'awaiting_payment',
+   'Probe repointed link id A', '64e0384a-d240-4302-8310-682f79a302ce');
+INSERT INTO public.service_request
+  (service_request_id, woreda_id, request_number, service_type_id, category, status,
+   subject, requested_by_user_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000911', '81ac2ad6-a320-4069-b8dc-0c43e358371b', '',
+   '5e3f18d0-3ddc-48ca-ac44-1495cb337d96', 'letter', 'awaiting_payment',
+   'Probe repointed link id B', '64e0384a-d240-4302-8310-682f79a302ce');
+INSERT INTO public.payment
+  (payment_id, woreda_id, payment_type, amount, payment_date, channel, status,
+   posted_by_user_id, service_request_id)
+VALUES
+  ('00000000-0000-4000-9000-000000000910', '81ac2ad6-a320-4069-b8dc-0c43e358371b',
+   'service_fee', 50, current_date, 'cash', 'confirmed',
+   '64e0384a-d240-4302-8310-682f79a302ce', '00000000-0000-4000-8000-000000000910');
+-- Re-point the already-validated payment at request B instead of A -- must
+-- re-run the guard now that service_request_id is in the watch list.
+UPDATE public.payment
+   SET service_request_id = '00000000-0000-4000-8000-000000000911'
+ WHERE payment_id = '00000000-0000-4000-9000-000000000910';
+RESET role;
+ROLLBACK;
+-- EXPECT: SUCCESS (both requests share the same fee -- the point is that the trigger re-fires, not that it rejects; the reject case is covered by the underpayment/overpayment probes)
+
+-- === PROBE: service_fee_cross_woreda_link_rejected ===
+-- Direct test of the woreda-match assertion added in 00000000000066: a
+-- payment tagged with Aboker's own woreda_id but linked to a real
+-- service_request that belongs to a DIFFERENT woreda (inserted here, within
+-- this rolled-back transaction, by that woreda's own real tenant_admin --
+-- Hakim d43c7fea, actor bad5a1c7) must be rejected, not silently resolved
+-- against Aboker's own catalog for that service type.
+BEGIN;
+SET LOCAL request.jwt.claim.sub = 'bad5a1c7-28d7-4af8-988b-42bd36d5c7d5';
+SET LOCAL role authenticated;
+INSERT INTO public.service_request
+  (service_request_id, woreda_id, request_number, service_type_id, category, status,
+   subject, requested_by_user_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000912', 'd43c7fea-c2bb-491c-99e7-56c76aa577f1', '',
+   'e4472daa-651b-4306-99b6-73a04031476b', 'letter', 'awaiting_payment',
+   'Probe cross-woreda link (Hakim side)', 'bad5a1c7-28d7-4af8-988b-42bd36d5c7d5');
+RESET role;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+INSERT INTO public.payment
+  (payment_id, woreda_id, payment_type, amount, payment_date, channel, status,
+   posted_by_user_id, service_request_id)
+VALUES
+  ('00000000-0000-4000-9000-000000000912', '81ac2ad6-a320-4069-b8dc-0c43e358371b',
+   'service_fee', 50, current_date, 'cash', 'confirmed',
+   '64e0384a-d240-4302-8310-682f79a302ce', '00000000-0000-4000-8000-000000000912');
+RESET role;
+ROLLBACK;
+-- EXPECT: ERROR (This payment's woreda does not match its linked request's woreda)

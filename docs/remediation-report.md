@@ -621,3 +621,118 @@ by this check — it is verification evidence, not a deploy action. Credentials
 (`SUPABASE_ACCESS_TOKEN`/`VERCEL_TOKEN`) were read from the environment,
 `unset` after use; no scratch payload file left in the working tree
 (`git status --porcelain --untracked-files=all` clean).
+
+## 13. Payment hardening: server-side fee guard + precondition rescoping — 2026-09-14
+
+Closes watch-list items 1 and 2 from §9 of `docs/task14b-mapping-memo.md`
+(deferred in Task 14-B): payment amount was never compared to the resolved
+catalog fee, and the precondition triggers re-ran on every `UPDATE` instead
+of only when a referenced column changed, freezing an in-flight request the
+moment its resident or service type was deactivated. Two migrations, two
+review passes, both dispatched in parallel against the diff.
+
+### Migration 00000000000065 — first draft
+
+- `payment.waived boolean DEFAULT false` + `payment.waiver_reason text`
+  (additive columns) — the structured signal the fee guard needs to tell a
+  legitimate waiver from a client posting 0 for a fee-bearing request; the
+  credential module's UI had offered a waiver toggle since before this PR
+  but only ever logged it as free text.
+- `validate_credential_fee_amount()` (payment's existing BEFORE INSERT/UPDATE
+  trigger) broadened from credential-only to all three fee-bearing payment
+  types, checked against `resolve_service_fee()`/`resolve_civil_fee()`/
+  `resolve_credential_fee()`. Exact-match only; waiver requires amount=0 and
+  a reason ≥5 characters.
+- `enforce_service_request_preconditions()`/`enforce_vital_event_preconditions()`
+  rescoped to run the full check only on `INSERT`, a change to a referenced
+  column (`resident_id`/`household_id`/`service_type_id`/`event_type`), or a
+  transition into `paid` — not on every `UPDATE`.
+- Applied live (`tugzuexfyzbdnghbmrjl`), dry-run first. **One regression
+  caught by the full probe re-run before commit**: the first draft of
+  `enforce_vital_event_preconditions()` was copied from migration 59's body
+  instead of migration 60's fix, reintroducing the "birth registration
+  requires a linked household" bug that migration 60 exists specifically to
+  remove (the real birth intake form has never collected `household_id`).
+  Caught by `civil_precondition_birth_no_household_now_allowed` going from
+  PASS to FAIL on the regression run; corrected before commit; re-run
+  confirmed 52/52.
+
+### Review pass — two agents dispatched in parallel
+
+`workflow-fsm-review` and `tenant-isolation-review` both ran against the
+checkpoint-1 diff independently and converged on the same two root issues
+from different angles, plus each caught findings the other didn't:
+
+| #   | Finding                                                                                                                                                                                                                                                                                                         | Severity           | Reviewer(s)             |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | ----------------------- |
+| 1   | Fee guard skipped any `payment_type` outside the three named ones, and no payment-terminal gate checked `payment_type` either — a `'penalty'`-typed payment for any amount, correctly linked, reached `paid` with zero fee enforcement                                                                          | High               | workflow-fsm-review     |
+| 2   | Guard trigger's `OF` column list omitted `service_request_id`/`vital_event_id`/`credential_request_id`/`woreda_id` — a validated payment could be re-pointed at a pricier request afterward with no re-check                                                                                                    | High / Medium-High | Both, independently     |
+| 3   | Guard resolved fee via `resolve_*_fee()`, which use the _caller's_ session woreda, not the linked request's — wrong for `super_admin` (hard error) and, for civil/credential (bare-enum resolver argument), silently resolved a cross-tenant-linked payment against the caller's own catalog instead of raising | Medium             | workflow-fsm-review     |
+| 4   | Waiver path dropped the pre-existing "waivers require supervisor authorization" check the baseline credential guard had — any `payment.collect` holder (`finance_clerk`) could waive any fee with a 5-character reason                                                                                          | Medium             | tenant-isolation-review |
+| 5   | `enforce_vital_event_preconditions()`'s skip condition omitted `event_details` — the marriage spouse ids live in that JSONB column, not a watched column, so editing only them skipped re-validation                                                                                                            | Medium (noted)     | workflow-fsm-review     |
+| 6   | `woreda_id` missing from both precondition triggers' skip conditions                                                                                                                                                                                                                                            | Low                | tenant-isolation-review |
+| 7   | `payment_decrypted` view (`SELECT p.*`) frozen at CREATE time — would never expose `waived`/`waiver_reason`                                                                                                                                                                                                     | Low                | tenant-isolation-review |
+
+### Migration 00000000000066 — fixes
+
+All seven applied: payment-terminal gates (service, vital_event, credential)
+now assert `payment_type` themselves; the guard trigger's watch list widened
+to the four link/woreda columns; the guard rewritten to resolve fee inline
+against the **linked request's own** `woreda_id` with an explicit
+woreda-match assertion (fixes #1 and #3 for both the wrong-type bypass and
+the cross-tenant resolution); waiver branch requires
+`is_super_admin() OR user_has_any_perm({credential.approve, service.approve,
+civil.approve, tenant.manage})`; both precondition triggers' skip
+conditions gained `woreda_id`, and vital_event's gained `event_details`;
+`payment_decrypted` recreated (DROP+CREATE, matching its own existing
+pattern) with grants re-applied identically.
+
+Dry-run + applied live. Probe suite grew from 44 (pre-existing) → 52
+(checkpoint 1, +8) → 55 (checkpoint 2, +3: wrong-payment-type-bypass-now-
+blocked, repointed-link-id-now-reraises, cross-woreda-link-rejected using a
+real second tenant_admin account in Hakim woreda for the cross-tenant leg).
+55/55 PASS, net-zero.
+
+**One finding fixed but not probe-verified**: item 4 (waiver requires
+supervisor authorization) is correct in code but could not be exercised as
+a live probe — no `finance_clerk` account exists in this tenant today
+(only `tenant_admin`, which holds `tenant.manage` and would trivially pass
+the check it's meant to fail). Zero-synthetic-accounts guardrail means this
+stays verified by code inspection only until a real `finance_clerk` account
+exists to test against.
+
+**REAL-USERS spot-check — not completed as originally scoped.** The task
+called for driving the actual UI as a real account (correct fee passes,
+wrong amount surfaces the server rejection). Minting a short-lived real
+session (the technique used for Task 14-B's own two-actor walkthrough)
+requires revealing the project's anon key via the Management API; the
+sandbox's own permission classifier declined that call this session
+("Credential Exploration"). Substituted with the LIVE-PROBE class instead:
+every new probe drives the same code paths as real accounts, impersonated
+via `SET LOCAL request.jwt.claim.sub` under RLS — the same technique this
+probe suite already uses throughout for permission-boundary checks — but
+this is verification of the server-side guard, not of the client UI
+surfacing the rejection message legibly. **Open**: a follow-up session with
+Management API access to the anon key should still drive
+`ServiceLetterPaymentCard`/`PaymentCard`/the credential payment dialog live
+to confirm the rejection message renders as a toast rather than an
+unhandled promise rejection.
+
+### Watch list — items 1 and 2 closed, 3 and 4 sharpened
+
+Updated from Task 14-B's §9 list:
+
+1. ~~Payment amount not compared to the resolved fee~~ — **closed** by this PR.
+2. ~~Preconditions re-validated on every UPDATE, freezing in-flight requests~~ — **closed** by this PR.
+3. `workflow_transition` is entity-scoped, not category-scoped — **unchanged, sharpened**: still means a `category='complaint'` row is not prevented by the engine itself from taking a letter-only edge, only by the UI never offering the button and by the precondition triggers' `category <> 'letter'` early return. True separation needs a schema change to the shared table used by four entities.
+4. `finance_clerk` holds a same-tenant UPDATE path on request columns beyond `status`/`payment_id` — **unchanged, sharpened**: this PR's waiver-authorization fix (item 4 above) narrows one specific consequence (an unauthorized waiver) but does not narrow the underlying RLS UPDATE-verb grant itself. A column-level RLS audit of `finance_clerk`'s UPDATE policy remains open.
+5. **New**: the credential module's payment-terminal gate has no equivalent to `service`/`civil`'s two-actor cross-linking test coverage for its own `payment_type` assertion beyond what this PR's own review added — worth a dedicated credential-path probe in a future pass, since `credential_request`'s FSM has no `zzz_` payment gate as strong as the other two modules' (noted by workflow-fsm-review as pre-existing context, not a regression).
+
+### Gates
+
+Full local gate suite green at every checkpoint: `bun run build`,
+`npx tsc --noEmit`, `bun run lint` (0 errors, 2 pre-existing warnings),
+`bun run test` (176 tests), `check:role-perms-drift`, `check:fee-catalog`,
+`check-service-type-catalog`, `generate-permissions-doc --check`.
+`secret-sweep` PASS before both pushes. No direct-to-main commits — both
+checkpoints landed on `claude/payment-hardening-fee-guard`, PR pending.

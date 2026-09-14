@@ -1595,6 +1595,8 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
           reference_no: waived ? null : refNo,
           status: "confirmed",
           posted_by_user_id: actorUserId,
+          waived,
+          waiver_reason: waived ? waiverReason.trim() : null,
           credential_request_id: request.credential_request_id,
         } as never)
         .select("payment_id")
@@ -1635,8 +1637,10 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
         action_type: waived ? "PAYMENT_WAIVED" : "PAYMENT_COLLECTED",
         new_value_json: {
           amount: effectiveAmount,
+          expected_fee: fee,
           channel: paymentChannel,
           waived,
+          waiver_reason: waived ? waiverReason.trim() : undefined,
         } as never,
         action_at: nowIso,
       });
