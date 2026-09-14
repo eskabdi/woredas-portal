@@ -1551,3 +1551,57 @@ VALUES
 RESET role;
 ROLLBACK;
 -- EXPECT: ERROR (A waived payment requires a reason of at least 5 characters)
+
+-- =============================================================================
+-- Task 14-C: get_civil_kpis() (00000000000067) probes -- cross-tenant
+-- isolation and the permission-gate lesson from get_credential_kpis()'s own
+-- 12-B-era probe (SECURITY DEFINER bypasses RLS, so the RPC's own
+-- permission check is the only thing standing between a suspended/
+-- unprivileged caller and the tenant's operational counts).
+-- =============================================================================
+
+-- === PROBE: civil_kpi_cross_tenant_isolation ===
+-- Two real tenant_admins, two different real woredas, each inserting
+-- exactly one 'submitted' vital_event in their OWN woreda within the same
+-- rolled-back transaction. vital_event is empty in production (confirmed:
+-- 0 rows before this probe), so Aboker's own get_civil_kpis() call must
+-- see pending_verification = 1 (its own insert only) -- not 2, which is
+-- what a woreda_id leak (summing across tenants) would produce.
+BEGIN;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+INSERT INTO public.vital_event
+  (vital_event_id, woreda_id, event_type, event_number, event_date,
+   requested_by_user_id, status, event_details)
+VALUES
+  ('00000000-0000-4000-8000-000000000930', '81ac2ad6-a320-4069-b8dc-0c43e358371b',
+   'birth', '', current_date,
+   '64e0384a-d240-4302-8310-682f79a302ce', 'submitted',
+   '{"child_first_name":"Probe","child_father_name":"KPI","child_grandfather_name":"Aboker","sex":"male"}');
+RESET role;
+SET LOCAL request.jwt.claim.sub = 'bad5a1c7-28d7-4af8-988b-42bd36d5c7d5';
+SET LOCAL role authenticated;
+INSERT INTO public.vital_event
+  (vital_event_id, woreda_id, event_type, event_number, event_date,
+   requested_by_user_id, status, event_details)
+VALUES
+  ('00000000-0000-4000-8000-000000000931', 'd43c7fea-c2bb-491c-99e7-56c76aa577f1',
+   'birth', '', current_date,
+   'bad5a1c7-28d7-4af8-988b-42bd36d5c7d5', 'submitted',
+   '{"child_first_name":"Probe","child_father_name":"KPI","child_grandfather_name":"Hakim","sex":"female"}');
+RESET role;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+SELECT (get_civil_kpis()->>'pending_verification')::int = 1 AS aboker_sees_only_its_own_row;
+RESET role;
+ROLLBACK;
+-- EXPECT: SUCCESS (aboker_sees_only_its_own_row = true -- not 2)
+
+-- === PROBE: civil_kpi_denies_suspended_user ===
+BEGIN;
+SET LOCAL request.jwt.claim.sub = 'dc070cc9-24f6-4d19-b3e7-34c42e2f6b6f';
+SET LOCAL role authenticated;
+SELECT get_civil_kpis() AS kpis;
+RESET role;
+ROLLBACK;
+-- EXPECT: ERROR (get_civil_kpis: permission denied)

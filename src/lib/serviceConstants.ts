@@ -21,25 +21,6 @@ export const SERVICE_STATUS_LABEL: Record<string, string> = {
   closed: "ተዘግቷል / Closed",
 };
 
-export const SERVICE_STATUS_STYLE: Record<string, string> = {
-  draft: "bg-slate-100 text-slate-600",
-  submitted: "bg-blue-100 text-blue-800",
-  under_review: "bg-indigo-100 text-indigo-800",
-  verified: "bg-teal-100 text-teal-800",
-  returned: "bg-amber-100 text-amber-800",
-  pending_approval: "bg-amber-100 text-amber-800",
-  approval_returned: "bg-amber-100 text-amber-800",
-  approved: "bg-emerald-100 text-emerald-800",
-  rejected: "bg-red-100 text-red-800",
-  awaiting_payment: "bg-orange-100 text-orange-800",
-  paid: "bg-teal-100 text-teal-800",
-  issued: "bg-green-100 text-green-800",
-  completed: "bg-emerald-100 text-emerald-800",
-  in_progress: "bg-indigo-100 text-indigo-800",
-  resolved: "bg-green-100 text-green-800",
-  closed: "bg-slate-100 text-slate-500",
-};
-
 export const PRIORITY_LABEL: Record<string, string> = {
   low: "ዝቅተኛ / Low",
   normal: "መደበኛ / Normal",

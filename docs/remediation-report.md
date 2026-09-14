@@ -788,3 +788,82 @@ lint` (0 errors, 2 pre-existing warnings), `bun run test` (176 tests),
 (probe-file-only + docs); no Vercel redeploy needed (no `src/` change).
 Branch protection now enforces the PR flow structurally — this housekeeping
 change lands the same way: branch → gates → review → merge.
+
+## 15. Task 14-C: generalize workflow surfaces (queue, chips, KPIs, history) — 2026-09-14
+
+Closes the watch-list item "CredentialQueueTable not generalized" by
+parameterizing Task 12-B's shared components across civil registration and
+service requests/complaints. Full design record in
+`docs/task14c-mapping-memo.md`; this section is evidence.
+
+### What shipped
+
+- **`StatusChip`**: extended with `issued`/`completed`/`in_progress`/
+  `resolved`/`closed` (previously only in a second, forked color map in
+  `src/lib/serviceConstants.ts`, now deleted). Single chip constant across
+  queue/detail/timeline/print log for all three entities.
+- **`WorkflowQueueTable`** (`src/components/workflow/WorkflowQueueTable.tsx`):
+  `CredentialQueueTable` generalized into one entity-parameterized
+  component, reused by credentials, civil registration, and services
+  (letter + complaint). Shared: URL-persisted filter/sort/pagination state,
+  filter bar layout, sort headers, loading/empty/error states, the
+  permission-gated quick-action button, waiting-duration helper. Per-caller:
+  the Supabase query, columns, and filter option lists (the three entities'
+  queries differ too much — different tables/joins — to share one query
+  builder).
+- **`get_civil_kpis()`** (migration `00000000000067`): mirrors
+  `get_credential_kpis()`/`get_service_kpis()`'s exact pattern. `CivilKpiWidgetRow`
+  wired into `woreda.civil.index.tsx`, following the same sibling-widget-row
+  pattern `ServiceKpiWidgetRow` already established (shared `KpiCard`
+  primitive, not forked).
+- **`HistoryTimeline`** (`src/components/workflow/HistoryTimeline.tsx`):
+  one presentational component + three hooks
+  (`useWorkflowHistory`/`useCredentialRequestHistory`/`useActorNames`)
+  replacing three separate ad-hoc renderings. Fixes a real bug (civil's
+  timeline showed Gregorian dates via `toLocaleString()`); adds a real
+  feature (credentials had no history timeline at all before this); and
+  collapses services' two competing history cards (client-written
+  `service_request_status_history` vs. engine-written
+  `workflow_status_history`) into one, reading `workflow_status_history`
+  per the task's explicit instruction — `service_request_status_history`
+  itself is untouched, still written, just no longer the UI's read path.
+- Civil registration and services both gained kebele + officer filter
+  dimensions and a waiting-duration column they lacked before; civil gained
+  a quick-action column mirroring credentials' exact status→action mapping.
+
+### Deferred, recorded not silently dropped
+
+- Widening `get_service_kpis()`'s own return shape (completed-this-month,
+  30-day rejection rate) — a separate, reviewable change to an
+  already-shipped 14-B RPC and its client, not a generalization of this
+  PR's target surfaces. See mapping memo §3/§6.
+
+### Verification
+
+- **12-B regression precondition**: full 176-test suite green after
+  `CredentialQueueTable`'s generalization, including
+  `credential-print-preview-parity.regression.test.ts` and
+  `ethiopian-date-formatting.regression.test.ts` — `CredentialQueueTable`'s
+  exported behavior (URL params, query shape, columns, quick actions) is
+  unchanged; only its presentational internals moved into the shared
+  component.
+- **Migration** dry-run + applied live (`tugzuexfyzbdnghbmrjl`), verified by
+  direct query (`pg_proc` lookup for `get_civil_kpis`).
+- **Probes** (LIVE-PROBE, rollback-wrapped, net-zero): 2 new —
+  `civil_kpi_cross_tenant_isolation` (two real tenant_admins in two real
+  woredas, each inserting one row in their own tenant; the calling
+  tenant_admin's own KPI count reflects only its own row, not both —
+  `vital_event` was empty in production before this probe, so a leak would
+  have shown 2, not 1) and `civil_kpi_denies_suspended_user` (mirrors the
+  12-B-era lesson that a `SECURITY DEFINER` RPC bypasses RLS, so its own
+  internal permission check is the only gate). 60/60 probes PASS
+  (58 prior + 2 new), net-zero.
+- Full local gate suite green: `bun run build`, `npx tsc --noEmit`,
+  `bun run lint` (0 errors, pre-existing fast-refresh warnings only),
+  `bun run test` (176 tests), `check:role-perms-drift`, `check:fee-catalog`.
+
+### Watch list
+
+"CredentialQueueTable not generalized" — **closed**. New item: widening
+`get_service_kpis()`'s KPI shape (completed-this-month, 30d rejection rate)
+remains open, deliberately out of this PR's scope (see above).
