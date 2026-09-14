@@ -68,3 +68,24 @@ export function phoneDigitsToE164(v: string): string | null {
 export function phoneDigitsSchema() {
   return z.string().trim().optional().default("").refine(isValidPhoneDigits, PHONE_DIGITS_ERROR);
 }
+
+const PHONE_DIGITS_REQUIRED_ERROR = "ስልክ ቁጥር ያስፈልጋል / Phone number required";
+
+/**
+ * Same 9-digit local-part format as phoneDigitsSchema(), but non-empty is
+ * required. Task 8: the resident record needs a real contact number before
+ * a credential can ever be minted for that resident (enforced server-side
+ * too, in generate_residence_credential_on_payment() -- see migration
+ * 00000000000068) -- this is the client-side half of that requirement for
+ * the resident-intake form specifically. Every other form's phone field
+ * (civil-registration informant, service-request applicant, etc.) stays
+ * genuinely optional via phoneDigitsSchema() above -- do not swap those to
+ * this variant.
+ */
+export function requiredPhoneDigitsSchema() {
+  return z
+    .string()
+    .trim()
+    .min(1, PHONE_DIGITS_REQUIRED_ERROR)
+    .refine(isValidPhoneDigits, PHONE_DIGITS_ERROR);
+}

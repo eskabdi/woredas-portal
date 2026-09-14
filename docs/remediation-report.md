@@ -139,7 +139,7 @@ specifically require one of the unavailable roles are `UNVERIFIED` below.
 
 | Item                                                                                                                                           | Task        | Reason                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | ---------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 18y-0d accepted / 17y-364d rejected age boundary                                                                                               | 1/9         | `calculateAgeYears()` + `PreConditionCard` is a **client-side advisory** check (per its own design: "the server remains the sole authority... this only gives the officer a specific reason before a generic server rejection"). There is no database-layer age gate to probe — confirmed by grep across `supabase/migrations/*.sql` for any age/DOB CHECK on `credential_request` or a trigger referencing `date_of_birth`: none exists. This is CI-covered instead: `src/utils/__tests__/ethiopianCalendar.test.ts` has 3 boundary-case unit tests for `calculateAgeYears` (today's-birthday edge, Feb-29-against-non-leap-year), run on every PR. |
+| ~~18y-0d accepted / 17y-364d rejected age boundary~~ **CLOSED — see §17** | 1/9         | **No longer an open item as of Task 8** (migration `00000000000068`): `generate_residence_credential_on_payment()` now enforces the same exact-date age boundary server-side, fail-closed. Live-probed (`LIVE-PROBE`, rollback, net-zero) — see §17's row for this item and `scripts/verify-live-probes.sql`'s `age_guard_*` probes. The `PreConditionCard` client-side check and the `ethiopianCalendar.test.ts` unit tests both remain in place as defense-in-depth/UX, but the database is now the actual authority, matching what the code comment always claimed. |
 | `viewer` role write rejected                                                                                                                   | 4           | No active `viewer` account exists in production; creating one would violate the zero-synthetic-accounts decision for this pass. The `role_permission`/`default_role_perms()` matrix for `viewer` was inspected statically instead: `check:role-perms-drift` confirms `viewer`'s compiled and DB-seeded permission sets agree, and neither includes any write permission (`credential.submit`/`.verify`/`.approve`/etc.) — so `user_has_perm()` would return false for any write attempt by construction. Not a live-fired proof.                                                                                                                     |
 | Custom tenant-role end-to-end (grant → assign → exact access)                                                                                  | 4+13        | No custom-role account exists in production. `tenant_role`/`tenant_role_permission` schema and RLS were inspected statically (both scoped by `woreda_id = get_user_woreda_id()`, `tenant_role.is_active` gates); the resolution chain in `user_has_perm()`'s `role = 'custom'` branch was read and traced but not exercised end-to-end.                                                                                                                                                                                                                                                                                                              |
 | Print officer, civil_registrar, finance_clerk, supervisor, auditor role-specific gates                                                         | 4/2/1       | Same reason — no active account for these roles in production.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
@@ -1006,7 +1006,7 @@ section is evidence.
   and no new probes in `scripts/verify-live-probes.sql` — the sync engine's
   server-side re-validation is exercised by the existing FSM/precondition/
   fee-guard probes already in that suite (Task 13's payment hardening,
-  Task 14-A/B's FSM probes); this PR proves the *client* surfaces those
+  Task 14-A/B's FSM probes); this PR proves the _client_ surfaces those
   guards' rejections rather than swallowing them, which is what the unit
   tests above assert directly against a mocked rejection.
 - **OWNER-SMOKE required, not yet performed**: the task's own step 8 asks
@@ -1034,20 +1034,20 @@ bypass, no permission shortcut — but both agents found real correctness
 bugs in the sync engine itself, all fixed before this PR. Full detail in
 the mapping memo §6a; summarized here:
 
-| #   | Finding                                                                                                                                       | Severity | Reviewer(s)               | Fix                                                                                                                                                                                              |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------- | -------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `syncSubmitIntake`'s `.select()` named both `request_number` and `event_number` for every entity, but no table has both — every queued intake sync failed with `42703` and was then discarded as a definitive rejection | High     | tenant-isolation-review   | Select the correct column per entity (`ENTITY_NUMBER_COLUMN`); locked in with a new per-entity regression test asserting the exact `.select()` string                                            |
-| 2   | `syncRecordPaymentDraft`'s two status-transition updates checked only `error`, not the returned row — the exact house-rule bug CLAUDE.md documents, on a path with no human watching the outcome | Medium   | tenant-isolation-review   | Both now chain `.select(...).maybeSingle()` and fail with a specific message on a null row, matching `PaymentCard.handleRecord()`                                                                 |
-| 3   | `syncRecordPaymentDraft` wrote no `audit_log` row — every offline-originated payment or fee waiver was invisible in `/woreda/audit`             | Medium   | tenant-isolation-review   | Added the matching `PAYMENT_COLLECTED`/`PAYMENT_WAIVED` audit insert                                                                                                                               |
-| 4   | Synced credential-request audit `action_type` (`CREDENTIAL_REQUEST_SUBMITTED`) didn't match the online form's actual `REQUEST_SUBMITTED`        | Low      | tenant-isolation-review   | Corrected to match                                                                                                                                                                                  |
-| 5   | `isTransient()` treated any error carrying a `code` as definitive, which would discard an item on a JWT-expiry or transient Postgres condition   | Medium   | tenant-isolation-review   | Narrowed to the specific transient classes (`PGRST301`/`PGRST302`, `08*`/`53*`/`57*`); everything else with a code stays a definitive rejection                                                    |
-| 6   | `PaymentCard`'s `canSubmit` gated the Record button behind `feeQuery` succeeding, making the offline payment-draft branch unreachable            | Low      | tenant-isolation-review   | Split `canSubmit` so fee-related checks apply only online                                                                                                                                          |
-| 7   | The credential-intake refactor could feed `null` into `issuing_kebele_id` (`NOT NULL`) via `?? null`                                             | Low      | tenant-isolation-review   | Explicit pre-submit guard with a clear bilingual message instead of a raw not-null-violation surfacing later as a discarded sync item                                                              |
-| 8   | No idempotency key ties a queued item to the row it creates — a kill between insert and dequeue could in principle duplicate on next sync        | Medium   | tenant-isolation-review   | **Mitigated, not eliminated** — `dequeue()` moved to immediately after the row-creating write, before history/audit follow-ups; a full fix needs a schema change, out of this PR's scope (watch list) |
-| 9   | While offline, permission resolution falls back to the compiled `ROLE_PERMISSIONS` default (existing F7 behavior) — a tenant/user-level *denial* could still let an item be enqueued | Info     | tenant-isolation-review   | **Not a bypass** — the same `user_has_any_perm()` check every online insert already goes through still rejects it at sync time; noted for awareness only                                          |
-| 10  | Four newly-introduced English-only toasts (`"Missing session"` ×4, `"Provide mother..."`) broke the bilingual-labels convention                 | Low      | portal-conventions-review | Made bilingual                                                                                                                                                                                      |
-| 11  | `OfflineStatusBar`'s "Sync now" control hand-rolled a `<button>` instead of the shared `Button` component                                        | Nit      | portal-conventions-review | Replaced with `Button`                                                                                                                                                                             |
-| 12  | Dropping the live household re-fetch in `woreda.credentials.new.tsx` (to share one payload builder between online/offline) removes a freshness check the online path used to have | Medium, flagged, not reverted | portal-conventions-review | Accepted tradeoff — `household_id`/`kebele_id` are denormalized routing fields, not permission-critical, and the freshness window (between resident search and submit, same session) is narrow; reverting would break payload parity between the two paths. Noted, not fixed |
+| #   | Finding                                                                                                                                                                                                                 | Severity                      | Reviewer(s)               | Fix                                                                                                                                                                                                                                                                          |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `syncSubmitIntake`'s `.select()` named both `request_number` and `event_number` for every entity, but no table has both — every queued intake sync failed with `42703` and was then discarded as a definitive rejection | High                          | tenant-isolation-review   | Select the correct column per entity (`ENTITY_NUMBER_COLUMN`); locked in with a new per-entity regression test asserting the exact `.select()` string                                                                                                                        |
+| 2   | `syncRecordPaymentDraft`'s two status-transition updates checked only `error`, not the returned row — the exact house-rule bug CLAUDE.md documents, on a path with no human watching the outcome                        | Medium                        | tenant-isolation-review   | Both now chain `.select(...).maybeSingle()` and fail with a specific message on a null row, matching `PaymentCard.handleRecord()`                                                                                                                                            |
+| 3   | `syncRecordPaymentDraft` wrote no `audit_log` row — every offline-originated payment or fee waiver was invisible in `/woreda/audit`                                                                                     | Medium                        | tenant-isolation-review   | Added the matching `PAYMENT_COLLECTED`/`PAYMENT_WAIVED` audit insert                                                                                                                                                                                                         |
+| 4   | Synced credential-request audit `action_type` (`CREDENTIAL_REQUEST_SUBMITTED`) didn't match the online form's actual `REQUEST_SUBMITTED`                                                                                | Low                           | tenant-isolation-review   | Corrected to match                                                                                                                                                                                                                                                           |
+| 5   | `isTransient()` treated any error carrying a `code` as definitive, which would discard an item on a JWT-expiry or transient Postgres condition                                                                          | Medium                        | tenant-isolation-review   | Narrowed to the specific transient classes (`PGRST301`/`PGRST302`, `08*`/`53*`/`57*`); everything else with a code stays a definitive rejection                                                                                                                              |
+| 6   | `PaymentCard`'s `canSubmit` gated the Record button behind `feeQuery` succeeding, making the offline payment-draft branch unreachable                                                                                   | Low                           | tenant-isolation-review   | Split `canSubmit` so fee-related checks apply only online                                                                                                                                                                                                                    |
+| 7   | The credential-intake refactor could feed `null` into `issuing_kebele_id` (`NOT NULL`) via `?? null`                                                                                                                    | Low                           | tenant-isolation-review   | Explicit pre-submit guard with a clear bilingual message instead of a raw not-null-violation surfacing later as a discarded sync item                                                                                                                                        |
+| 8   | No idempotency key ties a queued item to the row it creates — a kill between insert and dequeue could in principle duplicate on next sync                                                                               | Medium                        | tenant-isolation-review   | **Mitigated, not eliminated** — `dequeue()` moved to immediately after the row-creating write, before history/audit follow-ups; a full fix needs a schema change, out of this PR's scope (watch list)                                                                        |
+| 9   | While offline, permission resolution falls back to the compiled `ROLE_PERMISSIONS` default (existing F7 behavior) — a tenant/user-level _denial_ could still let an item be enqueued                                    | Info                          | tenant-isolation-review   | **Not a bypass** — the same `user_has_any_perm()` check every online insert already goes through still rejects it at sync time; noted for awareness only                                                                                                                     |
+| 10  | Four newly-introduced English-only toasts (`"Missing session"` ×4, `"Provide mother..."`) broke the bilingual-labels convention                                                                                         | Low                           | portal-conventions-review | Made bilingual                                                                                                                                                                                                                                                               |
+| 11  | `OfflineStatusBar`'s "Sync now" control hand-rolled a `<button>` instead of the shared `Button` component                                                                                                               | Nit                           | portal-conventions-review | Replaced with `Button`                                                                                                                                                                                                                                                       |
+| 12  | Dropping the live household re-fetch in `woreda.credentials.new.tsx` (to share one payload builder between online/offline) removes a freshness check the online path used to have                                       | Medium, flagged, not reverted | portal-conventions-review | Accepted tradeoff — `household_id`/`kebele_id` are denormalized routing fields, not permission-critical, and the freshness window (between resident search and submit, same session) is narrow; reverting would break payload parity between the two paths. Noted, not fixed |
 
 ### Watch list
 
@@ -1064,7 +1064,113 @@ New items from this PR:
 - Offline-disabling authoritative actions on civil/service detail pages —
   deferred, in scope for a future PR per this PR's own task-scope reading.
 - A server-side idempotency key for queued-item replay (`client_queue_item_id`
-  + unique constraint) — mitigated by dequeue-ordering in this PR, not
-  eliminated; would need its own additive migration.
+  - unique constraint) — mitigated by dequeue-ordering in this PR, not
+    eliminated; would need its own additive migration.
 - Carried from Task 14-C: widening `get_service_kpis()`'s KPI shape;
   `ServiceRequestList`'s submitted-at column rendering Gregorian dates.
+
+---
+
+## 17. Task 8: consolidated Done-means checklist — every original acceptance criterion, one row each
+
+Every task section above (§0–16) already carries its own full evidence
+table; this section is the single index across all of them, so nothing in
+the original fix task's "Done means" lists can be silently missing. Rows are
+grouped by originating task, in landing order. `→ §N` points to the section
+carrying the underlying evidence. A row with no live-database probe path
+(pure UI, or code inspected but not exercised against a real, uniquely-authorized
+account) is marked `OWNER-SMOKE`/`UNVERIFIED-with-reason` even when the
+underlying code has been read and traced correct — code-level correctness
+and live-exercised correctness are recorded as what they each are, never
+conflated.
+
+| # | Task | Acceptance criterion | Status | Evidence class | → |
+| - | - | - | - | - | - |
+| 1 | 1 | No illegal `credential_request`/`residence_credential` status transition possible via direct API | PASS | `LIVE-PROBE` | §4 |
+| 2 | 1 | Maker≠checker enforced (verifier ≠ approver) | PASS | `LIVE-PROBE` | §4 |
+| 3 | 1 | Terminal states cannot be reopened | PASS | `LIVE-PROBE` | §4 |
+| 4 | 1 | A credential cannot be minted without a confirmed payment + receipt | PASS | `LIVE-PROBE` | §4 |
+| 5 | 1 | A `residence_credential` row cannot be forged by direct INSERT | PASS | `LIVE-PROBE` | §4 |
+| 6 | 1/9 | 18+ age boundary enforced **server-side**, fail-closed on missing DOB | PASS | `LIVE-PROBE` | §5 (closed), §17a below, `docs/architecture.md` |
+| 7 | 2 | Cross-tenant `vital_event` INSERT rejected | PASS | `LIVE-PROBE` | §4 |
+| 8 | 2 | Cross-tenant `credential_request` read returns zero rows (RLS actually engaged) | PASS | `LIVE-PROBE` | §4 |
+| 9 | 4/13 | Reserved role name (`super_admin`/`tenant_admin`) rejected from `role_permission` | PASS | `LIVE-PROBE` | §4 |
+| 10 | 4/13 | Reserved permission ungrantable via `user_permission_override` | PASS | `LIVE-PROBE` | §4 |
+| 11 | 4/13 | `tenant_admin` grant set non-editable through the matrix (A7) | PASS | `STRUCTURAL` (live enumeration: 7 role names in `role_permission`, zero for either admin role) | §2, `docs/architecture.md` |
+| 12 | 4/13 | Custom role fails closed end-to-end (grant → assign → exact access) | **UNVERIFIED-with-reason** | Schema/RLS/trigger inspected and traced correct; zero custom roles exist in production to probe live (`tenant_role` row count = 0 as of this enumeration) | §5, `docs/erd.md` "Custom roles" |
+| 13 | 10 | `credential_number` immutable once assigned | PASS | `LIVE-PROBE` | §4 |
+| 14 | 11 | `office` exactly one row per woreda, backfilled + auto-seeded for new woredas | PASS | `STRUCTURAL` | §2, `docs/erd.md` |
+| 15 | 11 | `household_location` fully backfilled, bidirectionally synced | PASS | `STRUCTURAL` | §2, `docs/erd.md` |
+| 16 | 11 | `attachment`/`approval` generic tables correctly tenant-scoped, entity-permission-gated | PASS | code-level (`tenant-isolation-review`) + `STRUCTURAL` | `docs/erd.md` Task 11 section |
+| 17 | 12 (fee) | Fee-catalog gaps repaired; `resolve_credential_fee()` fail-closed | PASS | `STRUCTURAL` + `CI-COVERED` (`check:fee-catalog`) | §2 |
+| 18 | 12-B | `get_credential_kpis()` counts match manual queries exactly | PASS | `LIVE-PASS` | §9.2 |
+| 19 | 12-B | KPI RPC denies a suspended user | PASS | `LIVE-PROBE` | §9.2 |
+| 20 | 12-B | Queue filters/export are server-side and reflect active filters | PASS | code-level (both reviews) | §9.3 |
+| 21 | 12-B | Queue/print UI renders correctly for a real logged-in session | `OWNER-SMOKE` | Not run by this agent | §9.3, §9.4 |
+| 22 | 14-A | Civil registration 8-stage FSM seeded, workflow engine reused unmodified | PASS | `STRUCTURAL` + `LIVE-PROBE` | §10 |
+| 23 | 14-A | Civil KPI RPC cross-tenant-isolated and permission-gated | PASS | `LIVE-PROBE` | §10, §15 |
+| 24 | 14-B | Service-request 8-stage FSM (letter + complaint paths) seeded correctly | PASS | `STRUCTURAL` + `LIVE-PROBE` | §11 |
+| 25 | 14-B | Zero-fee service request still writes payment + receipt (zero-fee rule) | PASS | `LIVE-PROBE` | §11, `docs/architecture.md` |
+| 26 | Payment hardening | Exact-match fee guard rejects under/overpayment | PASS | `LIVE-PROBE` | §13 |
+| 27 | Payment hardening | Fee waiver requires reason + supervisor authorization | PASS | `LIVE-PROBE` | §13, §14 |
+| 28 | Payment hardening | Precondition re-validation on UPDATE (not every UPDATE — scoped correctly) | PASS | `LIVE-PROBE` | §13 |
+| 29 | Housekeeping | Waiver-authorization gap closed and live-probed with a real registry_clerk account | PASS | `LIVE-PROBE` | §14 |
+| 30 | Housekeeping | Branch protection required-review rule corroborated | PASS (partial) | Independently corroborated via a real blocked-merge API response; stale-approval-dismissal/conversation-resolution/no-admin-bypass sub-rules remain owner-reported, not independently provable from inside a session | §14, `docs/architecture.md` |
+| 31 | Housekeeping | DMARC/deliverability gap diagnosed and closed | PASS (partial — see §17b) | Owner-confirmed via raw mail header; `p=none` ramp still open | §14, `docs/architecture.md`, `docs/go-live-declaration.md` |
+| 32 | 14-C | Shared workflow surfaces (queue, chips, KPIs, history) generalized to civil + services | PASS | `LIVE-PROBE` + code-level (both reviews) | §15 |
+| 33 | 12-C | Offline queue: FIFO ordering, per-woreda scoping, sign-out clearing | PASS | `CI-COVERED` (unit tests) | §16 |
+| 34 | 12-C | Sync re-validation surfaces server rejections rather than swallowing them | PASS | `CI-COVERED` (unit tests) + code-level (bug found and fixed by review: wrong `.select()` column list) | §16 |
+| 35 | 12-C | Offline queue/sync end-to-end on a real device (success + stale-rejection paths) | `OWNER-SMOKE-PENDING` | Requires the owner to drive a real browser; recorded as an open watch-list item, not fabricated | §16 |
+| 36 | 12-C | True device-level offline (installed PWA, real network loss) | `UNVERIFIED-with-reason` | No installed-PWA test performed; first-week watch-list item | §16 |
+| 37 | Task 8 | Governing brief's six stale facts corrected | PASS | Direct code re-verification, 2026-09-14 | §1 above, `docs/brief-reconciliation-memo.md` |
+| 38 | Task 8 | `docs/architecture.md` carries the full decision record | PASS | This PR | `docs/architecture.md` |
+| 39 | Task 8 | `docs/erd.md`/`security-functionality.md`/`permissions-matrix.md`/`openapi.yaml` regenerated from live enumeration | PASS | `STRUCTURAL` (read-only Management API enumeration, 2026-09-14: 52/52 tables, 139 policies, 144 triggers, 88 `SECURITY DEFINER` functions, zero drift) | §17c below |
+| 40 | Task 8 | 18+ age invariant closed end-to-end, including phone/photo completeness | PASS | `LIVE-PROBE` (3 new probes: minor rejected, no-phone rejected, exact-18-today accepted) | §17a below |
+| 41 | Task 8 | Amharic/English string glossary produced for native-speaker sign-off | PASS (deliverable produced; sign-off itself still pending) | Extraction from source, `docs/amharic-strings-glossary.csv` | `docs/go-live-declaration.md` |
+| 42 | Task 8 | Idle session timeout verified as a genuine hard sign-out | PASS | Code inspection: `useIdleTimeout` → shell's `handleSignOut` → `supabase.auth.signOut()` + `queryClient.clear()` + `clearAllWizardDrafts()` + `clearOfflineQueue()` + navigate to `/login`. Timing confirmed 20 min warning / 25 min forced sign-out (owner confirmed no change needed) | `docs/security-functionality.md` |
+
+### 17a. The age + identity-completeness gate (new in this PR)
+
+Migration `00000000000068_age_identity_mint_guard.sql`: extends
+`generate_residence_credential_on_payment()` — the one trigger that mints a
+`residence_credential` row on every path that can reach `paid` — to reject,
+fail-closed, when the resident is under 18, has no phone number on file, or
+has no photo on file. Dry-run + applied live; three new probes added to
+`scripts/verify-live-probes.sql` (`age_guard_rejects_minor`,
+`age_guard_rejects_missing_phone`, `age_guard_accepts_exact_18th_birthday_today`),
+all three `PASS`, full 63-probe suite net-zero. Client-side:
+`residentSchema.ts` now requires a phone number
+(`requiredPhoneDigitsSchema()`, a new non-empty variant — the existing
+9-digit, `+251`-prefixed format used by every other phone field in the app
+is unchanged) and a photo for the resident-intake/edit form, matching the
+server-side requirement rather than letting an officer discover it only at
+credential-issuance time. Deliberately **not** a table-wide `NOT NULL` on
+`resident.phone_number`/`photo_url` — see `docs/architecture.md`'s "18+ age
+invariant" section for why the civil-registration birth-approval trigger
+(which creates a resident row for a newborn with neither field) makes that
+the wrong fix.
+
+### 17b. DMARC ramp — explicit residue
+
+`p=none` monitors alignment but does not enforce it. The go-live
+declaration's watch list carries the ramp to `p=quarantine` then `p=reject`
+after a clean monitoring period — this is owner DNS-zone work, outside what
+a migration or PR in this repo can close.
+
+### 17c. Live enumeration used for this PR's doc regeneration
+
+Read-only Management API queries against `tugzuexfyzbdnghbmrjl`, 2026-09-14,
+no writes:
+
+```
+tables (public schema):          52  (zero drift vs. supabase/migrations/*.sql)
+RLS-enabled tables:               52 / 52
+RLS policies:                    139
+triggers:                        144
+SECURITY DEFINER functions:       88
+role_permission rows:          2,982  (6 woredas x 71 permissions x 7 roles)
+tenant_role / tenant_role_permission rows: 0 / 0  (capability shipped, unused)
+console_role_permission rows:     10
+workflow_transition rows:         70  (22 credential_request, 9 residence_credential,
+                                        12 vital_event, 20 service_request, 7 rental_occupancy_request)
+```

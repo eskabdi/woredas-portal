@@ -1,0 +1,694 @@
+Amharic,English,Occurrences,Example Location,Context,All Locations
+ቀበሌ,Kebele,18,src/components/forms/HouseholdFormFields.tsx:90,labelAm/labelEn prop pair,src/components/forms/HouseholdFormFields.tsx:90; src/components/forms/ResidentWizardSteps.tsx:675; src/components/forms/ResidentWizardSteps.tsx:735; src/components/forms/ResidentWizardSteps.tsx:807; src/components/workflow/WorkflowQueueTable.tsx:224; src/routes/v.$token.tsx:303; src/routes/woreda.credentials.$requestId.certificate.tsx:163; src/routes/woreda.households.$householdId.print.tsx:186; src/routes/woreda.households.index.tsx:192; src/routes/woreda.rental-houses.$houseId.edit.tsx:140; src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:234; src/routes/woreda.rental-houses.index.tsx:157; src/routes/woreda.rental-houses.new.tsx:120; src/routes/woreda.residents.$residentId.print.tsx:268; src/routes/woreda.residents.index.tsx:279; src/routes/woreda.revenue.$paymentId.receipt.tsx:761; src/routes/woreda.services.$requestId.index.tsx:550; src/routes/woreda.services.new.tsx:384
+ሴት,Female,12,src/hooks/useReportsAggregate.ts:24,string literal,src/hooks/useReportsAggregate.ts:24; src/routes/woreda.civil.$eventId.tsx:564; src/routes/woreda.civil.$eventId.tsx:637; src/routes/woreda.credentials.$requestId.certificate.tsx:141; src/routes/woreda.credentials.$requestId.index.tsx:810; src/routes/woreda.credentials.$requestId.print.tsx:1463; src/routes/woreda.credentials.new.tsx:650; src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:271; src/routes/woreda.reports.$reportType.print.tsx:156; src/routes/woreda.residents.$residentId.index.tsx:499; src/routes/woreda.residents.$residentId.print.tsx:228; src/routes/woreda.residents.index.tsx:408
+የቤት ቁጥር,House Number,10,src/components/forms/HouseholdFormFields.tsx:121,labelAm/labelEn prop pair,src/components/forms/HouseholdFormFields.tsx:121; src/components/forms/ResidentWizardSteps.tsx:682; src/components/forms/ResidentWizardSteps.tsx:738; src/components/forms/ResidentWizardSteps.tsx:810; src/routes/woreda.households.$householdId.print.tsx:178; src/routes/woreda.rental-houses.$houseId.edit.tsx:150; src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:226; src/routes/woreda.rental-houses.new.tsx:136; src/routes/woreda.residents.$residentId.index.tsx:440; src/routes/woreda.residents.$residentId.print.tsx:273
+ሁሉም,All,9,src/components/workflow/WorkflowQueueTable.tsx:209,string literal,src/components/workflow/WorkflowQueueTable.tsx:209; src/components/workflow/WorkflowQueueTable.tsx:219; src/components/workflow/WorkflowQueueTable.tsx:230; src/components/workflow/WorkflowQueueTable.tsx:241; src/routes/woreda.households.index.tsx:308; src/routes/woreda.households.index.tsx:323; src/routes/woreda.households.index.tsx:338; src/routes/woreda.residents.index.tsx:406; src/routes/woreda.residents.index.tsx:419
+ሁኔታ,Status,9,src/components/admin/PlatformUsersTab.tsx:217,string literal,src/components/admin/PlatformUsersTab.tsx:217; src/components/workflow/WorkflowQueueTable.tsx:203; src/routes/woreda.civil.index.tsx:284; src/routes/woreda.credentials.index.tsx:88; src/routes/woreda.households.index.tsx:201; src/routes/woreda.rental-houses.requests.index.tsx:185; src/routes/woreda.residents.index.tsx:287; src/routes/woreda.revenue.$paymentId.receipt.tsx:786; src/routes/woreda.settings.woreda-configuration.tsx:1452
+ወንድ,Male,8,src/hooks/useReportsAggregate.ts:23,string literal,src/hooks/useReportsAggregate.ts:23; src/routes/woreda.civil.$eventId.tsx:562; src/routes/woreda.civil.$eventId.tsx:635; src/routes/woreda.credentials.$requestId.index.tsx:808; src/routes/woreda.credentials.new.tsx:648; src/routes/woreda.reports.$reportType.print.tsx:151; src/routes/woreda.residents.$residentId.index.tsx:497; src/routes/woreda.residents.index.tsx:407
+ከመስመር ውጭ ተቀምጧል፣ ሲገናኙ በራስ ሰር ይላካል,Saved offline — will submit automatically once reconnected,7,src/routes/woreda.civil.birth.new.tsx:258,string literal,src/routes/woreda.civil.birth.new.tsx:258; src/routes/woreda.civil.death.new.tsx:186; src/routes/woreda.civil.divorce.new.tsx:198; src/routes/woreda.civil.marriage.new.tsx:190; src/routes/woreda.credentials.$requestId.index.tsx:1645; src/routes/woreda.credentials.new.tsx:478; src/routes/woreda.services.new.tsx:213
+ወረዳ,Woreda,7,src/components/forms/ResidentWizardSteps.tsx:668,labelAm/labelEn prop pair,src/components/forms/ResidentWizardSteps.tsx:668; src/components/forms/ResidentWizardSteps.tsx:732; src/components/forms/ResidentWizardSteps.tsx:804; src/routes/v.$token.tsx:302; src/routes/woreda.households.$householdId.print.tsx:184; src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:232; src/routes/woreda.residents.$residentId.print.tsx:266
+ኢሜይል,Email,6,src/components/forms/HouseholdFormFields.tsx:299,labelAm/labelEn prop pair,src/components/forms/HouseholdFormFields.tsx:299; src/components/forms/ResidentWizardSteps.tsx:482; src/routes/woreda.households.$householdId.print.tsx:196; src/routes/woreda.residents.$residentId.index.tsx:519; src/routes/woreda.residents.$residentId.print.tsx:260; src/routes/woreda.settings.woreda-configuration.tsx:367
+ሌላ,Other,5,src/hooks/useReportsAggregate.ts:68,string literal,src/hooks/useReportsAggregate.ts:68; src/routes/woreda.households.$householdId.index.tsx:70; src/routes/woreda.households.$householdId.print.tsx:32; src/routes/woreda.households.index.tsx:344; src/routes/woreda.residents.$residentId.print.tsx:171
+መረጃ ሰጪ,Informant,5,src/routes/woreda.civil.$eventId.tsx:710,labelAm/labelEn prop pair,src/routes/woreda.civil.$eventId.tsx:710; src/routes/woreda.civil.birth.new.tsx:408; src/routes/woreda.civil.death.new.tsx:269; src/routes/woreda.civil.divorce.new.tsx:303; src/routes/woreda.civil.marriage.new.tsx:287
+ማስታወሻ,Notes,5,src/routes/woreda.civil.$eventId.tsx:726,labelAm/labelEn prop pair,src/routes/woreda.civil.$eventId.tsx:726; src/routes/woreda.civil.birth.new.tsx:402; src/routes/woreda.civil.death.new.tsx:263; src/routes/woreda.civil.divorce.new.tsx:297; src/routes/woreda.civil.marriage.new.tsx:281
+ስም,Full Name,5,src/routes/v.$token.tsx:300,labelAm/labelEn prop pair,src/routes/v.$token.tsx:300; src/routes/woreda.civil.birth.new.tsx:411; src/routes/woreda.civil.death.new.tsx:272; src/routes/woreda.civil.divorce.new.tsx:306; src/routes/woreda.civil.marriage.new.tsx:290
+ብሔር,Ethnicity,5,src/components/forms/ResidentWizardSteps.tsx:468,labelAm/labelEn prop pair,src/components/forms/ResidentWizardSteps.tsx:468; src/routes/woreda.civil.$eventId.tsx:567; src/routes/woreda.civil.birth.new.tsx:331; src/routes/woreda.residents.$residentId.index.tsx:503; src/routes/woreda.residents.$residentId.print.tsx:237
+ተረጋግጧል,Verified,5,src/components/credentials/CredentialQueueTable.tsx:99,string literal,src/components/credentials/CredentialQueueTable.tsx:99; src/lib/serviceConstants.ts:9; src/routes/woreda.civil.$eventId.tsx:340; src/routes/woreda.civil.index.tsx:53; src/routes/woreda.rental-houses.requests.$requestId.index.tsx:281
+ዓይነት,Type,5,src/components/workflow/WorkflowQueueTable.tsx:174,string literal,src/components/workflow/WorkflowQueueTable.tsx:174; src/routes/woreda.civil.index.tsx:277; src/routes/woreda.credentials.index.tsx:86; src/routes/woreda.revenue.$paymentId.receipt.tsx:782; src/routes/woreda.revenue.index.tsx:212
+የመንግስት,Government,5,src/hooks/useReportsAggregate.ts:66,string literal,src/hooks/useReportsAggregate.ts:66; src/routes/woreda.households.$householdId.index.tsx:68; src/routes/woreda.households.$householdId.print.tsx:30; src/routes/woreda.households.index.tsx:342; src/routes/woreda.residents.$residentId.print.tsx:169
+የሰነድ ማጣቀሻ,Document Reference,5,src/routes/woreda.credentials.$requestId.certificate.tsx:119,string literal,src/routes/woreda.credentials.$requestId.certificate.tsx:119; src/routes/woreda.households.$householdId.print.tsx:166; src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:214; src/routes/woreda.reports.$reportType.print.tsx:276; src/routes/woreda.residents.$residentId.print.tsx:201
+የቀበሌ,Kebele,5,src/hooks/useReportsAggregate.ts:64,string literal,src/hooks/useReportsAggregate.ts:64; src/routes/woreda.households.$householdId.index.tsx:66; src/routes/woreda.households.$householdId.print.tsx:28; src/routes/woreda.households.index.tsx:340; src/routes/woreda.residents.$residentId.print.tsx:167
+የኪራይ,Rental,5,src/hooks/useReportsAggregate.ts:65,string literal,src/hooks/useReportsAggregate.ts:65; src/routes/woreda.households.$householdId.index.tsx:67; src/routes/woreda.households.$householdId.print.tsx:29; src/routes/woreda.households.index.tsx:341; src/routes/woreda.residents.$residentId.print.tsx:168
+የግል,Private,5,src/hooks/useReportsAggregate.ts:63,string literal,src/hooks/useReportsAggregate.ts:63; src/routes/woreda.households.$householdId.index.tsx:65; src/routes/woreda.households.$householdId.print.tsx:27; src/routes/woreda.households.index.tsx:339; src/routes/woreda.residents.$residentId.print.tsx:166
+ሙሉ ስም,Full Name,4,src/components/admin/PlatformUsersTab.tsx:214,string literal,src/components/admin/PlatformUsersTab.tsx:214; src/routes/woreda.credentials.$requestId.certificate.tsx:131; src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:257; src/routes/woreda.residents.$residentId.print.tsx:223
+ማረጋገጫ,Certification,4,src/routes/woreda.households.$householdId.print.tsx:283,titleAm/titleEn prop pair,src/routes/woreda.households.$householdId.print.tsx:283; src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:411; src/routes/woreda.reports.$reportType.print.tsx:315; src/routes/woreda.residents.$residentId.print.tsx:308
+ስልክ,Phone (9 digits after +251),4,src/routes/woreda.civil.birth.new.tsx:422,labelAm/labelEn prop pair,src/routes/woreda.civil.birth.new.tsx:422; src/routes/woreda.civil.death.new.tsx:283; src/routes/woreda.civil.divorce.new.tsx:314; src/routes/woreda.civil.marriage.new.tsx:298
+ስልክ ቁጥር,Phone,4,src/routes/woreda.households.$householdId.print.tsx:191,labelAm/labelEn prop pair,src/routes/woreda.households.$householdId.print.tsx:191; src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:288; src/routes/woreda.residents.$residentId.print.tsx:255; src/routes/woreda.settings.woreda-configuration.tsx:348
+ተመልሷል,Returned,4,src/components/credentials/CredentialQueueTable.tsx:102,string literal,src/components/credentials/CredentialQueueTable.tsx:102; src/lib/serviceConstants.ts:10; src/routes/woreda.civil.$eventId.tsx:376; src/routes/woreda.civil.index.tsx:59
+አድራሻ,Address,4,src/routes/woreda.households.$householdId.print.tsx:197,labelAm/labelEn prop pair,src/routes/woreda.households.$householdId.print.tsx:197; src/routes/woreda.rental-houses.$houseId.edit.tsx:153; src/routes/woreda.rental-houses.new.tsx:144; src/routes/woreda.residents.$residentId.print.tsx:278
+ኪራይ በግለሰብ,Rented by Private,4,src/hooks/useReportsAggregate.ts:67,string literal,src/hooks/useReportsAggregate.ts:67; src/routes/woreda.households.$householdId.index.tsx:69; src/routes/woreda.households.$householdId.print.tsx:31; src/routes/woreda.residents.$residentId.print.tsx:170
+ክፍለ ጊዜ ጠፍቷል,Missing session,4,src/routes/woreda.civil.birth.new.tsx:248,toast: error,src/routes/woreda.civil.birth.new.tsx:248; src/routes/woreda.civil.death.new.tsx:176; src/routes/woreda.civil.divorce.new.tsx:188; src/routes/woreda.civil.marriage.new.tsx:180
+ወደፊት መሆን አይችልም,Cannot be in future,4,src/routes/woreda.civil.birth.new.tsx:46,string literal,src/routes/woreda.civil.birth.new.tsx:46; src/routes/woreda.civil.death.new.tsx:34; src/routes/woreda.civil.divorce.new.tsx:44; src/routes/woreda.civil.marriage.new.tsx:42
+የቤቱን አድራሻ ካርታ ላይ ይምረጡ,Select the house address on the map.,4,src/lib/householdSchema.ts:38,string literal,src/lib/householdSchema.ts:38; src/lib/householdSchema.ts:40; src/lib/householdSchema.ts:43; src/lib/householdSchema.ts:45
+የትውልድ ቀን,Date of Birth,4,src/routes/woreda.civil.birth.new.tsx:321,labelAm/labelEn prop pair,src/routes/woreda.civil.birth.new.tsx:321; src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:274; src/routes/woreda.residents.$residentId.index.tsx:481; src/routes/woreda.residents.$residentId.print.tsx:230
+ጾታ,Gender,4,src/routes/woreda.credentials.$requestId.certificate.tsx:139,labelAm/labelEn prop pair,src/routes/woreda.credentials.$requestId.certificate.tsx:139; src/routes/woreda.credentials.$requestId.print.tsx:1461; src/routes/woreda.residents.$residentId.index.tsx:493; src/routes/woreda.residents.$residentId.print.tsx:226
+ፆታ,Sex,4,src/routes/woreda.civil.$eventId.tsx:560,labelAm/labelEn prop pair,src/routes/woreda.civil.$eventId.tsx:560; src/routes/woreda.civil.$eventId.tsx:633; src/routes/woreda.civil.birth.new.tsx:313; src/routes/woreda.civil.death.new.tsx:228
+ፋይሉን መክፈት አልተቻለም,Could not open the file,4,src/components/forms/ResidentWizardSteps.tsx:251,toast: error,src/components/forms/ResidentWizardSteps.tsx:251; src/components/residents/ResidentProfileTabs.tsx:845; src/routes/woreda.households.$householdId.index.tsx:661; src/routes/woreda.services.$requestId.index.tsx:411
+ልዩ ቦታ,Area Name,3,src/components/forms/ResidentWizardSteps.tsx:685,labelAm/labelEn prop pair,src/components/forms/ResidentWizardSteps.tsx:685; src/components/forms/ResidentWizardSteps.tsx:741; src/components/forms/ResidentWizardSteps.tsx:813
+ልደት,Birth,3,src/hooks/useReportsAggregate.ts:39,string literal,src/hooks/useReportsAggregate.ts:39; src/routes/woreda.civil.index.tsx:44; src/routes/woreda.civil.index.tsx:64
+ማስቀመጥ አልተሳካም,Save failed,3,src/routes/woreda.settings.woreda-configuration.tsx:279,toast: error,src/routes/woreda.settings.woreda-configuration.tsx:279; src/routes/woreda.settings.woreda-configuration.tsx:1085; src/routes/woreda.settings.woreda-configuration.tsx:1409
+ሞት,Death,3,src/hooks/useReportsAggregate.ts:40,string literal,src/hooks/useReportsAggregate.ts:40; src/routes/woreda.civil.index.tsx:45; src/routes/woreda.civil.index.tsx:65
+ስልክ,Phone,3,src/routes/woreda.residents.$residentId.index.tsx:512,labelAm/labelEn prop pair,src/routes/woreda.residents.$residentId.index.tsx:512; src/routes/woreda.services.$requestId.index.tsx:548; src/routes/woreda.services.new.tsx:381
+ተቀምጧል,Saved,3,src/components/settings/CustomRolesTab.tsx:285,toast: success,src/components/settings/CustomRolesTab.tsx:285; src/components/settings/RolesPermissionsTab.tsx:173; src/routes/woreda.settings.woreda-configuration.tsx:1082
+ተከፍሏል,Paid,3,src/components/credentials/CredentialQueueTable.tsx:106,string literal,src/components/credentials/CredentialQueueTable.tsx:106; src/lib/serviceConstants.ts:16; src/routes/woreda.civil.index.tsx:57
+ተይዟል,Occupied,3,src/hooks/useReportsAggregate.ts:46,string literal,src/hooks/useReportsAggregate.ts:46; src/routes/woreda.households.index.tsx:324; src/routes/woreda.reports.$reportType.print.tsx:222
+ቻናል,Channel,3,src/routes/verify.receipt.$token.tsx:147,labelAm/labelEn prop pair,src/routes/verify.receipt.$token.tsx:147; src/routes/woreda.revenue.$paymentId.receipt.tsx:783; src/routes/woreda.revenue.index.tsx:214
+ኃይማኖት,Religion,3,src/components/forms/ResidentWizardSteps.tsx:442,labelAm/labelEn prop pair,src/components/forms/ResidentWizardSteps.tsx:442; src/routes/woreda.civil.$eventId.tsx:570; src/routes/woreda.civil.birth.new.tsx:341
+ንቁ,Active,3,src/components/credentials/CredentialQueueTable.tsx:108,string literal,src/components/credentials/CredentialQueueTable.tsx:108; src/hooks/useReportsAggregate.ts:27; src/routes/woreda.residents.index.tsx:420
+አገልግሎት,Service,3,src/components/services/ServiceRequestList.tsx:246,string literal,src/components/services/ServiceRequestList.tsx:246; src/routes/woreda.approvals.tsx:37; src/routes/woreda.services.new.tsx:303
+እርማት,Correction,3,src/components/credentials/CredentialQueueTable.tsx:26,string literal,src/components/credentials/CredentialQueueTable.tsx:26; src/routes/woreda.credentials.$requestId.index.tsx:94; src/routes/woreda.credentials.index.tsx:29
+እድሳት,Renewal,3,src/components/credentials/CredentialQueueTable.tsx:22,string literal,src/components/credentials/CredentialQueueTable.tsx:22; src/routes/woreda.credentials.$requestId.index.tsx:90; src/routes/woreda.credentials.index.tsx:25
+ክልል,Region,3,src/components/forms/ResidentWizardSteps.tsx:651,labelAm/labelEn prop pair,src/components/forms/ResidentWizardSteps.tsx:651; src/components/forms/ResidentWizardSteps.tsx:726; src/components/forms/ResidentWizardSteps.tsx:791
+ክፍያ,Fee,3,src/components/services/ServiceRequestList.tsx:258,string literal,src/components/services/ServiceRequestList.tsx:258; src/routes/woreda.services.$requestId.index.tsx:581; src/routes/woreda.services.new.tsx:328
+ክፍያው ሊጠየቅ አልቻለም,Could not raise the fee — the request may have been moved by someone else,3,src/lib/offlineSync.ts:223,string literal,src/lib/offlineSync.ts:223; src/routes/woreda.credentials.$requestId.index.tsx:1669; src/routes/woreda.services.$requestId.index.tsx:1168
+ክፍያው ተመዝግቧል,Payment recorded,3,src/routes/woreda.civil.$eventId.tsx:1258,toast: success,src/routes/woreda.civil.$eventId.tsx:1258; src/routes/woreda.credentials.$requestId.index.tsx:1737; src/routes/woreda.services.$requestId.index.tsx:1258
+ውድቅ ተደርጓል,Rejected,3,src/components/credentials/CredentialQueueTable.tsx:104,string literal,src/components/credentials/CredentialQueueTable.tsx:104; src/lib/serviceConstants.ts:14; src/routes/woreda.civil.$eventId.tsx:450
+ዞን,Zone,3,src/components/forms/ResidentWizardSteps.tsx:661,labelAm/labelEn prop pair,src/components/forms/ResidentWizardSteps.tsx:661; src/components/forms/ResidentWizardSteps.tsx:729; src/components/forms/ResidentWizardSteps.tsx:801
+የመኝታ ክፍሎች,Bedrooms,3,src/routes/woreda.rental-houses.$houseId.edit.tsx:164,labelAm/labelEn prop pair,src/routes/woreda.rental-houses.$houseId.edit.tsx:164; src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:238; src/routes/woreda.rental-houses.new.tsx:162
+የተሰረቀ,Stolen,3,src/components/credentials/CredentialQueueTable.tsx:25,string literal,src/components/credentials/CredentialQueueTable.tsx:25; src/routes/woreda.credentials.$requestId.index.tsx:93; src/routes/woreda.credentials.index.tsx:28
+የተበላሸ,Damaged,3,src/components/credentials/CredentialQueueTable.tsx:24,string literal,src/components/credentials/CredentialQueueTable.tsx:24; src/routes/woreda.credentials.$requestId.index.tsx:92; src/routes/woreda.credentials.index.tsx:27
+የትውልድ ቦታ,Place of Birth,3,src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:283,labelAm/labelEn prop pair,src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:283; src/routes/woreda.residents.$residentId.index.tsx:488; src/routes/woreda.residents.$residentId.print.tsx:232
+የጠፋ,Lost,3,src/components/credentials/CredentialQueueTable.tsx:23,string literal,src/components/credentials/CredentialQueueTable.tsx:23; src/routes/woreda.credentials.$requestId.index.tsx:91; src/routes/woreda.credentials.index.tsx:26
+ያስፈልጋል,Required,3,src/routes/woreda.settings.woreda-configuration.tsx:997,string literal,src/routes/woreda.settings.woreda-configuration.tsx:997; src/routes/woreda.settings.woreda-configuration.tsx:998; src/routes/woreda.settings.woreda-configuration.tsx:999
+ገብቷል,Submitted,3,src/components/credentials/CredentialQueueTable.tsx:97,string literal,src/components/credentials/CredentialQueueTable.tsx:97; src/lib/serviceConstants.ts:7; src/routes/woreda.civil.index.tsx:51
+ጋብቻ,Marriage,3,src/hooks/useReportsAggregate.ts:41,string literal,src/hooks/useReportsAggregate.ts:41; src/routes/woreda.civil.index.tsx:46; src/routes/woreda.civil.index.tsx:66
+ፀድቋል,Approved,3,src/components/credentials/CredentialQueueTable.tsx:101,string literal,src/components/credentials/CredentialQueueTable.tsx:101; src/lib/serviceConstants.ts:13; src/routes/woreda.civil.index.tsx:55
+ፋይል ከ5MB መብለጥ የለበትም,File must be under 5MB,3,src/components/forms/ResidentWizardSteps.tsx:287,toast: error,src/components/forms/ResidentWizardSteps.tsx:287; src/routes/woreda.credentials.new.tsx:338; src/routes/woreda.credentials.new.tsx:372
+ፍቺ,Divorce,3,src/hooks/useReportsAggregate.ts:42,string literal,src/hooks/useReportsAggregate.ts:42; src/routes/woreda.civil.index.tsx:47; src/routes/woreda.civil.index.tsx:67
+${label} ያስፈልጋል,${label} required,2,src/lib/residentSchema.ts:12,string literal,src/lib/residentSchema.ts:12; src/routes/woreda.civil.birth.new.tsx:31
+>ሁኔታ<,span>{,2,src/routes/woreda.households.index.tsx:379,UI text,src/routes/woreda.households.index.tsx:379; src/routes/woreda.residents.index.tsx:474
+>ሙሉ ስም<,span>{,2,src/routes/woreda.rental-houses.$houseId.index.tsx:531,UI text,src/routes/woreda.rental-houses.$houseId.index.tsx:531; src/routes/woreda.residents.index.tsx:458
+>ቀበሌ<,span>{,2,src/routes/woreda.households.index.tsx:363,UI text,src/routes/woreda.households.index.tsx:363; src/routes/woreda.residents.index.tsx:470
+>የተሻሻለበት<,span>{,2,src/routes/woreda.households.index.tsx:383,UI text,src/routes/woreda.households.index.tsx:383; src/routes/woreda.residents.index.tsx:478
+PDF፣ JPG ወይም PNG ብቻ,"Only PDF, JPG or PNG",2,src/components/forms/ResidentWizardSteps.tsx:292,toast: error,src/components/forms/ResidentWizardSteps.tsx:292; src/routes/woreda.credentials.new.tsx:343
+ሁለቱም,Both,2,src/hooks/useReportsAggregate.ts:57,string literal,src/hooks/useReportsAggregate.ts:57; src/routes/woreda.credentials.$requestId.index.tsx:100
+መሰረታዊ መረጃ,Basic Information,2,src/components/forms/HouseholdFormFields.tsx:87,titleAm/titleEn prop pair,src/components/forms/HouseholdFormFields.tsx:87; src/routes/woreda.households.$householdId.index.tsx:297
+ሙያ,Occupation,2,src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:294,labelAm/labelEn prop pair,src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:294; src/routes/woreda.residents.$residentId.print.tsx:296
+ሚና,Role,2,src/components/admin/PlatformUsersTab.tsx:216,string literal,src/components/admin/PlatformUsersTab.tsx:216; src/routes/woreda.audit.tsx:287
+ማረጋገጥ አልተቻለም። እባክዎ ደግመው ይሞክሩ።,Verification could not be completed. Please try again.,2,src/routes/verify.letter.$token.tsx:100,string literal,src/routes/verify.letter.$token.tsx:100; src/routes/verify.receipt.$token.tsx:114
+ማረጋገጫ,Verification,2,src/routes/woreda.credentials.$requestId.certificate.tsx:176,titleAm/titleEn prop pair,src/routes/woreda.credentials.$requestId.certificate.tsx:176; src/routes/woreda.rental-houses.requests.$requestId.index.tsx:608
+ምክንያቱን ይጻፉ,Enter reason…,2,src/components/residents/ResidentActions.tsx:302,placeholder,src/components/residents/ResidentActions.tsx:302; src/routes/woreda.residents.index.tsx:867
+ምክንያት,Grounds,2,src/routes/woreda.civil.$eventId.tsx:702,labelAm/labelEn prop pair,src/routes/woreda.civil.$eventId.tsx:702; src/routes/woreda.civil.divorce.new.tsx:294
+ሞቷል,Deceased,2,src/hooks/useReportsAggregate.ts:36,string literal,src/hooks/useReportsAggregate.ts:36; src/routes/woreda.residents.index.tsx:423
+ሰርተፍኬት,Certificate,2,src/hooks/useReportsAggregate.ts:56,string literal,src/hooks/useReportsAggregate.ts:56; src/routes/woreda.credentials.$requestId.index.tsx:99
+ሲሆን ማስታወሻ ያስፈልጋል (ቢያንስ 5 ፊደላት),A note is required when the reason is,2,src/routes/woreda.credentials.$requestId.index.tsx:467,string literal,src/routes/woreda.credentials.$requestId.index.tsx:467; src/routes/woreda.credentials.$requestId.print.tsx:655
+ስህተት,Error: ${(e as Error).message},2,src/routes/woreda.residents.$residentId.edit.tsx:256,toast: error,src/routes/woreda.residents.$residentId.edit.tsx:256; src/routes/woreda.residents.new.tsx:127
+ስልክ ቁጥር,Phone Number,2,src/components/forms/HouseholdFormFields.tsx:287,labelAm/labelEn prop pair,src/components/forms/HouseholdFormFields.tsx:287; src/components/forms/ResidentWizardSteps.tsx:457
+ስም,Name,2,src/routes/woreda.residents.index.tsx:272,string literal,src/routes/woreda.residents.index.tsx:272; src/utils/tableExport.ts:5
+ስፍራ,Place,2,src/routes/woreda.civil.$eventId.tsx:675,labelAm/labelEn prop pair,src/routes/woreda.civil.$eventId.tsx:675; src/routes/woreda.civil.marriage.new.tsx:266
+ቀበሌ ይምረጡ,Select a kebele,2,src/lib/householdSchema.ts:6,string literal,src/lib/householdSchema.ts:6; src/routes/woreda.rental-houses.new.tsx:23
+ቀን ያስፈልጋል,Date required,2,src/routes/woreda.civil.divorce.new.tsx:43,string literal,src/routes/woreda.civil.divorce.new.tsx:43; src/routes/woreda.civil.marriage.new.tsx:41
+ቅሬታዎች ዝርዝር,Complaints,2,src/routes/woreda.settings.woreda-configuration.tsx:477,labelAm/labelEn prop pair,src/routes/woreda.settings.woreda-configuration.tsx:477; src/routes/woreda.settings.woreda-configuration.tsx:494
+ቅድሚያ,Priority,2,src/components/services/ServiceRequestList.tsx:253,string literal,src/components/services/ServiceRequestList.tsx:253; src/routes/woreda.services.new.tsx:319
+በመጫን ላይ…,Uploading…,2,src/routes/woreda.credentials.new.tsx:1010,string literal,src/routes/woreda.credentials.new.tsx:1010; src/routes/woreda.credentials.new.tsx:1068
+በቤት ቁጥር ይፈልጉ,Search by house number…,2,src/components/residents/ResidentActions.tsx:517,placeholder,src/components/residents/ResidentActions.tsx:517; src/routes/woreda.residents.index.tsx:1083
+በክለሳ ላይ,Under Review,2,src/components/credentials/CredentialQueueTable.tsx:98,string literal,src/components/credentials/CredentialQueueTable.tsx:98; src/routes/woreda.civil.index.tsx:52
+ቤተሰቦች,Households,2,src/routes/woreda.households.index.tsx:273,titleAm/titleEn prop pair,src/routes/woreda.households.index.tsx:273; src/routes/woreda.reports.index.tsx:295
+ተከራይ ይምረጡ,Select the occupant,2,src/routes/woreda.rental-houses.occupants.new.tsx:322,string literal,src/routes/woreda.rental-houses.occupants.new.tsx:322; src/routes/woreda.rental-houses.occupants.new.tsx:423
+ተጠቃሚው ታግዷል,User suspended,2,src/components/admin/PlatformUsersTab.tsx:278,toast: success,src/components/admin/PlatformUsersTab.tsx:278; src/components/settings/UsersRolesTab.tsx:270
+ነዋሪው ታግዷል,Resident suspended,2,src/components/residents/ResidentActions.tsx:121,toast: success,src/components/residents/ResidentActions.tsx:121; src/routes/woreda.residents.index.tsx:686
+ነዋሪው ወደ ቤተሰብ ተጨምሯል,Resident added to household,2,src/components/residents/ResidentActions.tsx:487,toast: success,src/components/residents/ResidentActions.tsx:487; src/routes/woreda.residents.index.tsx:1053
+ነዋሪው ወደ ንቁ ሁኔታ ተቀይሯል,Resident restored to active,2,src/components/residents/ResidentActions.tsx:179,toast: success,src/components/residents/ResidentActions.tsx:179; src/routes/woreda.residents.index.tsx:744
+ነዋሪው ወደ ኢ-ንቁ ሁኔታ ተቀይሯል,Resident set to inactive,2,src/components/residents/ResidentActions.tsx:161,toast: success,src/components/residents/ResidentActions.tsx:161; src/routes/woreda.residents.index.tsx:726
+ነዋሪው ዳግም ነቅቷል,Resident reactivated,2,src/components/residents/ResidentActions.tsx:143,toast: success,src/components/residents/ResidentActions.tsx:143; src/routes/woreda.residents.index.tsx:708
+ነጻ,Free,2,src/routes/woreda.services.$requestId.index.tsx:586,string literal,src/routes/woreda.services.$requestId.index.tsx:586; src/routes/woreda.services.new.tsx:335
+አመልካች,Applicant,2,src/components/services/ServiceRequestList.tsx:241,string literal,src/components/services/ServiceRequestList.tsx:241; src/routes/woreda.services.$requestId.index.tsx:531
+አትም,Print,2,src/routes/woreda.households.$householdId.print.tsx:123,string literal,src/routes/woreda.households.$householdId.print.tsx:123; src/routes/woreda.residents.$residentId.print.tsx:147
+አዎ,Yes,2,src/routes/woreda.settings.woreda-configuration.tsx:914,string literal,src/routes/woreda.settings.woreda-configuration.tsx:914; src/routes/woreda.settings.woreda-configuration.tsx:917
+አዲስ,New,2,src/components/credentials/CredentialQueueTable.tsx:21,string literal,src/components/credentials/CredentialQueueTable.tsx:21; src/routes/woreda.credentials.index.tsx:24
+ኢ-ንቁ,Inactive,2,src/hooks/useReportsAggregate.ts:28,string literal,src/hooks/useReportsAggregate.ts:28; src/routes/woreda.residents.index.tsx:421
+እውቂያ,Contact,2,src/components/forms/HouseholdFormFields.tsx:285,titleAm/titleEn prop pair,src/components/forms/HouseholdFormFields.tsx:285; src/routes/woreda.households.$householdId.index.tsx:355
+ካርድ,Card,2,src/hooks/useReportsAggregate.ts:55,string literal,src/hooks/useReportsAggregate.ts:55; src/routes/woreda.credentials.$requestId.index.tsx:98
+ወጥቷል,Moved Out,2,src/hooks/useReportsAggregate.ts:29,string literal,src/hooks/useReportsAggregate.ts:29; src/routes/woreda.residents.index.tsx:422
+ዓላማ,Purpose,2,src/routes/woreda.services.$requestId.index.tsx:565,labelAm/labelEn prop pair,src/routes/woreda.services.$requestId.index.tsx:565; src/routes/woreda.services.new.tsx:412
+የልደት ቀን,Date of Birth,2,src/routes/v.$token.tsx:307,labelAm/labelEn prop pair,src/routes/v.$token.tsx:307; src/routes/woreda.credentials.$requestId.print.tsx:1466
+የመረጃ ሰጪ ስም ያስፈልጋል,Informant name required,2,src/routes/woreda.civil.birth.new.tsx:61,string literal,src/routes/woreda.civil.birth.new.tsx:61; src/routes/woreda.civil.death.new.tsx:43
+የመረጃ ሰጪ ስም ያስፈልጋል,Informant required,2,src/routes/woreda.civil.divorce.new.tsx:53,string literal,src/routes/woreda.civil.divorce.new.tsx:53; src/routes/woreda.civil.marriage.new.tsx:49
+የመጀመሪያ ስም,First Name,2,src/components/forms/ResidentWizardSteps.tsx:366,labelAm/labelEn prop pair,src/components/forms/ResidentWizardSteps.tsx:366; src/routes/woreda.civil.birth.new.tsx:283
+የሞት መንስዔ,Cause of Death,2,src/routes/woreda.civil.$eventId.tsx:646,labelAm/labelEn prop pair,src/routes/woreda.civil.$eventId.tsx:646; src/routes/woreda.civil.death.new.tsx:257
+የሞት ስፍራ,Place of Death,2,src/routes/woreda.civil.$eventId.tsx:640,labelAm/labelEn prop pair,src/routes/woreda.civil.$eventId.tsx:640; src/routes/woreda.civil.death.new.tsx:251
+የሰጪው አካል,Issuing office,2,src/routes/verify.letter.$token.tsx:136,labelAm/labelEn prop pair,src/routes/verify.letter.$token.tsx:136; src/routes/verify.receipt.$token.tsx:152
+የቀረበበት ቀን,Submitted,2,src/routes/woreda.credentials.index.tsx:92,string literal,src/routes/woreda.credentials.index.tsx:92; src/routes/woreda.services.$requestId.index.tsx:559
+የባል/የሚስት,Spouse,2,src/components/forms/HouseholdFormFields.tsx:244,labelAm/labelEn prop pair,src/components/forms/HouseholdFormFields.tsx:244; src/routes/woreda.households.$householdId.index.tsx:348
+የቤተሰብ ራስ,Household Head,2,src/routes/woreda.households.$householdId.print.tsx:203,titleAm/titleEn prop pair,src/routes/woreda.households.$householdId.print.tsx:203; src/routes/woreda.households.$householdId.print.tsx:206
+የቤት መረጃ,House Information,2,src/routes/woreda.rental-houses.$houseId.edit.tsx:138,titleAm/titleEn prop pair,src/routes/woreda.rental-houses.$houseId.edit.tsx:138; src/routes/woreda.rental-houses.new.tsx:117
+የቤት ቁጥር ይምረጡ,Select the rental house,2,src/routes/woreda.rental-houses.occupants.new.tsx:323,string literal,src/routes/woreda.rental-houses.occupants.new.tsx:323; src/routes/woreda.rental-houses.occupants.new.tsx:424
+የቤት ዓይነት,House Type,2,src/routes/woreda.households.$householdId.print.tsx:180,labelAm/labelEn prop pair,src/routes/woreda.households.$householdId.print.tsx:180; src/routes/woreda.residents.$residentId.print.tsx:262
+የተሰጠበት ቀን,Date of issuance,2,src/routes/verify.letter.$token.tsx:109,labelAm/labelEn prop pair,src/routes/verify.letter.$token.tsx:109; src/routes/verify.receipt.$token.tsx:123
+የተሻሻለበት,Updated,2,src/routes/woreda.households.index.tsx:203,string literal,src/routes/woreda.households.index.tsx:203; src/routes/woreda.residents.index.tsx:289
+የተወለደበት ስፍራ,Place of Birth,2,src/routes/woreda.civil.$eventId.tsx:607,labelAm/labelEn prop pair,src/routes/woreda.civil.$eventId.tsx:607; src/routes/woreda.civil.birth.new.tsx:390
+የነዋሪ መለያ ቁ.,Resident ID,2,src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:263,labelAm/labelEn prop pair,src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:263; src/routes/woreda.residents.$residentId.print.tsx:224
+የአባት ስም,Father,2,src/components/forms/ResidentWizardSteps.tsx:382,labelAm/labelEn prop pair,src/components/forms/ResidentWizardSteps.tsx:382; src/routes/woreda.civil.birth.new.tsx:291
+የአገልግሎት ዝርዝር,Services,2,src/routes/woreda.settings.woreda-configuration.tsx:476,labelAm/labelEn prop pair,src/routes/woreda.settings.woreda-configuration.tsx:476; src/routes/woreda.settings.woreda-configuration.tsx:485
+የክስተት ቀን,Event Date,2,src/routes/woreda.civil.$eventId.tsx:545,labelAm/labelEn prop pair,src/routes/woreda.civil.$eventId.tsx:545; src/routes/woreda.civil.index.tsx:281
+የክስተት ቁጥር,Event #,2,src/routes/woreda.civil.$eventId.tsx:542,labelAm/labelEn prop pair,src/routes/woreda.civil.$eventId.tsx:542; src/routes/woreda.civil.index.tsx:276
+የወረዳ ማህተም,Woreda Seal,2,src/routes/woreda.credentials.$requestId.print.tsx:382,string literal,src/routes/woreda.credentials.$requestId.print.tsx:382; src/routes/woreda.settings.woreda-configuration.tsx:399
+የወንድ አያት ስም,Grandfather,2,src/components/forms/ResidentWizardSteps.tsx:390,labelAm/labelEn prop pair,src/components/forms/ResidentWizardSteps.tsx:390; src/routes/woreda.civil.birth.new.tsx:299
+የጋብቻ ቀን,Marriage Date,2,src/routes/woreda.civil.$eventId.tsx:691,labelAm/labelEn prop pair,src/routes/woreda.civil.$eventId.tsx:691; src/routes/woreda.civil.marriage.new.tsx:256
+የጤና ተቋም,Facility,2,src/routes/woreda.civil.$eventId.tsx:610,labelAm/labelEn prop pair,src/routes/woreda.civil.$eventId.tsx:610; src/routes/woreda.civil.$eventId.tsx:643
+የጤና ተቋም,Health Facility,2,src/routes/woreda.civil.birth.new.tsx:393,labelAm/labelEn prop pair,src/routes/woreda.civil.birth.new.tsx:393; src/routes/woreda.civil.death.new.tsx:254
+የፈራሚ ማህተም,Signature Stamp,2,src/routes/woreda.credentials.$requestId.print.tsx:384,string literal,src/routes/woreda.credentials.$requestId.print.tsx:384; src/routes/woreda.settings.woreda-configuration.tsx:409
+የፍርድ ማጣቀሻ,Decree Reference,2,src/routes/woreda.civil.$eventId.tsx:699,labelAm/labelEn prop pair,src/routes/woreda.civil.$eventId.tsx:699; src/routes/woreda.civil.divorce.new.tsx:287
+ይህ የቤት ቁጥር በዚህ ቀበሌ ቀደም ሲል ተመዝግቧል,This house number already exists in this kebele,2,src/routes/woreda.households.new.tsx:79,string literal,src/routes/woreda.households.new.tsx:79; src/routes/woreda.households.new.tsx:145
+ጉዳይ,Subject,2,src/components/services/ServiceRequestList.tsx:250,string literal,src/components/services/ServiceRequestList.tsx:250; src/routes/woreda.services.new.tsx:403
+ግብዣ ተልኳል,Invitation sent,2,src/components/admin/PlatformUsersTab.tsx:650,toast: success,src/components/admin/PlatformUsersTab.tsx:650; src/components/settings/UsersRolesTab.tsx:769
+ጸድቆ በሚጠበቅ,Pending Approval,2,src/components/credentials/CredentialQueueTable.tsx:100,string literal,src/components/credentials/CredentialQueueTable.tsx:100; src/routes/woreda.civil.index.tsx:54
+ጾታ,Sex,2,src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:269,labelAm/labelEn prop pair,src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:269; src/routes/woreda.residents.index.tsx:273
+ፋይል መጫን አልተሳካም,Upload failed: ${(e as Error).message},2,src/components/forms/ResidentWizardSteps.tsx:307,toast: error,src/components/forms/ResidentWizardSteps.tsx:307; src/routes/woreda.credentials.new.tsx:363
+ፍርድ ቤት,Court,2,src/routes/woreda.civil.$eventId.tsx:696,labelAm/labelEn prop pair,src/routes/woreda.civil.$eventId.tsx:696; src/routes/woreda.civil.divorce.new.tsx:283
+ፎቶ ተጭኗል,Photo uploaded,2,src/components/forms/ResidentWizardSteps.tsx:225,toast: success,src/components/forms/ResidentWizardSteps.tsx:225; src/routes/woreda.credentials.new.tsx:391
+${all.length} መዝገቦች ተልኳል,Exported ${all.length} records,1,src/components/services/ServiceRequestList.tsx:313,toast: success,src/components/services/ServiceRequestList.tsx:313
+"${file.name}: JPG, PNG, WEBP ወይም PDF ብቻ","Only JPG, PNG, WEBP or PDF",1,src/routes/woreda.services.new.tsx:153,toast: error,src/routes/woreda.services.new.tsx:153
+${file.name}: ከ5MB በላይ,Larger than 5MB,1,src/routes/woreda.services.new.tsx:157,toast: error,src/routes/woreda.services.new.tsx:157
+${label}: ምልክቶች አይፈቀዱም,Symbols are not allowed,1,src/lib/residentSchema.ts:14,string literal,src/lib/residentSchema.ts:14
+${label}: ምልክቶች አይፈቀዱም,Symbols not allowed,1,src/routes/woreda.civil.birth.new.tsx:33,string literal,src/routes/woreda.civil.birth.new.tsx:33
+${periodLabel} · ለውስጥ አገልግሎት ብቻ,Internal use only,1,src/routes/woreda.reports.$reportType.print.tsx:279,string literal,src/routes/woreda.reports.$reportType.print.tsx:279
+0–17 ዓመት,0–17 years,1,src/hooks/useReportsAggregate.ts:88,string literal,src/hooks/useReportsAggregate.ts:88
+18–35 ዓመት,18–35 years,1,src/hooks/useReportsAggregate.ts:89,string literal,src/hooks/useReportsAggregate.ts:89
+36–60 ዓመት,36–60 years,1,src/hooks/useReportsAggregate.ts:90,string literal,src/hooks/useReportsAggregate.ts:90
+60+ ዓመት,60+ years,1,src/hooks/useReportsAggregate.ts:91,string literal,src/hooks/useReportsAggregate.ts:91
+>ስራ<,span>{,1,src/routes/woreda.rental-houses.$houseId.index.tsx:557,UI text,src/routes/woreda.rental-houses.$houseId.index.tsx:557
+>አባላት<,span>{,1,src/routes/woreda.households.index.tsx:371,UI text,src/routes/woreda.households.index.tsx:371
+>የልደት ቀን<,span>{,1,src/routes/woreda.residents.index.tsx:466,UI text,src/routes/woreda.residents.index.tsx:466
+>የመተው ጥያቄ<,span>{,1,src/routes/woreda.rental-houses.$houseId.index.tsx:670,UI text,src/routes/woreda.rental-houses.$houseId.index.tsx:670
+>የመዝገብ ቁጥር<,span>{,1,src/routes/woreda.residents.index.tsx:454,UI text,src/routes/woreda.residents.index.tsx:454
+>የስራ አድራሻ<,span>{,1,src/routes/woreda.rental-houses.$houseId.index.tsx:564,UI text,src/routes/woreda.rental-houses.$houseId.index.tsx:564
+>የቤተሰብ ኃላፊ<,span>{,1,src/routes/woreda.households.index.tsx:367,UI text,src/routes/woreda.households.index.tsx:367
+>የቤት ቁጥር<,span>{,1,src/routes/woreda.households.index.tsx:359,UI text,src/routes/woreda.households.index.tsx:359
+>የቤት አይነት<,span>{,1,src/routes/woreda.households.index.tsx:375,UI text,src/routes/woreda.households.index.tsx:375
+>የቤት ኪራይ መጠን<,span>{,1,src/routes/woreda.rental-houses.$houseId.index.tsx:578,UI text,src/routes/woreda.rental-houses.$houseId.index.tsx:578
+>የተከራይ ምዝገባ ጥያቄ<,span>{,1,src/routes/woreda.rental-houses.$houseId.index.tsx:524,UI text,src/routes/woreda.rental-houses.$houseId.index.tsx:524
+>የትውልድ ስፍራ<,span>{,1,src/routes/woreda.rental-houses.$houseId.index.tsx:550,UI text,src/routes/woreda.rental-houses.$houseId.index.tsx:550
+>የትውልድ ዘመን<,span>{,1,src/routes/woreda.rental-houses.$houseId.index.tsx:543,UI text,src/routes/woreda.rental-houses.$houseId.index.tsx:543
+>የገባበት ቀን<,span>{,1,src/routes/woreda.rental-houses.$houseId.index.tsx:571,UI text,src/routes/woreda.rental-houses.$houseId.index.tsx:571
+>ይህ ደብዳቤ ከላይ ያለውን QR ኮድ በመቃኘት ሊረጋገጥ ይችላል።<,span>{,1,src/routes/woreda.credentials.$requestId.certificate.tsx:186,UI text,src/routes/woreda.credentials.$requestId.certificate.tsx:186
+>ጾታ<,span>{,1,src/routes/woreda.residents.index.tsx:462,UI text,src/routes/woreda.residents.index.tsx:462
+JPG ወይም PNG ብቻ,Only JPG or PNG,1,src/routes/woreda.credentials.new.tsx:376,toast: error,src/routes/woreda.credentials.new.tsx:376
+"JPG, PNG, WEBP ወይም PDF ብቻ","Only JPG, PNG, WEBP or PDF",1,src/routes/woreda.services.$requestId.index.tsx:367,toast: error,src/routes/woreda.services.$requestId.index.tsx:367
+PDF ብቻ,PDF only,1,src/components/residents/ResidentProfileTabs.tsx:795,toast: error,src/components/residents/ResidentProfileTabs.tsx:795
+ሁሉም ቀበሌዎች,All Kebeles,1,src/routes/woreda.residents.index.tsx:434,string literal,src/routes/woreda.residents.index.tsx:434
+ሁሉም የስርዓት እንቅስቃሴዎች ዝርዝር,Immutable record of all system activity,1,src/routes/woreda.audit.tsx:348,string literal,src/routes/woreda.audit.tsx:348
+ሁሉንም እርምጃዎች ያረጋግጡ,All checks must pass,1,src/routes/woreda.rental-houses.requests.$requestId.index.tsx:259,string literal,src/routes/woreda.rental-houses.requests.$requestId.index.tsx:259
+ሁኔታ,Occupancy Status,1,src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:228,labelAm/labelEn prop pair,src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:228
+ሁኔታው ሊቀየር አልቻለም,The status was not changed — it may have been moved by someone else,1,src/routes/woreda.credentials.$requestId.index.tsx:2844,string literal,src/routes/woreda.credentials.$requestId.index.tsx:2844
+ሃይማኖት,Religion,1,src/routes/woreda.residents.$residentId.print.tsx:242,labelAm/labelEn prop pair,src/routes/woreda.residents.$residentId.print.tsx:242
+ህትመቱ ተረጋግጧል,Print confirmed,1,src/routes/woreda.credentials.$requestId.print.tsx:591,toast: success,src/routes/woreda.credentials.$requestId.print.tsx:591
+ህትመቱ አልተሳካም፤ እንደገና ማተም ይችላሉ,Print failed — you can print again,1,src/routes/woreda.credentials.$requestId.print.tsx:634,toast: success,src/routes/woreda.credentials.$requestId.print.tsx:634
+ህትመት ተጀምሯል,Printing job sent to ${printerName},1,src/routes/woreda.credentials.$requestId.print.tsx:741,toast: success,src/routes/woreda.credentials.$requestId.print.tsx:741
+ለማመሳሰል ይግቡ,Sign in to sync — your queued items are still saved,1,src/components/common/OfflineStatusBar.tsx:41,toast: error,src/components/common/OfflineStatusBar.tsx:41
+ለማን,Addressed to,1,src/routes/woreda.services.$requestId.index.tsx:566,labelAm/labelEn prop pair,src/routes/woreda.services.$requestId.index.tsx:566
+ለማን ይቀርባል,Addressed to,1,src/routes/woreda.services.new.tsx:419,labelAm/labelEn prop pair,src/routes/woreda.services.new.tsx:419
+ለማጽደቅ ተልኳል,Sent for approval,1,src/routes/woreda.civil.$eventId.tsx:399,toast: success,src/routes/woreda.civil.$eventId.tsx:399
+ለምሳሌ: ባንክ፣ ፍርድ ቤት፣ አሰሪ,"e.g. bank, court, employer",1,src/routes/woreda.services.new.tsx:424,placeholder,src/routes/woreda.services.new.tsx:424
+ለምሳሌ፦ የልደት ሰርተፍኬት,e.g. Birth Certificate,1,src/components/residents/ResidentProfileTabs.tsx:895,placeholder,src/components/residents/ResidentProfileTabs.tsx:895
+ሌላ (ይግለፁ),Specify Other,1,src/components/forms/HouseholdFormFields.tsx:348,labelAm/labelEn prop pair,src/components/forms/HouseholdFormFields.tsx:348
+ሌላ ተጠሪ,Alternate Head,1,src/routes/woreda.households.$householdId.index.tsx:349,labelAm/labelEn prop pair,src/routes/woreda.households.$householdId.index.tsx:349
+ሌላ የመኖሪያ አድራሻ ካለ,Other Residence Address,1,src/components/forms/ResidentWizardSteps.tsx:623,labelAm/labelEn prop pair,src/components/forms/ResidentWizardSteps.tsx:623
+ሌላ የሥራ አድራሻ ካለ,Other Address,1,src/components/forms/ResidentWizardSteps.tsx:744,labelAm/labelEn prop pair,src/components/forms/ResidentWizardSteps.tsx:744
+ሌላ የቤተሰብ ተጠሪ,Alternate Head,1,src/components/forms/HouseholdFormFields.tsx:260,labelAm/labelEn prop pair,src/components/forms/HouseholdFormFields.tsx:260
+ልቀጥል,Stay signed in,1,src/components/layout/WoredaShell.tsx:116,string literal,src/components/layout/WoredaShell.tsx:116
+ልክ 16 አሃዝ መሆን አለበት,Must be exactly 16 digits,1,src/lib/residentSchema.ts:40,string literal,src/lib/residentSchema.ts:40
+ልክ የቤት ኪራይ ያስገቡ,Enter a valid rent amount,1,src/routes/woreda.rental-houses.$houseId.index.tsx:476,string literal,src/routes/woreda.rental-houses.$houseId.index.tsx:476
+መ.ቁ,Card Number,1,src/routes/v.$token.tsx:301,labelAm/labelEn prop pair,src/routes/v.$token.tsx:301
+መ.ቁ,ID No.,1,src/routes/woreda.credentials.$requestId.print.tsx:1455,labelAm/labelEn prop pair,src/routes/woreda.credentials.$requestId.print.tsx:1455
+መሰረታዊ መረጃ,General Info,1,src/routes/woreda.settings.woreda-configuration.tsx:309,titleAm/titleEn prop pair,src/routes/woreda.settings.woreda-configuration.tsx:309
+መሰረዝ አልተሳካም,Delete failed: ${(e as Error).message},1,src/components/residents/ResidentProfileTabs.tsx:872,toast: error,src/components/residents/ResidentProfileTabs.tsx:872
+መሰረዝ አልተሳካም,Delete failed,1,src/routes/woreda.settings.woreda-configuration.tsx:837,toast: error,src/routes/woreda.settings.woreda-configuration.tsx:837
+መታወቂያ,Credential,1,src/routes/woreda.approvals.tsx:39,string literal,src/routes/woreda.approvals.tsx:39
+መታወቂያዎች,Credentials in period,1,src/routes/woreda.reports.index.tsx:303,titleAm/titleEn prop pair,src/routes/woreda.reports.index.tsx:303
+መታወቂያዎች በሁኔታ,Credentials by status,1,src/routes/woreda.reports.index.tsx:374,titleAm/titleEn prop pair,src/routes/woreda.reports.index.tsx:374
+መታወቂያዎች በዓይነት,Credentials by type,1,src/routes/woreda.reports.index.tsx:380,titleAm/titleEn prop pair,src/routes/woreda.reports.index.tsx:380
+መዝገብ አልተገኘም,No records yet,1,src/components/common/TableStates.tsx:31,labelAm/labelEn prop pair,src/components/common/TableStates.tsx:31
+መደበኛ,Normal,1,src/lib/serviceConstants.ts:26,string literal,src/lib/serviceConstants.ts:26
+መደበኛ ክፍያ (ETB),Standard Fee,1,src/routes/woreda.settings.woreda-configuration.tsx:1438,labelAm/labelEn prop pair,src/routes/woreda.settings.woreda-configuration.tsx:1438
+መገኛ አካባቢ,Location,1,src/routes/woreda.households.$householdId.index.tsx:466,titleAm/titleEn prop pair,src/routes/woreda.households.$householdId.index.tsx:466
+መጠን,Amount,1,src/routes/woreda.revenue.index.tsx:213,string literal,src/routes/woreda.revenue.index.tsx:213
+መጨረሻ የተሻሻለበት,Last Updated,1,src/routes/woreda.residents.$residentId.index.tsx:454,labelAm/labelEn prop pair,src/routes/woreda.residents.$residentId.index.tsx:454
+ሙሉ ስም (English),Full Name (English),1,src/routes/woreda.civil.birth.new.tsx:307,labelAm/labelEn prop pair,src/routes/woreda.civil.birth.new.tsx:307
+ሙሉ ስም (እንግሊዘኛ),Full Name (English),1,src/components/forms/ResidentWizardSteps.tsx:374,labelAm/labelEn prop pair,src/components/forms/ResidentWizardSteps.tsx:374
+ሚና ተቀይሯል,Role updated,1,src/components/settings/UsersRolesTab.tsx:248,toast: success,src/components/settings/UsersRolesTab.tsx:248
+ሚና ተፈጥሯል,Role created,1,src/components/settings/CustomRolesTab.tsx:204,toast: success,src/components/settings/CustomRolesTab.tsx:204
+ማመሳሰል አልተሳካም (እንደገና ይሞከራል),"Sync failed, will retry: ${result.message}",1,src/components/common/OfflineStatusBar.tsx:35,toast: error,src/components/common/OfflineStatusBar.tsx:35
+ማረጋገጫ ፊርማ,Certification,1,src/routes/woreda.credentials.$requestId.certificate.tsx:195,titleAm/titleEn prop pair,src/routes/woreda.credentials.$requestId.certificate.tsx:195
+ማስረጃ ሰነድ ያለው ጥያቄ ከመስመር ውጭ ሆኖ ማስገባት አይቻልም,A request with attachments cannot be queued offline,1,src/routes/woreda.services.new.tsx:207,string literal,src/routes/woreda.services.new.tsx:207
+ማስረጃ ሰነዶች,Supporting documents,1,src/routes/woreda.services.new.tsx:470,titleAm/titleEn prop pair,src/routes/woreda.services.new.tsx:470
+ማስረጃው ርክክብ ተደርጓል,Credential issuance confirmed,1,src/routes/woreda.credentials.$requestId.index.tsx:2427,toast: success,src/routes/woreda.credentials.$requestId.index.tsx:2427
+ማስረጃው ተሽሯል,Credential revoked,1,src/routes/woreda.credentials.$requestId.index.tsx:2649,toast: success,src/routes/woreda.credentials.$requestId.index.tsx:2649
+ማስረጃው ገና አልተፈጠረም,Credential not yet generated,1,src/routes/woreda.credentials.$requestId.print.tsx:806,titleAm/titleEn prop pair,src/routes/woreda.credentials.$requestId.print.tsx:806
+ማስቀመጥ አልተሳካም,Save failed: ${e instanceof Error ? e.message :,1,src/components/settings/LetterTemplatesTab.tsx:96,toast: error,src/components/settings/LetterTemplatesTab.tsx:96
+ማስገባት አልተሳካም,Submit failed: ${(e as Error).message},1,src/routes/woreda.services.new.tsx:280,toast: error,src/routes/woreda.services.new.tsx:280
+ማብራሪያ,Description,1,src/routes/woreda.services.new.tsx:455,labelAm/labelEn prop pair,src/routes/woreda.services.new.tsx:455
+ማንነት,Identity,1,src/routes/woreda.residents.$residentId.print.tsx:211,titleAm/titleEn prop pair,src/routes/woreda.residents.$residentId.print.tsx:211
+ማዘመን አልተሳካም,Update failed: ${error.message},1,src/routes/woreda.residents.$residentId.edit.tsx:224,toast: error,src/routes/woreda.residents.$residentId.edit.tsx:224
+ማገድ ተነስቷል,Suspension lifted,1,src/routes/woreda.credentials.$requestId.index.tsx:2865,string literal,src/routes/woreda.credentials.$requestId.index.tsx:2865
+ማጠቃለያ,Summary of the letter,1,src/routes/verify.letter.$token.tsx:131,labelAm/labelEn prop pair,src/routes/verify.letter.$token.tsx:131
+ማጠቃለያ,Summary,1,src/routes/woreda.reports.$reportType.print.tsx:287,titleAm/titleEn prop pair,src/routes/woreda.reports.$reportType.print.tsx:287
+ማጣቀሻ,Reference No.,1,src/routes/woreda.revenue.$paymentId.receipt.tsx:784,labelAm/labelEn prop pair,src/routes/woreda.revenue.$paymentId.receipt.tsx:784
+ማጣቀሻ,Reference,1,src/routes/woreda.revenue.index.tsx:215,string literal,src/routes/woreda.revenue.index.tsx:215
+ማጽደቅ,Approval,1,src/routes/woreda.rental-houses.requests.$requestId.index.tsx:653,titleAm/titleEn prop pair,src/routes/woreda.rental-houses.requests.$requestId.index.tsx:653
+ምስክር 1,Witness 1,1,src/routes/woreda.civil.marriage.new.tsx:275,labelAm/labelEn prop pair,src/routes/woreda.civil.marriage.new.tsx:275
+ምስክር 2,Witness 2,1,src/routes/woreda.civil.marriage.new.tsx:278,labelAm/labelEn prop pair,src/routes/woreda.civil.marriage.new.tsx:278
+ምስክር ወረቀቶች (ወር),Credentials This Month,1,src/routes/woreda.dashboard.tsx:275,titleAm/titleEn prop pair,src/routes/woreda.dashboard.tsx:275
+ምስክሮች,Witnesses,1,src/routes/woreda.civil.$eventId.tsx:681,labelAm/labelEn prop pair,src/routes/woreda.civil.$eventId.tsx:681
+ምንም መዝገብ አልተገኘም,No records to export,1,src/components/services/ServiceRequestList.tsx:290,toast: error,src/components/services/ServiceRequestList.tsx:290
+ምንም መዝገብ አልተገኘም,No audit entries yet,1,src/routes/woreda.audit.tsx:469,labelAm/labelEn prop pair,src/routes/woreda.audit.tsx:469
+ምንም ክፍያ የለም,No payments yet,1,src/routes/woreda.revenue.index.tsx:445,labelAm/labelEn prop pair,src/routes/woreda.revenue.index.tsx:445
+ምክንያት ያስፈልጋል,Reason required,1,src/routes/woreda.rental-houses.$houseId.index.tsx:626,string literal,src/routes/woreda.rental-houses.$houseId.index.tsx:626
+ምክንያት ይምረጡ,Select a return reason,1,src/routes/woreda.credentials.$requestId.index.tsx:462,toast: error,src/routes/woreda.credentials.$requestId.index.tsx:462
+ምክንያት ይምረጡ,Select a reprint reason,1,src/routes/woreda.credentials.$requestId.print.tsx:650,toast: error,src/routes/woreda.credentials.$requestId.print.tsx:650
+ምዝገባ አልተሳካም,Registration failed — ${e.message},1,src/routes/woreda.rental-houses.occupants.new.tsx:417,toast: error,src/routes/woreda.rental-houses.occupants.new.tsx:417
+ምዝገባ አልተሳካም,Registration failed: ${error.message},1,src/routes/woreda.residents.new.tsx:119,toast: error,src/routes/woreda.residents.new.tsx:119
+ሟች,Deceased,1,src/routes/woreda.civil.$eventId.tsx:618,labelAm/labelEn prop pair,src/routes/woreda.civil.$eventId.tsx:618
+ሟች (የተመዘገበ),Deceased (registered resident),1,src/routes/woreda.civil.death.new.tsx:210,labelAm/labelEn prop pair,src/routes/woreda.civil.death.new.tsx:210
+ረቂቅ,Draft,1,src/lib/serviceConstants.ts:6,string literal,src/lib/serviceConstants.ts:6
+ሪፖርቶች,Reports,1,src/routes/woreda.reports.index.tsx:148,titleAm/titleEn prop pair,src/routes/woreda.reports.index.tsx:148
+ሰነዱ ተሰርዟል,Document deleted,1,src/components/residents/ResidentProfileTabs.tsx:868,toast: success,src/components/residents/ResidentProfileTabs.tsx:868
+ሰነዱ ተያይዟል,Document attached,1,src/routes/woreda.services.$requestId.index.tsx:393,toast: success,src/routes/woreda.services.$requestId.index.tsx:393
+ሰነዱ ተጭኗል,Document uploaded,1,src/components/residents/ResidentProfileTabs.tsx:827,toast: success,src/components/residents/ResidentProfileTabs.tsx:827
+ሰነድ ተጭኗል,Document uploaded,1,src/routes/woreda.credentials.new.tsx:361,toast: success,src/routes/woreda.credentials.new.tsx:361
+ሴ,F,1,src/routes/woreda.credentials.$requestId.print.tsx:1650,string literal,src/routes/woreda.credentials.$requestId.print.tsx:1650
+ስልክ ቁጥር ያስፈልጋል,Phone number required,1,src/lib/phoneNumber.ts:72,string literal,src/lib/phoneNumber.ts:72
+ስም,Subject (Am),1,src/routes/woreda.civil.index.tsx:278,string literal,src/routes/woreda.civil.index.tsx:278
+ስም,Resident (Am),1,src/routes/woreda.credentials.index.tsx:83,string literal,src/routes/woreda.credentials.index.tsx:83
+ስም (አማርኛ),Name (Amharic),1,src/routes/woreda.settings.woreda-configuration.tsx:1108,labelAm/labelEn prop pair,src/routes/woreda.settings.woreda-configuration.tsx:1108
+ስም (እንግሊዝኛ),Name (English),1,src/routes/woreda.settings.woreda-configuration.tsx:1115,labelAm/labelEn prop pair,src/routes/woreda.settings.woreda-configuration.tsx:1115
+ስራ,Occupation,1,src/routes/woreda.residents.$residentId.index.tsx:524,labelAm/labelEn prop pair,src/routes/woreda.residents.$residentId.index.tsx:524
+ስቀላ አልተሳካም,Upload failed: ${(e as Error).message},1,src/components/residents/ResidentProfileTabs.tsx:832,toast: error,src/components/residents/ResidentProfileTabs.tsx:832
+ቀበሌ ከተመዘገበ በኋላ ሊቀየር አይችልም,Kebele cannot be changed after registration,1,src/components/forms/HouseholdFormFields.tsx:96,string literal,src/components/forms/HouseholdFormFields.tsx:96
+ቀን,Day,1,src/components/common/EthiopianDateInput.tsx:88,placeholder,src/components/common/EthiopianDateInput.tsx:88
+ቀን,Submitted,1,src/components/services/ServiceRequestList.tsx:264,string literal,src/components/services/ServiceRequestList.tsx:264
+ቀን,Timestamp,1,src/routes/woreda.audit.tsx:285,string literal,src/routes/woreda.audit.tsx:285
+ቀን,Date,1,src/routes/woreda.revenue.index.tsx:211,string literal,src/routes/woreda.revenue.index.tsx:211
+ቀይር,Replace,1,src/components/forms/ResidentWizardSteps.tsx:877,string literal,src/components/forms/ResidentWizardSteps.tsx:877
+ቁጥር,Reference,1,src/components/services/ServiceRequestList.tsx:239,string literal,src/components/services/ServiceRequestList.tsx:239
+ቁጥር፣ አመልካች ወይም ጉዳይ,"Reference, applicant or subject",1,src/components/services/ServiceRequestList.tsx:428,string literal,src/components/services/ServiceRequestList.tsx:428
+ቅሬታ,Complaint,1,src/routes/woreda.approvals.tsx:38,string literal,src/routes/woreda.approvals.tsx:38
+ቅንብሮች ተስተካክለዋል,Settings saved,1,src/routes/woreda.settings.woreda-configuration.tsx:276,toast: success,src/routes/woreda.settings.woreda-configuration.tsx:276
+በሁኔታ,By residency status,1,src/routes/woreda.reports.index.tsx:353,titleAm/titleEn prop pair,src/routes/woreda.reports.index.tsx:353
+በሂደት ላይ,In progress,1,src/lib/serviceConstants.ts:19,string literal,src/lib/serviceConstants.ts:19
+በማስገባት ላይ…,Submitting…,1,src/routes/woreda.services.new.tsx:559,string literal,src/routes/woreda.services.new.tsx:559
+በስም ወይም ሚና ይፈልጉ,Search name or role…,1,src/components/settings/UsersRolesTab.tsx:320,placeholder,src/components/settings/UsersRolesTab.tsx:320
+በስም ወይም በመለያ ቁጥር ይፈልጉ,Search by name or resident #,1,src/components/forms/ResidentSearchPicker.tsx:136,placeholder,src/components/forms/ResidentSearchPicker.tsx:136
+በስም ወይም በነዋሪ ቁጥር ይፈልጉ,Search by name or resident number,1,src/routes/woreda.services.new.tsx:366,placeholder,src/routes/woreda.services.new.tsx:366
+በስም፣ የመታወቂያ ቁጥር፣ ስልክ ይፈልጉ,"Search by name, ID number, phone…",1,src/routes/woreda.residents.index.tsx:393,placeholder,src/routes/woreda.residents.index.tsx:393
+በቀበሌ መኖር የጀመሩበት ጊዜ,Residency Start Date,1,src/components/forms/ResidentWizardSteps.tsx:756,labelAm/labelEn prop pair,src/components/forms/ResidentWizardSteps.tsx:756
+በቤት ቁጥር ወይም አድራሻ ይፈልጉ,Search by house number or address…,1,src/routes/woreda.households.index.tsx:295,placeholder,src/routes/woreda.households.index.tsx:295
+በቤት ቁጥር ይፈልጉ,Search by house number,1,src/components/forms/ResidentWizardSteps.tsx:554,placeholder,src/components/forms/ResidentWizardSteps.tsx:554
+በክለሳ ላይ,Under review,1,src/lib/serviceConstants.ts:8,string literal,src/lib/serviceConstants.ts:8
+በዚህ ምስል ላይ ምንም QR ኮድ አልተገኘም,No QR code detected in this image,1,src/components/verification/HararildScanner.tsx:217,string literal,src/components/verification/HararildScanner.tsx:217
+በጥበቃ ላይ ያሉ,Pending Approvals,1,src/routes/woreda.dashboard.tsx:263,titleAm/titleEn prop pair,src/routes/woreda.dashboard.tsx:263
+በጥገና ላይ,Under Maintenance,1,src/hooks/useReportsAggregate.ts:47,string literal,src/hooks/useReportsAggregate.ts:47
+በጾታ,By sex,1,src/routes/woreda.reports.index.tsx:351,titleAm/titleEn prop pair,src/routes/woreda.reports.index.tsx:351
+ቢሮ,Office,1,src/routes/woreda.credentials.$requestId.certificate.tsx:161,labelAm/labelEn prop pair,src/routes/woreda.credentials.$requestId.certificate.tsx:161
+ቢያንስ 10 ፊደል ያስገቡ,Provide at least 10 characters,1,src/routes/woreda.services.new.tsx:173,string literal,src/routes/woreda.services.new.tsx:173
+ባለሙያ,Officer,1,src/components/workflow/WorkflowQueueTable.tsx:235,string literal,src/components/workflow/WorkflowQueueTable.tsx:235
+ባዶ,Vacant,1,src/routes/woreda.households.index.tsx:325,string literal,src/routes/woreda.households.index.tsx:325
+ቤተሰቡ ተመዝግቧል,Household registered,1,src/routes/woreda.households.new.tsx:126,toast: success,src/routes/woreda.households.new.tsx:126
+ቤተሰቡ ተስተካክሏል,Household updated,1,src/routes/woreda.households.$householdId.edit.tsx:195,toast: success,src/routes/woreda.households.$householdId.edit.tsx:195
+ቤተሰቡ ኢ-ንቁ ሆኗል,Household set inactive,1,src/routes/woreda.households.index.tsx:588,toast: success,src/routes/woreda.households.index.tsx:588
+ቤተሰብ,Household,1,src/components/forms/ResidentWizardSteps.tsx:551,labelAm/labelEn prop pair,src/components/forms/ResidentWizardSteps.tsx:551
+ቤተሰብ አስተካክል,Edit Household,1,src/routes/woreda.households.$householdId.edit.tsx:225,titleAm/titleEn prop pair,src/routes/woreda.households.$householdId.edit.tsx:225
+ቤተሰቦች በቀበሌ,Households by kebele,1,src/routes/woreda.reports.index.tsx:360,titleAm/titleEn prop pair,src/routes/woreda.reports.index.tsx:360
+ቤቱ በሌላ ተከራይ ተይዟል — መጀመሪያ የተከራይ መተውን ያፀድቁ,House is occupied — approve a vacate first,1,src/routes/woreda.rental-houses.requests.$requestId.index.tsx:315,string literal,src/routes/woreda.rental-houses.requests.$requestId.index.tsx:315
+ቤት,House,1,src/routes/woreda.rental-houses.requests.index.tsx:179,string literal,src/routes/woreda.rental-houses.requests.index.tsx:179
+ብሔራዊ መታወቂያ (ፋይዳ) ቁጥር,National ID FAN Number,1,src/components/forms/ResidentWizardSteps.tsx:486,labelAm/labelEn prop pair,src/components/forms/ResidentWizardSteps.tsx:486
+ብሔር ይምረጡ,Select ethnicity,1,src/lib/residentSchema.ts:33,string literal,src/lib/residentSchema.ts:33
+ብጁ ሚናዎች,Custom Roles,1,src/routes/woreda.settings.users-permissions.tsx:42,labelAm/labelEn prop pair,src/routes/woreda.settings.users-permissions.tsx:42
+ቦታ ላይ ወጣ,Deactivated,1,src/components/settings/CustomRolesTab.tsx:92,toast: success,src/components/settings/CustomRolesTab.tsx:92
+ተለዋጭ ኃላፊ,Alternate Head,1,src/routes/woreda.households.$householdId.print.tsx:216,labelAm/labelEn prop pair,src/routes/woreda.households.$householdId.print.tsx:216
+ተመልሷል (ማጽደቅ),Returned (Approval),1,src/components/credentials/CredentialQueueTable.tsx:103,string literal,src/components/credentials/CredentialQueueTable.tsx:103
+ተመልሷል (ማጽደቅ),Returned (approval),1,src/lib/serviceConstants.ts:12,string literal,src/lib/serviceConstants.ts:12
+ተመዝግቧል,"Submitted as ${number || entityId.slice(0, 8)}",1,src/lib/offlineSync.ts:168,string literal,src/lib/offlineSync.ts:168
+ተመዝግቧል,Registered,1,src/routes/woreda.civil.index.tsx:58,string literal,src/routes/woreda.civil.index.tsx:58
+ተመዝግቧል,"Registered, but these documents failed to upload: ${failed.join(",1,src/routes/woreda.rental-houses.occupants.new.tsx:405,string literal,src/routes/woreda.rental-houses.occupants.new.tsx:405
+ተሰርዟል,Deleted,1,src/routes/woreda.settings.woreda-configuration.tsx:827,toast: success,src/routes/woreda.settings.woreda-configuration.tsx:827
+ተሰጥቷል,Issued,1,src/lib/serviceConstants.ts:17,string literal,src/lib/serviceConstants.ts:17
+ተሽሯል,Revoked,1,src/components/credentials/CredentialQueueTable.tsx:109,string literal,src/components/credentials/CredentialQueueTable.tsx:109
+ተቀባይነት አላገኘም,Rejected: ${result.message},1,src/components/common/OfflineStatusBar.tsx:37,toast: error,src/components/common/OfflineStatusBar.tsx:37
+ተከራይ,Occupant,1,src/routes/woreda.rental-houses.index.tsx:159,string literal,src/routes/woreda.rental-houses.index.tsx:159
+ተከራይ,Resident,1,src/routes/woreda.rental-houses.requests.index.tsx:181,string literal,src/routes/woreda.rental-houses.requests.index.tsx:181
+ተከራይ በተሳካ ሁኔታ ተመዝግቧል,Occupant registered successfully,1,src/routes/woreda.rental-houses.occupants.new.tsx:408,toast: success,src/routes/woreda.rental-houses.occupants.new.tsx:408
+ተከራይ ይምረጡ,Select an occupant,1,src/routes/woreda.rental-houses.$houseId.index.tsx:473,string literal,src/routes/woreda.rental-houses.$houseId.index.tsx:473
+ተከሳሽ,Respondent,1,src/routes/woreda.services.$requestId.index.tsx:570,labelAm/labelEn prop pair,src/routes/woreda.services.$requestId.index.tsx:570
+ተከሳሽ / አቤቱታ የቀረበበት,Respondent,1,src/routes/woreda.services.new.tsx:431,labelAm/labelEn prop pair,src/routes/woreda.services.new.tsx:431
+ተዘግቷል,Closed,1,src/lib/serviceConstants.ts:21,string literal,src/lib/serviceConstants.ts:21
+ተዛውሯል,Transferred,1,src/routes/woreda.households.index.tsx:327,string literal,src/routes/woreda.households.index.tsx:327
+ተያዥ,Occupancy,1,src/routes/woreda.rental-houses.index.tsx:158,string literal,src/routes/woreda.rental-houses.index.tsx:158
+ተጋቢ 1,Party 1,1,src/routes/woreda.civil.$eventId.tsx:657,labelAm/labelEn prop pair,src/routes/woreda.civil.$eventId.tsx:657
+ተጋቢ 1 (የተመዘገበ),Party 1 (registered),1,src/routes/woreda.civil.divorce.new.tsx:222,labelAm/labelEn prop pair,src/routes/woreda.civil.divorce.new.tsx:222
+ተጋቢ 1 (የተመዘገበ),Spouse 1 (registered),1,src/routes/woreda.civil.marriage.new.tsx:214,labelAm/labelEn prop pair,src/routes/woreda.civil.marriage.new.tsx:214
+ተጋቢ 1 ስም,Party 1 name (manual),1,src/routes/woreda.civil.divorce.new.tsx:231,labelAm/labelEn prop pair,src/routes/woreda.civil.divorce.new.tsx:231
+ተጋቢ 1 ስም,Spouse 1 name (manual),1,src/routes/woreda.civil.marriage.new.tsx:223,labelAm/labelEn prop pair,src/routes/woreda.civil.marriage.new.tsx:223
+ተጋቢ 2,Party 2,1,src/routes/woreda.civil.$eventId.tsx:665,labelAm/labelEn prop pair,src/routes/woreda.civil.$eventId.tsx:665
+ተጋቢ 2 (የተመዘገበ),Party 2 (registered),1,src/routes/woreda.civil.divorce.new.tsx:239,labelAm/labelEn prop pair,src/routes/woreda.civil.divorce.new.tsx:239
+ተጋቢ 2 (የተመዘገበ),Spouse 2 (registered),1,src/routes/woreda.civil.marriage.new.tsx:232,labelAm/labelEn prop pair,src/routes/woreda.civil.marriage.new.tsx:232
+ተጋቢ 2 ስም,Party 2 name (manual),1,src/routes/woreda.civil.divorce.new.tsx:249,labelAm/labelEn prop pair,src/routes/woreda.civil.divorce.new.tsx:249
+ተጋቢ 2 ስም,Spouse 2 name (manual),1,src/routes/woreda.civil.marriage.new.tsx:242,labelAm/labelEn prop pair,src/routes/woreda.civil.marriage.new.tsx:242
+ተጋቢዎች,Parties,1,src/routes/woreda.civil.divorce.new.tsx:220,titleAm/titleEn prop pair,src/routes/woreda.civil.divorce.new.tsx:220
+ተጋቢዎች,Spouses,1,src/routes/woreda.civil.marriage.new.tsx:212,titleAm/titleEn prop pair,src/routes/woreda.civil.marriage.new.tsx:212
+ተግባር,Action,1,src/routes/woreda.audit.tsx:290,string literal,src/routes/woreda.audit.tsx:290
+ተጠቃሚ,Actor,1,src/routes/woreda.audit.tsx:286,string literal,src/routes/woreda.audit.tsx:286
+ተጠቃሚው ተመልሷል,User reactivated,1,src/components/admin/PlatformUsersTab.tsx:298,toast: success,src/components/admin/PlatformUsersTab.tsx:298
+ተጠቃሚው ተመልሷል,User activated,1,src/components/admin/PlatformUsersTab.tsx:800,toast: success,src/components/admin/PlatformUsersTab.tsx:800
+ተጠቃሚዎች እና የስራ ድርሻ,Users & Roles,1,src/routes/woreda.settings.users-permissions.tsx:43,labelAm/labelEn prop pair,src/routes/woreda.settings.users-permissions.tsx:43
+ተጠቃሚዎች እና ፈቃዶች,Users and Permissions,1,src/routes/woreda.settings.users-permissions.tsx:34,titleAm/titleEn prop pair,src/routes/woreda.settings.users-permissions.tsx:34
+ተጠናቋል,Completed,1,src/lib/serviceConstants.ts:18,string literal,src/lib/serviceConstants.ts:18
+ተጨማሪ መረጃ,Additional Info,1,src/routes/woreda.civil.birth.new.tsx:388,titleAm/titleEn prop pair,src/routes/woreda.civil.birth.new.tsx:388
+ተፈትቷል,Resolved,1,src/lib/serviceConstants.ts:20,string literal,src/lib/serviceConstants.ts:20
+ታትሟል,Printed,1,src/components/credentials/CredentialQueueTable.tsx:107,string literal,src/components/credentials/CredentialQueueTable.tsx:107
+ታግዷል,Suspended,1,src/hooks/useReportsAggregate.ts:35,string literal,src/hooks/useReportsAggregate.ts:35
+ትምህርት,Education,1,src/routes/woreda.residents.$residentId.index.tsx:525,labelAm/labelEn prop pair,src/routes/woreda.residents.$residentId.index.tsx:525
+ትምህርትና ሙያ,Education & Occupation,1,src/routes/woreda.residents.$residentId.print.tsx:288,titleAm/titleEn prop pair,src/routes/woreda.residents.$residentId.print.tsx:288
+ትክክለኛ የቤት ኪራይ ዋጋ ያስገቡ,Enter valid rent amount,1,src/routes/woreda.rental-houses.occupants.new.tsx:325,string literal,src/routes/woreda.rental-houses.occupants.new.tsx:325
+ትክክለኛ የቤት ኪራይ ዋጋ ያስገቡ,Enter a valid rent amount,1,src/routes/woreda.rental-houses.occupants.new.tsx:426,string literal,src/routes/woreda.rental-houses.occupants.new.tsx:426
+ኃላፊው ካልተመዘገበ ቀደም ብሎ ይመዝግቡ,Register the head first if not yet in the system,1,src/components/forms/HouseholdFormFields.tsx:215,string literal,src/components/forms/HouseholdFormFields.tsx:215
+ኃይማኖት ይምረጡ,Select religion,1,src/lib/residentSchema.ts:34,string literal,src/lib/residentSchema.ts:34
+ነዋሪ አስተካክል,Edit Resident,1,src/routes/woreda.residents.$residentId.edit.tsx:287,titleAm/titleEn prop pair,src/routes/woreda.residents.$residentId.edit.tsx:287
+ነዋሪ ይምረጡ ወይም የአመልካቹን ስም ያስገቡ,Pick a resident or enter the applicant name,1,src/routes/woreda.services.new.tsx:170,string literal,src/routes/woreda.services.new.tsx:170
+ነዋሪው ተመዝግቧል,Resident registered,1,src/routes/woreda.residents.new.tsx:123,toast: success,src/routes/woreda.residents.new.tsx:123
+ነዋሪው ተሻሻለ,Resident updated,1,src/routes/woreda.residents.$residentId.edit.tsx:253,toast: success,src/routes/woreda.residents.$residentId.edit.tsx:253
+ነዋሪዎች,Residents,1,src/routes/woreda.residents.index.tsx:370,titleAm/titleEn prop pair,src/routes/woreda.residents.index.tsx:370
+ነዋሪዎች በቀበሌ,Residents by kebele,1,src/routes/woreda.reports.index.tsx:345,titleAm/titleEn prop pair,src/routes/woreda.reports.index.tsx:345
+ንቁ ቤተሰቦች,Active Households,1,src/routes/woreda.dashboard.tsx:247,titleAm/titleEn prop pair,src/routes/woreda.dashboard.tsx:247
+ንኡስ ወረዳ,Sub-Woreda,1,src/components/forms/ResidentWizardSteps.tsx:614,labelAm/labelEn prop pair,src/components/forms/ResidentWizardSteps.tsx:614
+ንዑስ ወረዳ,Sub-Woreda,1,src/components/forms/HouseholdFormFields.tsx:171,labelAm/labelEn prop pair,src/components/forms/HouseholdFormFields.tsx:171
+አሁን,just now,1,src/routes/woreda.residents.$residentId.index.tsx:967,string literal,src/routes/woreda.residents.$residentId.index.tsx:967
+አልተቀየረም,The credential was not activated — it may have been changed by someone else,1,src/routes/woreda.credentials.$requestId.index.tsx:2369,string literal,src/routes/woreda.credentials.$requestId.index.tsx:2369
+አልተቀየረም,The card was activated but its request was not — please reopen and retry,1,src/routes/woreda.credentials.$requestId.index.tsx:2406,string literal,src/routes/woreda.credentials.$requestId.index.tsx:2406
+አርማ,Logo,1,src/routes/woreda.settings.woreda-configuration.tsx:389,titleAm/titleEn prop pair,src/routes/woreda.settings.woreda-configuration.tsx:389
+አስቸኳይ,Urgent,1,src/lib/serviceConstants.ts:28,string literal,src/lib/serviceConstants.ts:28
+አባላት,Members,1,src/routes/woreda.households.index.tsx:199,string literal,src/routes/woreda.households.index.tsx:199
+አባት,Father,1,src/routes/woreda.civil.$eventId.tsx:590,labelAm/labelEn prop pair,src/routes/woreda.civil.$eventId.tsx:590
+አባት (የተመዘገበ),Father (registered resident),1,src/routes/woreda.civil.birth.new.tsx:373,labelAm/labelEn prop pair,src/routes/woreda.civil.birth.new.tsx:373
+አያያዝ ሁኔታ,Occupancy Status,1,src/components/forms/HouseholdFormFields.tsx:158,labelAm/labelEn prop pair,src/components/forms/HouseholdFormFields.tsx:158
+አያያዝ ሁኔታ ይምረጡ,Select occupancy status,1,src/lib/householdSchema.ts:10,string literal,src/lib/householdSchema.ts:10
+አይነት,Type,1,src/routes/woreda.rental-houses.requests.index.tsx:178,string literal,src/routes/woreda.rental-houses.requests.index.tsx:178
+አዲስ,New Issue,1,src/routes/woreda.credentials.$requestId.index.tsx:89,string literal,src/routes/woreda.credentials.$requestId.index.tsx:89
+አዲስ መታወቂያ ጥያቄ ፎቶ ይፈልጋል፣ ከመስመር ውጭ ሆኖ ማስገባት አይቻልም,A new-issue request needs a photo and cannot be queued offline,1,src/routes/woreda.credentials.new.tsx:424,string literal,src/routes/woreda.credentials.new.tsx:424
+አዲስ ቤተሰብ ምዝገባ,New Household Registration,1,src/routes/woreda.households.new.tsx:154,titleAm/titleEn prop pair,src/routes/woreda.households.new.tsx:154
+አዲስ ነዋሪ ምዝገባ,Register a new resident,1,src/routes/woreda.residents.new.tsx:135,titleAm/titleEn prop pair,src/routes/woreda.residents.new.tsx:135
+አዲስ የልደት ምዝገባ,New Birth Registration,1,src/routes/woreda.civil.birth.new.tsx:270,titleAm/titleEn prop pair,src/routes/woreda.civil.birth.new.tsx:270
+አዲስ የመታወቂያ ጥያቄ,New Credential Request,1,src/routes/woreda.credentials.new.tsx:593,titleAm/titleEn prop pair,src/routes/woreda.credentials.new.tsx:593
+አዲስ የሞት ምዝገባ,New Death Registration,1,src/routes/woreda.civil.death.new.tsx:198,titleAm/titleEn prop pair,src/routes/woreda.civil.death.new.tsx:198
+አዲስ የኪራይ ቤት ምዝገባ,Register New Rental House,1,src/routes/woreda.rental-houses.new.tsx:114,titleAm/titleEn prop pair,src/routes/woreda.rental-houses.new.tsx:114
+አዲስ የጋብቻ ምዝገባ,New Marriage Registration,1,src/routes/woreda.civil.marriage.new.tsx:202,titleAm/titleEn prop pair,src/routes/woreda.civil.marriage.new.tsx:202
+አዲስ የፍቺ ምዝገባ,New Divorce Registration,1,src/routes/woreda.civil.divorce.new.tsx:210,titleAm/titleEn prop pair,src/routes/woreda.civil.divorce.new.tsx:210
+አድራሻ,Address Line,1,src/components/forms/HouseholdFormFields.tsx:145,labelAm/labelEn prop pair,src/components/forms/HouseholdFormFields.tsx:145
+አድራሻ,Contact & Residence,1,src/routes/woreda.residents.$residentId.print.tsx:252,titleAm/titleEn prop pair,src/routes/woreda.residents.$residentId.print.tsx:252
+አድራሻ እና ግንኙነት,Contact,1,src/routes/woreda.settings.woreda-configuration.tsx:345,titleAm/titleEn prop pair,src/routes/woreda.settings.woreda-configuration.tsx:345
+አገልግሎቱን ይምረጡ,Select a service type,1,src/routes/woreda.services.new.tsx:167,string literal,src/routes/woreda.services.new.tsx:167
+አገልግሎት,Service type,1,src/components/services/ServiceRequestList.tsx:431,string literal,src/components/services/ServiceRequestList.tsx:431
+አገናኝ ተቀድቷል,Link copied,1,src/routes/woreda.residents.$residentId.index.tsx:348,toast: success,src/routes/woreda.residents.$residentId.index.tsx:348
+እስካሁን የተመዘገበ ቤተሰብ የለም,No households registered yet,1,src/routes/woreda.households.index.tsx:405,labelAm/labelEn prop pair,src/routes/woreda.households.index.tsx:405
+እስካሁን የተመዘገበ ነዋሪ የለም,No residents registered yet,1,src/routes/woreda.residents.index.tsx:500,labelAm/labelEn prop pair,src/routes/woreda.residents.index.tsx:500
+እባክዎ ሁሉንም አስፈላጊ መስኮች ይሙሉ,Please fill in all required fields,1,src/lib/errorMessages.ts:49,string literal,src/lib/errorMessages.ts:49
+እናት,Mother,1,src/routes/woreda.civil.$eventId.tsx:573,labelAm/labelEn prop pair,src/routes/woreda.civil.$eventId.tsx:573
+እናት (የተመዘገበች),Mother (registered resident),1,src/routes/woreda.civil.birth.new.tsx:356,labelAm/labelEn prop pair,src/routes/woreda.civil.birth.new.tsx:356
+እንቅስቃሴ ስለሌለ በቅርቡ ከስርዓቱ ይወጣሉ,You,1,src/components/layout/WoredaShell.tsx:115,string literal,src/components/layout/WoredaShell.tsx:115
+እንቅስቃሴ ስለሌለ ከስርዓቱ ወጥተዋል,Signed out due to inactivity,1,src/components/layout/WoredaShell.tsx:117,string literal,src/components/layout/WoredaShell.tsx:117
+እንደገና ለክለሳ ተልኳል,Resubmitted,1,src/routes/woreda.civil.$eventId.tsx:471,toast: success,src/routes/woreda.civil.$eventId.tsx:471
+ኦዲት መዝገብ,Audit Trail,1,src/routes/woreda.audit.tsx:346,titleAm/titleEn prop pair,src/routes/woreda.audit.tsx:346
+ከ5MB በላይ,File larger than 5MB,1,src/routes/woreda.services.$requestId.index.tsx:371,toast: error,src/routes/woreda.services.$requestId.index.tsx:371
+ከመስመር ውጭ ነዎት,You are offline,1,src/hooks/useOfflineGuard.ts:14,string literal,src/hooks/useOfflineGuard.ts:14
+ከፋይ,Paid by,1,src/routes/verify.receipt.$token.tsx:136,labelAm/labelEn prop pair,src/routes/verify.receipt.$token.tsx:136
+ከፍተኛ,High,1,src/lib/serviceConstants.ts:27,string literal,src/lib/serviceConstants.ts:27
+ኩነት,Civil event,1,src/routes/woreda.approvals.tsx:40,string literal,src/routes/woreda.approvals.tsx:40
+ኪራይ,Rental,1,src/routes/woreda.approvals.tsx:41,string literal,src/routes/woreda.approvals.tsx:41
+ኪራይ,Rent,1,src/routes/woreda.rental-houses.requests.index.tsx:184,string literal,src/routes/woreda.rental-houses.requests.index.tsx:184
+ኪራይ በግለሰብ,Rented Private,1,src/routes/woreda.households.index.tsx:343,string literal,src/routes/woreda.households.index.tsx:343
+ኪራይ የጀመረበት ቀን,Rent Start Date,1,src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:321,labelAm/labelEn prop pair,src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:321
+ካልተመዘገበ ስም እዚህ ያስገቡ,Enter here if not a registered resident,1,src/routes/woreda.civil.death.new.tsx:223,string literal,src/routes/woreda.civil.death.new.tsx:223
+ካልተመዘገበች እናት ስም እዚህ ያስገቡ,Enter here if mother is not a registered resident,1,src/routes/woreda.civil.birth.new.tsx:368,string literal,src/routes/woreda.civil.birth.new.tsx:368
+ካርታውን ይንኩ ወይም ምልክቱን ይጎትቱ የቤቱን ትክክለኛ መገኛ ለማመልከት,Tap the map or drag the marker to mark the exact house location,1,src/components/forms/HouseholdFormFields.tsx:182,string literal,src/components/forms/HouseholdFormFields.tsx:182
+ካርዱ አስቀድሞ ታትሟል,This card is already printed — confirm it instead,1,src/routes/woreda.credentials.$requestId.print.tsx:612,toast: error,src/routes/woreda.credentials.$requestId.print.tsx:612
+ኬንትሮስ,Longitude,1,src/components/forms/ResidentWizardSteps.tsx:620,labelAm/labelEn prop pair,src/components/forms/ResidentWizardSteps.tsx:620
+ኬክሮስ,Latitude,1,src/components/forms/ResidentWizardSteps.tsx:617,labelAm/labelEn prop pair,src/components/forms/ResidentWizardSteps.tsx:617
+ክሊራንስ ደብዳቤ ተጭኗል,Clearance letter uploaded,1,src/components/forms/ResidentWizardSteps.tsx:305,toast: success,src/components/forms/ResidentWizardSteps.tsx:305
+ክብደት (ኪ.ግ),Weight (kg),1,src/routes/woreda.civil.birth.new.tsx:399,labelAm/labelEn prop pair,src/routes/woreda.civil.birth.new.tsx:399
+ክፍል,Entity,1,src/routes/woreda.audit.tsx:288,string literal,src/routes/woreda.audit.tsx:288
+ክፍት,Vacant,1,src/hooks/useReportsAggregate.ts:45,string literal,src/hooks/useReportsAggregate.ts:45
+ክፍያ (ETB),Fee Amount,1,src/routes/woreda.settings.woreda-configuration.tsx:1123,labelAm/labelEn prop pair,src/routes/woreda.settings.woreda-configuration.tsx:1123
+ክፍያ በመጠባበቅ ላይ,Awaiting Payment,1,src/routes/woreda.civil.index.tsx:56,string literal,src/routes/woreda.civil.index.tsx:56
+ክፍያ በጥበቃ,Awaiting Payment,1,src/components/credentials/CredentialQueueTable.tsx:105,string literal,src/components/credentials/CredentialQueueTable.tsx:105
+ክፍያ በጥበቃ,Awaiting payment,1,src/lib/serviceConstants.ts:15,string literal,src/lib/serviceConstants.ts:15
+ክፍያ ተመዝግቧል,Payment recorded for ${req.request_number},1,src/lib/offlineSync.ts:331,string literal,src/lib/offlineSync.ts:331
+ክፍያ ተመዝግቧል,Payment recorded,1,src/routes/woreda.services.$requestId.index.tsx:354,string literal,src/routes/woreda.services.$requestId.index.tsx:354
+ክፍያ የማይጠይቅ ጥያቄ,This request has no fee,1,src/routes/woreda.services.$requestId.index.tsx:311,toast: error,src/routes/woreda.services.$requestId.index.tsx:311
+ክፍያው ሊመዘገብ አልቻለም,Payment was collected but the event could not be marked paid — the event may have been moved by someone else. Contact an administrator before recording another payment.,1,src/routes/woreda.civil.$eventId.tsx:1254,string literal,src/routes/woreda.civil.$eventId.tsx:1254
+ክፍያው ሊመዘገብ አልቻለም,Payment was collected but the request could not be marked paid — the request may have been moved by someone else. Contact an administrator before recording another payment.,1,src/routes/woreda.services.$requestId.index.tsx:1236,string literal,src/routes/woreda.services.$requestId.index.tsx:1236
+ክፍያው ሊጠየቅ አልቻለም,Could not raise the fee — the event may have been moved by someone else,1,src/routes/woreda.civil.$eventId.tsx:1203,string literal,src/routes/woreda.civil.$eventId.tsx:1203
+ክፍያው ተስተካክሏል,Fee updated,1,src/routes/woreda.settings.woreda-configuration.tsx:1406,toast: success,src/routes/woreda.settings.woreda-configuration.tsx:1406
+ኮድ,Code,1,src/routes/woreda.settings.woreda-configuration.tsx:1103,labelAm/labelEn prop pair,src/routes/woreda.settings.woreda-configuration.tsx:1103
+ወሊድ የተከታተለው,Attended by,1,src/routes/woreda.civil.birth.new.tsx:396,labelAm/labelEn prop pair,src/routes/woreda.civil.birth.new.tsx:396
+ወረዳ,Tenant,1,src/components/admin/PlatformUsersTab.tsx:211,string literal,src/components/admin/PlatformUsersTab.tsx:211
+ወረዳ መረጃ,Woreda Profile,1,src/routes/woreda.settings.woreda-configuration.tsx:299,labelAm/labelEn prop pair,src/routes/woreda.settings.woreda-configuration.tsx:299
+ወረዳ አልተገኘም,Woreda not found in session,1,src/routes/woreda.residents.new.tsx:102,toast: error,src/routes/woreda.residents.new.tsx:102
+ወረፋው ንጹህ ነው,Nothing is waiting for your action,1,src/routes/woreda.approvals.tsx:179,labelAm/labelEn prop pair,src/routes/woreda.approvals.tsx:179
+ወርሃዊ ኪራይ (መደበኛ),Monthly Rent (Standard),1,src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:240,labelAm/labelEn prop pair,src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:240
+ወቅቱ ያለፋቸው,Expired Credentials,1,src/routes/woreda.dashboard.tsx:291,titleAm/titleEn prop pair,src/routes/woreda.dashboard.tsx:291
+ወደ ተከፍሏል ሊዘዋወር አልቻለም,Could not move the request to paid — it may have been moved by someone else. The payment was recorded; contact an administrator to reconcile.,1,src/lib/offlineSync.ts:288,string literal,src/lib/offlineSync.ts:288
+ውድቅ,Rejected,1,src/routes/woreda.civil.index.tsx:60,string literal,src/routes/woreda.civil.index.tsx:60
+ዓ.ም,Year,1,src/components/common/EthiopianDateInput.tsx:119,placeholder,src/components/common/EthiopianDateInput.tsx:119
+ዓይነት,Payment type,1,src/routes/verify.receipt.$token.tsx:131,labelAm/labelEn prop pair,src/routes/verify.receipt.$token.tsx:131
+ዕለታዊ ገቢ,Today,1,src/routes/woreda.dashboard.tsx:283,titleAm/titleEn prop pair,src/routes/woreda.dashboard.tsx:283
+ዝምድና,Relation to Child,1,src/routes/woreda.civil.birth.new.tsx:418,labelAm/labelEn prop pair,src/routes/woreda.civil.birth.new.tsx:418
+ዝምድና,Relation to Deceased,1,src/routes/woreda.civil.death.new.tsx:279,labelAm/labelEn prop pair,src/routes/woreda.civil.death.new.tsx:279
+ዝምድና ከቤተሰብ ኃላፊ ጋር,Relation to Household Head,1,src/components/forms/ResidentWizardSteps.tsx:611,labelAm/labelEn prop pair,src/components/forms/ResidentWizardSteps.tsx:611
+ዝቅተኛ,Low,1,src/lib/serviceConstants.ts:25,string literal,src/lib/serviceConstants.ts:25
+የልደት ምዝገባ ተልኳል,Birth registration submitted,1,src/routes/woreda.civil.birth.new.tsx:234,toast: success,src/routes/woreda.civil.birth.new.tsx:234
+የልደት ቀን,DOB,1,src/routes/woreda.residents.index.tsx:275,string literal,src/routes/woreda.residents.index.tsx:275
+የልጅ መረጃ,Child Information,1,src/routes/woreda.civil.birth.new.tsx:280,titleAm/titleEn prop pair,src/routes/woreda.civil.birth.new.tsx:280
+የልጅ ሙሉ ስም,Child Name,1,src/routes/woreda.civil.$eventId.tsx:554,labelAm/labelEn prop pair,src/routes/woreda.civil.$eventId.tsx:554
+የመረጃ አወቃቀር ስህተት,Data shape mismatch,1,src/routes/woreda.credentials.$requestId.print.tsx:824,titleAm/titleEn prop pair,src/routes/woreda.credentials.$requestId.print.tsx:824
+የመረጃ ጭነት አልተሳካም,Failed to load credential data,1,src/routes/woreda.credentials.$requestId.print.tsx:767,titleAm/titleEn prop pair,src/routes/woreda.credentials.$requestId.print.tsx:767
+የመተው ቀን ያስፈልጋል,End date required,1,src/routes/woreda.rental-houses.$houseId.index.tsx:625,string literal,src/routes/woreda.rental-houses.$houseId.index.tsx:625
+የመተው ጥያቄ ተልኳል,Vacate request submitted,1,src/routes/woreda.rental-houses.$houseId.index.tsx:659,toast: success,src/routes/woreda.rental-houses.$houseId.index.tsx:659
+የመታወቂያ ህትመት,Credential Printing,1,src/routes/woreda.credentials.$requestId.print.tsx:923,titleAm/titleEn prop pair,src/routes/woreda.credentials.$requestId.print.tsx:923
+የመታወቂያ ቁጥር,Credential Number,1,src/routes/woreda.credentials.$requestId.certificate.tsx:133,labelAm/labelEn prop pair,src/routes/woreda.credentials.$requestId.certificate.tsx:133
+የመታወቂያ ዝርዝር,Credential Details,1,src/routes/woreda.credentials.$requestId.certificate.tsx:129,titleAm/titleEn prop pair,src/routes/woreda.credentials.$requestId.certificate.tsx:129
+የመታወቂያ ጥያቄ ዝርዝር,Credential Request Detail,1,src/routes/woreda.credentials.$requestId.index.tsx:760,titleAm/titleEn prop pair,src/routes/woreda.credentials.$requestId.index.tsx:760
+የመታወቂያ ጥያቄዎች,Credential Requests,1,src/routes/woreda.credentials.index.tsx:183,titleAm/titleEn prop pair,src/routes/woreda.credentials.index.tsx:183
+የመንገድ ስም፣ ምልክት,"Street, landmark",1,src/components/forms/HouseholdFormFields.tsx:152,placeholder,src/components/forms/HouseholdFormFields.tsx:152
+የመኖሪያ ታሪክ,Occupancy History,1,src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:354,titleAm/titleEn prop pair,src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:354
+የመኖሪያ ጊዜ,Residency Time,1,src/components/forms/ResidentWizardSteps.tsx:753,titleAm/titleEn prop pair,src/components/forms/ResidentWizardSteps.tsx:753
+የሚያበቃበት,Expires,1,src/routes/v.$token.tsx:305,labelAm/labelEn prop pair,src/routes/v.$token.tsx:305
+የሚያበቃበት ቀን,Expiry Date,1,src/routes/woreda.credentials.$requestId.certificate.tsx:153,labelAm/labelEn prop pair,src/routes/woreda.credentials.$requestId.certificate.tsx:153
+የማስተካከያ ማስረጃ,Correction Evidence,1,src/routes/woreda.credentials.$requestId.index.tsx:324,string literal,src/routes/woreda.credentials.$requestId.index.tsx:324
+የማንነት መታወቂያ ማረጋገጫ,Credential Verification,1,src/routes/woreda.credentials.verify.tsx:18,titleAm/titleEn prop pair,src/routes/woreda.credentials.verify.tsx:18
+የማጽደቅ ወረፋ,Approval Queue,1,src/routes/woreda.approvals.tsx:111,titleAm/titleEn prop pair,src/routes/woreda.approvals.tsx:111
+የምስል ሰነዶች,Official Images,1,src/routes/woreda.settings.woreda-configuration.tsx:300,labelAm/labelEn prop pair,src/routes/woreda.settings.woreda-configuration.tsx:300
+የምስክር ወረቀት,Certificate Ref,1,src/routes/woreda.civil.$eventId.tsx:684,labelAm/labelEn prop pair,src/routes/woreda.civil.$eventId.tsx:684
+የምስክር ወረቀት ቁ.,Certificate Reference,1,src/routes/woreda.civil.marriage.new.tsx:272,labelAm/labelEn prop pair,src/routes/woreda.civil.marriage.new.tsx:272
+የሞባይል ገንዘብ,Mobile Money,1,src/hooks/useReportsAggregate.ts:52,string literal,src/hooks/useReportsAggregate.ts:52
+የሞት ምዝገባ ተልኳል,Death registration submitted,1,src/routes/woreda.civil.death.new.tsx:166,toast: success,src/routes/woreda.civil.death.new.tsx:166
+የሞት ቀን,Date of Death,1,src/routes/woreda.civil.death.new.tsx:236,labelAm/labelEn prop pair,src/routes/woreda.civil.death.new.tsx:236
+የሞት ቀን ያስፈልጋል,Date of death required,1,src/routes/woreda.civil.death.new.tsx:33,string literal,src/routes/woreda.civil.death.new.tsx:33
+የሞት ዝርዝር,Death Details,1,src/routes/woreda.civil.death.new.tsx:249,titleAm/titleEn prop pair,src/routes/woreda.civil.death.new.tsx:249
+የሟች መረጃ,Deceased Information,1,src/routes/woreda.civil.death.new.tsx:208,titleAm/titleEn prop pair,src/routes/woreda.civil.death.new.tsx:208
+የሟች ስም (በእጅ),Deceased,1,src/routes/woreda.civil.death.new.tsx:219,labelAm/labelEn prop pair,src/routes/woreda.civil.death.new.tsx:219
+የሥራ ሁኔታ,Occupation Status,1,src/components/forms/ResidentWizardSteps.tsx:710,labelAm/labelEn prop pair,src/components/forms/ResidentWizardSteps.tsx:710
+የሥራ አድራሻ,Work Address,1,src/components/forms/ResidentWizardSteps.tsx:723,labelAm/labelEn prop pair,src/components/forms/ResidentWizardSteps.tsx:723
+የሥራ ድርሽ,Position,1,src/components/forms/ResidentWizardSteps.tsx:720,labelAm/labelEn prop pair,src/components/forms/ResidentWizardSteps.tsx:720
+የሰነድ ስም ያስፈልጋል,A document label is required,1,src/components/residents/ResidentProfileTabs.tsx:791,toast: error,src/components/residents/ResidentProfileTabs.tsx:791
+የስራ አድራሻ,Work Address,1,src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:302,labelAm/labelEn prop pair,src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:302
+የስርዓት ስህተት ተከስቷል፣ እባክዎ ቆይተው ይሞክሩ,Something went wrong — please try again in a moment,1,src/lib/errorMessages.ts:25,string literal,src/lib/errorMessages.ts:25
+የቀረበ,Submitted,1,src/routes/woreda.rental-houses.requests.index.tsx:186,string literal,src/routes/woreda.rental-houses.requests.index.tsx:186
+የቀበሌ የኪራይ ቤቶች,Kebele Rental Houses,1,src/routes/woreda.rental-houses.index.tsx:300,titleAm/titleEn prop pair,src/routes/woreda.rental-houses.index.tsx:300
+የቀድሞ አድራሻ,Former Residence,1,src/components/forms/ResidentWizardSteps.tsx:771,titleAm/titleEn prop pair,src/components/forms/ResidentWizardSteps.tsx:771
+የቀድሞ አድራሻ,Former Address,1,src/components/forms/ResidentWizardSteps.tsx:788,labelAm/labelEn prop pair,src/components/forms/ResidentWizardSteps.tsx:788
+የቁጥር ቅርጸቶች,Numbering Formats,1,src/routes/woreda.settings.woreda-configuration.tsx:301,labelAm/labelEn prop pair,src/routes/woreda.settings.woreda-configuration.tsx:301
+የቅጣት መጠን (ETB),Penalty,1,src/routes/woreda.settings.woreda-configuration.tsx:1445,labelAm/labelEn prop pair,src/routes/woreda.settings.woreda-configuration.tsx:1445
+የባንክ ዝውውር,Bank Transfer,1,src/hooks/useReportsAggregate.ts:51,string literal,src/hooks/useReportsAggregate.ts:51
+የቤተሰብ ተጠሪ,Household Head,1,src/components/forms/HouseholdFormFields.tsx:219,labelAm/labelEn prop pair,src/components/forms/HouseholdFormFields.tsx:219
+የቤተሰብ ተጠሪ,Head,1,src/routes/woreda.households.$householdId.index.tsx:347,labelAm/labelEn prop pair,src/routes/woreda.households.$householdId.index.tsx:347
+የቤተሰብ ኃላፊ,Household Head & Family Links,1,src/components/forms/HouseholdFormFields.tsx:213,titleAm/titleEn prop pair,src/components/forms/HouseholdFormFields.tsx:213
+የቤተሰብ ኃላፊ,Household Head & Family,1,src/routes/woreda.households.$householdId.index.tsx:345,titleAm/titleEn prop pair,src/routes/woreda.households.$householdId.index.tsx:345
+የቤተሰብ ኃላፊ,Household Head,1,src/routes/woreda.households.index.tsx:196,string literal,src/routes/woreda.households.index.tsx:196
+የቤተሰብ ኃላፊ ተቀይሯል,Household head updated,1,src/routes/woreda.households.$householdId.index.tsx:177,toast: success,src/routes/woreda.households.$householdId.index.tsx:177
+የቤተሰብ አባላት,Household Members,1,src/routes/woreda.households.$householdId.index.tsx:379,titleAm/titleEn prop pair,src/routes/woreda.households.$householdId.index.tsx:379
+የቤቱ ባለንብረት,House Type,1,src/components/forms/HouseholdFormFields.tsx:309,labelAm/labelEn prop pair,src/components/forms/HouseholdFormFields.tsx:309
+የቤቱን ሁኔታ ይምረጡ,Select house type,1,src/lib/householdSchema.ts:32,string literal,src/lib/householdSchema.ts:32
+የቤት ሁኔታ,Housing Type,1,src/components/forms/HouseholdFormFields.tsx:306,titleAm/titleEn prop pair,src/components/forms/HouseholdFormFields.tsx:306
+የቤት መዝገብ ተመዝግቧል,Rental house registered,1,src/routes/woreda.rental-houses.new.tsx:104,toast: success,src/routes/woreda.rental-houses.new.tsx:104
+የቤት መገኛ አካባቢ,House Location,1,src/components/forms/HouseholdFormFields.tsx:178,labelAm/labelEn prop pair,src/components/forms/HouseholdFormFields.tsx:178
+የቤት ቁጥር,House,1,src/routes/woreda.rental-houses.index.tsx:156,string literal,src/routes/woreda.rental-houses.index.tsx:156
+የቤት ቁጥር,House number,1,src/routes/woreda.rental-houses.index.tsx:330,placeholder,src/routes/woreda.rental-houses.index.tsx:330
+የቤት ቁጥር,House No.,1,src/routes/woreda.revenue.$paymentId.receipt.tsx:765,labelAm/labelEn prop pair,src/routes/woreda.revenue.$paymentId.receipt.tsx:765
+የቤት ቁጥር በዚህ ቀበሌ ውስጥ ተመዝግቧል,House number exists,1,src/routes/woreda.rental-houses.$houseId.edit.tsx:99,string literal,src/routes/woreda.rental-houses.$houseId.edit.tsx:99
+የቤት ቁጥር ከተመዘገበ በኋላ ሊቀየር አይችልም,Cannot be changed after registration,1,src/components/forms/HouseholdFormFields.tsx:127,string literal,src/components/forms/HouseholdFormFields.tsx:127
+የቤት ቁጥር ያስፈልጋል,House number required,1,src/lib/householdSchema.ts:7,string literal,src/lib/householdSchema.ts:7
+የቤት አይነት,House Type,1,src/routes/woreda.households.index.tsx:200,string literal,src/routes/woreda.households.index.tsx:200
+የቤት አድራሻ,House & Location,1,src/routes/woreda.households.$householdId.print.tsx:176,titleAm/titleEn prop pair,src/routes/woreda.households.$householdId.print.tsx:176
+የቤት ኪራይ,Rent,1,src/routes/woreda.rental-houses.index.tsx:160,string literal,src/routes/woreda.rental-houses.index.tsx:160
+የቤት ኪራይ መጠን,Monthly Rent,1,src/routes/woreda.rental-houses.$houseId.edit.tsx:156,labelAm/labelEn prop pair,src/routes/woreda.rental-houses.$houseId.edit.tsx:156
+የቤት ኪራይ መጠን (ETB / ወር),Monthly Rent Amount,1,src/routes/woreda.rental-houses.new.tsx:149,labelAm/labelEn prop pair,src/routes/woreda.rental-houses.new.tsx:149
+የቤት ኪራይ ዝርዝር,Rental Details,1,src/routes/woreda.rental-houses.requests.$requestId.index.tsx:498,titleAm/titleEn prop pair,src/routes/woreda.rental-houses.requests.$requestId.index.tsx:498
+የቤት ኪራይ ጥያቄዎች,Rental Occupancy Requests,1,src/routes/woreda.rental-houses.requests.index.tsx:359,titleAm/titleEn prop pair,src/routes/woreda.rental-houses.requests.index.tsx:359
+የቤት ዝርዝር,House Details,1,src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:224,titleAm/titleEn prop pair,src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:224
+የተመረጠው ጊዜ,Period: ${rangeLabel},1,src/routes/woreda.reports.index.tsx:150,string literal,src/routes/woreda.reports.index.tsx:150
+የተመዘገበ ነዋሪ,Registered resident,1,src/routes/woreda.services.new.tsx:358,labelAm/labelEn prop pair,src/routes/woreda.services.new.tsx:358
+የተመዘገበበት ቀን,Registered,1,src/routes/woreda.civil.$eventId.tsx:548,labelAm/labelEn prop pair,src/routes/woreda.civil.$eventId.tsx:548
+የተሰበሰበ ገቢ,Revenue collected (ETB),1,src/routes/woreda.reports.index.tsx:319,titleAm/titleEn prop pair,src/routes/woreda.reports.index.tsx:319
+የተሰጠበት,Issued,1,src/routes/v.$token.tsx:304,labelAm/labelEn prop pair,src/routes/v.$token.tsx:304
+የተሰጠበት,Issue Date,1,src/routes/woreda.credentials.$requestId.print.tsx:1474,labelAm/labelEn prop pair,src/routes/woreda.credentials.$requestId.print.tsx:1474
+የተሰጠበት ቀን,Issue Date,1,src/routes/woreda.credentials.$requestId.certificate.tsx:144,labelAm/labelEn prop pair,src/routes/woreda.credentials.$requestId.certificate.tsx:144
+የተሰጡ ማስረጃዎች,Issued Credentials,1,src/routes/woreda.residents.$residentId.index.tsx:447,labelAm/labelEn prop pair,src/routes/woreda.residents.$residentId.index.tsx:447
+የተሳሳተ ኢሜይል ቅርፀት,Invalid email format,1,src/lib/householdSchema.ts:27,string literal,src/lib/householdSchema.ts:27
+የተስማማበት ወርሃዊ ኪራይ,Agreed Monthly Rent,1,src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:330,labelAm/labelEn prop pair,src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:330
+የተቋረጠበት ቀን,Termination Date,1,src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:339,labelAm/labelEn prop pair,src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:339
+የተከራይ መረጃ,Occupant Information,1,src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:253,titleAm/titleEn prop pair,src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:253
+የተከራይ መረጃ,Applicant Details,1,src/routes/woreda.rental-houses.requests.$requestId.index.tsx:460,titleAm/titleEn prop pair,src/routes/woreda.rental-houses.requests.$requestId.index.tsx:460
+የተከሰተበት,Incident,1,src/routes/woreda.services.$requestId.index.tsx:572,labelAm/labelEn prop pair,src/routes/woreda.services.$requestId.index.tsx:572
+የተከሰተበት ቀን,Incident date,1,src/routes/woreda.services.new.tsx:438,labelAm/labelEn prop pair,src/routes/woreda.services.new.tsx:438
+የተከሰተበት ቦታ,Incident place,1,src/routes/woreda.services.new.tsx:445,labelAm/labelEn prop pair,src/routes/woreda.services.new.tsx:445
+የተከፈለ,Paid,1,src/hooks/useReportsAggregate.ts:538,string literal,src/hooks/useReportsAggregate.ts:538
+የተከፈለ መጠን,Amount paid,1,src/routes/verify.receipt.$token.tsx:141,labelAm/labelEn prop pair,src/routes/verify.receipt.$token.tsx:141
+የተያዙ ቤቶች በክፍያ ሁኔታ,Occupied houses by payment status,1,src/routes/woreda.reports.index.tsx:436,titleAm/titleEn prop pair,src/routes/woreda.reports.index.tsx:436
+የተያዥ ሁኔታ,Occupancy,1,src/routes/woreda.rental-houses.$houseId.edit.tsx:167,labelAm/labelEn prop pair,src/routes/woreda.rental-houses.$houseId.edit.tsx:167
+የተያዥ ሁኔታ,Occupancy Status,1,src/routes/woreda.rental-houses.new.tsx:166,labelAm/labelEn prop pair,src/routes/woreda.rental-houses.new.tsx:166
+የተጋበዘበት,Invited At,1,src/components/admin/PlatformUsersTab.tsx:218,string literal,src/components/admin/PlatformUsersTab.tsx:218
+የተጠቃሚ ሚናዎች,Roles & Permissions,1,src/routes/woreda.settings.users-permissions.tsx:41,labelAm/labelEn prop pair,src/routes/woreda.settings.users-permissions.tsx:41
+የተጠቃሚ ሚናዎች እና የስራ ድርሻ አስተዳደር,Role permissions & staff account administration,1,src/routes/woreda.settings.users-permissions.tsx:36,string literal,src/routes/woreda.settings.users-permissions.tsx:36
+የተጠቃሚ ስም,Username,1,src/components/admin/PlatformUsersTab.tsx:215,string literal,src/components/admin/PlatformUsersTab.tsx:215
+የትምህርት ደረጃ,Education Level,1,src/components/forms/ResidentWizardSteps.tsx:700,labelAm/labelEn prop pair,src/components/forms/ResidentWizardSteps.tsx:700
+የትምህርት ደረጃ,Education,1,src/routes/woreda.residents.$residentId.print.tsx:291,labelAm/labelEn prop pair,src/routes/woreda.residents.$residentId.print.tsx:291
+የትምህርትና ሥራ መረጃ,Education and Occupation,1,src/components/forms/ResidentWizardSteps.tsx:698,titleAm/titleEn prop pair,src/components/forms/ResidentWizardSteps.tsx:698
+የትውልድ ሥፍራ,Place of Birth,1,src/components/forms/ResidentWizardSteps.tsx:629,titleAm/titleEn prop pair,src/components/forms/ResidentWizardSteps.tsx:629
+የትውልድ ሥፍራ ስም,Place Name,1,src/components/forms/ResidentWizardSteps.tsx:644,labelAm/labelEn prop pair,src/components/forms/ResidentWizardSteps.tsx:644
+የትውልድ ቀን,Date of Birth (Ethiopian),1,src/components/forms/ResidentWizardSteps.tsx:428,labelAm/labelEn prop pair,src/components/forms/ResidentWizardSteps.tsx:428
+የትውልድ ቀን ወደፊት መሆን አይችልም,Date must be in the past,1,src/lib/residentSchema.ts:27,string literal,src/lib/residentSchema.ts:27
+የትውልድ ቀን ያስፈልጋል,Date of birth required,1,src/lib/residentSchema.ts:26,string literal,src/lib/residentSchema.ts:26
+የትውልድ ቀን ያስፈልጋል,DoB required,1,src/routes/woreda.civil.birth.new.tsx:45,string literal,src/routes/woreda.civil.birth.new.tsx:45
+የትዳር ጓደኛ,Spouse,1,src/routes/woreda.households.$householdId.print.tsx:211,labelAm/labelEn prop pair,src/routes/woreda.households.$householdId.print.tsx:211
+የነዋሪ ሙሉ ስም,Resident full name,1,src/routes/verify.letter.$token.tsx:126,labelAm/labelEn prop pair,src/routes/verify.letter.$token.tsx:126
+የነዋሪ ቁጥር,Resident #,1,src/routes/woreda.credentials.index.tsx:85,string literal,src/routes/woreda.credentials.index.tsx:85
+የነዋሪ ቁጥር,Resident No.,1,src/routes/woreda.revenue.$paymentId.receipt.tsx:759,labelAm/labelEn prop pair,src/routes/woreda.revenue.$paymentId.receipt.tsx:759
+የነዋሪ ቁጥር ቅርጸት,Resident Number Format,1,src/routes/woreda.settings.woreda-configuration.tsx:426,titleAm/titleEn prop pair,src/routes/woreda.settings.woreda-configuration.tsx:426
+የነዋሪው ቤተሰብ ቀበሌ የለውም,This resident,1,src/routes/woreda.credentials.new.tsx:411,string literal,src/routes/woreda.credentials.new.tsx:411
+የነዋሪዎች ቅሬታዎች,Citizen Complaints,1,src/routes/woreda.complaints.tsx:19,titleAm/titleEn prop pair,src/routes/woreda.complaints.tsx:19
+የአሁኑ መኖሪያ,Current Residence,1,src/components/forms/ResidentWizardSteps.tsx:546,titleAm/titleEn prop pair,src/components/forms/ResidentWizardSteps.tsx:546
+የአመልካች መረጃ,Applicant,1,src/routes/woreda.services.new.tsx:356,titleAm/titleEn prop pair,src/routes/woreda.services.new.tsx:356
+የአመልካች ስም,Applicant name,1,src/routes/woreda.services.new.tsx:370,labelAm/labelEn prop pair,src/routes/woreda.services.new.tsx:370
+የአባል አይነት,Member type,1,src/components/residents/ResidentProfileTabs.tsx:348,labelAm/labelEn prop pair,src/components/residents/ResidentProfileTabs.tsx:348
+የአባት ስም (በእጅ),Father,1,src/routes/woreda.civil.birth.new.tsx:381,labelAm/labelEn prop pair,src/routes/woreda.civil.birth.new.tsx:381
+የአካባቢ አገልግሎት አይገኝም,Geolocation not available,1,src/components/gis/LocationPickerMap.tsx:44,toast: error,src/components/gis/LocationPickerMap.tsx:44
+የአካባቢ ፈቃድ አልተሰጠም,Location permission not granted,1,src/components/gis/LocationPickerMap.tsx:55,toast: error,src/components/gis/LocationPickerMap.tsx:55
+የአገልግሎት ክፍያዎች,Service Fees,1,src/routes/woreda.settings.woreda-configuration.tsx:478,labelAm/labelEn prop pair,src/routes/woreda.settings.woreda-configuration.tsx:478
+የአገልግሎት ዓይነት,Service type,1,src/routes/woreda.services.new.tsx:298,titleAm/titleEn prop pair,src/routes/woreda.services.new.tsx:298
+የአገልግሎት ዓይነት,Service Type,1,src/routes/woreda.settings.woreda-configuration.tsx:1430,labelAm/labelEn prop pair,src/routes/woreda.settings.woreda-configuration.tsx:1430
+የአገልግሎት ጥያቄዎች,Service Requests,1,src/routes/woreda.services.index.tsx:20,titleAm/titleEn prop pair,src/routes/woreda.services.index.tsx:20
+የአገልግሎት ጥያቄዎች በሁኔታ,Service requests by status,1,src/routes/woreda.reports.index.tsx:450,titleAm/titleEn prop pair,src/routes/woreda.reports.index.tsx:450
+የአገልግሎት ጥያቄዎች በዓይነት,Service requests by type,1,src/routes/woreda.reports.index.tsx:456,titleAm/titleEn prop pair,src/routes/woreda.reports.index.tsx:456
+የአገልግሎትና የክፍያ ተመን,Services and Fees,1,src/routes/woreda.settings.woreda-configuration.tsx:302,labelAm/labelEn prop pair,src/routes/woreda.settings.woreda-configuration.tsx:302
+የእናት መረጃ ያስፈልጋል,Provide mother (linked resident or manual name),1,src/routes/woreda.civil.birth.new.tsx:243,toast: error,src/routes/woreda.civil.birth.new.tsx:243
+የእናት ስም,Mother,1,src/components/forms/ResidentWizardSteps.tsx:398,labelAm/labelEn prop pair,src/components/forms/ResidentWizardSteps.tsx:398
+የእናት ስም (በእጅ),Mother,1,src/routes/woreda.civil.birth.new.tsx:365,labelAm/labelEn prop pair,src/routes/woreda.civil.birth.new.tsx:365
+የእናት ስም ያስፈልጋል,Mother,1,src/lib/residentSchema.ts:22,string literal,src/lib/residentSchema.ts:22
+የኩነት ምዝገባዎች,Vital events,1,src/routes/woreda.reports.index.tsx:311,titleAm/titleEn prop pair,src/routes/woreda.reports.index.tsx:311
+የኩነት ምዝገባዎች በዓይነት,Vital events by type,1,src/routes/woreda.reports.index.tsx:394,titleAm/titleEn prop pair,src/routes/woreda.reports.index.tsx:394
+የኩነት ቁጥር ቅርጸት,Civil Event Number Format,1,src/routes/woreda.settings.woreda-configuration.tsx:449,titleAm/titleEn prop pair,src/routes/woreda.settings.woreda-configuration.tsx:449
+የኪራይ መጠን ያስፈልጋል,Rent amount required,1,src/lib/householdSchema.ts:60,string literal,src/lib/householdSchema.ts:60
+የኪራይ ቤት አርትዕ,Edit Rental House,1,src/routes/woreda.rental-houses.$houseId.edit.tsx:136,titleAm/titleEn prop pair,src/routes/woreda.rental-houses.$houseId.edit.tsx:136
+የኪራይ ቤቶች ሁኔታ,Rental houses by occupancy,1,src/routes/woreda.reports.index.tsx:430,titleAm/titleEn prop pair,src/routes/woreda.reports.index.tsx:430
+የኪራይ ብር መጠን,Rent Amount (ETB),1,src/components/forms/HouseholdFormFields.tsx:359,labelAm/labelEn prop pair,src/components/forms/HouseholdFormFields.tsx:359
+የኪራይ ዝርዝር,Tenancy Details,1,src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:318,titleAm/titleEn prop pair,src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:318
+የካሜራ ፈቃድ ተከልክሏል,Camera permission denied,1,src/components/verification/HararildScanner.tsx:151,string literal,src/components/verification/HararildScanner.tsx:151
+የክሊራንስ ደብዳቤ,Clearance Letter,1,src/components/forms/ResidentWizardSteps.tsx:817,labelAm/labelEn prop pair,src/components/forms/ResidentWizardSteps.tsx:817
+የክስተት ቁጥር,Search by event #…,1,src/routes/woreda.civil.index.tsx:452,string literal,src/routes/woreda.civil.index.tsx:452
+የክፍያ ማጣቀሻ ያስገቡ,Enter a payment reference,1,src/routes/woreda.services.$requestId.index.tsx:315,toast: error,src/routes/woreda.services.$requestId.index.tsx:315
+የወላጆች መረጃ,Parents,1,src/routes/woreda.civil.birth.new.tsx:354,titleAm/titleEn prop pair,src/routes/woreda.civil.birth.new.tsx:354
+የወረዳ መገለጫ፣ ምስሎች፣ ቅርጸቶች እና ክፍያዎች,"Woreda profile, images, numbering formats & fees",1,src/routes/woreda.settings.woreda-configuration.tsx:294,string literal,src/routes/woreda.settings.woreda-configuration.tsx:294
+የወረዳ ሙሉ ስም (አማ),Full Name of Woreda,1,src/routes/woreda.settings.woreda-configuration.tsx:311,labelAm/labelEn prop pair,src/routes/woreda.settings.woreda-configuration.tsx:311
+የወረዳ ሙሉ ስም (እንግ),Full Name of Woreda (Eng),1,src/routes/woreda.settings.woreda-configuration.tsx:317,labelAm/labelEn prop pair,src/routes/woreda.settings.woreda-configuration.tsx:317
+የወረዳ ስም (ሐረሪ),Woreda Name (Harari),1,src/routes/woreda.settings.woreda-configuration.tsx:329,labelAm/labelEn prop pair,src/routes/woreda.settings.woreda-configuration.tsx:329
+የወረዳ ስም (ኦሮምኛ),Woreda Name (Oromiffa),1,src/routes/woreda.settings.woreda-configuration.tsx:332,labelAm/labelEn prop pair,src/routes/woreda.settings.woreda-configuration.tsx:332
+የወረዳ ውቅር,Woreda Configuration,1,src/routes/woreda.settings.woreda-configuration.tsx:292,titleAm/titleEn prop pair,src/routes/woreda.settings.woreda-configuration.tsx:292
+የወረዳው አጭር ስም (አማ),Short Name of Woreda,1,src/routes/woreda.settings.woreda-configuration.tsx:323,labelAm/labelEn prop pair,src/routes/woreda.settings.woreda-configuration.tsx:323
+የወረዳው አጭር ስም (እንግ),Short Name of Woreda (Eng),1,src/routes/woreda.settings.woreda-configuration.tsx:326,labelAm/labelEn prop pair,src/routes/woreda.settings.woreda-configuration.tsx:326
+የወረዳው ዕለታዊ ሁኔታ,Operational summary for your woreda,1,src/routes/woreda.dashboard.tsx:232,titleAm/titleEn prop pair,src/routes/woreda.dashboard.tsx:232
+የውል መጀመሪያ ቀን ያስፈልጋል,Contract start required,1,src/routes/woreda.rental-houses.occupants.new.tsx:326,string literal,src/routes/woreda.rental-houses.occupants.new.tsx:326
+የውል መጀመሪያ ቀን ያስፈልጋል,Contract start date required,1,src/routes/woreda.rental-houses.occupants.new.tsx:427,string literal,src/routes/woreda.rental-houses.occupants.new.tsx:427
+የዛሬ አዲስ ምዝገባዎች,New Today,1,src/routes/woreda.dashboard.tsx:255,titleAm/titleEn prop pair,src/routes/woreda.dashboard.tsx:255
+የይለፍ ቃላት አይመሳሰሉም,Passwords do not match.,1,src/components/common/ChangePasswordDialog.tsx:52,string literal,src/components/common/ChangePasswordDialog.tsx:52
+የይለፍ ቃል መልሶ ማስጀመሪያ አገናኝ ተልኳል,Reset link sent,1,src/components/settings/UsersRolesTab.tsx:288,toast: success,src/components/settings/UsersRolesTab.tsx:288
+የይለፍ ቃል ቢያንስ 8 ፊደላት ሊኖረው ይገባል,Password must be at least 8 characters.,1,src/components/common/ChangePasswordDialog.tsx:48,string literal,src/components/common/ChangePasswordDialog.tsx:48
+የይለፍ ቃል ተቀይሯል,Password changed,1,src/components/common/ChangePasswordDialog.tsx:62,toast: success,src/components/common/ChangePasswordDialog.tsx:62
+የደረሰኝ ቁጥር ቅርጸት,Receipt Number Format,1,src/routes/woreda.settings.woreda-configuration.tsx:461,titleAm/titleEn prop pair,src/routes/woreda.settings.woreda-configuration.tsx:461
+የደብዳቤ ቁጥር,Letter no.,1,src/routes/verify.letter.$token.tsx:119,labelAm/labelEn prop pair,src/routes/verify.letter.$token.tsx:119
+የደብዳቤ አብነት ተቀምጧል,Letter template saved,1,src/components/settings/LetterTemplatesTab.tsx:90,toast: success,src/components/settings/LetterTemplatesTab.tsx:90
+የደብዳቤ አብነቶች,Letter Templates,1,src/routes/woreda.settings.woreda-configuration.tsx:303,labelAm/labelEn prop pair,src/routes/woreda.settings.woreda-configuration.tsx:303
+የደብዳቤውን ሙሉ ቃል ይጻፉ…,"Write the letter body, using placeholders like {APPLICANT_NAME}",1,src/components/settings/LetterTemplatesTab.tsx:252,placeholder,src/components/settings/LetterTemplatesTab.tsx:252
+የገባበት ቀን ያስፈልጋል,Rent start date required,1,src/routes/woreda.rental-houses.$houseId.index.tsx:474,string literal,src/routes/woreda.rental-houses.$houseId.index.tsx:474
+የጋብቻ ምዝገባ ተልኳል,Marriage submitted,1,src/routes/woreda.civil.marriage.new.tsx:170,toast: success,src/routes/woreda.civil.marriage.new.tsx:170
+የጋብቻ ቀን (ካለ),Marriage Date (if known),1,src/routes/woreda.civil.divorce.new.tsx:263,labelAm/labelEn prop pair,src/routes/woreda.civil.divorce.new.tsx:263
+የጋብቻ ዝርዝር,Marriage Details,1,src/routes/woreda.civil.marriage.new.tsx:253,titleAm/titleEn prop pair,src/routes/woreda.civil.marriage.new.tsx:253
+የግል መረጃ,Identity,1,src/components/forms/ResidentWizardSteps.tsx:356,titleAm/titleEn prop pair,src/components/forms/ResidentWizardSteps.tsx:356
+የጥያቄ ቁጥር,Request #,1,src/routes/woreda.credentials.index.tsx:82,string literal,src/routes/woreda.credentials.index.tsx:82
+የጥያቄ ቁጥር ወይም የነዋሪ ስም,Search by request # or resident name…,1,src/components/credentials/CredentialQueueTable.tsx:321,string literal,src/components/credentials/CredentialQueueTable.tsx:321
+የፍርድ ቤት ማጣቀሻ ያስፈልጋል,Decree reference required,1,src/routes/woreda.civil.divorce.new.tsx:49,string literal,src/routes/woreda.civil.divorce.new.tsx:49
+የፍትሐ ብሔር ምዝገባ,Civil Registration,1,src/routes/woreda.civil.index.tsx:405,titleAm/titleEn prop pair,src/routes/woreda.civil.index.tsx:405
+የፍትሐ ብሔር ክስተት,Civil Event,1,src/routes/woreda.civil.$eventId.tsx:523,titleAm/titleEn prop pair,src/routes/woreda.civil.$eventId.tsx:523
+የፍቺ ምዝገባ ተልኳል,Divorce submitted,1,src/routes/woreda.civil.divorce.new.tsx:178,toast: success,src/routes/woreda.civil.divorce.new.tsx:178
+የፍቺ ቀን,Divorce Date,1,src/routes/woreda.civil.divorce.new.tsx:273,labelAm/labelEn prop pair,src/routes/woreda.civil.divorce.new.tsx:273
+የፍቺ ዝርዝር,Divorce Details,1,src/routes/woreda.civil.divorce.new.tsx:260,titleAm/titleEn prop pair,src/routes/woreda.civil.divorce.new.tsx:260
+የፖሊስ ሪፖርት,Police Report,1,src/routes/woreda.credentials.$requestId.index.tsx:325,string literal,src/routes/woreda.credentials.$requestId.index.tsx:325
+ያልተመደበ,Unassigned,1,src/hooks/useReportsAggregate.ts:268,string literal,src/hooks/useReportsAggregate.ts:268
+ያልተከፈለ,Due (Uncollected),1,src/hooks/useReportsAggregate.ts:539,string literal,src/hooks/useReportsAggregate.ts:539
+ያልታወቀ,Unknown,1,src/hooks/useReportsAggregate.ts:98,string literal,src/hooks/useReportsAggregate.ts:98
+ያረጋገጠው,Certified by,1,src/routes/woreda.civil.$eventId.tsx:649,labelAm/labelEn prop pair,src/routes/woreda.civil.$eventId.tsx:649
+ያረጋገጠው,Certified by (physician / official),1,src/routes/woreda.civil.death.new.tsx:260,labelAm/labelEn prop pair,src/routes/woreda.civil.death.new.tsx:260
+ያከናወነው,Officiant,1,src/routes/woreda.civil.$eventId.tsx:678,labelAm/labelEn prop pair,src/routes/woreda.civil.$eventId.tsx:678
+ያከናወነው,Officiant (religious/civil),1,src/routes/woreda.civil.marriage.new.tsx:269,labelAm/labelEn prop pair,src/routes/woreda.civil.marriage.new.tsx:269
+ይህ QR ኮድ በዚህ ወረዳ አስተዳደር የተሰጠ ትክክለኛ ደረሰኝ አይመለከትም።,This QR code does not match any receipt issued by the woreda administration.,1,src/routes/verify.receipt.$token.tsx:115,string literal,src/routes/verify.receipt.$token.tsx:115
+ይህ QR ኮድ በዚህ ወረዳ አስተዳደር የተሰጠ ትክክለኛ ደብዳቤ አይመለከትም።,This QR code does not match any letter issued by the woreda administration.,1,src/routes/verify.letter.$token.tsx:101,string literal,src/routes/verify.letter.$token.tsx:101
+ይህ ሞጁል ለዚህ ወረዳ አልነቃም,This module is not enabled for this woreda.,1,src/components/common/ModuleGate.tsx:34,toast: error,src/components/common/ModuleGate.tsx:34
+ይህ ንጥል አልተገኘም ወይም ፈቃድ የለዎትም — ገጹን አድስ አድርገው ይሞክሩ,"This item could no longer be found, or you may no longer have permission — refresh and try again.",1,src/routes/woreda.settings.woreda-configuration.tsx:151,string literal,src/routes/woreda.settings.woreda-configuration.tsx:151
+ይህ ኢሜይል ቀድሞ ተመዝግቧል,This email is already registered,1,src/lib/errorMessages.ts:73,string literal,src/lib/errorMessages.ts:73
+ይህ የመታወቂያ ቁጥር ቀደም ሲል ተመዝግቧል,This ID number is already registered,1,src/routes/woreda.residents.new.tsx:117,toast: error,src/routes/woreda.residents.new.tsx:117
+ይህ የመታወቂያ ቁጥር ቀደም ሲል ተመዝግቧል (${data[0].resident_number}),Already registered in this woreda,1,src/components/forms/ResidentWizardSteps.tsx:173,string literal,src/components/forms/ResidentWizardSteps.tsx:173
+ይህ የቤት ቁጥር በዚህ ቀበሌ ውስጥ ተመዝግቧል,House number already exists in this kebele,1,src/routes/woreda.rental-houses.new.tsx:71,string literal,src/routes/woreda.rental-houses.new.tsx:71
+ይህ የአገልግሎት ዓይነት ስራ ላይ ነው — በምትኩ ያቦዝኑት,This service type is in use — deactivate it instead,1,src/routes/woreda.settings.woreda-configuration.tsx:834,string literal,src/routes/woreda.settings.woreda-configuration.tsx:834
+ይህን ለማድረግ ፈቃድ የሎትም,You don,1,src/lib/errorMessages.ts:35,string literal,src/lib/errorMessages.ts:35
+ይህን ለውጥ ለምን ያደርጋሉ?,Why are you making this change?,1,src/routes/woreda.households.index.tsx:665,placeholder,src/routes/woreda.households.index.tsx:665
+ይህን ሚና በዚህ መንገድ መስጠት አይቻልም — ከወረዳ አስተዳዳሪዎ ይጠይቁ,This role can,1,src/lib/errorMessages.ts:43,string literal,src/lib/errorMessages.ts:43
+ይምረጡ,Select,1,src/routes/woreda.civil.$eventId.tsx:1307,placeholder,src/routes/woreda.civil.$eventId.tsx:1307
+ይግለፁ,Please specify,1,src/lib/householdSchema.ts:53,string literal,src/lib/householdSchema.ts:53
+ደረሰኝ,Receipt,1,src/routes/woreda.revenue.$paymentId.receipt.tsx:354,titleAm/titleEn prop pair,src/routes/woreda.revenue.$paymentId.receipt.tsx:354
+ደረሰኝ,Receipt No.,1,src/routes/woreda.revenue.index.tsx:216,string literal,src/routes/woreda.revenue.index.tsx:216
+ደረሰኝ ሊፈጠር አልቻለም,The payment was recorded but no receipt was created,1,src/routes/woreda.services.$requestId.index.tsx:1224,string literal,src/routes/woreda.services.$requestId.index.tsx:1224
+ደረሰኝ ቁጥር,Receipt no.,1,src/routes/verify.receipt.$token.tsx:129,labelAm/labelEn prop pair,src/routes/verify.receipt.$token.tsx:129
+ደረሰኝ ቁጥር,Receipt or reference no…,1,src/routes/woreda.revenue.index.tsx:364,placeholder,src/routes/woreda.revenue.index.tsx:364
+ደረጃ,Status,1,src/components/services/ServiceRequestList.tsx:251,string literal,src/components/services/ServiceRequestList.tsx:251
+ደረጃው ተቀይሯል,${serviceStatusLabel(next)},1,src/routes/woreda.services.$requestId.index.tsx:240,toast: success,src/routes/woreda.services.$requestId.index.tsx:240
+ደጋፊ ሰነድ,Supporting Document,1,src/routes/woreda.credentials.$requestId.index.tsx:323,string literal,src/routes/woreda.credentials.$requestId.index.tsx:323
+ገቢ,Revenue,1,src/routes/woreda.revenue.index.tsx:312,titleAm/titleEn prop pair,src/routes/woreda.revenue.index.tsx:312
+ገቢ በመክፈያ መንገድ (ETB),Revenue by channel,1,src/routes/woreda.reports.index.tsx:415,titleAm/titleEn prop pair,src/routes/woreda.reports.index.tsx:415
+ገቢ በዓይነት (ETB),Revenue by payment type,1,src/routes/woreda.reports.index.tsx:408,titleAm/titleEn prop pair,src/routes/woreda.reports.index.tsx:408
+ጉዳዩን ያስገቡ,Enter a subject,1,src/routes/woreda.services.new.tsx:171,string literal,src/routes/woreda.services.new.tsx:171
+ጉዳይ,Subject of the letter,1,src/routes/verify.letter.$token.tsx:121,labelAm/labelEn prop pair,src/routes/verify.letter.$token.tsx:121
+ጊዜ,Period,1,src/components/residents/ResidentProfileTabs.tsx:168,labelAm/labelEn prop pair,src/components/residents/ResidentProfileTabs.tsx:168
+ጊዜ,Period: ${rangeLabel}  (${start} → ${end}),1,src/routes/woreda.reports.index.tsx:128,string literal,src/routes/woreda.reports.index.tsx:128
+ጊዜ ወደፊት መሆን አይችልም,Cannot be in the future,1,src/lib/residentSchema.ts:83,string literal,src/lib/residentSchema.ts:83
+ግብዣ ተልኳል,Invitation resent,1,src/components/admin/PlatformUsersTab.tsx:311,toast: success,src/components/admin/PlatformUsersTab.tsx:311
+ጠቅላላ ነዋሪዎች,Total Residents,1,src/routes/woreda.dashboard.tsx:239,titleAm/titleEn prop pair,src/routes/woreda.dashboard.tsx:239
+ጠቅላላ ነዋሪዎች,Total residents,1,src/routes/woreda.reports.index.tsx:288,titleAm/titleEn prop pair,src/routes/woreda.reports.index.tsx:288
+ጥሬ ገንዘብ,Cash,1,src/hooks/useReportsAggregate.ts:50,string literal,src/hooks/useReportsAggregate.ts:50
+ጥያቄ ቁጥር,Request #,1,src/routes/woreda.rental-houses.requests.index.tsx:177,string literal,src/routes/woreda.rental-houses.requests.index.tsx:177
+ጥያቄ ተመዝግቧል,Request submitted,1,src/routes/woreda.rental-houses.$houseId.index.tsx:513,toast: success,src/routes/woreda.rental-houses.$houseId.index.tsx:513
+ጥያቄው ሊያዝ አልቻለም,Could not claim this request — it may have been moved by someone else,1,src/routes/woreda.credentials.$requestId.index.tsx:586,string literal,src/routes/woreda.credentials.$requestId.index.tsx:586
+ጥያቄው በማጽደቅ ደረጃ ተመልሷል,Request returned at approval stage,1,src/routes/woreda.credentials.$requestId.index.tsx:660,toast: success,src/routes/woreda.credentials.$requestId.index.tsx:660
+ጥያቄው ተመልሷል,Request returned,1,src/routes/woreda.credentials.$requestId.index.tsx:499,toast: success,src/routes/woreda.credentials.$requestId.index.tsx:499
+ጥያቄው ተመዝግቧል,Submitted — ${created.request_number},1,src/routes/woreda.services.new.tsx:271,toast: success,src/routes/woreda.services.new.tsx:271
+ጥያቄው ተረጋግጦ ወደ ማጽደቅ ተልኳል,Request verified and sent for approval,1,src/routes/woreda.credentials.$requestId.index.tsx:447,toast: success,src/routes/woreda.credentials.$requestId.index.tsx:447
+ጥያቄው አልተገኘም,The request no longer exists or is no longer visible to you,1,src/lib/offlineSync.ts:200,string literal,src/lib/offlineSync.ts:200
+ጥያቄው አልተገኘም,Request not found,1,src/routes/woreda.credentials.$requestId.print.tsx:795,titleAm/titleEn prop pair,src/routes/woreda.credentials.$requestId.print.tsx:795
+ጥያቄው እንደገና ለክለሳ ተልኳል,Resubmitted for review,1,src/routes/woreda.credentials.$requestId.index.tsx:545,toast: success,src/routes/woreda.credentials.$requestId.index.tsx:545
+ጥያቄው ከዚህ በኋላ ለክፍያ ዝግጁ አይደለም (ሁኔታ: ${req.status}),The request is no longer ready for payment (status: ${req.status}),1,src/lib/offlineSync.ts:231,string literal,src/lib/offlineSync.ts:231
+ጥያቄው ውድቅ ተደርጓል,Request rejected,1,src/routes/woreda.credentials.$requestId.index.tsx:704,toast: success,src/routes/woreda.credentials.$requestId.index.tsx:704
+ጥያቄው ገብቷል,Request submitted,1,src/routes/woreda.credentials.new.tsx:575,toast: success,src/routes/woreda.credentials.new.tsx:575
+ጥያቄው ጸድቋል፤ ወደ ክፍያ ተልኳል,"Request approved, sent for payment",1,src/routes/woreda.credentials.$requestId.index.tsx:618,toast: success,src/routes/woreda.credentials.$requestId.index.tsx:618
+ጸድቆ በሚጠበቅ,Pending approval,1,src/lib/serviceConstants.ts:11,string literal,src/lib/serviceConstants.ts:11
+ጽህፈት ቤት አድራሻ,Office Address,1,src/routes/woreda.settings.woreda-configuration.tsx:378,labelAm/labelEn prop pair,src/routes/woreda.settings.woreda-configuration.tsx:378
+ፀድቋል,Approved — payment collection is next,1,src/routes/woreda.civil.$eventId.tsx:426,toast: success,src/routes/woreda.civil.$eventId.tsx:426
+ፆታ,Gender,1,src/components/forms/ResidentWizardSteps.tsx:405,labelAm/labelEn prop pair,src/components/forms/ResidentWizardSteps.tsx:405
+ፆታ ይምረጡ,Select gender,1,src/lib/residentSchema.ts:23,string literal,src/lib/residentSchema.ts:23
+ፆታ ይምረጡ,Select sex,1,src/routes/woreda.civil.birth.new.tsx:42,string literal,src/routes/woreda.civil.birth.new.tsx:42
+ፈርሷል,Demolished,1,src/routes/woreda.households.index.tsx:326,string literal,src/routes/woreda.households.index.tsx:326
+ፋይል ከ10MB መብለጥ የለበትም,File must be under 10MB,1,src/components/residents/ResidentProfileTabs.tsx:799,toast: error,src/components/residents/ResidentProfileTabs.tsx:799
+ፎቶ,Photo,1,src/routes/woreda.credentials.$requestId.index.tsx:322,string literal,src/routes/woreda.credentials.$requestId.index.tsx:322
+ፎቶ መጫን አልተሳካም,Upload failed: ${(e as Error).message},1,src/components/forms/ResidentWizardSteps.tsx:227,toast: error,src/components/forms/ResidentWizardSteps.tsx:227
+ፎቶ መጫን አልተሳካም,Photo upload failed: ${(e as Error).message},1,src/routes/woreda.credentials.new.tsx:393,toast: error,src/routes/woreda.credentials.new.tsx:393
+ፎቶ ከ5MB መብለጥ የለበትም,Photo must be under 5MB,1,src/components/forms/ResidentWizardSteps.tsx:210,toast: error,src/components/forms/ResidentWizardSteps.tsx:210
+ፎቶ ያስፈልጋል,Photo required,1,src/lib/residentSchema.ts:32,string literal,src/lib/residentSchema.ts:32
+ፎቶ ይጫኑ,Upload a photo before submitting,1,src/routes/woreda.credentials.new.tsx:423,string literal,src/routes/woreda.credentials.new.tsx:423
+ፖሳቁ,PO Box,1,src/components/forms/HouseholdFormFields.tsx:295,labelAm/labelEn prop pair,src/components/forms/HouseholdFormFields.tsx:295

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { FieldPath } from "react-hook-form";
-import { phoneDigitsSchema, phoneDigitsToE164 } from "@/lib/phoneNumber";
+import { requiredPhoneDigitsSchema, phoneDigitsToE164 } from "@/lib/phoneNumber";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -25,7 +25,11 @@ export const residentSchema = z.object({
     .string()
     .min(1, "የትውልድ ቀን ያስፈልጋል / Date of birth required")
     .refine((v) => v <= todayIso(), "የትውልድ ቀን ወደፊት መሆን አይችልም / Date must be in the past"),
-  photo_url: z.string().optional().default(""),
+  // Task 8: a residence credential can never be minted (server-side guard,
+  // migration 00000000000068) for a resident with no photo on file, so the
+  // intake form requires one too rather than letting an officer discover
+  // that only at issuance time.
+  photo_url: z.string().trim().min(1, "ፎቶ ያስፈልጋል / Photo required"),
   ethnicity: z.string().min(1, "ብሔር ይምረጡ / Select ethnicity"),
   religion: z.string().min(1, "ኃይማኖት ይምረጡ / Select religion"),
   national_id_no: z
@@ -34,7 +38,11 @@ export const residentSchema = z.object({
     .optional()
     .default("")
     .refine((v) => !v || /^\d{16}$/.test(v), "ልክ 16 አሃዝ መሆን አለበት / Must be exactly 16 digits"),
-  phone_digits: phoneDigitsSchema(),
+  // Same server-side reasoning as photo_url above -- required here, but
+  // phoneDigitsSchema() (optional) stays the right choice for every other
+  // form's phone field (civil-registration informant, service-request
+  // applicant), which are not gated by the credential-minting guard.
+  phone_digits: requiredPhoneDigitsSchema(),
 
   // Current residence
   current_household_id: z.string().optional().default(""),

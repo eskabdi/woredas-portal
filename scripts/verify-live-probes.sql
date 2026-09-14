@@ -1605,3 +1605,130 @@ SELECT get_civil_kpis() AS kpis;
 RESET role;
 ROLLBACK;
 -- EXPECT: ERROR (get_civil_kpis: permission denied)
+
+-- =============================================================================
+-- Task 8: age + identity-completeness guard at credential minting
+-- (00000000000068_age_identity_mint_guard.sql). Closes the finding that the
+-- 18+ rule was enforced client-side only and failed OPEN on a missing DOB --
+-- generate_residence_credential_on_payment() now rejects minting for an
+-- under-18 resident, or one with no phone number or no photo on file,
+-- regardless of how the credential_request reached `paid` (UI, a direct
+-- PostgREST call, or Task 12-C's offline-sync replay all go through this
+-- one trigger).
+--
+-- Each probe below temporarily disables the unrelated FSM-enforcement
+-- triggers on credential_request/residence_credential (zz_enforce_workflow_*,
+-- zz_log_workflow_transition) purely so the credential_request row can be
+-- planted directly at `awaiting_payment` without walking the full
+-- verify->approve->pay chain as a real, permission-holding account for three
+-- disposable probe residents -- the ONLY trigger left enabled and under test
+-- is generate_residence_credential_on_payment() itself. Every disabled
+-- trigger is re-enabled before ROLLBACK; ROLLBACK discards the disable/
+-- enable calls along with the rows either way, since DDL is transactional
+-- in Postgres.
+-- =============================================================================
+
+-- === PROBE: age_guard_rejects_minor ===
+BEGIN;
+ALTER TABLE public.credential_request DISABLE TRIGGER zz_enforce_workflow_insert;
+ALTER TABLE public.credential_request DISABLE TRIGGER zz_enforce_workflow_transition;
+ALTER TABLE public.credential_request DISABLE TRIGGER zz_log_workflow_transition;
+ALTER TABLE public.residence_credential DISABLE TRIGGER zz_enforce_workflow_insert;
+ALTER TABLE public.residence_credential DISABLE TRIGGER zz_enforce_workflow_transition;
+ALTER TABLE public.residence_credential DISABLE TRIGGER zz_log_workflow_transition;
+DO $$
+DECLARE
+  v_woreda_id uuid := '8e94339e-7588-43c2-a93f-3124bc4a8be9';
+  v_kebele_id uuid := '87bfd8c5-42bf-47ce-aa33-31ca78c49d2e';
+  v_resident_id uuid;
+  v_req_id uuid;
+  v_pay_id uuid;
+BEGIN
+  INSERT INTO public.resident (woreda_id, resident_number, full_name, sex, date_of_birth, marital_status, phone_number, photo_url)
+  VALUES (v_woreda_id, 'PROBE-MINOR-1', 'Probe Minor', 'male', CURRENT_DATE - INTERVAL '10 years', 'single', '911111111', 'probe/minor.jpg')
+  RETURNING resident_id INTO v_resident_id;
+  INSERT INTO public.credential_request (woreda_id, request_number, resident_id, issuing_kebele_id, request_type, status)
+  VALUES (v_woreda_id, 'PROBE-REQ-1', v_resident_id, v_kebele_id, 'new_issue', 'awaiting_payment')
+  RETURNING credential_request_id INTO v_req_id;
+  INSERT INTO public.payment (woreda_id, resident_id, payment_type, amount, payment_date, channel, status, credential_request_id)
+  VALUES (v_woreda_id, v_resident_id, 'credential_fee', 150, CURRENT_DATE, 'cash', 'confirmed', v_req_id)
+  RETURNING payment_id INTO v_pay_id;
+  INSERT INTO public.receipt (woreda_id, payment_id, receipt_date, total_amount, cash_bank_channel, receipt_number)
+  VALUES (v_woreda_id, v_pay_id, CURRENT_DATE, 150, 'cash', '');
+  UPDATE public.credential_request SET status = 'paid', payment_id = v_pay_id WHERE credential_request_id = v_req_id;
+END $$;
+ROLLBACK;
+-- EXPECT: ERROR (resident is under 18 -- a residence credential cannot be issued)
+
+-- === PROBE: age_guard_rejects_missing_phone ===
+BEGIN;
+ALTER TABLE public.credential_request DISABLE TRIGGER zz_enforce_workflow_insert;
+ALTER TABLE public.credential_request DISABLE TRIGGER zz_enforce_workflow_transition;
+ALTER TABLE public.credential_request DISABLE TRIGGER zz_log_workflow_transition;
+ALTER TABLE public.residence_credential DISABLE TRIGGER zz_enforce_workflow_insert;
+ALTER TABLE public.residence_credential DISABLE TRIGGER zz_enforce_workflow_transition;
+ALTER TABLE public.residence_credential DISABLE TRIGGER zz_log_workflow_transition;
+DO $$
+DECLARE
+  v_woreda_id uuid := '8e94339e-7588-43c2-a93f-3124bc4a8be9';
+  v_kebele_id uuid := '87bfd8c5-42bf-47ce-aa33-31ca78c49d2e';
+  v_resident_id uuid;
+  v_req_id uuid;
+  v_pay_id uuid;
+BEGIN
+  INSERT INTO public.resident (woreda_id, resident_number, full_name, sex, date_of_birth, marital_status, phone_number, photo_url)
+  VALUES (v_woreda_id, 'PROBE-NOPHONE-1', 'Probe NoPhone', 'female', CURRENT_DATE - INTERVAL '30 years', 'single', NULL, 'probe/nophone.jpg')
+  RETURNING resident_id INTO v_resident_id;
+  INSERT INTO public.credential_request (woreda_id, request_number, resident_id, issuing_kebele_id, request_type, status)
+  VALUES (v_woreda_id, 'PROBE-REQ-2', v_resident_id, v_kebele_id, 'new_issue', 'awaiting_payment')
+  RETURNING credential_request_id INTO v_req_id;
+  INSERT INTO public.payment (woreda_id, resident_id, payment_type, amount, payment_date, channel, status, credential_request_id)
+  VALUES (v_woreda_id, v_resident_id, 'credential_fee', 150, CURRENT_DATE, 'cash', 'confirmed', v_req_id)
+  RETURNING payment_id INTO v_pay_id;
+  INSERT INTO public.receipt (woreda_id, payment_id, receipt_date, total_amount, cash_bank_channel, receipt_number)
+  VALUES (v_woreda_id, v_pay_id, CURRENT_DATE, 150, 'cash', '');
+  UPDATE public.credential_request SET status = 'paid', payment_id = v_pay_id WHERE credential_request_id = v_req_id;
+END $$;
+ROLLBACK;
+-- EXPECT: ERROR (resident has no phone number on file -- a residence credential cannot be issued)
+
+-- === PROBE: age_guard_accepts_exact_18th_birthday_today ===
+-- The boundary case: calculateAgeYears()'s own client-side JS logic (and
+-- this trigger's date_part('year', age(...)) equivalent) both treat a
+-- birthday that falls exactly today as already-turned-18, not still-17.
+BEGIN;
+ALTER TABLE public.credential_request DISABLE TRIGGER zz_enforce_workflow_insert;
+ALTER TABLE public.credential_request DISABLE TRIGGER zz_enforce_workflow_transition;
+ALTER TABLE public.credential_request DISABLE TRIGGER zz_log_workflow_transition;
+ALTER TABLE public.residence_credential DISABLE TRIGGER zz_enforce_workflow_insert;
+ALTER TABLE public.residence_credential DISABLE TRIGGER zz_enforce_workflow_transition;
+ALTER TABLE public.residence_credential DISABLE TRIGGER zz_log_workflow_transition;
+DO $$
+DECLARE
+  v_woreda_id uuid := '8e94339e-7588-43c2-a93f-3124bc4a8be9';
+  v_kebele_id uuid := '87bfd8c5-42bf-47ce-aa33-31ca78c49d2e';
+  v_resident_id uuid;
+  v_req_id uuid;
+  v_pay_id uuid;
+BEGIN
+  INSERT INTO public.resident (woreda_id, resident_number, full_name, sex, date_of_birth, marital_status, phone_number, photo_url)
+  VALUES (v_woreda_id, 'PROBE-VALID-1', 'Probe Valid Adult', 'male', CURRENT_DATE - INTERVAL '18 years', 'single', '922222222', 'probe/valid.jpg')
+  RETURNING resident_id INTO v_resident_id;
+  INSERT INTO public.credential_request (woreda_id, request_number, resident_id, issuing_kebele_id, request_type, status)
+  VALUES (v_woreda_id, 'PROBE-REQ-3', v_resident_id, v_kebele_id, 'new_issue', 'awaiting_payment')
+  RETURNING credential_request_id INTO v_req_id;
+  INSERT INTO public.payment (woreda_id, resident_id, payment_type, amount, payment_date, channel, status, credential_request_id)
+  VALUES (v_woreda_id, v_resident_id, 'credential_fee', 150, CURRENT_DATE, 'cash', 'confirmed', v_req_id)
+  RETURNING payment_id INTO v_pay_id;
+  INSERT INTO public.receipt (woreda_id, payment_id, receipt_date, total_amount, cash_bank_channel, receipt_number)
+  VALUES (v_woreda_id, v_pay_id, CURRENT_DATE, 150, 'cash', '');
+  UPDATE public.credential_request SET status = 'paid', payment_id = v_pay_id WHERE credential_request_id = v_req_id;
+END $$;
+ALTER TABLE public.credential_request ENABLE TRIGGER zz_enforce_workflow_insert;
+ALTER TABLE public.credential_request ENABLE TRIGGER zz_enforce_workflow_transition;
+ALTER TABLE public.credential_request ENABLE TRIGGER zz_log_workflow_transition;
+ALTER TABLE public.residence_credential ENABLE TRIGGER zz_enforce_workflow_insert;
+ALTER TABLE public.residence_credential ENABLE TRIGGER zz_enforce_workflow_transition;
+ALTER TABLE public.residence_credential ENABLE TRIGGER zz_log_workflow_transition;
+ROLLBACK;
+-- EXPECT: SUCCESS (exact-18-today resident is accepted, not rejected)

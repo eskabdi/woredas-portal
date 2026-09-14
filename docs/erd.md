@@ -1,18 +1,31 @@
 # Entity Relationship Diagram
 
-INSA Enforcer Phase 1.3. Built directly from every migration under
-`supabase/migrations/` (the baseline dump plus 25 incremental migrations) —
-**43 tables**, not the 36 in the baseline alone: `console_role`,
-`console_role_permission`, `user_permission_override`, `resident_document`,
-`id_card_template_field_draft`, `rate_limit_bucket` and `workflow_transition`
-were all added afterward and are real, live tables the baseline-only count
-misses. `rate_limit_bucket` is an infra-support table, not a domain one — see
-"Sequence / counter tables" below for where it's documented.
-`workflow_transition` (migration `00000000000025`) is the platform-level
-status-machine reference table: it deliberately carries **no `woreda_id`**,
-because which transitions are legal is fixed for the platform — a tenant may
-change who holds a permission but can never remove a gate. It is therefore not
-part of the per-tenant domain model below.
+INSA Enforcer Phase 1.3. Originally built from the migration files under
+`supabase/migrations/`; as of Task 8 (2026-09-14) re-verified against a
+**live, read-only enumeration** of the production schema
+(`information_schema`/`pg_catalog` queries over the Management API — see
+`docs/architecture.md`'s decision record for why that replaces `supabase db
+diff` in this project) rather than the migration files alone, so this
+document now reflects what is actually deployed, not only what was written.
+That live enumeration found **52 tables**, zero drift against the
+migrations (every table `CREATE TABLE`d in `supabase/migrations/*.sql`
+exists live and vice versa) — up from the 36 in the baseline dump alone and
+the 43 recorded the last time this count was taken. The tables added since
+that last count, beyond the ones already listed below in "Superseded" and
+the Task-11 gap-fill table further down, are `workflow_status_history`
+(migration `00000000000058`, Task 14-A) and `tenant_role`/
+`tenant_role_permission` (migration `00000000000038`, Task 13) — both
+documented in their own sections below. `rate_limit_bucket` is an
+infra-support table, not a domain one — see "Sequence / counter tables"
+below for where it's documented. `workflow_transition` (migration
+`00000000000025`) is the platform-level status-machine reference table: it
+deliberately carries **no `woreda_id`**, because which transitions are legal
+is fixed for the platform — a tenant may change who holds a permission but
+can never remove a gate. It is therefore not part of the per-tenant domain
+model below. The client-side offline mutation queue (Task 12-C,
+`src/lib/offlineQueue.ts`) is **not** a database object at all — it is
+`localStorage`-only, per-browser, and never reaches the schema; see
+`docs/task12c-mapping-memo.md` for its design.
 
 **Encrypted companion columns:** migration `00000000000023` (INSA remediation
 Phase C) adds a `*_enc bytea` column beside each PII/financial column in scope
@@ -95,6 +108,9 @@ erDiagram
     app_user ||--o{ user_permission_override : "per-user grant/deny"
     app_user }o--o| console_role : "assigned (super_admin only)"
     console_role ||--o{ console_role_permission : grants
+    woreda ||--o{ tenant_role : "custom roles (A1-A7)"
+    tenant_role ||--o{ tenant_role_permission : grants
+    app_user }o--o| tenant_role : "assigned (role='custom' only)"
 
     woreda {
         uuid woreda_id PK
@@ -128,21 +144,94 @@ erDiagram
     }
 ```
 
-| Table                      | Purpose                                                                                                         | Key constraints                                                                                                                                                                                                                           |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `woreda`                   | Tenant root                                                                                                     | `status` enum (`active`/`inactive`/`suspended`); `woreda_code` and `woreda_numeric_code` both unique                                                                                                                                      |
-| `woreda_settings`          | Per-tenant config: fees, branding, `contact_phone`/`contact_email` 🔒, resident-number format string            | 1:1 with `woreda`                                                                                                                                                                                                                         |
-| `kebele`                   | Sub-woreda geographic unit, reference data                                                                      | unique `(woreda_id, kebele_number)`                                                                                                                                                                                                       |
-| `tenant_module_config`     | Per-tenant module on/off (`credentials`, `revenue`, `services`, …) — **absence of a row means enabled**         | PK `(woreda_id, module_key)`                                                                                                                                                                                                              |
-| `app_user`                 | Staff account, 1:1 with `auth.users`                                                                            | `role` enum (8 values); `status` enum incl. `pending`; `console_role_id` nullable FK, `CHECK` restricts it to `role = 'super_admin'`                                                                                                      |
-| `role_permission`          | Per-tenant override of the compiled default permission matrix                                                   | PK `(woreda_id, role_name, permission_key)`; `role_name` CHECK excludes `super_admin`/`tenant_admin`                                                                                                                                      |
-| `console_role`             | Named, admin-defined roles scoping what an individual `super_admin` can do under `/admin` (2nd permission axis) | `console_role_id IS NULL` on `app_user` means **unrestricted** super admin — the load-bearing default                                                                                                                                     |
-| `console_role_permission`  | Grants for a `console_role`, keyed against a fixed 5-value `CHECK`, not a lookup table                          | PK `(console_role_id, permission_key)`                                                                                                                                                                                                    |
-| `user_permission_override` | Per-_user_ grant/deny, wins in both directions over `role_permission`                                           | `CHECK` locks 3 keys (`credential.approve`, `civil.approve`, `tenant.manage`) from ever being overridden; `woreda_id` is trigger-derived, never client-supplied                                                                           |
-| `audit_log`                | Generic before/after audit trail, polymorphic `(entity_name, entity_id)`                                        | insert-only by convention (not DB-enforced); `source_ip` populated by 5 of 6 Edge Functions since INSA remediation Phase B (best-effort, request-header-derived — see `supabase/functions/_shared/clientIp.ts`, never a security control) |
+| Table                      | Purpose                                                                                                                                                                                     | Key constraints                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `woreda`                   | Tenant root                                                                                                                                                                                 | `status` enum (`active`/`inactive`/`suspended`); `woreda_code` and `woreda_numeric_code` both unique                                                                                                                                                                                                                                                                                                                                           |
+| `woreda_settings`          | Per-tenant config: fees, branding, `contact_phone`/`contact_email` 🔒, resident-number format string                                                                                        | 1:1 with `woreda`                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `kebele`                   | Sub-woreda geographic unit, reference data                                                                                                                                                  | unique `(woreda_id, kebele_number)`                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `tenant_module_config`     | Per-tenant module on/off (`credentials`, `revenue`, `services`, …) — **absence of a row means enabled**                                                                                     | PK `(woreda_id, module_key)`                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `app_user`                 | Staff account, 1:1 with `auth.users`                                                                                                                                                        | `role` enum (8 values); `status` enum incl. `pending`; `console_role_id` nullable FK, `CHECK` restricts it to `role = 'super_admin'`                                                                                                                                                                                                                                                                                                           |
+| `role_permission`          | Per-tenant override of the compiled default permission matrix                                                                                                                               | PK `(woreda_id, role_name, permission_key)`; `role_name` CHECK excludes `super_admin`/`tenant_admin`                                                                                                                                                                                                                                                                                                                                           |
+| `console_role`             | Named, admin-defined roles scoping what an individual `super_admin` can do under `/admin` (2nd permission axis)                                                                             | `console_role_id IS NULL` on `app_user` means **unrestricted** super admin — the load-bearing default                                                                                                                                                                                                                                                                                                                                          |
+| `console_role_permission`  | Grants for a `console_role`, keyed against a fixed 5-value `CHECK`, not a lookup table                                                                                                      | PK `(console_role_id, permission_key)`                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `user_permission_override` | Per-_user_ grant/deny, wins in both directions over `role_permission`                                                                                                                       | `CHECK` locks 3 keys (`credential.approve`, `civil.approve`, `tenant.manage`) from ever being overridden; `woreda_id` is trigger-derived, never client-supplied                                                                                                                                                                                                                                                                                |
+| `audit_log`                | Generic before/after audit trail, polymorphic `(entity_name, entity_id)`                                                                                                                    | insert-only by convention (not DB-enforced); `source_ip` populated by 5 of 6 Edge Functions since INSA remediation Phase B (best-effort, request-header-derived — see `supabase/functions/_shared/clientIp.ts`, never a security control)                                                                                                                                                                                                      |
+| `tenant_role`              | Custom (tenant-defined) roles — Task 13, migration `00000000000038`. A per-woreda alternative to the 7 built-in editable roles for tenants that need a role shape the built-ins don't cover | `UNIQUE (woreda_id, name)`; `is_active` soft-disable (deactivating never breaks the FK on `app_user.custom_role_id`, but a resolver treats an inactive role as granting nothing — same pattern as `console_role.is_active`)                                                                                                                                                                                                                    |
+| `tenant_role_permission`   | Grants for a `tenant_role`, mirroring `console_role_permission`'s shape scoped per-tenant instead of platform-wide                                                                          | PK `(tenant_role_id, permission_key)`; `CHECK` excludes the same reserved keys `role_permission`/`user_permission_override` already lock out (`credential.approve`, `civil.approve`, `tenant.manage`, `platform.manage`, `tenant.create`, `credential.configure_policy`, `user.manage`, `credential.revoke`) — a custom role can never be handed an administrative or approval power the ordinary matrix and override paths can't grant either |
+
+`role_permission` cannot represent a custom role: its `role_name` column is a
+fixed `CHECK`-enumerated set of the built-in editable roles, and a custom
+role has no stable name to key on across tenants (two woredas could each name
+a role "Cashier" with entirely different grants) — `tenant_role` gives each
+custom role its own `uuid` identity instead. `app_user.custom_role_id` is
+`NULL` for every built-in-role user; a trigger (migration `00000000000039`)
+enforces "set iff `role = 'custom'`, and only to an active `tenant_role` in
+the caller's own woreda" — a plain `CHECK` can't express that cross-table,
+same-tenant, `is_active` condition. As of this document's live enumeration
+(2026-09-14), **zero rows exist in `tenant_role`/`tenant_role_permission` in
+production** — the capability has shipped and is RLS/trigger-enforced, but
+no tenant has actually created a custom role yet. See
+`docs/go-live-declaration.md` for how that affects this feature's
+verification class (code/schema-level PASS, no REAL-USERS evidence for
+custom-role behavior specifically, since there is no live custom role to
+probe against).
 
 🔒 = PII field. No 🔒 fields in this domain are encrypted at rest; RLS
 tenant-scoping is the current control (see `docs/security-functionality.md`).
+
+---
+
+## Workflow engine
+
+`workflow_transition` and `workflow_status_history` are the shared,
+entity-generic state-machine infrastructure every workflow module (credential
+requests, civil registration, service requests, and rental occupancy
+requests) is built on. Added by migration `00000000000025` (Task 1,
+`enforce_workflow_transition()`) to close F-01 — the review's one Critical
+finding — and extended by `00000000000058` (Task 14-A) when civil
+registration's own FSM was seeded into the same engine.
+
+```mermaid
+erDiagram
+    workflow_transition {
+        uuid workflow_transition_id PK
+        text entity "credential_request | residence_credential | vital_event | service_request | rental_occupancy_request"
+        text from_status
+        text to_status
+        text required_permission "NULL only if is_system"
+        boolean is_system "true = engine-only, never user-driven"
+        text note
+    }
+    workflow_status_history {
+        uuid id PK
+        uuid woreda_id FK
+        text entity
+        uuid entity_id "polymorphic, no FK -- entity says which table"
+        text old_status
+        text new_status
+        uuid changed_by_user_id FK
+        text change_reason
+    }
+```
+
+| Table                     | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | Key constraints                                                                                                                                                                                                                                                                                                                                                                              |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `workflow_transition`     | Platform reference data: every legal `(entity, from_status, to_status)` pair and the permission it requires. `enforce_workflow_transition()`, a `BEFORE UPDATE` trigger, rejects any status change absent from this table, checks the transition's specific permission (not just a coarse module permission), enforces maker≠checker (the verifier and approver of one row can never be the same `user_id`), and blocks a `is_system` transition from a live user session (only the engine's own triggers, e.g. the payment-driven credential-minting trigger, may drive one) | **No `woreda_id` column, by design** — which transitions are legal is fixed for the whole platform; a tenant may change _who_ holds a permission (`role_permission`) but can never remove a verification/approval/payment gate. `UNIQUE (entity, from_status, to_status)`; a non-system row's `required_permission` is `NOT NULL` (a seed typo can't produce a transition anybody may drive) |
+| `workflow_status_history` | Append-only log of every status change the engine actually allowed, generic across all four entities via `(entity, entity_id)` — the shared counterpart to each entity's own historically bespoke `*_status_history` table (`credential_request_status_history`, `service_request_status_history`), which stayed in place rather than being replaced (see `docs/task14c-mapping-memo.md` for which UI surfaces read which table)                                                                                                                                              | `entity_id` carries no FK (polymorphic across four different PK types); RLS scopes by `woreda_id`, populated by the same trigger that writes the row, never client-supplied                                                                                                                                                                                                                  |
+
+Two decisions worth carrying forward, both recorded in the migration's own
+header comment and `docs/fix-task-v3-execution-notes.md`:
+
+- **The workflow verification permission is `credential.review`, not
+  `credential.verify`.** `credential.verify` already gates the public
+  ID-lookup screen and is deliberately held by `viewer` and `auditor` — two
+  read-only roles; reusing the same key for "may verify a credential request"
+  would have handed that power to both of them.
+- **`ready_to_print` is a `residence_credential` state, not a
+  `credential_request` state.** The request's own FSM runs
+  `… → paid → printed → active`; the credential's FSM runs
+  `ready_to_print → printed → active`. Both match the shipped UI exactly, so
+  no `CHECK` constraint needed to change to land this engine.
 
 ---
 

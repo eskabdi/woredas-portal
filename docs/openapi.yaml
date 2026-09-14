@@ -498,3 +498,176 @@ paths:
           content:
             application/json:
               example: { message: "Too many requests" }
+
+  /rpc/verify_service_letter:
+    servers:
+      - url: "{SUPABASE_URL}/rest/v1"
+        variables:
+          SUPABASE_URL:
+            default: https://your-project-ref.supabase.co
+    post:
+      summary: Public verification of an issued service letter (Task 8 documentation gap closed)
+      description: >
+        Backs the public `/verify/letter/<token>` page
+        (`src/routes/verify.letter.$token.tsx`). Anonymous, unauthenticated
+        RPC -- `SECURITY DEFINER`, no permission check, by design: this is
+        the entire point of a public verification surface. `_token` is
+        `service_request.verification_token`, a random per-issuance value
+        with the same order of entropy as `verify_credential_token`'s QR
+        payload and `verify_receipt`'s own token -- printed on the physical
+        letter, never guessable from the request number alone.
+
+        Only returns a row for a request that has actually been issued:
+        `issued_at IS NOT NULL AND status IN ('issued', 'resolved',
+        'closed')` -- a request still in the approval/payment pipeline, or
+        one that was rejected, verifies as not-found, not as "pending."
+        `status IN (...)` was widened to include `resolved`/`closed` by
+        migration `00000000000064` (Task 14-B) -- before that, a letter
+        whose underlying request later moved to `resolved` stopped
+        verifying even though the printed letter itself never changed,
+        which was the bug that migration closed.
+
+        Not rate-limited (unlike `verify_credential_token`'s anonymous
+        path) -- see `00000000000022_rate_limit.sql`'s own header comment
+        for why the two public verification RPCs are deliberately excluded
+        from the rate limiter.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [_token]
+              properties:
+                _token:
+                  type: string
+                  description: service_request.verification_token
+              example: { _token: "a1b2c3d4e5f6...9z" }
+      responses:
+        "200":
+          description: >
+            Always 200 with a JSON array -- empty when nothing matched
+            (never a 404, matching verify_credential_token's own
+            not-found-vs-rejected non-distinction).
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    request_number: { type: string }
+                    issued_at: { type: string, format: date-time }
+                    subject: { type: string }
+                    resident_full_name: { type: string }
+                    letter_summary: { type: string, nullable: true }
+                    service_type_am: { type: string }
+                    service_type_en: { type: string }
+                    woreda_name_am: { type: string }
+                    woreda_name_en: { type: string }
+                    kebele_name_am: { type: string, nullable: true }
+                    kebele_name_en: { type: string, nullable: true }
+              examples:
+                found:
+                  value:
+                    [
+                      {
+                        "request_number": "SR-04-11-26-000012",
+                        "issued_at": "2026-09-10T09:15:00Z",
+                        "subject": "Residency Confirmation Letter",
+                        "resident_full_name": "Sultan Sani Mohammed",
+                        "letter_summary": "Confirms residency in Kebele 11",
+                        "service_type_am": "የመኖሪያ ማረጋገጫ ደብዳቤ",
+                        "service_type_en": "Residency Confirmation Letter",
+                        "woreda_name_am": "አቦከር",
+                        "woreda_name_en": "Aboker",
+                        "kebele_name_am": "ቀበሌ 11",
+                        "kebele_name_en": "Kebele 11",
+                      },
+                    ]
+                notFound: { value: [] }
+
+  /rpc/verify_receipt:
+    servers:
+      - url: "{SUPABASE_URL}/rest/v1"
+        variables:
+          SUPABASE_URL:
+            default: https://your-project-ref.supabase.co
+    post:
+      summary: Public verification of a printed revenue receipt (Task 8 documentation gap closed)
+      description: >
+        Backs the public `/verify/receipt/<token>` page
+        (`src/routes/verify.receipt.$token.tsx`). Anonymous `SECURITY
+        DEFINER` RPC, same public-verification shape as the two RPCs
+        above -- `_token` is `receipt.verification_token`
+        (`00000000000013_receipt_verification.sql`), a random per-receipt
+        value printed on the receipt itself. A valid token confirms the
+        receipt was genuinely issued by this system; it does not by
+        itself mean the underlying payment was never later voided --
+        the receipt's own `printed_at`/status context is what the caller
+        should read alongside the match, not treat a 200 alone as
+        "this payment is still good."
+
+        Resolves the payer's name and location context across two
+        possible payment sources (a direct resident/household payment, or
+        a rental-occupancy-request payment) via `LEFT JOIN`s on
+        `rental_occupancy_request`/`kebele_rental_house`, so a rental
+        payment's receipt verifies with the same shape as any other.
+
+        Not rate-limited, for the same reason as `verify_service_letter`
+        above.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [_token]
+              properties:
+                _token:
+                  type: string
+                  description: receipt.verification_token
+              example: { _token: "f1e2d3c4b5a6...0y" }
+      responses:
+        "200":
+          description: >
+            Always 200 with a JSON array -- empty when nothing matched.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    receipt_number: { type: string }
+                    receipt_date: { type: string, format: date }
+                    total_amount: { type: number }
+                    payment_type: { type: string }
+                    channel: { type: string }
+                    printed_at: { type: string, format: date-time, nullable: true }
+                    paid_by_full_name: { type: string, nullable: true }
+                    paid_by_full_name_am: { type: string, nullable: true }
+                    woreda_name_am: { type: string }
+                    woreda_name_en: { type: string }
+                    kebele_name_am: { type: string, nullable: true }
+                    kebele_name_en: { type: string, nullable: true }
+              examples:
+                found:
+                  value:
+                    [
+                      {
+                        "receipt_number": "RCT-04-11-26-000031",
+                        "receipt_date": "2026-09-10",
+                        "total_amount": 150.0,
+                        "payment_type": "credential_fee",
+                        "channel": "cash",
+                        "printed_at": "2026-09-10T09:20:00Z",
+                        "paid_by_full_name": "Sultan Sani Mohammed",
+                        "paid_by_full_name_am": null,
+                        "woreda_name_am": "አቦከር",
+                        "woreda_name_en": "Aboker",
+                        "kebele_name_am": "ቀበሌ 11",
+                        "kebele_name_en": "Kebele 11",
+                      },
+                    ]
+                notFound: { value: [] }
