@@ -73,6 +73,7 @@ export function findCoreCodeDrift(woredaIds: Set<string>, rows: ServiceTypeRow[]
     // there" shape this check exists to catch; a code genuinely unique to
     // one woreda (present in only one) is a deliberate one-off, not drift.
     if (
+      presentIn.length > 1 &&
       presentIn.length >= woredasWithRows.length - 1 &&
       presentIn.length < woredasWithRows.length
     ) {

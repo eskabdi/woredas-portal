@@ -464,6 +464,7 @@ function ServiceRequestDetailPage() {
   const { flow, index } = stageIndex(req.status, category);
   const isTerminal = ["rejected", "closed", "completed"].includes(req.status);
   const canVerify = hasPermission(P.SERVICE_VERIFY);
+  const canResubmit = hasPermission(P.SERVICE_RESUBMIT);
   const canApprove = hasPermission(P.SERVICE_APPROVE);
   const canIssue = hasPermission(P.SERVICE_ISSUE);
   const canCollect = hasPermission(P.PAYMENT_COLLECT);
@@ -493,7 +494,7 @@ function ServiceRequestDetailPage() {
                 </Button>
               </Link>
               {category === "letter" &&
-                ["approved", "paid", "issued", "closed"].includes(req.status) && (
+                ["approved", "paid", "issued", "completed"].includes(req.status) && (
                   <Link to="/woreda/services/$requestId/print" params={{ requestId }}>
                     <Button size="sm">
                       <Printer className="mr-1 h-4 w-4" /> ደብዳቤ አትም / Print letter
@@ -793,7 +794,27 @@ function ServiceRequestDetailPage() {
                 </Button>
               )}
 
-              {!isTerminal && ["under_review", "returned"].includes(req.status) && canVerify && (
+              {/* "returned" only has one legal outbound edge in the seeded
+                  FSM (returned -> under_review, service.resubmit) -- it must
+                  not reuse the under_review-stage Verify button below, which
+                  jumps straight to the post-verify target and would raise a
+                  workflow-transition error from this status. */}
+              {!isTerminal && req.status === "returned" && canResubmit && (
+                <Button
+                  className="w-full"
+                  disabled={busy}
+                  onClick={() =>
+                    transition("under_review", {
+                      reason: "Resubmitted after return",
+                      action: "SERVICE_REQUEST_RESUBMITTED",
+                    })
+                  }
+                >
+                  <Undo2 className="mr-1 h-4 w-4" /> እንደገና አቅርብ / Resubmit
+                </Button>
+              )}
+
+              {!isTerminal && req.status === "under_review" && canVerify && (
                 <div className="space-y-3">
                   <Button
                     className="w-full"
@@ -1097,6 +1118,7 @@ function ServiceRequestDetailPage() {
 
               {!isTerminal &&
                 !canVerify &&
+                !canResubmit &&
                 !canApprove &&
                 !canIssue &&
                 !canCollect &&
