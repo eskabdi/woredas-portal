@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import {
   ArrowLeft,
   CheckCircle2,
-  CreditCard,
   FileText,
   Loader2,
   Printer,
@@ -15,7 +14,8 @@ import {
   ShieldOff,
   XCircle,
 } from "lucide-react";
-import { PageHeader } from "@/components/common/PageHeader";
+import { DetailHeader } from "@/components/common/DetailHeader";
+import { WorkflowStepper, type WorkflowStage } from "@/components/common/WorkflowStepper";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
@@ -84,6 +84,15 @@ const CRED_TYPE_LABEL: Record<string, string> = {
   certificate: "ሰርተፍኬት / Certificate",
   both: "ሁለቱም / Both",
 };
+
+const WORKFLOW_STAGES: WorkflowStage[] = [
+  { key: "submitted", am: "ገባ", en: "Submitted" },
+  { key: "under_review", am: "በግምገማ", en: "Under Review" },
+  { key: "pending_approval", am: "ማጽደቅ በመጠበቅ", en: "Pending Approval" },
+  { key: "awaiting_payment", am: "ክፍያ በመጠበቅ", en: "Awaiting Payment" },
+  { key: "paid", am: "ተከፍሏል", en: "Paid" },
+  { key: "active", am: "ወጪ ተደርጓል", en: "Issued" },
+];
 
 const CHECKLIST_ITEMS: {
   key: ChecklistKey;
@@ -262,6 +271,17 @@ function CredentialRequestDetailPage() {
   const status = request?.status ?? "";
   const isEditable = status === "submitted" || status === "under_review";
   const isReturned = status === "returned";
+  const workflowException: { am: string; en: string; tone: "danger" | "warning" } | undefined =
+    status === "rejected"
+      ? { am: "ውድቅ ተደርጓል", en: "Rejected", tone: "danger" }
+      : status === "returned" || status === "approval_returned"
+        ? { am: "እርማት ተጠይቋል", en: "Returned for correction", tone: "warning" }
+        : undefined;
+  const workflowStage = workflowException
+    ? status === "returned"
+      ? "under_review"
+      : "pending_approval"
+    : status;
 
   // Checklist state
   const savedChecklist = useMemo<Partial<ChecklistState> & Record<string, unknown>>(() => {
@@ -684,43 +704,23 @@ function CredentialRequestDetailPage() {
           </Button>
         </div>
 
-        <PageHeader
-          icon={CreditCard}
-          titleAm="የመታወቂያ ጥያቄ ዝርዝር"
-          titleEn="Credential Request Detail"
+        <DetailHeader
+          photoUrl={photoUrl}
+          titleAm={resident?.full_name_am || "—"}
+          titleEn={resident?.full_name || undefined}
+          status={<StatusChip status={status} />}
+          meta={[
+            { label: <span className="font-mono">{request.request_number}</span> },
+            { label: <span className="font-mono">{resident?.resident_number}</span> },
+            { label: <span>ገባ / Submitted: {submittedDisplay}</span> },
+          ]}
         />
 
-        {/* Header summary */}
-        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex flex-wrap items-start gap-4">
-            <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-slate-100 ring-1 ring-slate-200">
-              {photoUrl ? (
-                <img src={photoUrl} className="h-full w-full object-cover" />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">
-                  No photo
-                </div>
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="font-mono text-sm text-slate-500">{request.request_number}</div>
-              <div className="font-am-body text-lg font-semibold text-slate-900">
-                {resident?.full_name_am || "—"}
-              </div>
-              <div className="text-sm text-slate-600">{resident?.full_name || ""}</div>
-              <div className="mt-1 font-mono text-xs text-slate-500">
-                {resident?.resident_number}
-              </div>
-            </div>
-            <div className="flex flex-col items-end gap-2">
-              <StatusChip status={status} />
-              <div className="text-right text-xs text-slate-500">
-                <div className="font-am-body">ገባ / Submitted</div>
-                <div>{submittedDisplay}</div>
-              </div>
-            </div>
-          </div>
-        </section>
+        <WorkflowStepper
+          stages={WORKFLOW_STAGES}
+          currentStage={workflowStage}
+          exception={workflowException}
+        />
 
         {/* Card 1 — Original Submission */}
         <section className="rounded-xl border border-slate-200 bg-white shadow-sm">

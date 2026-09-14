@@ -32,7 +32,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { PageHeader } from "@/components/common/PageHeader";
+import { DetailHeader } from "@/components/common/DetailHeader";
 import { StatusChip } from "@/components/common/StatusChip";
 import { PermissionGate } from "@/components/common/PermissionGate";
 import {
@@ -334,49 +334,28 @@ function ResidentProfilePage() {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* HEADER (blue) */}
-      <div className="rounded-lg bg-blue-700 px-5 py-5 text-white shadow-sm">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-4 min-w-0">
-            {photoUrl ? (
-              <img
-                src={photoUrl}
-                alt={name}
-                className="h-16 w-16 rounded-full object-cover ring-2 ring-white/40"
-              />
-            ) : (
-              <div className="font-am-body flex h-16 w-16 items-center justify-center rounded-full bg-white/15 text-xl font-semibold ring-2 ring-white/25">
-                {initials}
-              </div>
-            )}
-            <div className="min-w-0 leading-tight">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="font-am-heading truncate text-xl font-semibold">{name}</h1>
-                <StatusChip status={statusForChip} />
-              </div>
-              {r.full_name_am && r.full_name && (
-                <p className="text-sm text-blue-100">{r.full_name}</p>
-              )}
-              <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-blue-100">
-                <span className="inline-flex items-center gap-1">
-                  <IdCard className="h-3.5 w-3.5" />
-                  <span className="font-mono">ID: {r.resident_number}</span>
-                </span>
-                <span className="inline-flex items-center gap-1 font-am-body">
-                  <MapPin className="h-3.5 w-3.5" />
-                  {kebeleLabel}
-                </span>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
+      <DetailHeader
+        photoUrl={photoUrl}
+        initials={initials}
+        titleAm={name}
+        titleEn={r.full_name_am && r.full_name ? r.full_name : undefined}
+        status={<StatusChip status={statusForChip} />}
+        meta={[
+          {
+            icon: <IdCard className="h-3.5 w-3.5" />,
+            label: <span className="font-mono">ID: {r.resident_number}</span>,
+          },
+          { icon: <MapPin className="h-3.5 w-3.5" />, label: kebeleLabel },
+        ]}
+        actions={
+          <>
             <Button
               type="button"
               size="sm"
               onClick={() =>
                 navigate({ to: "/woreda/residents/$residentId/print", params: { residentId } })
               }
-              className="bg-white text-blue-700 hover:bg-blue-50"
+              className="bg-white text-[color:var(--shell-header)] hover:bg-white/90"
             >
               <Printer className="mr-2 h-4 w-4" />
               <span className="font-am-body">አትም</span>
@@ -399,9 +378,9 @@ function ResidentProfilePage() {
               variant="header"
               showView={false}
             />
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* SUMMARY STRIP */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
