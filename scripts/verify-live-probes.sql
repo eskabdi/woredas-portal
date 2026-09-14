@@ -1464,3 +1464,90 @@ VALUES
 RESET role;
 ROLLBACK;
 -- EXPECT: ERROR (This payment's woreda does not match its linked request's woreda)
+
+-- =============================================================================
+-- Waiver authorization LIVE-PROBE (housekeeping PR after 00000000000066):
+-- closes remediation-report.md §13's "fixed in code, not probe-verified"
+-- item. Real accounts only: tenant_admin 64e0384a (holds payment.collect
+-- AND tenant.manage) vs registry_clerk eskabdi99/01dd8eb7 (holds neither).
+-- =============================================================================
+
+-- === PROBE: waiver_supervisor_authorized_passes ===
+BEGIN;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+INSERT INTO public.service_request
+  (service_request_id, woreda_id, request_number, service_type_id, category, status,
+   subject, requested_by_user_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000920', '81ac2ad6-a320-4069-b8dc-0c43e358371b', '',
+   '5e3f18d0-3ddc-48ca-ac44-1495cb337d96', 'letter', 'awaiting_payment',
+   'Probe waiver supervisor authorized', '64e0384a-d240-4302-8310-682f79a302ce');
+INSERT INTO public.payment
+  (payment_id, woreda_id, payment_type, amount, payment_date, channel, status,
+   posted_by_user_id, service_request_id, waived, waiver_reason)
+VALUES
+  ('00000000-0000-4000-9000-000000000920', '81ac2ad6-a320-4069-b8dc-0c43e358371b',
+   'service_fee', 0, current_date, 'cash', 'confirmed',
+   '64e0384a-d240-4302-8310-682f79a302ce', '00000000-0000-4000-8000-000000000920',
+   true, 'Owner supervisor waiver test');
+RESET role;
+ROLLBACK;
+-- EXPECT: SUCCESS (tenant_admin holds tenant.manage -- waiver passes)
+
+-- === PROBE: waiver_unauthorized_registry_clerk_blocked ===
+-- eskabdi99 holds neither an approve permission nor tenant.manage --
+-- validate_credential_fee_amount()'s own supervisor-authorization check
+-- (a BEFORE ROW trigger, which fires before RLS's WITH CHECK is ever
+-- evaluated) rejects the waiver directly, independent of whatever
+-- payment_insert's payment.collect/revenue.collect requirement would have
+-- done. The linked request is inserted here, in this same transaction, by
+-- tenant_admin, so the guard's own link-resolution check can't mask the
+-- result the way a dangling cross-transaction id would.
+BEGIN;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+INSERT INTO public.service_request
+  (service_request_id, woreda_id, request_number, service_type_id, category, status,
+   subject, requested_by_user_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000921', '81ac2ad6-a320-4069-b8dc-0c43e358371b', '',
+   '5e3f18d0-3ddc-48ca-ac44-1495cb337d96', 'letter', 'awaiting_payment',
+   'Probe waiver unauthorized', '64e0384a-d240-4302-8310-682f79a302ce');
+RESET role;
+SET LOCAL request.jwt.claim.sub = '01dd8eb7-275e-4b02-9aa1-092e3035e8d7';
+SET LOCAL role authenticated;
+INSERT INTO public.payment
+  (payment_id, woreda_id, payment_type, amount, payment_date, channel, status,
+   posted_by_user_id, service_request_id, waived, waiver_reason)
+VALUES
+  ('00000000-0000-4000-9000-000000000921', '81ac2ad6-a320-4069-b8dc-0c43e358371b',
+   'service_fee', 0, current_date, 'cash', 'confirmed',
+   '01dd8eb7-275e-4b02-9aa1-092e3035e8d7', '00000000-0000-4000-8000-000000000921',
+   true, 'Unauthorized waiver attempt');
+RESET role;
+ROLLBACK;
+-- EXPECT: ERROR (A fee waiver requires supervisor authorization)
+
+-- === PROBE: waiver_short_reason_blocked ===
+BEGIN;
+SET LOCAL request.jwt.claim.sub = '64e0384a-d240-4302-8310-682f79a302ce';
+SET LOCAL role authenticated;
+INSERT INTO public.service_request
+  (service_request_id, woreda_id, request_number, service_type_id, category, status,
+   subject, requested_by_user_id)
+VALUES
+  ('00000000-0000-4000-8000-000000000922', '81ac2ad6-a320-4069-b8dc-0c43e358371b', '',
+   '5e3f18d0-3ddc-48ca-ac44-1495cb337d96', 'letter', 'awaiting_payment',
+   'Probe waiver short reason', '64e0384a-d240-4302-8310-682f79a302ce');
+INSERT INTO public.payment
+  (payment_id, woreda_id, payment_type, amount, payment_date, channel, status,
+   posted_by_user_id, service_request_id, waived, waiver_reason)
+VALUES
+  ('00000000-0000-4000-9000-000000000922', '81ac2ad6-a320-4069-b8dc-0c43e358371b',
+   'service_fee', 0, current_date, 'cash', 'confirmed',
+   '64e0384a-d240-4302-8310-682f79a302ce', '00000000-0000-4000-8000-000000000922',
+   true, 'bad');
+RESET role;
+ROLLBACK;
+-- EXPECT: ERROR (A waived payment requires a reason of at least 5 characters)

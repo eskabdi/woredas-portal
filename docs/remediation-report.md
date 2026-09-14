@@ -736,3 +736,55 @@ Full local gate suite green at every checkpoint: `bun run build`,
 `check-service-type-catalog`, `generate-permissions-doc --check`.
 `secret-sweep` PASS before both pushes. No direct-to-main commits — both
 checkpoints landed on `claude/payment-hardening-fee-guard`, PR pending.
+
+## 14. Housekeeping: waiver-authorization LIVE-PROBE + ops register close-outs — 2026-09-14
+
+Closes the one open item from §13 ("waiver requires supervisor authorization
+is fixed in code but not probe-verified live — no `finance_clerk` account
+exists in this tenant"), and records four ops-register items the owner
+settled outside this repo.
+
+### Waiver-authorization LIVE-PROBE
+
+Real accounts only, claims-impersonated inside rollback-wrapped
+transactions (the same technique the rest of the suite uses) — no
+`finance_clerk` account exists, but `tenant_admin` (holds `tenant.manage`)
+and `registry_clerk` (holds neither an approve permission nor
+`tenant.manage`) are both real and sufficient to exercise both sides of the
+check added in migration `00000000000066`.
+
+| Probe                                        | Actor                                   | Result                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| -------------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `waiver_supervisor_authorized_passes`        | `tenant_admin` 64e0384a                 | SUCCESS — waiver (amount=0, reason present) passes                                                                                                                                                                                                                                                                                                                                                                                    |
+| `waiver_unauthorized_registry_clerk_blocked` | `registry_clerk` eskabdi99 (`01dd8eb7`) | ERROR — `validate_credential_fee_amount()`'s own supervisor-authorization check rejects it directly ("A fee waiver requires supervisor authorization"), fired from the `BEFORE ROW` trigger before RLS's `WITH CHECK` is ever evaluated. Not the RLS-block outcome originally guessed at in §13 — the function-level check is what actually fires, which is the more precise result (names the real reason, not a generic RLS denial) |
+| `waiver_short_reason_blocked`                | `tenant_admin` 64e0384a                 | ERROR — reason `'bad'` (3 chars) rejected, minimum-length check independent of the authorization check                                                                                                                                                                                                                                                                                                                                |
+
+58/58 probes PASS (55 prior + 3 new), net-zero. First attempt at the
+unauthorized-actor probe referenced a linked `service_request_id` from a
+_separate_ rolled-back transaction (dangling across transactions), which
+masked the intended result behind a link-resolution error instead — caught
+before commit, fixed by inserting the linked request in the same
+transaction as the unauthorized attempt.
+
+**Watch-list item closed**: "waiver requires supervisor authorization" is
+now both code-correct (§13) and live-probe-verified (this section) in both
+directions plus the short-reason edge case.
+
+### Ops register
+
+| Item                                                    | Status                                   | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ------------------------------------------------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Invite email deliverability (§10.4, watch-list item 12) | **CLOSED**                               | Owner confirmed the invite email now lands in the inbox, not spam. Message from `Harari Region Woreda Portal <noreply@eharari.gov.et>`, subject "You've been invited to Harari Woreda Portal", SPF/DKIM/DMARC all report PASS in the Gmail-rendered headers. Root cause (§10.4's original guess — SPF/DKIM/DMARC alignment for `eharari.gov.et` through the `gin.hostns.io` relay) was correct; the owner's DNS-side fix resolved it. No repo/code change involved.                                                                                                                                                                                                                                                                                                                     |
+| Branch protection on `main`                             | **Recorded, owner-side**                 | Owner reports: PR required to merge, 1 approval required, stale-approval dismissal on new pushes, conversation resolution required before merge, no administrator bypass. **Not independently re-verified this session** — no branch-protection-read tool was available, and a direct-push test against `main` was not attempted (would be a real, unauthorized-scope action against shared state). Take the owner's report as authoritative until an independent check is possible.                                                                                                                                                                                                                                                                                                    |
+| REAL-USERS verification method                          | **Standardized**                         | The workaround used across Task 14-B and this PR — claims-impersonation of real accounts inside rollback-wrapped transactions (`SET LOCAL request.jwt.claim.sub` + `SET LOCAL role authenticated`) for server-side/RLS verification, plus a real owner smoke-pass on the actual UI for anything the DB layer can't observe (toast rendering, form validation) — is now the **standard** method for this project, not an ad hoc substitute. Minting a real browser session via the Management API's `generate_link` requires revealing the anon key, which this sandbox's permission classifier declines; that path is not expected to become available, so future "REAL-USERS" verification should default to this two-part method rather than re-attempting session-minting each time. |
+| `SUPABASE_ACCESS_TOKEN`/`VERCEL_TOKEN` rotation         | **NOT YET ROTATED — open security item** | §13 recommended rotation after a `secret-sweep` subagent's own internal transcript echoed both live token values while checking the shell environment (nothing reached this repo, this conversation's visible output, or any commit — confirmed by that same sweep). This session confirmed both tokens are still live and functional (`GET /v1/projects` → 200, `GET /v9/projects` → 200) — i.e., **whatever token is in the environment now has not been rotated**. Escalating: rotate both in the Supabase and Vercel dashboards, then confirm the new tokens work (same 200-status check) and that the probe suite / deploy skill still function against the rotated Supabase token.                                                                                                |
+| DMARC policy (`p=` value) for `eharari.gov.et`          | **Not yet reported**                     | The deliverability fix (item 1 above) implies DMARC now evaluates to PASS for this mail flow, but the record's actual `p=` value (`none`/`quarantine`/`reject`) has not been reported to this agent. **Recommendation once known**: if `p=none`, treat it as a ramp-in-progress, not a finished state — `none` monitors alignment without enforcing it, so a spoofed sender using this domain would still be delivered. Plan a ramp to `quarantine` then `reject` once a monitoring period (typically 1–2 weeks of clean DMARC aggregate reports) confirms no legitimate mail is failing alignment. Add this as an owner watch item until the actual policy value is confirmed.                                                                                                         |
+
+### Gates
+
+Full local gate suite green: `bun run build`, `npx tsc --noEmit`, `bun run
+lint` (0 errors, 2 pre-existing warnings), `bun run test` (176 tests),
+`check:role-perms-drift`, `check:fee-catalog`. No DB migration in this PR
+(probe-file-only + docs); no Vercel redeploy needed (no `src/` change).
+Branch protection now enforces the PR flow structurally — this housekeeping
+change lands the same way: branch → gates → review → merge.
