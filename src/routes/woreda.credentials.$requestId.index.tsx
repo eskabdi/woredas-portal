@@ -23,6 +23,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusChip } from "@/components/common/StatusChip";
+import {
+  HistoryTimeline,
+  useCredentialRequestHistory,
+  useActorNames,
+} from "@/components/workflow/HistoryTimeline";
 import { PermissionGate } from "@/components/common/PermissionGate";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -147,6 +152,10 @@ function CredentialRequestDetailPage() {
   const canAct = hasPermission(P.CREDENTIAL_ISSUE);
   const canApprove = hasPermission(P.CREDENTIAL_APPROVE);
   const navigate = useNavigate();
+  const requestHistoryQuery = useCredentialRequestHistory(requestId, !!requestId);
+  const requestHistoryActorNamesQuery = useActorNames(
+    (requestHistoryQuery.data ?? []).map((h) => h.changed_by_user_id),
+  );
   const queryClient = useQueryClient();
 
   const requestQuery = useQuery({
@@ -1227,6 +1236,25 @@ function CredentialRequestDetailPage() {
         {request.credential_id && (
           <SuspendCard credentialRowId={request.credential_id} onDone={invalidateAll} />
         )}
+
+        {/* Task 14-C: credential requests had no visible history timeline
+            before this -- credential_request_status_history was written on
+            every transition but never rendered. Uses the same shared
+            HistoryTimeline component civil/services now use, reading the
+            request-level table (not credential_status_history, which
+            tracks the physical card's own post-issuance events). */}
+        <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="rounded-t-xl bg-slate-700 px-5 py-3 text-white">
+            <span className="font-noto-ethiopic text-base font-semibold">የሁኔታ ታሪክ</span>
+            <span className="ml-2 text-sm text-white/80">/ Status History</span>
+          </div>
+          <div className="p-5">
+            <HistoryTimeline
+              rows={requestHistoryQuery.data ?? []}
+              actorNames={requestHistoryActorNamesQuery.data}
+            />
+          </div>
+        </section>
 
         <AlertDialog open={returnDialogOpen} onOpenChange={setReturnDialogOpen}>
           <AlertDialogContent>

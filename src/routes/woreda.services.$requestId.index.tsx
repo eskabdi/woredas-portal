@@ -5,7 +5,6 @@ import {
   ArrowLeft,
   Banknote,
   Check,
-  CheckCircle2,
   Download,
   FileText,
   Paperclip,
@@ -25,7 +24,7 @@ import { Select } from "@/components/forms/FormSection";
 import { PermissionGate } from "@/components/common/PermissionGate";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
-import { formatEthiopianDate, formatEthiopianDateTime } from "@/utils/ethiopianCalendar";
+import { formatEthiopianDate } from "@/utils/ethiopianCalendar";
 import {
   letterSummary,
   plainTextToHtml,
@@ -34,6 +33,11 @@ import {
 } from "@/lib/letterTemplate";
 import { P } from "@/config/permissions";
 import { PriorityBadge, StatusBadge } from "@/components/services/ServiceRequestList";
+import {
+  HistoryTimeline,
+  useWorkflowHistory,
+  useActorNames,
+} from "@/components/workflow/HistoryTimeline";
 import {
   DOCUMENT_TYPES,
   MAX_UPLOAD_BYTES,
@@ -165,39 +169,10 @@ function ServiceRequestDetailPage() {
     },
   });
 
-  const historyQuery = useQuery({
-    queryKey: ["service-request-history", requestId],
-    enabled: !!requestId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("service_request_status_history")
-        .select("id, old_status, new_status, change_reason, changed_at")
-        .eq("service_request_id", requestId)
-        .order("changed_at", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  // Task 14-B: workflow_status_history is written by the shared engine's own
-  // AFTER UPDATE trigger (DB-level, unlike service_request_status_history
-  // above which is a client-side insert in transition()) -- both stay
-  // populated going forward, same relationship civil's workflow_status_history
-  // has to credential_request_status_history in Task 14-A.
-  const workflowHistoryQuery = useQuery({
-    queryKey: ["service-request-workflow-history", requestId],
-    enabled: !!requestId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("workflow_status_history")
-        .select("id, old_status, new_status, changed_at, change_reason")
-        .eq("entity", "service_request")
-        .eq("entity_id", requestId)
-        .order("changed_at", { ascending: true });
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
+  const workflowHistoryQuery = useWorkflowHistory("service_request", requestId, !!requestId);
+  const actorNamesQuery = useActorNames(
+    (workflowHistoryQuery.data ?? []).map((h) => h.changed_by_user_id),
+  );
 
   const attachmentsQuery = useQuery({
     queryKey: ["service-request-attachments", requestId],
@@ -700,70 +675,32 @@ function ServiceRequestDetailPage() {
               )}
             </Card>
 
-            {/* History */}
+            {/* History -- Task 14-C: unified onto workflow_status_history
+                (the engine's own DB-trigger-written table, covering both
+                categories since 14-B attached the engine to service_request
+                generally) via the shared HistoryTimeline component, instead
+                of this route's previous two separate cards. The older
+                service_request_status_history table is unchanged and still
+                written by transition(), but was a client-side duplicate of
+                the same transitions for anything post-14-B; no longer read
+                here. */}
             <Card className="p-5">
               <h3 className="font-noto-ethiopic mb-3 text-base font-semibold">
                 የሂደት ታሪክ / Status history
               </h3>
-              <ol className="space-y-3">
-                {(historyQuery.data ?? []).map((h) => (
-                  <li key={h.id} className="flex gap-3">
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
-                    <div>
-                      <div className="font-noto-ethiopic text-sm">
-                        {h.old_status ? `${serviceStatusLabel(h.old_status)} → ` : ""}
-                        {serviceStatusLabel(h.new_status)}
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        {new Date(h.changed_at).toLocaleString("en-GB", { hour12: false })}
-                        {h.change_reason ? ` — ${h.change_reason}` : ""}
-                      </div>
-                    </div>
-                  </li>
-                ))}
-                {(historyQuery.data ?? []).length === 0 && (
-                  <li className="text-sm text-slate-500">—</li>
-                )}
-              </ol>
+              {workflowHistoryQuery.isLoading && (
+                <p className="text-sm text-slate-500">በመጫን ላይ... / Loading…</p>
+              )}
+              {workflowHistoryQuery.isError && (
+                <p className="text-sm text-rose-600">ታሪኩን መጫን አልተቻለም / Could not load history</p>
+              )}
+              {!workflowHistoryQuery.isLoading && !workflowHistoryQuery.isError && (
+                <HistoryTimeline
+                  rows={workflowHistoryQuery.data ?? []}
+                  actorNames={actorNamesQuery.data}
+                />
+              )}
             </Card>
-
-            {isLetter && (
-              <Card className="p-5">
-                <h3 className="font-noto-ethiopic mb-3 text-base font-semibold">
-                  የስርዓት ታሪክ / System workflow history
-                </h3>
-                {workflowHistoryQuery.isLoading && (
-                  <p className="text-sm text-slate-500">በመጫን ላይ... / Loading…</p>
-                )}
-                {workflowHistoryQuery.isError && (
-                  <p className="text-sm text-rose-600">
-                    ታሪኩን መጫን አልተቻለም / Could not load workflow history
-                  </p>
-                )}
-                {!workflowHistoryQuery.isLoading && !workflowHistoryQuery.isError && (
-                  <ol className="space-y-3">
-                    {(workflowHistoryQuery.data ?? []).map((h) => (
-                      <li key={h.id} className="flex gap-3">
-                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
-                        <div>
-                          <div className="font-noto-ethiopic text-sm">
-                            {h.old_status ? `${serviceStatusLabel(h.old_status)} → ` : ""}
-                            {serviceStatusLabel(h.new_status)}
-                          </div>
-                          <div className="text-xs text-slate-500">
-                            {formatEthiopianDateTime(new Date(h.changed_at))}
-                            {h.change_reason ? ` — ${h.change_reason}` : ""}
-                          </div>
-                        </div>
-                      </li>
-                    ))}
-                    {(workflowHistoryQuery.data ?? []).length === 0 && (
-                      <li className="text-sm text-slate-500">—</li>
-                    )}
-                  </ol>
-                )}
-              </Card>
-            )}
           </div>
 
           {/* Workflow actions */}

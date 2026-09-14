@@ -788,3 +788,97 @@ lint` (0 errors, 2 pre-existing warnings), `bun run test` (176 tests),
 (probe-file-only + docs); no Vercel redeploy needed (no `src/` change).
 Branch protection now enforces the PR flow structurally — this housekeeping
 change lands the same way: branch → gates → review → merge.
+
+## 15. Task 14-C: generalize workflow surfaces (queue, chips, KPIs, history) — 2026-09-14
+
+Closes the watch-list item "CredentialQueueTable not generalized" by
+parameterizing Task 12-B's shared components across civil registration and
+service requests/complaints. Full design record in
+`docs/task14c-mapping-memo.md`; this section is evidence.
+
+### What shipped
+
+- **`StatusChip`**: extended with `issued`/`completed`/`in_progress`/
+  `resolved`/`closed` (previously only in a second, forked color map in
+  `src/lib/serviceConstants.ts`, now deleted). Single chip constant across
+  queue/detail/timeline/print log for all three entities.
+- **`WorkflowQueueTable`** (`src/components/workflow/WorkflowQueueTable.tsx`):
+  `CredentialQueueTable` generalized into one entity-parameterized
+  component, reused by credentials, civil registration, and services
+  (letter + complaint). Shared: URL-persisted filter/sort/pagination state,
+  filter bar layout, sort headers, loading/empty/error states, the
+  permission-gated quick-action button, waiting-duration helper. Per-caller:
+  the Supabase query, columns, and filter option lists (the three entities'
+  queries differ too much — different tables/joins — to share one query
+  builder).
+- **`get_civil_kpis()`** (migration `00000000000067`): mirrors
+  `get_credential_kpis()`/`get_service_kpis()`'s exact pattern. `CivilKpiWidgetRow`
+  wired into `woreda.civil.index.tsx`, following the same sibling-widget-row
+  pattern `ServiceKpiWidgetRow` already established (shared `KpiCard`
+  primitive, not forked).
+- **`HistoryTimeline`** (`src/components/workflow/HistoryTimeline.tsx`):
+  one presentational component + three hooks
+  (`useWorkflowHistory`/`useCredentialRequestHistory`/`useActorNames`)
+  replacing three separate ad-hoc renderings. Fixes a real bug (civil's
+  timeline showed Gregorian dates via `toLocaleString()`); adds a real
+  feature (credentials had no history timeline at all before this); and
+  collapses services' two competing history cards (client-written
+  `service_request_status_history` vs. engine-written
+  `workflow_status_history`) into one, reading `workflow_status_history`
+  per the task's explicit instruction — `service_request_status_history`
+  itself is untouched, still written, just no longer the UI's read path.
+- Civil registration and services both gained kebele + officer filter
+  dimensions and a waiting-duration column they lacked before; civil gained
+  a quick-action column mirroring credentials' exact status→action mapping.
+
+### Deferred, recorded not silently dropped
+
+- Widening `get_service_kpis()`'s own return shape (completed-this-month,
+  30-day rejection rate) — a separate, reviewable change to an
+  already-shipped 14-B RPC and its client, not a generalization of this
+  PR's target surfaces. See mapping memo §3/§6.
+
+### Verification
+
+- **12-B regression precondition**: full 176-test suite green after
+  `CredentialQueueTable`'s generalization, including
+  `credential-print-preview-parity.regression.test.ts` and
+  `ethiopian-date-formatting.regression.test.ts` — `CredentialQueueTable`'s
+  exported behavior (URL params, query shape, columns, quick actions) is
+  unchanged; only its presentational internals moved into the shared
+  component.
+- **Migration** dry-run + applied live (`tugzuexfyzbdnghbmrjl`), verified by
+  direct query (`pg_proc` lookup for `get_civil_kpis`).
+- **Probes** (LIVE-PROBE, rollback-wrapped, net-zero): 2 new —
+  `civil_kpi_cross_tenant_isolation` (two real tenant_admins in two real
+  woredas, each inserting one row in their own tenant; the calling
+  tenant_admin's own KPI count reflects only its own row, not both —
+  `vital_event` was empty in production before this probe, so a leak would
+  have shown 2, not 1) and `civil_kpi_denies_suspended_user` (mirrors the
+  12-B-era lesson that a `SECURITY DEFINER` RPC bypasses RLS, so its own
+  internal permission check is the only gate). 60/60 probes PASS
+  (58 prior + 2 new), net-zero.
+- Full local gate suite green: `bun run build`, `npx tsc --noEmit`,
+  `bun run lint` (0 errors, pre-existing fast-refresh warnings only),
+  `bun run test` (176 tests), `check:role-perms-drift`, `check:fee-catalog`.
+
+### Review findings (tenant-isolation-review + portal-conventions-review, dispatched in parallel)
+
+Both agents independently found the same real regression:
+
+| #   | Finding                                                                                                                                                               | Severity          | Reviewer(s)               | Fix                                                                                                                                                                                                                                                                                                                                                                |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | `ServiceRequestList`'s "New Request/Complaint" button lost its `hasPermission(P.SERVICE_CREATE)` client-side gate — rendered unconditionally for every signed-in user | High/Medium       | Both, independently       | Restored via `<PermissionGate permission={P.SERVICE_CREATE}>`, matching `CredentialQueueTable`'s own equivalent gate. Not a data-access hole — the destination route and `service_request_insert`'s RLS policy both still check server-side — but a real UI-gating regression on both `/woreda/services` and `/woreda/complaints`                                  |
+| 2   | `get_civil_kpis()`, the civil kebele-filter household join, and `useActorNames()`'s bare `app_user` lookup all reviewed for tenant leakage                            | —                 | tenant-isolation-review   | **No leak found** — confirmed correct on all four points asked about (RPC has no client-facing parameter to spoof, PostgREST embed filters restrict rather than widen the parent set, RLS is what actually enforces the `useActorNames()` boundary, and the shared component's generic typing never lets one entity's permission leak into another's quick action) |
+| 3   | `HistoryTimeline` used `showAmharic={false}` on the `old_status` chip, a variant previously only used in the English-only admin console                               | Low               | portal-conventions-review | Dropped — both chips now render bilingual, consistent with the woreda portal's Amharic-first convention                                                                                                                                                                                                                                                            |
+| 4   | Two dead imports (`CheckCircle2`, `formatEthiopianDateTime`) left in `woreda.services.$requestId.index.tsx` after the history block was replaced                      | Nit               | portal-conventions-review | Removed                                                                                                                                                                                                                                                                                                                                                            |
+| 5   | Complaint rows can show a letter-shaped quick action (Record Payment/Issue Letter) since `quickActionFor` doesn't branch on `category`                                | Low               | tenant-isolation-review   | **Not fixed, deliberately** — structurally unreachable for real data: the FSM never puts a complaint row in `awaiting_payment`/`paid` (every complaint type has `requires_payment = false`), confirmed by the existing `service_complaint_approve_skips_to_in_progress` probe. Dead branch, not a live bug                                                         |
+| 6   | Service detail page's history timeline no longer shows pre-14-B `service_request_status_history` rows (only `workflow_status_history` going forward)                  | Low               | tenant-isolation-review   | **Accepted, by design** — this is exactly what the task's own step 5 instruction asked for (unify services on `workflow_status_history`); recorded in the mapping memo §5 as a deliberate consequence, not an oversight                                                                                                                                            |
+| 7   | `ServiceRequestList`'s submitted-at column still renders Gregorian dates                                                                                              | Low, pre-existing | portal-conventions-review | Not fixed — pre-existing on `main` before this PR, out of this PR's surface-generalization scope; carried to the watch list below                                                                                                                                                                                                                                  |
+
+### Watch list
+
+"CredentialQueueTable not generalized" — **closed**. Open items: widening
+`get_service_kpis()`'s KPI shape (completed-this-month, 30d rejection rate);
+`ServiceRequestList`'s submitted-at column rendering Gregorian dates
+(pre-existing, surfaced by this PR's review — not this PR's to fix).

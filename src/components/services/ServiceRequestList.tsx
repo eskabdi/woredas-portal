@@ -1,39 +1,31 @@
 import { useMemo, useState } from "react";
-import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Search } from "lucide-react";
+import { Plus, ShieldCheck, Gavel, CreditCard, FileCheck2 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/common/PageHeader";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
 import { P } from "@/config/permissions";
-import { KebeleFilter } from "@/components/common/KebeleFilter";
-import {
-  TablePagination,
-  useUrlPagination,
-  useUrlSearchTerm,
-} from "@/components/common/TablePagination";
-import {
-  ClearFiltersButton,
-  ExportButtons,
-  SortableTh,
-  useClearTableFilters,
-  useUrlSort,
-} from "@/components/common/TableToolbar";
-import { TableEmptyRow, TableErrorRow, TableSkeletonRows } from "@/components/common/TableStates";
+import { StatusChip } from "@/components/common/StatusChip";
+import { PermissionGate } from "@/components/common/PermissionGate";
+import { ExportButtons } from "@/components/common/TableToolbar";
 import { exportRowsToCsv, exportRowsToPdf, type TableColumn } from "@/utils/tableExport";
 import { useReportBranding } from "@/hooks/useReportBranding";
 import { useServiceTypes } from "@/hooks/useServiceTypes";
+import {
+  WorkflowQueueTable,
+  useWorkflowQueueFilters,
+  waitingDaysLabel,
+  type QueueColumn,
+  type QueueQuickAction,
+} from "@/components/workflow/WorkflowQueueTable";
 import {
   COMPLAINT_STATUS_OPTIONS,
   LETTER_STATUS_OPTIONS,
   PRIORITY_LABEL,
   PRIORITY_STYLE,
-  SERVICE_STATUS_STYLE,
   serviceStatusLabel,
   type ServiceCategory,
 } from "@/lib/serviceConstants";
@@ -49,6 +41,7 @@ interface Row {
   fee_amount: number;
   submitted_at: string;
   kebele_id: string | null;
+  requested_by_user_id: string | null;
   resident: { resident_id: string; full_name_am: string | null; full_name: string | null } | null;
   service_type: { name_am: string; name_en: string } | null;
 }
@@ -61,17 +54,11 @@ const SORT_COLUMN: Record<string, string> = {
   fee_amount: "fee_amount",
 };
 
+/** Delegates to the single shared StatusChip constant (Task 14-C) --
+ * kept as a named export since other modules already import StatusBadge
+ * by this name; no longer forks its own color map. */
 export function StatusBadge({ status }: { status: string }) {
-  return (
-    <span
-      className={
-        "font-noto-ethiopic inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium " +
-        (SERVICE_STATUS_STYLE[status] ?? "bg-slate-100 text-slate-700")
-      }
-    >
-      {serviceStatusLabel(status)}
-    </span>
-  );
+  return <StatusChip status={status} />;
 }
 
 export function PriorityBadge({ priority }: { priority: string }) {
@@ -87,6 +74,42 @@ export function PriorityBadge({ priority }: { priority: string }) {
   );
 }
 
+/** Same status decides the stage; PermissionGate (inside WorkflowQueueTable)
+ * decides whether it renders for the signed-in user. Complaints share the
+ * same service.* permission keys as letters (both categories are seeded
+ * into the same shared workflow_transition table -- see
+ * docs/task14b-mapping-memo.md §0.1). */
+function quickActionFor(row: Row): QueueQuickAction | null {
+  switch (row.status) {
+    case "submitted":
+    case "under_review":
+      return {
+        icon: ShieldCheck,
+        permission: P.SERVICE_VERIFY,
+        labelAm: "አረጋግጥ",
+        labelEn: "Verify",
+      };
+    case "pending_approval":
+      return { icon: Gavel, permission: P.SERVICE_APPROVE, labelAm: "አጽድቅ", labelEn: "Approve" };
+    case "awaiting_payment":
+      return {
+        icon: CreditCard,
+        permission: P.SERVICE_RECORD_PAYMENT,
+        labelAm: "ክፍያ መዝግብ",
+        labelEn: "Record Payment",
+      };
+    case "paid":
+      return {
+        icon: FileCheck2,
+        permission: P.SERVICE_ISSUE_LETTER,
+        labelAm: "ደብዳቤ ስጥ",
+        labelEn: "Issue Letter",
+      };
+    default:
+      return null;
+  }
+}
+
 interface Props {
   category: ServiceCategory;
   titleAm: string;
@@ -96,47 +119,79 @@ interface Props {
 
 export function ServiceRequestList({ category, titleAm, titleEn, descriptionAm }: Props) {
   const woredaId = useAuthStore((s) => s.woredaId);
-  const hasPermission = useAuthStore((s) => s.hasPermission);
   const navigate = useNavigate();
-  const search = useSearch({ strict: false }) as Record<string, unknown>;
   const branding = useReportBranding();
   const typesQuery = useServiceTypes({ category, activeOnly: false });
-
-  const statusFilter = typeof search["st"] === "string" ? (search["st"] as string) : "all";
-  const typeFilter = typeof search["ty"] === "string" ? (search["ty"] as string) : "";
-  const kebeleFilter = typeof search["kb"] === "string" ? (search["kb"] as string) : "";
-
-  const patch = (next: Record<string, unknown>) =>
-    navigate({
-      to: ".",
-      search: (prev: Record<string, unknown>) => ({ ...prev, ...next, page: undefined }),
-      replace: true,
-    } as never);
-
-  const { input, setInput, term } = useUrlSearchTerm("q");
-  const sort = useUrlSort("submitted_at", "desc");
-  const resetKey = `${term}|${statusFilter}|${typeFilter}|${kebeleFilter}|${sort.key}`;
-  const { page, setPage, pageSize, setPageSize } = useUrlPagination(resetKey);
-  const clearFilters = useClearTableFilters(["st", "ty", "kb"]);
+  const filters = useWorkflowQueueFilters();
   const [exporting, setExporting] = useState(false);
 
-  const statusOptions = category === "complaint" ? COMPLAINT_STATUS_OPTIONS : LETTER_STATUS_OPTIONS;
+  const officersQuery = useQuery({
+    queryKey: ["officers-for-filter", woredaId],
+    enabled: !!woredaId,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("app_user")
+        .select("user_id, full_name")
+        .eq("woreda_id", woredaId!)
+        .eq("status", "active")
+        .order("full_name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
 
-  const buildQuery = (from: number, to: number) => {
+  const kebelesQuery = useQuery({
+    queryKey: ["kebeles-for-filter", woredaId],
+    enabled: !!woredaId,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("kebele")
+        .select("kebele_id, kebele_number, kebele_name_am")
+        .eq("woreda_id", woredaId!)
+        .order("kebele_number");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const statusOptions = (
+    category === "complaint" ? COMPLAINT_STATUS_OPTIONS : LETTER_STATUS_OPTIONS
+  )
+    .filter((s) => s !== "all")
+    .map((s) => ({ value: s, label: serviceStatusLabel(s) }));
+  const typeOptions = (typesQuery.data ?? []).map((t) => ({
+    value: t.service_type_id,
+    label: `${t.name_am} / ${t.name_en}`,
+  }));
+  const officerOptions = (officersQuery.data ?? []).map((o) => ({
+    value: o.user_id,
+    label: o.full_name,
+  }));
+  const kebeleOptions = (kebelesQuery.data ?? []).map((k) => ({
+    value: k.kebele_id,
+    label: `${k.kebele_number} · ${k.kebele_name_am}`,
+  }));
+
+  const buildQuery = () => {
     let q = supabase
       .from("service_request")
       .select(
-        "service_request_id, request_number, category, status, priority, subject, applicant_name, fee_amount, submitted_at, kebele_id, resident:resident_id(resident_id, full_name_am, full_name), service_type:service_type_id(name_am, name_en)",
+        "service_request_id, request_number, category, status, priority, subject, applicant_name, fee_amount, submitted_at, kebele_id, requested_by_user_id, resident:resident_id(resident_id, full_name_am, full_name), service_type:service_type_id(name_am, name_en)",
         { count: "exact" },
       )
       .eq("woreda_id", woredaId!)
       .eq("category", category);
 
-    if (statusFilter !== "all") q = q.eq("status", statusFilter);
-    if (typeFilter) q = q.eq("service_type_id", typeFilter);
-    if (kebeleFilter) q = q.eq("kebele_id", kebeleFilter);
-    if (term.length >= 2) {
-      const esc = term.replace(/[%,]/g, "");
+    if (filters.status.value !== "all") q = q.eq("status", filters.status.value);
+    if (filters.type.value !== "all") q = q.eq("service_type_id", filters.type.value);
+    if (filters.kebele.value !== "all") q = q.eq("kebele_id", filters.kebele.value);
+    if (filters.officer.value !== "all") q = q.eq("requested_by_user_id", filters.officer.value);
+    if (filters.dateFrom.value) q = q.gte("submitted_at", filters.dateFrom.value);
+    if (filters.dateTo.value) q = q.lte("submitted_at", `${filters.dateTo.value}T23:59:59`);
+    if (filters.search.length >= 2) {
+      const esc = filters.search.replace(/[%,]/g, "");
       q = q.or(
         [
           `request_number.ilike.%${esc}%`,
@@ -145,8 +200,8 @@ export function ServiceRequestList({ category, titleAm, titleEn, descriptionAm }
         ].join(","),
       );
     }
-    const col = SORT_COLUMN[sort.field] ?? "submitted_at";
-    return q.order(col, { ascending: sort.dir === "asc" }).range(from, to);
+    const col = SORT_COLUMN[filters.sort.field] ?? "submitted_at";
+    return q.order(col, { ascending: filters.sort.dir === "asc" });
   };
 
   const listQuery = useQuery({
@@ -154,19 +209,22 @@ export function ServiceRequestList({ category, titleAm, titleEn, descriptionAm }
       "service-requests",
       category,
       woredaId,
-      term,
-      statusFilter,
-      typeFilter,
-      kebeleFilter,
-      sort.key,
-      page,
-      pageSize,
+      filters.search,
+      filters.status.value,
+      filters.type.value,
+      filters.kebele.value,
+      filters.officer.value,
+      filters.dateFrom.value,
+      filters.dateTo.value,
+      filters.sort.key,
+      filters.page,
+      filters.pageSize,
     ],
     enabled: !!woredaId,
     queryFn: async () => {
-      const { data, error, count } = await buildQuery(
-        page * pageSize,
-        page * pageSize + pageSize - 1,
+      const { data, error, count } = await buildQuery().range(
+        filters.page * filters.pageSize,
+        filters.page * filters.pageSize + filters.pageSize - 1,
       );
       if (error) throw error;
       return { rows: (data ?? []) as unknown as Row[], total: count ?? 0 };
@@ -175,9 +233,8 @@ export function ServiceRequestList({ category, titleAm, titleEn, descriptionAm }
 
   const rows = listQuery.data?.rows ?? [];
   const total = listQuery.data?.total ?? 0;
-  const filtered = !!term || statusFilter !== "all" || !!typeFilter || !!kebeleFilter;
 
-  const columns: TableColumn<Row>[] = useMemo(
+  const exportColumns: TableColumn<Row>[] = useMemo(
     () => [
       { header: "ቁጥር / Reference", value: (r) => r.request_number, width: 1.2 },
       {
@@ -212,20 +269,11 @@ export function ServiceRequestList({ category, titleAm, titleEn, descriptionAm }
     [],
   );
 
-  const filterLabel = [
-    term ? `search="${term}"` : null,
-    statusFilter !== "all" ? `status=${statusFilter}` : null,
-    typeFilter ? `service type selected` : null,
-    kebeleFilter ? `kebele selected` : null,
-  ]
-    .filter(Boolean)
-    .join(", ");
-
   const fetchAllMatching = async (): Promise<Row[]> => {
     const out: Row[] = [];
     const step = 500;
     for (let from = 0; from < 5000; from += step) {
-      const { data, error } = await buildQuery(from, from + step - 1);
+      const { data, error } = await buildQuery().range(from, from + step - 1);
       if (error) throw error;
       const chunk = (data ?? []) as unknown as Row[];
       out.push(...chunk);
@@ -246,10 +294,10 @@ export function ServiceRequestList({ category, titleAm, titleEn, descriptionAm }
       if (kind === "csv") {
         exportRowsToCsv({
           fileName: `${base}-${new Date().toISOString().slice(0, 10)}.csv`,
-          columns,
+          columns: exportColumns,
           rows: all,
           titleEn: titleEn,
-          filterLabel: filterLabel || "none",
+          filterLabel: filters.active ? "Filtered" : "none",
         });
       } else {
         await exportRowsToPdf({
@@ -257,8 +305,8 @@ export function ServiceRequestList({ category, titleAm, titleEn, descriptionAm }
           branding: branding.data ?? { nameAm: "", nameEn: "", logoDataUrl: null },
           titleAm,
           titleEn,
-          filterLabel: filterLabel || "none",
-          columns,
+          filterLabel: filters.active ? "Filtered" : "none",
+          columns: exportColumns,
           rows: all,
         });
       }
@@ -270,6 +318,84 @@ export function ServiceRequestList({ category, titleAm, titleEn, descriptionAm }
     }
   };
 
+  const columns: QueueColumn<Row>[] = [
+    {
+      key: "request_number",
+      am: "ቁጥር",
+      en: "Reference",
+      sortField: "request_number",
+      render: (r) => (
+        <span className="font-mono text-xs font-medium text-blue-700">{r.request_number}</span>
+      ),
+    },
+    {
+      key: "applicant",
+      am: "አመልካች",
+      en: "Applicant",
+      render: (r) => (
+        <span className="font-noto-ethiopic">
+          {r.applicant_name || r.resident?.full_name_am || r.resident?.full_name || "—"}
+        </span>
+      ),
+    },
+    {
+      key: "service_type",
+      am: "አገልግሎት",
+      en: "Service",
+      render: (r) => (
+        <>
+          <span className="font-noto-ethiopic">
+            {r.service_type?.name_am ?? r.service_type?.name_en ?? "—"}
+          </span>
+          {r.subject && <div className="text-xs text-slate-500">{r.subject}</div>}
+        </>
+      ),
+    },
+    {
+      key: "status",
+      am: "ደረጃ",
+      en: "Status",
+      sortField: "status",
+      render: (r) => <StatusBadge status={r.status} />,
+    },
+    {
+      key: "priority",
+      am: "ቅድሚያ",
+      en: "Priority",
+      sortField: "priority",
+      render: (r) => <PriorityBadge priority={r.priority} />,
+    },
+    {
+      key: "fee_amount",
+      am: "ክፍያ",
+      en: "Fee",
+      sortField: "fee_amount",
+      align: "right",
+      render: (r) => (
+        <span className="font-mono text-xs">{Number(r.fee_amount ?? 0).toFixed(2)}</span>
+      ),
+    },
+    {
+      key: "submitted_at",
+      am: "ቀን",
+      en: "Submitted",
+      sortField: "submitted_at",
+      render: (r) => (
+        <span className="text-slate-600">
+          {new Date(r.submitted_at).toLocaleDateString("en-GB")}
+        </span>
+      ),
+    },
+    {
+      key: "waiting",
+      am: "የቆየበት ጊዜ",
+      en: "Waiting",
+      render: (r) => (
+        <span className="text-xs text-slate-500">{waitingDaysLabel(r.submitted_at)}</span>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -277,158 +403,50 @@ export function ServiceRequestList({ category, titleAm, titleEn, descriptionAm }
         titleEn={titleEn}
         description={descriptionAm}
         actions={
-          hasPermission(P.SERVICE_CREATE) ? (
-            <Link to="/woreda/services/new" search={{ category } as never}>
-              <Button>
-                <Plus className="mr-1 h-4 w-4" />
-                <span className="font-noto-ethiopic">
-                  {category === "complaint" ? "አዲስ ቅሬታ" : "አዲስ ጥያቄ"}
-                </span>
-              </Button>
-            </Link>
-          ) : null
-        }
-      />
-
-      <Card className="p-4">
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="min-w-[240px] flex-1">
-            <Label className="font-noto-ethiopic text-xs">ፍለጋ / Search</Label>
-            <div className="relative mt-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <Input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="ቁጥር፣ አመልካች ወይም ጉዳይ / Reference, applicant or subject"
-                className="font-noto-ethiopic pl-9"
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label className="font-noto-ethiopic text-xs">ደረጃ / Status</Label>
-            <select
-              className="mt-1 block h-10 w-[220px] rounded-md border border-input bg-background px-3 text-sm"
-              value={statusFilter}
-              onChange={(e) => patch({ st: e.target.value === "all" ? undefined : e.target.value })}
-            >
-              {statusOptions.map((s) => (
-                <option key={s} value={s}>
-                  {s === "all" ? "ሁሉም / All" : serviceStatusLabel(s)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <Label className="font-noto-ethiopic text-xs">አገልግሎት / Service type</Label>
-            <select
-              className="font-noto-ethiopic mt-1 block h-10 w-[260px] rounded-md border border-input bg-background px-3 text-sm"
-              value={typeFilter}
-              onChange={(e) => patch({ ty: e.target.value || undefined })}
-            >
-              <option value="">ሁሉም / All types</option>
-              {(typesQuery.data ?? []).map((t) => (
-                <option key={t.service_type_id} value={t.service_type_id}>
-                  {t.name_am} / {t.name_en}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <KebeleFilter value={kebeleFilter} onChange={(v) => patch({ kb: v || undefined })} />
-
-          <div className="ml-auto flex items-end gap-2">
-            <ClearFiltersButton active={filtered || !sort.isDefault} onClear={clearFilters} />
+          <div className="flex items-center gap-2">
             <ExportButtons
               onCsv={() => doExport("csv")}
               onPdf={() => doExport("pdf")}
               busy={exporting}
             />
+            <PermissionGate permission={P.SERVICE_CREATE}>
+              <Link to="/woreda/services/new" search={{ category } as never}>
+                <Button>
+                  <Plus className="mr-1 h-4 w-4" />
+                  <span className="font-noto-ethiopic">
+                    {category === "complaint" ? "አዲስ ቅሬታ" : "አዲስ ጥያቄ"}
+                  </span>
+                </Button>
+              </Link>
+            </PermissionGate>
           </div>
-        </div>
-      </Card>
+        }
+      />
 
-      <Card className="overflow-hidden p-0">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-              <tr>
-                <SortableTh field="request_number" sort={sort}>
-                  ቁጥር / Reference
-                </SortableTh>
-                <th className="px-4 py-2">አመልካች / Applicant</th>
-                <th className="px-4 py-2">አገልግሎት / Service</th>
-                <SortableTh field="status" sort={sort}>
-                  ደረጃ / Status
-                </SortableTh>
-                <SortableTh field="priority" sort={sort}>
-                  ቅድሚያ / Priority
-                </SortableTh>
-                <SortableTh field="fee_amount" sort={sort} align="right" className="text-right">
-                  ክፍያ / Fee
-                </SortableTh>
-                <SortableTh field="submitted_at" sort={sort}>
-                  ቀን / Submitted
-                </SortableTh>
-              </tr>
-            </thead>
-            <tbody>
-              {listQuery.isPending ? (
-                <TableSkeletonRows cols={7} />
-              ) : listQuery.isError ? (
-                <TableErrorRow
-                  cols={7}
-                  error={listQuery.error}
-                  onRetry={() => listQuery.refetch()}
-                />
-              ) : rows.length === 0 ? (
-                <TableEmptyRow cols={7} filtered={filtered} onClearFilters={clearFilters} />
-              ) : (
-                rows.map((r) => (
-                  <tr key={r.service_request_id} className="border-t hover:bg-slate-50">
-                    <td className="px-4 py-3">
-                      <Link
-                        to="/woreda/services/$requestId"
-                        params={{ requestId: r.service_request_id }}
-                        className="font-mono text-xs font-medium text-blue-700 hover:underline"
-                      >
-                        {r.request_number}
-                      </Link>
-                    </td>
-                    <td className="font-noto-ethiopic px-4 py-3">
-                      {r.applicant_name || r.resident?.full_name_am || r.resident?.full_name || "—"}
-                    </td>
-                    <td className="font-noto-ethiopic px-4 py-3">
-                      {r.service_type?.name_am ?? r.service_type?.name_en ?? "—"}
-                      {r.subject && <div className="text-xs text-slate-500">{r.subject}</div>}
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={r.status} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <PriorityBadge priority={r.priority} />
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono text-xs">
-                      {Number(r.fee_amount ?? 0).toFixed(2)}
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {new Date(r.submitted_at).toLocaleDateString("en-GB")}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        <TablePagination
-          page={page}
-          pageSize={pageSize}
-          total={total}
-          onPageChange={setPage}
-          onPageSizeChange={setPageSize}
-        />
-      </Card>
+      <WorkflowQueueTable
+        filters={filters}
+        searchPlaceholder="ቁጥር፣ አመልካች ወይም ጉዳይ / Reference, applicant or subject"
+        statusOptions={statusOptions}
+        typeOptions={typeOptions}
+        typeLabel="አገልግሎት / Service type"
+        kebeleOptions={kebeleOptions}
+        officerOptions={officerOptions}
+        columns={columns}
+        rows={rows}
+        totalCount={total}
+        isLoading={listQuery.isPending}
+        isError={listQuery.isError}
+        error={listQuery.error}
+        onRetry={() => listQuery.refetch()}
+        rowKey={(r) => r.service_request_id}
+        onRowClick={(r) =>
+          navigate({
+            to: "/woreda/services/$requestId",
+            params: { requestId: r.service_request_id },
+          })
+        }
+        quickActionFor={quickActionFor}
+      />
     </div>
   );
 }

@@ -37,6 +37,16 @@ const STATUS_STYLES: Record<string, string> = {
   inactive: "bg-slate-100 text-slate-500",
   reversed: "bg-red-100 text-red-800",
   cancelled: "bg-slate-100 text-slate-500",
+
+  // Task 14-C: service_request's own extra stages, folded in here so this
+  // is the single chip constant across credential/civil/service surfaces
+  // (queue, detail, timeline, print log) instead of duplicating a second
+  // color/label map in src/lib/serviceConstants.ts.
+  issued: "bg-green-100 text-green-800",
+  completed: "bg-emerald-100 text-emerald-800",
+  in_progress: "bg-indigo-100 text-indigo-800",
+  resolved: "bg-green-100 text-green-800",
+  closed: "bg-slate-100 text-slate-500",
 };
 
 const STATUS_LABELS_AM: Record<string, string> = {
@@ -70,7 +80,21 @@ const STATUS_LABELS_AM: Record<string, string> = {
   inactive: "ቦዝኗል",
   reversed: "ተመልሷል",
   cancelled: "ተሰርዟል",
+
+  issued: "ተሰጥቷል",
+  completed: "ተጠናቋል",
+  in_progress: "በሂደት ላይ",
+  resolved: "ተፈትቷል",
+  closed: "ተዘግቷል",
 };
+
+/** The Amharic label this chip would render for a status -- exported so
+ * non-chip contexts (a plain-text status filter option, an export column)
+ * stay in sync with the same single source instead of re-deriving their
+ * own label map. */
+export function statusLabelAm(status: string): string {
+  return STATUS_LABELS_AM[status] ?? status;
+}
 
 export function StatusChip({ status, showAmharic = true }: StatusChipProps) {
   const style = STATUS_STYLES[status] ?? "bg-slate-100 text-slate-600";

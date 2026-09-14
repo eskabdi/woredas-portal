@@ -34,6 +34,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { StatusChip } from "@/components/common/StatusChip";
+import {
+  HistoryTimeline,
+  useWorkflowHistory,
+  useActorNames,
+} from "@/components/workflow/HistoryTimeline";
 import { PermissionGate } from "@/components/common/PermissionGate";
 import {
   AlertDialog,
@@ -170,31 +175,6 @@ function useCivilFee(eventType: string | undefined, enabled: boolean) {
   });
 }
 
-interface HistoryRow {
-  id: string;
-  old_status: string | null;
-  new_status: string;
-  changed_at: string;
-  change_reason: string | null;
-}
-
-function useWorkflowHistory(eventId: string, enabled: boolean) {
-  return useQuery({
-    queryKey: ["vital-event-history", eventId],
-    enabled,
-    queryFn: async (): Promise<HistoryRow[]> => {
-      const { data, error } = await supabase
-        .from("workflow_status_history")
-        .select("id, old_status, new_status, changed_at, change_reason")
-        .eq("entity", "vital_event")
-        .eq("entity_id", eventId)
-        .order("changed_at", { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as HistoryRow[];
-    },
-  });
-}
-
 function CivilEventDetailPage() {
   const { eventId } = Route.useParams();
   const navigate = useNavigate();
@@ -241,7 +221,8 @@ function CivilEventDetailPage() {
   const marriageD = rawDetails as MarriageDetails;
   const divorceD = rawDetails as DivorceDetails;
 
-  const historyQuery = useWorkflowHistory(eventId, !!event);
+  const historyQuery = useWorkflowHistory("vital_event", eventId, !!event);
+  const actorNamesQuery = useActorNames((historyQuery.data ?? []).map((h) => h.changed_by_user_id));
 
   // Fetch linked residents for parent/spouse links (birth parents, marriage/divorce spouses)
   const linkedIds = [
@@ -1006,29 +987,16 @@ function CivilEventDetailPage() {
         </Card>
       )}
 
-      {/* Card 6 — History timeline, read from workflow_status_history */}
-      {historyQuery.data && historyQuery.data.length > 0 && (
-        <Card title="የሁኔታ ታሪክ" titleEn="Status History" icon={History}>
-          <ol className="space-y-3">
-            {historyQuery.data.map((h) => (
-              <li key={h.id} className="flex items-start gap-3 text-sm">
-                <div className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-blue-600" />
-                <div>
-                  <div className="text-slate-800">
-                    {h.old_status ? `${h.old_status} → ${h.new_status}` : h.new_status}
-                  </div>
-                  <div className="text-xs text-slate-500">
-                    {new Date(h.changed_at).toLocaleString("en-GB", { hour12: false })}
-                  </div>
-                  {h.change_reason && (
-                    <div className="mt-0.5 text-xs text-slate-500">{h.change_reason}</div>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ol>
-        </Card>
-      )}
+      {/* Card 6 — History timeline, read from workflow_status_history.
+          Task 14-C: unified onto the shared HistoryTimeline component
+          (bilingual StatusChip pairs, Ethiopian-calendar timestamps,
+          resolved actor names) instead of this route's own inline
+          rendering, which also fixes a real bug -- it rendered
+          changed_at via toLocaleString(), i.e. Gregorian, in a portal
+          whose dates are Ethiopian-first everywhere else. */}
+      <Card title="የሁኔታ ታሪክ" titleEn="Status History" icon={History}>
+        <HistoryTimeline rows={historyQuery.data ?? []} actorNames={actorNamesQuery.data} />
+      </Card>
 
       {/* Return dialog (shared by the verification and approval stages) */}
       <AlertDialog open={returnOpen} onOpenChange={setReturnOpen}>
