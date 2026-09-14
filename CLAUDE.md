@@ -715,6 +715,41 @@ are worth reaching for here specifically:
 These are general-purpose and don't need any per-project setup — invoke them
 by name (e.g. `/security-review`) same as any project skill.
 
+### gstack (machine-global, not part of this repo)
+
+[gstack](https://github.com/garrytan/gstack) is installed at `~/.claude/skills/gstack`
+on the machines that have it — a personal Claude Code skill suite (headless
+browser, QA/review/planning skills, a design CLI), not something vendored
+into this repository. It has to be installed per-machine
+(`git clone ... ~/.claude/skills/gstack && ./setup`); a fresh clone of this
+repo, or Claude Code on the web, won't have it unless someone installs it
+there too.
+
+Use `/browse` for all web browsing and QA driving in a real page (it wraps a
+fast headless Chromium) rather than reaching for a separate browser-control
+MCP tool, if one is offered. Skills worth knowing about here: `/office-hours`,
+`/plan-ceo-review`, `/plan-eng-review`, `/plan-design-review`,
+`/design-consultation`, `/design-shotgun`, `/design-html`, `/ship`,
+`/land-and-deploy`, `/canary`, `/benchmark`, `/browse`, `/connect-chrome`,
+`/qa`, `/qa-only`, `/design-review`, `/setup-browser-cookies`,
+`/setup-deploy`, `/setup-gbrain`, `/retro`, `/investigate`,
+`/document-release`, `/document-generate`, `/codex`, `/cso`, `/autoplan`,
+`/plan-devex-review`, `/devex-review`, `/careful`, `/freeze`, `/guard`,
+`/unfreeze`, `/gstack-upgrade`, `/learn`.
+
+**`/review` and `/deploy` are name collisions.** gstack installs its own
+generic `/review` (pre-landing PR review) alongside this repo's own
+`.claude/skills/review` (documented above, which already knows to dispatch
+to `tenant-isolation-review`/`portal-conventions-review`/`card-print-review`/
+`workflow-fsm-review`/`rbac-escalation-review`/`secret-sweep` and carries
+this repo's specific false-positive list). For work in this repo, prefer the
+project's own `/review` — it is scoped to the invariants that actually break
+here; gstack's version has no idea RLS exists. Likewise, gstack's `/ship`
+and `/land-and-deploy` don't know this repo's credential-teardown rule,
+sandboxed-environment Management API workaround, or its four-artifact
+deploy ordering — use this repo's own `/deploy` skill for anything that
+touches Supabase or Vercel.
+
 ### SessionStart hook (`.claude/hooks/session-start.sh`)
 
 Installs dependencies at the start of a Claude Code on the web session, and
