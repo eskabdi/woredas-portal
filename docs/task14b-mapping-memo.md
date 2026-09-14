@@ -427,7 +427,7 @@ behavior between two sibling modules rather than closing the actual gap:
 - **`workflow_transition` is entity-scoped, not category-scoped.** The
   shared engine keys transitions on `(entity, from_status, to_status)`, with
   no `category` dimension — so a `category='complaint'` row is not actually
-  *prevented* from taking a letter-only edge (e.g. `approved -> awaiting_payment`)
+  _prevented_ from taking a letter-only edge (e.g. `approved -> awaiting_payment`)
   by the engine itself, only by the real UI never offering the button and by
   `enforce_service_request_preconditions()`'s `category <> 'letter'` early
   return skipping the tenant-scoped resident/household re-validation for
@@ -444,3 +444,12 @@ behavior between two sibling modules rather than closing the actual gap:
 
 These four items are added to `docs/remediation-report.md`'s consolidated
 watch list (§11) rather than fixed asymmetrically in this PR alone.
+
+**Update, payment-hardening PR (`docs/remediation-report.md` §13):** the
+first two items above — payment amount not compared to the resolved fee,
+and preconditions freezing in-flight requests on deactivation — are now
+**closed**, fixed together across `service_request` and `vital_event` (and
+`credential_request`'s pre-existing, differently-shaped fee check corrected
+to use the right fee source) exactly as this section anticipated. The
+remaining two (`workflow_transition` entity- not category-scoped;
+`finance_clerk`'s widened UPDATE verb set) are unchanged, sharpened in §13.
