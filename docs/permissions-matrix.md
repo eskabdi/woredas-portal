@@ -137,7 +137,7 @@ INSA Enforcer Phase 2.3 / Phase 4 Access Control. Generated from `src/config/per
 | ------------------------ | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ | ------------- | ------ |
 | `service.create`         |             | ✓            |            | ✓               | ✓              |               |         |        |               |        |
 | `service.read`           |             | ✓            | ✓          | ✓               | ✓              | ✓             | ✓       | ✓      |               |        |
-| `service.verify`         |             | ✓            | ✓          |                 |                |               |         |        |               |        |
+| `service.verify`         |             | ✓            | ✓          | ✓               | ✓              |               |         |        |               |        |
 | `service.approve`        |             | ✓            | ✓          |                 |                |               |         |        |               |        |
 | `service.issue`          |             | ✓            |            | ✓               | ✓              |               |         |        |               |        |
 | `service.submit`         |             | ✓            |            | ✓               | ✓              |               |         |        |               |        |
@@ -146,7 +146,7 @@ INSA Enforcer Phase 2.3 / Phase 4 Access Control. Generated from `src/config/per
 | `service.reject`         |             | ✓            | ✓          |                 |                |               |         |        |               |        |
 | `service.record_payment` |             | ✓            |            |                 |                | ✓             |         |        |               |        |
 | `service.issue_letter`   |             | ✓            |            | ✓               | ✓              |               |         |        |               |        |
-| `service.complete`       |             | ✓            |            |                 |                |               |         |        |               |        |
+| `service.complete`       |             | ✓            |            | ✓               | ✓              |               |         |        |               |        |
 
 ### Complaints
 
