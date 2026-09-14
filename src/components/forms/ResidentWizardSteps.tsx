@@ -13,15 +13,14 @@ import {
   Loader2,
   AlertCircle,
   X,
-  Check,
   FileText,
 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card } from "@/components/ui/card";
 import { EthiopianDateInput } from "@/components/common/EthiopianDateInput";
 import { Section, Grid, FieldWrap, Select } from "@/components/forms/FormSection";
+import { Stepper } from "@/components/forms/Stepper";
 import { supabase } from "@/integrations/supabase/client";
 import { toWebp, storageExtension, PHOTO_WEBP } from "@/utils/imageCompression";
 import { useWoredaInfo } from "@/hooks/useWoredaInfo";
@@ -319,7 +318,12 @@ export function ResidentWizardSteps({
 
   return (
     <>
-      <StepIndicator step={step} maxReached={maxReached} onJump={onJumpStep} />
+      <Stepper
+        steps={RESIDENT_STEPS.map((s) => ({ id: s.num, am: s.am, en: s.en }))}
+        current={step}
+        maxReached={maxReached}
+        onJump={onJumpStep}
+      />
 
       {/* Step 1: Identity */}
       <div className={step === 1 ? "" : "hidden"}>
@@ -866,60 +870,5 @@ export function ResidentWizardSteps({
         </Suspense>
       )}
     </>
-  );
-}
-
-function StepIndicator({
-  step,
-  maxReached,
-  onJump,
-}: {
-  step: number;
-  maxReached: number;
-  onJump: (n: number) => void;
-}) {
-  return (
-    <Card className="border-slate-200 p-4 shadow-sm">
-      <div className="mb-4 flex items-baseline justify-between">
-        <p className="font-am-body text-sm font-semibold text-slate-700">
-          ደረጃ {step} ከ 4 <span className="font-normal opacity-60">/ Step {step} of 4</span>
-        </p>
-        <p className="font-am-body text-sm font-medium text-blue-700">
-          {RESIDENT_STEPS[step - 1].am}{" "}
-          <span className="opacity-70">/ {RESIDENT_STEPS[step - 1].en}</span>
-        </p>
-      </div>
-      <div className="flex items-center gap-2">
-        {RESIDENT_STEPS.map((s, i) => {
-          const isDone = s.num < step;
-          const isCurrent = s.num === step;
-          const reachable = s.num <= maxReached;
-          return (
-            <div key={s.num} className="flex flex-1 items-center gap-2">
-              <button
-                type="button"
-                disabled={!reachable || isCurrent}
-                onClick={() => onJump(s.num)}
-                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold transition ${
-                  isCurrent
-                    ? "bg-blue-700 text-white shadow-md ring-4 ring-blue-100"
-                    : isDone
-                      ? "bg-blue-700 text-white hover:bg-blue-800 cursor-pointer"
-                      : "bg-slate-100 text-slate-400 border border-slate-200"
-                } ${!reachable ? "cursor-not-allowed" : ""}`}
-                aria-label={`Go to step ${s.num}`}
-              >
-                {isDone ? <Check className="h-4 w-4" /> : s.num}
-              </button>
-              {i < RESIDENT_STEPS.length - 1 && (
-                <div
-                  className={`h-0.5 flex-1 rounded ${s.num < step ? "bg-blue-700" : "bg-slate-200"}`}
-                />
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </Card>
   );
 }
