@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Building2, Users, IdCard, CreditCard, LayoutDashboard } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { BarChartCard } from "@/components/charts/BarChartCard";
 
 import { supabase } from "@/integrations/supabase/client";
 import { KpiCard } from "@/components/common/KpiCard";
@@ -143,20 +143,14 @@ function AdminDashboard() {
         />
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h3 className="text-sm font-semibold text-slate-900">Residents per Woreda</h3>
-        <div className="mt-4 h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip />
-              <Bar dataKey="residents" fill="#1d4ed8" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+      <BarChartCard
+        titleEn="Residents per Woreda"
+        data={chartData}
+        xKey="name"
+        yKey="residents"
+        loading={woredaList.isLoading}
+        height={288}
+      />
 
       <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <h3 className="text-sm font-semibold text-slate-900">Woredas</h3>

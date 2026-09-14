@@ -11,17 +11,8 @@ import {
   LayoutDashboard,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-  LineChart,
-  Line,
-} from "recharts";
+import { BarChartCard } from "@/components/charts/BarChartCard";
+import { LineChartCard } from "@/components/charts/LineChartCard";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
@@ -295,45 +286,24 @@ function WoredaDashboard() {
 
       {/* Row 3 — charts */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h3 className="font-am-heading text-sm font-semibold text-slate-900">
-            ወርሃዊ ምዝገባዎች (6 ወር)
-          </h3>
-          <p className="text-xs text-slate-400">Monthly registrations — last 6 months</p>
-          <div className="mt-4 h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthlyRegs.data ?? []}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="label" tick={{ fontSize: 11, fontFamily: "Noto Sans Ethiopic" }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Bar dataKey="count" fill="#1d4ed8" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h3 className="font-am-heading text-sm font-semibold text-slate-900">ዕለታዊ ገቢ (30 ቀን)</h3>
-          <p className="text-xs text-slate-400">Daily revenue — last 30 days</p>
-          <div className="mt-4 h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={dailyRevenue.data ?? []}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="day" tick={{ fontSize: 10 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Line
-                  type="monotone"
-                  dataKey="amount"
-                  stroke="#059669"
-                  strokeWidth={2}
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        <BarChartCard
+          titleAm="ወርሃዊ ምዝገባዎች (6 ወር)"
+          titleEn="Monthly registrations — last 6 months"
+          data={monthlyRegs.data ?? []}
+          xKey="label"
+          yKey="count"
+          loading={monthlyRegs.isLoading}
+          height={256}
+        />
+        <LineChartCard
+          titleAm="ዕለታዊ ገቢ (30 ቀን)"
+          titleEn="Daily revenue — last 30 days"
+          data={dailyRevenue.data ?? []}
+          xKey="day"
+          yKey="amount"
+          loading={dailyRevenue.isLoading}
+          height={256}
+        />
       </div>
 
       {/* Recent activity */}
