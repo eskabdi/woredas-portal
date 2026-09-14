@@ -136,6 +136,35 @@ routes (10 counting `/woreda/complaints`, which shares `ServiceRequestList` with
 headless Chromium — each correctly redirects unauthenticated traffic to `/login` rather than hitting the
 app's error boundary.
 
+### `Stepper` (`ux_restructure_plan.md`, Cluster B)
+
+Built the segmented-pill wizard stepper called for by the design spec's §3.B, replacing the two
+independently-built circle-and-line steppers that existed before this component: `ResidentWizardSteps.tsx`'s
+local `StepIndicator` function, and `admin.tenants.$woredaId.provision.tsx`'s inline stepper markup. Per
+the roadmap's own risk note ("prototype `Stepper` against both wizards before calling it done, since a
+resident-wizard-only prototype might not generalize"), it was built and wired into both from the start
+rather than one first:
+
+- `src/components/forms/Stepper.tsx` (new) — takes `steps: {id, am, en}[]`, `current`, and two optional
+  props: `maxReached` (how far the user has progressed, for step-jump gating) and `onJump` (click handler).
+  Omitting `onJump` renders a display-only stepper — needed because the admin provisioning wizard doesn't
+  support jumping backward mid-flow, while the resident wizard does.
+- Resident wizard: replaced `StepIndicator` with `<Stepper steps={RESIDENT_STEPS.map(...)} current={step}
+  maxReached={maxReached} onJump={onJumpStep} />`; removed the now-unused `Check` (lucide-react) and `Card`
+  imports.
+- Admin provisioning wizard: replaced the inline stepper block with `<Stepper steps={STEPS.map(...)}
+  current={step} />` (no `onJump` — this wizard doesn't support step-jumping); removed the unused `Check`
+  icon import.
+- Deliberately uses a plain CSS color transition on step change, not a `framer-motion` spring — per the
+  apple-design skill, springs earn their keep on gesture-driven, interruptible motion; a wizard step change
+  is a discrete, click-triggered transition with no gesture velocity to honor, so the same reasoning already
+  applied to `AppShell`'s sidebar-collapse animation applies here.
+
+Smoke-tested `/woreda/residents/new` and `/admin/tenants/$woredaId/provision` via headless Chromium — both
+correctly redirect unauthenticated traffic to `/login`, confirming the bundle containing `Stepper` loads
+without a runtime crash (the same import-safety verification used for `TableToolbar`, given the same
+no-real-backend constraint described below).
+
 ## Verification performed
 
 | Check | Result |
@@ -192,10 +221,10 @@ portals' navigation before Phase 1 begins.
 
 ## What's not done (and why), with concrete next steps
 
-- **Phase 1 — Shared patterns** (`TableToolbar`, `Stepper`, `DetailHeader`/`WorkflowStepper`, `charts/`):
-  not started. Next step: build and manually verify each against 2–3 real screens before any broader
-  rollout, per the roadmap's own Phase 1 workflow — this is a multi-day effort on its own and deserves a
-  dedicated pass with the same build/typecheck/lint/visual-verification discipline applied here.
+- **Phase 1 — Shared patterns**: `TableToolbar` (done, all of Cluster A) and `Stepper` (done, both wizards
+  it needs to generalize across) are complete. `DetailHeader`/`WorkflowStepper` (Cluster C, ~13 detail
+  screens) and `charts/` (Cluster E) are **not started**. Next step: build and manually verify each against
+  2–3 real screens before any broader rollout, per the roadmap's own Phase 1 workflow.
 - **Phase 2 — Screen-by-screen adoption** (all 55 screens): not started; depends on Phase 1 existing
   first.
 - **Phase 3 — Print documents & dashboards**: not started; lower urgency per the audit (Cluster D already
