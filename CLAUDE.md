@@ -346,6 +346,42 @@ one) rather than inventing per-page state:
   than hand-writing them, and keep app-specific composition in
   `src/components/common/` and the feature folders.
 
+### UX restructuring in progress (`docs/ux/`)
+
+An Apple-HIG-driven restructuring (dark navy shell, floating translucent
+toolbars, segmented steppers, and a two-typeface Amharic system — Tayitu for
+headers/titles/nav, Jiret for body copy, replacing the single
+`.font-noto-ethiopic` utility) is underway on the `ux-restructure` branch, not
+yet merged. `docs/ux/` holds the planning trail and is the source of truth for
+what's done vs. pending — check `ux_implementation_roadmap.md`'s status
+checklist before assuming a screen already uses the new patterns:
+
+- `ux_screen_inventory.md`, `ux_pattern_map.md`, `ux_audit_findings.md` — the
+  55-route inventory, the five reuse clusters (List/Filter/Export, Multi-step
+  Forms, Detail/Profile, Printable Documents, Dashboards), and the
+  Clarity/Deference/Depth/Typography audit scored per cluster.
+- `ux_amharic_typography_plan.md` — the Tayitu/Jiret mapping rules, the
+  `.font-am-heading`/`.font-am-body` utility split, and the font-license open
+  item (Tayitu is © Anbassa Design; the user confirmed decorative-only use —
+  headings/nav, never body copy — is acceptable).
+- `ux_restructure_plan.md` — the shared components each cluster maps to:
+  `AppShell` (replaces `WoredaShell`/`AdminShell`), `TableToolbar`, `Stepper`,
+  `DetailHeader`/`WorkflowStepper`, `charts/`.
+- `ux_implementation_roadmap.md` — the five-phase, dependency-ordered plan
+  (Foundations → Shared patterns → Screen-by-screen adoption → Print/dashboards
+  → Validation) with its status checklist kept current at the top.
+- `ux_implementation_report.md` — the running implementation log: what's built,
+  how it was verified (this sandbox has no real Supabase project, so
+  authenticated-shell rendering is smoke-tested via headless Chromium's
+  unauthenticated-redirect behavior rather than visually confirmed — see the
+  report's "residual risks" section), and deviations from the plan.
+
+As of the last update: Phase 0 (fonts, tokens, `AppShell`) and half of Phase 1
+(`TableToolbar` across Cluster A, `Stepper` across both wizards) are done;
+`DetailHeader`/`WorkflowStepper`, `charts/`, and Phases 2–4 are not started.
+Continuing this work means reading the roadmap's current status first, not
+re-deriving it from the code.
+
 ### Build and server entry
 
 `src/server.ts` is a wrapper around TanStack Start's server entry, pointed at
