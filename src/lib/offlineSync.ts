@@ -278,7 +278,23 @@ async function syncRecordPaymentDraft(item: QueueItem, actorUserId: string): Pro
     .eq("credential_request_id", credential_request_id)
     .select("credential_request_id")
     .maybeSingle();
-  if (updErr) return { item, ok: false, transient: isTransient(updErr), message: updErr.message };
+  if (updErr) {
+    // Task 8: the payment and receipt above are already committed as
+    // separate PostgREST calls by this point (this function has no single
+    // enclosing transaction) -- a rejection here (e.g. the age/identity
+    // mint guard, migration 00000000000068/69, firing because the resident
+    // became ineligible while this item sat in the offline queue) must not
+    // read as a plain error with no guidance, the same as the !paidRow case
+    // below already gets right.
+    return {
+      item,
+      ok: false,
+      transient: isTransient(updErr),
+      message: isTransient(updErr)
+        ? updErr.message
+        : `${updErr.message} — የተመዘገበው ክፍያ አለ፣ አስተዳዳሪ ያነጋግሩ / The payment was recorded; contact an administrator to reconcile.`,
+    };
+  }
   if (!paidRow) {
     return {
       item,

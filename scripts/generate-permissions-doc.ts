@@ -196,6 +196,22 @@ export function buildPermissionsMarkdown(): string {
       "[`docs/erd.md`](./erd.md#tenancy--rbac) for the tables involved.",
   );
   lines.push("");
+  lines.push(
+    "**The `custom` column is a fourth, separate case, not a fourth layer on top " +
+      "of the other three.** For an `app_user` whose `role = 'custom'`, " +
+      "`current_permissions()` does not consult `role_permission` (the compiled " +
+      "matrix above) at all — it branches entirely to `tenant_role_permission`, " +
+      "keyed off that user's own `custom_role_id` (migration `00000000000039`), " +
+      "still gated by `user_permission_override` on top exactly like a built-in " +
+      "role. There is no compiled default for a custom role to fall back on by " +
+      "design (a tenant defines the role's grants when they create it), which is " +
+      "why the `custom` column above is empty in every row rather than showing a " +
+      'placeholder default. See `docs/erd.md`\'s "Custom roles" section for the ' +
+      "`tenant_role`/`tenant_role_permission` tables and the reserved-key CHECK " +
+      "that keeps a custom role from ever being handed an administrative or " +
+      "approval power the ordinary matrix and override paths can't grant either.",
+  );
+  lines.push("");
 
   return lines.join("\n");
 }

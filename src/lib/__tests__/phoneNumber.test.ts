@@ -3,6 +3,7 @@ import {
   applyPhoneDigitsChange,
   isValidPhoneDigits,
   phoneDigitsToE164,
+  requiredPhoneDigitsSchema,
   sanitizePhoneDigits,
 } from "@/lib/phoneNumber";
 
@@ -120,5 +121,22 @@ describe("phoneDigitsToE164", () => {
 
   it("returns null for an empty value instead of a bare +251", () => {
     expect(phoneDigitsToE164("")).toBeNull();
+  });
+});
+
+describe("requiredPhoneDigitsSchema (Task 8: resident intake requires a phone)", () => {
+  const schema = requiredPhoneDigitsSchema();
+
+  it("rejects an empty value -- unlike phoneDigitsSchema(), this one is not optional", () => {
+    expect(schema.safeParse("").success).toBe(false);
+  });
+
+  it("accepts a valid 9-digit local part", () => {
+    expect(schema.safeParse("911234567").success).toBe(true);
+  });
+
+  it("still enforces the same 9-digit format as the optional variant", () => {
+    expect(schema.safeParse("12345").success).toBe(false);
+    expect(schema.safeParse("91123456a").success).toBe(false);
   });
 });

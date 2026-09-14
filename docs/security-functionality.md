@@ -188,12 +188,12 @@ are not actually the same.
 
 **Rollout status.**
 
-| Stage | What                                                                                                                                               | State                                                                                                                                                                                                                                                           |
-| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1     | Columns, crypto functions, sync triggers, decrypting views                                                                                         | **Applied to production**                                                                                                                                                                                                                                       |
-| 2     | Create the Vault secret, backfill existing rows                                                                                                    | **Applied to production** — all pre-existing rows backfilled, verified via `pii_encryption_status()`                                                                                                                                                            |
+| Stage | What                                                                                                                                               | State                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1     | Columns, crypto functions, sync triggers, decrypting views                                                                                         | **Applied to production**                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| 2     | Create the Vault secret, backfill existing rows                                                                                                    | **Applied to production** — all pre-existing rows backfilled, verified via `pii_encryption_status()`                                                                                                                                                                                                                                                                                                                                                                           |
 | 3     | Move read paths onto the `*_decrypted` views, call site by call site                                                                               | **Applied to production** — every application read call site now uses the decrypted view, verified live against production data; `00000000000024_...sql` (a sixth decrypting view, `rental_occupancy_request_decrypted`, closing a gap stage 1 left) is applied; `00000000000044_task6_...sql` (Task 6) added `resident.national_id_no` and `household.rent_amount` to the same rollout, cutting every read/search/duplicate-check call site over in the same migration series |
-| 4     | Drop plaintext columns (separate migration, after burn-in) — the amount>0 guard's stage-4 mechanism is a genuinely open decision, not yet resolved | Not started                                                                                                                                                                                                                                                     |
+| 4     | Drop plaintext columns (separate migration, after burn-in) — the amount>0 guard's stage-4 mechanism is a genuinely open decision, not yet resolved | Not started                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 
 **Stage 3 notes.** The residents-list search (`woreda.residents.index.tsx`)
 changed from `.ilike` substring matching to an exact match against a
@@ -295,6 +295,44 @@ person already has an account" apart from "sending failed". The three
 invite functions additionally answer `429 Too many requests` past a
 per-caller budget (20 or 10 calls per 10 minutes, keyed by verified
 `user_id` against `rate_limit_bucket` — migration `00000000000022`).
+
+## RLS & trigger inventory (live-verified)
+
+Every other section above documents _what_ is enforced and _why_; this
+section is the raw count, taken by read-only enumeration of the production
+schema (Task 8, 2026-09-14 — `information_schema`/`pg_catalog` queries over
+the Management API, the same method `docs/erd.md`'s live re-verification
+used, per the reason recorded in `docs/architecture.md`'s decision record).
+
+| Metric                                 | Live count |
+| -------------------------------------- | ---------- |
+| Tables in `public` schema              | 52         |
+| Tables with row-level security enabled | 52 (100%)  |
+| RLS policies                           | 139        |
+| Triggers                               | 144        |
+| `SECURITY DEFINER` functions           | 88         |
+
+Every table has RLS enabled — there is no table in this schema a query can
+read or write without going through a policy. The policy count (139) is
+lower than an earlier estimate of "156+" carried in prior planning
+documents; the earlier figure was a projection made before several of the
+Task 11 gap-fill tables (`office`, `household_location`, `approval`,
+`attachment`) and the Task 12-C offline-queue work (which added zero new
+tables or policies — it is entirely client-side) were designed, so it
+should not be read as a target this count fell short of. This table is the
+current, corrected figure, not a discrepancy to investigate.
+
+`SECURITY DEFINER` functions are the highest-risk category in this
+inventory precisely because they run with the function owner's privileges,
+bypassing RLS for whatever they touch — every one of the 88 has been the
+subject of at least one review pass in this project's history (the console
+role/permission functions, `current_permissions()`, the fee-resolution
+RPCs, the KPI RPCs, `entity_belongs_to_woreda()` and its Task-11 sibling
+functions, the verification RPCs) specifically for whether it re-derives
+its own tenant/permission scope internally rather than trusting a
+caller-supplied parameter — see `docs/rbac-security-forensic-review.md` and
+the individual task mapping memos (`docs/task12-mapping-memo.md`,
+`docs/task14a/b/c-mapping-memo.md`) for the per-function review record.
 
 ## Related documents
 

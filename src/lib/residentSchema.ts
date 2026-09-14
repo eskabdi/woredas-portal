@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { FieldPath } from "react-hook-form";
-import { phoneDigitsSchema, phoneDigitsToE164 } from "@/lib/phoneNumber";
+import { phoneDigitsSchema, requiredPhoneDigitsSchema, phoneDigitsToE164 } from "@/lib/phoneNumber";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -25,6 +25,11 @@ export const residentSchema = z.object({
     .string()
     .min(1, "የትውልድ ቀን ያስፈልጋል / Date of birth required")
     .refine((v) => v <= todayIso(), "የትውልድ ቀን ወደፊት መሆን አይችልም / Date must be in the past"),
+  // Optional on the base schema, matching the pre-Task-8 behavior: an
+  // existing resident (including a newborn inserted by
+  // generate_resident_on_birth_approval(), which sets neither field) must
+  // still be editable without first having to backfill both. Required at
+  // intake instead -- see residentCreateSchema below.
   photo_url: z.string().optional().default(""),
   ethnicity: z.string().min(1, "ብሔር ይምረጡ / Select ethnicity"),
   religion: z.string().min(1, "ኃይማኖት ይምረጡ / Select religion"),
@@ -88,6 +93,34 @@ export const residentSchema = z.object({
 
 export type ResidentFormInput = z.input<typeof residentSchema>;
 export type ResidentFormValues = z.output<typeof residentSchema>;
+
+// Task 8: a residence credential can never be minted (server-side guard,
+// migration 00000000000068/69) for a resident with no phone number or
+// photo on file -- the intake form (only) requires both, so an officer
+// discovers the gap at registration rather than after a payment has
+// already been collected. A `superRefine` on top of the base schema,
+// deliberately not a `.extend()` that changes either field's type: the
+// edit form keeps using the base `residentSchema` directly, and an
+// existing resident who predates this requirement (including every
+// newborn `generate_resident_on_birth_approval()` ever inserted, which
+// sets neither field) can still be edited for an unrelated correction
+// without first having to backfill both. Keeping the same input/output
+// shape (a refinement, not a field-type change) also means
+// `ResidentWizardSteps`, typed against the base schema's
+// `ResidentFormInput`/`ResidentFormValues`, accepts a form built on either
+// schema without a second, parallel component.
+export const residentCreateSchema = residentSchema.superRefine((data, ctx) => {
+  if (!data.photo_url.trim()) {
+    ctx.addIssue({ code: "custom", path: ["photo_url"], message: "ፎቶ ያስፈልጋል / Photo required" });
+  }
+  if (!requiredPhoneDigitsSchema().safeParse(data.phone_digits).success) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["phone_digits"],
+      message: "ስልክ ቁጥር ያስፈልጋል / Phone number required",
+    });
+  }
+});
 
 export const RESIDENT_STEP_FIELDS: Record<number, FieldPath<ResidentFormInput>[]> = {
   1: [
