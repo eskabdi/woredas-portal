@@ -14,22 +14,23 @@ cd "${CLAUDE_PROJECT_DIR:-$(dirname "$0")/../..}"
 
 # bun is the package manager of record here (bun.lock, bunfig.toml) and is what
 # CI and Vercel build with. bunfig.toml sets minimumReleaseAge, a 24h
-# supply-chain guard that only `bun install` honours — so npm is a fallback for
-# a container without bun, not an equivalent.
+# supply-chain guard that only `bun install` honours -- an npm fallback would
+# install dependencies with no such guard at all, silently. So a container
+# without bun gets bun installed, not routed around it (see issue #41).
 BUN=""
 if command -v bun >/dev/null 2>&1; then
   BUN="bun"
 elif [ -x "$HOME/.bun/bin/bun" ]; then
   BUN="$HOME/.bun/bin/bun"
   echo "export PATH=\"\$HOME/.bun/bin:\$PATH\"" >> "${CLAUDE_ENV_FILE:-/dev/null}"
+else
+  echo "bun not found; installing it (bunfig.toml's release-age guard requires bun install)." >&2
+  curl -fsSL https://bun.sh/install | bash
+  BUN="$HOME/.bun/bin/bun"
+  echo "export PATH=\"\$HOME/.bun/bin:\$PATH\"" >> "${CLAUDE_ENV_FILE:-/dev/null}"
 fi
 
-if [ -n "$BUN" ]; then
-  echo "Installing dependencies with $BUN…"
-  "$BUN" install
-else
-  echo "bun not found; falling back to npm (bunfig.toml's release-age guard will not apply)." >&2
-  npm install --no-audit --no-fund --no-package-lock
-fi
+echo "Installing dependencies with $BUN…"
+"$BUN" install
 
 echo "Dependencies ready."
