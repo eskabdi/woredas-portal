@@ -35,6 +35,7 @@ import {
 } from "@/components/common/TableToolbar";
 import { exportRowsToCsv, exportRowsToPdf, type TableColumn } from "@/utils/tableExport";
 import { useReportBranding } from "@/hooks/useReportBranding";
+import { resolveDecryptedField, DECRYPT_UNVERIFIED_WARNING } from "@/lib/decryptedFieldGuard";
 
 export const Route = createFileRoute("/woreda/revenue/")({
   ssr: false,
@@ -92,16 +93,52 @@ function RevenuePage() {
       if (end) q = q.lte("payment_date", end);
       const { data, error } = await q;
       if (error) throw error;
+
+      // payment_decrypted isn't in the generated types yet (00000000000023_
+      // pii_encryption.sql) -- same untyped-client cast pattern already used
+      // elsewhere in this codebase for pre-typegen tables. Fetched
+      // separately rather than swapping the query above's `.from()` in
+      // place: that query embeds household, a two-level rental_request ->
+      // rental_house join, and receipt via FK-derived PostgREST joins, which
+      // are not guaranteed to resolve through a view the same way they do
+      // through the base table. `.in("payment_id", ids)` rather than
+      // replaying the same filters guarantees the two row sets match exactly.
+      const paymentIds = (data ?? []).map((row) => row.payment_id as string);
+      let decryptedAmountByPaymentId = new Map<string, number>();
+      if (paymentIds.length > 0) {
+        const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+        const { data: amounts, error: amountsError } = await db
+          .from("payment_decrypted")
+          .select("payment_id, amount_decrypted")
+          .in("payment_id", paymentIds);
+        if (amountsError) throw amountsError;
+        decryptedAmountByPaymentId = new Map(
+          (amounts ?? [])
+            .filter((r: { amount_decrypted: number | null }) => r.amount_decrypted != null)
+            .map((r: { payment_id: string; amount_decrypted: number }) => [
+              r.payment_id,
+              r.amount_decrypted,
+            ]),
+        );
+      }
+
       // Normalize receipt (Supabase returns array for related; take first).
       const mapped = (data ?? []).map((row) => {
         const rec = Array.isArray(row.receipt) ? row.receipt[0] : row.receipt;
         const r = row as unknown as {
+          payment_id: string;
+          amount: number;
           household?: { kebele_id: string | null } | null;
           rental_request?: { rental_house?: { kebele_id: string | null } | null } | null;
         };
         const kebeleId =
           r.household?.kebele_id ?? r.rental_request?.rental_house?.kebele_id ?? null;
-        return { ...row, receipt: rec ?? null, kebele_id: kebeleId } as unknown as PaymentRow;
+        return {
+          ...row,
+          amount: decryptedAmountByPaymentId.get(r.payment_id) ?? r.amount,
+          receipt: rec ?? null,
+          kebele_id: kebeleId,
+        } as unknown as PaymentRow;
       });
       return kebeleFilter ? mapped.filter((p) => p.kebele_id === kebeleFilter) : mapped;
     },
@@ -485,6 +522,7 @@ function CollectRentalDialog({
 }) {
   const [requestId, setRequestId] = useState("");
   const [amount, setAmount] = useState("");
+  const [amountUnverified, setAmountUnverified] = useState(false);
   const [channel, setChannel] = useState<"cash" | "bank" | "mobile">("cash");
   const [referenceNo, setReferenceNo] = useState("");
 
@@ -504,7 +542,46 @@ function CollectRentalDialog({
         .order("created_at", { ascending: false })
         .limit(50);
       if (error) throw error;
-      return data;
+
+      // rental_occupancy_request_decrypted isn't in the generated types yet
+      // (00000000000024_rental_occupancy_request_decrypted_view.sql) -- same
+      // untyped-client cast pattern already used elsewhere in this codebase
+      // for pre-typegen tables. Fetched separately: the select above embeds
+      // resident/house via FK-derived PostgREST joins, which are not
+      // guaranteed to resolve through a view the same way they do through
+      // the base table. This request-picker auto-fills the collected amount
+      // from rent_amount on selection (below), so it needs the real value.
+      const ids = (data ?? []).map((r) => r.rental_request_id);
+      let decryptedRentById = new Map<string, number>();
+      if (ids.length > 0) {
+        const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+        const { data: amounts, error: amountsError } = await db
+          .from("rental_occupancy_request_decrypted")
+          .select("rental_request_id, rent_amount_decrypted")
+          .in("rental_request_id", ids);
+        if (amountsError) throw amountsError;
+        decryptedRentById = new Map(
+          (amounts ?? [])
+            .filter(
+              (r: { rent_amount_decrypted: number | null }) => r.rent_amount_decrypted != null,
+            )
+            .map((r: { rental_request_id: string; rent_amount_decrypted: number }) => [
+              r.rental_request_id,
+              r.rent_amount_decrypted,
+            ]),
+        );
+      }
+      return (data ?? []).map((r) => {
+        const rentField = resolveDecryptedField(
+          decryptedRentById.get(r.rental_request_id) ?? null,
+          r.rent_amount,
+        );
+        return {
+          ...r,
+          rent_amount: rentField.value,
+          rent_amount_decrypt_failed: rentField.decryptFailed,
+        };
+      });
     },
   });
 
@@ -581,6 +658,7 @@ function CollectRentalDialog({
                 setRequestId(e.target.value);
                 const sel = approvedRequests?.find((r) => r.rental_request_id === e.target.value);
                 if (sel?.rent_amount != null) setAmount(String(sel.rent_amount));
+                setAmountUnverified(!!sel?.rent_amount_decrypt_failed);
               }}
               className="mt-1 block h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
             >
@@ -593,6 +671,12 @@ function CollectRentalDialog({
               ))}
             </select>
           </div>
+          {amountUnverified && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              <p className="font-am-body">{DECRYPT_UNVERIFIED_WARNING.am}</p>
+              <p>{DECRYPT_UNVERIFIED_WARNING.en}</p>
+            </div>
+          )}
           <div>
             <Label>Amount (ETB)</Label>
             <Input

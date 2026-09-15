@@ -1,6 +1,7 @@
 import { createFileRoute, Navigate, useNavigate, useSearch } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { z } from "zod";
 import { FileText, MessageSquareWarning, Paperclip, Send, User, X } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -18,9 +19,18 @@ import {
 } from "@/components/ui/dialog";
 import { FieldWrap, Grid, Section, Select } from "@/components/forms/FormSection";
 import { ResidentSearchPicker } from "@/components/forms/ResidentSearchPicker";
+import { PhoneDigitsInput } from "@/components/forms/PhoneDigitsInput";
+import {
+  isValidPhoneDigits,
+  phoneDigitsToE164,
+  sanitizePhoneDigits,
+  PHONE_DIGITS_ERROR,
+} from "@/lib/phoneNumber";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
 import { P } from "@/config/permissions";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { useOfflineQueue } from "@/hooks/useOfflineQueue";
 import { useServiceTypes, requiredDocList } from "@/hooks/useServiceTypes";
 import { kebeleOptionLabel, useKebeleOptions } from "@/hooks/useKebeleOptions";
 import {
@@ -31,8 +41,14 @@ import {
   type ServiceCategory,
 } from "@/lib/serviceConstants";
 
+const searchSchema = z.object({
+  residentId: z.string().optional(),
+  category: z.string().optional(),
+});
+
 export const Route = createFileRoute("/woreda/services/new")({
   ssr: false,
+  validateSearch: (s) => searchSchema.parse(s),
   component: NewServiceRequestPage,
 });
 
@@ -49,12 +65,16 @@ function NewServiceRequestPage() {
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const isOnline = useOnlineStatus();
+  const { enqueue } = useOfflineQueue(woredaId);
+
+  const presetResidentId = typeof search["residentId"] === "string" ? search["residentId"] : "";
 
   const typesQuery = useServiceTypes({ category });
   const kebelesQuery = useKebeleOptions();
 
   const [serviceTypeId, setServiceTypeId] = useState("");
-  const [residentId, setResidentId] = useState("");
+  const [residentId, setResidentId] = useState(presetResidentId);
   const [applicantName, setApplicantName] = useState("");
   const [applicantPhone, setApplicantPhone] = useState("");
   const [kebeleId, setKebeleId] = useState("");
@@ -76,6 +96,52 @@ function NewServiceRequestPage() {
     [typesQuery.data, serviceTypeId],
   );
   const requiredDocs = requiredDocList(selectedType?.required_documents);
+
+  const residentDetailQuery = useQuery({
+    queryKey: ["service-new-resident-detail", residentId],
+    enabled: !!residentId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("resident")
+        .select(
+          "resident_id, full_name, full_name_am, current_household_id, household:current_household_id(kebele_id)",
+        )
+        .eq("resident_id", residentId)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) return null;
+
+      // resident_decrypted isn't in the generated types yet (00000000000023_
+      // pii_encryption.sql) -- same untyped-client cast pattern already used
+      // elsewhere in this codebase for pre-typegen tables. Queried
+      // separately: the select above embeds household via a FK-derived
+      // PostgREST join, which is not guaranteed to resolve through a view
+      // the same way it does through the base table.
+      const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const { data: contact, error: contactError } = await db
+        .from("resident_decrypted")
+        .select("phone_number_decrypted")
+        .eq("resident_id", residentId)
+        .maybeSingle();
+      if (contactError) throw contactError;
+
+      return { ...data, phone_number: contact?.phone_number_decrypted ?? null } as {
+        resident_id: string;
+        full_name: string | null;
+        full_name_am: string | null;
+        phone_number: string | null;
+        household: { kebele_id: string | null } | null;
+      };
+    },
+  });
+
+  useEffect(() => {
+    const r = residentDetailQuery.data;
+    if (!r) return;
+    setApplicantName(r.full_name_am || r.full_name || "");
+    setApplicantPhone(sanitizePhoneDigits(r.phone_number || ""));
+    setKebeleId(r.household?.kebele_id || "");
+  }, [residentDetailQuery.data]);
 
   if (!hasPermission(P.SERVICE_CREATE)) return <Navigate to="/woreda/dashboard" />;
 
@@ -105,39 +171,57 @@ function NewServiceRequestPage() {
     if (subject.trim().length < 3) e["subject"] = "ጉዳዩን ያስገቡ / Enter a subject";
     if (details.trim().length < 10)
       e["details"] = "ቢያንስ 10 ፊደል ያስገቡ / Provide at least 10 characters";
-    if (applicantPhone && !/^(\+251)?[0-9]{9,10}$/.test(applicantPhone.replace(/\s/g, "")))
-      e["applicantPhone"] = "ትክክለኛ ስልክ ያስገቡ / Enter a valid phone number";
+    if (!isValidPhoneDigits(applicantPhone)) e["applicantPhone"] = PHONE_DIGITS_ERROR;
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
+  const buildInsertPayload = () => ({
+    woreda_id: woredaId,
+    service_type_id: selectedType!.service_type_id,
+    category,
+    status: "submitted",
+    priority,
+    resident_id: residentId || null,
+    kebele_id: kebeleId || null,
+    applicant_name: applicantName.trim() || null,
+    applicant_phone: phoneDigitsToE164(applicantPhone),
+    subject: subject.trim(),
+    purpose: purpose.trim() || null,
+    addressed_to: addressedTo.trim() || null,
+    details: details.trim(),
+    respondent_name: category === "complaint" ? respondentName.trim() || null : null,
+    incident_date: category === "complaint" && incidentDate ? incidentDate : null,
+    incident_place: category === "complaint" ? incidentPlace.trim() || null : null,
+    fee_amount: selectedType!.requires_payment ? selectedType!.fee_amount : 0,
+    request_number: "",
+    requested_by_user_id: actorUserId,
+  });
+
   const handleSubmit = async () => {
     if (!woredaId || !selectedType) return;
+
+    if (!isOnline) {
+      if (files.length > 0) {
+        toast.error(
+          "ማስረጃ ሰነድ ያለው ጥያቄ ከመስመር ውጭ ሆኖ ማስገባት አይቻልም / A request with attachments cannot be queued offline",
+        );
+        return;
+      }
+      enqueue("service_request", "submit_intake", buildInsertPayload(), "service-new");
+      toast.success(
+        "ከመስመር ውጭ ተቀምጧል፣ ሲገናኙ በራስ ሰር ይላካል / Saved offline — will submit automatically once reconnected",
+      );
+      setConfirmOpen(false);
+      navigate({ to: isComplaint ? "/woreda/complaints" : "/woreda/services" });
+      return;
+    }
+
     setBusy(true);
     try {
       const { data, error } = await supabase
         .from("service_request")
-        .insert({
-          woreda_id: woredaId,
-          service_type_id: selectedType.service_type_id,
-          category,
-          status: "submitted",
-          priority,
-          resident_id: residentId || null,
-          kebele_id: kebeleId || null,
-          applicant_name: applicantName.trim() || null,
-          applicant_phone: applicantPhone.trim() ? normalizePhone(applicantPhone) : null,
-          subject: subject.trim(),
-          purpose: purpose.trim() || null,
-          addressed_to: addressedTo.trim() || null,
-          details: details.trim(),
-          respondent_name: category === "complaint" ? respondentName.trim() || null : null,
-          incident_date: category === "complaint" && incidentDate ? incidentDate : null,
-          incident_place: category === "complaint" ? incidentPlace.trim() || null : null,
-          fee_amount: selectedType.requires_payment ? selectedType.fee_amount : 0,
-          request_number: "",
-          requested_by_user_id: actorUserId,
-        } as never)
+        .insert(buildInsertPayload() as never)
         .select("service_request_id, request_number")
         .single();
       if (error) throw error;
@@ -226,7 +310,7 @@ function NewServiceRequestPage() {
               <option value="">ይምረጡ / Select…</option>
               {(typesQuery.data ?? []).map((t) => (
                 <option key={t.service_type_id} value={t.service_type_id}>
-                  {t.name_am} / {t.name_en}
+                  {t.name_am}
                   {t.requires_payment ? ` — ${Number(t.fee_amount).toFixed(2)} ETB` : ""}
                 </option>
               ))}
@@ -295,11 +379,7 @@ function NewServiceRequestPage() {
             />
           </FieldWrap>
           <FieldWrap labelAm="ስልክ" labelEn="Phone" error={errors["applicantPhone"]}>
-            <Input
-              value={applicantPhone}
-              onChange={(e) => setApplicantPhone(e.target.value)}
-              placeholder="+251…"
-            />
+            <PhoneDigitsInput value={applicantPhone} onChange={setApplicantPhone} />
           </FieldWrap>
           <FieldWrap labelAm="ቀበሌ" labelEn="Kebele">
             <Select value={kebeleId} onChange={(e) => setKebeleId(e.target.value)}>
@@ -341,6 +421,7 @@ function NewServiceRequestPage() {
                   className="font-am-body"
                   value={addressedTo}
                   onChange={(e) => setAddressedTo(e.target.value)}
+                  placeholder="ለምሳሌ: ባንክ፣ ፍርድ ቤት፣ አሰሪ / e.g. bank, court, employer"
                 />
               </FieldWrap>
             </>
@@ -480,11 +561,4 @@ function NewServiceRequestPage() {
       </Dialog>
     </div>
   );
-}
-
-function normalizePhone(v: string) {
-  const digits = v.replace(/[^\d]/g, "");
-  if (v.trim().startsWith("+251")) return `+251${digits.slice(3)}`;
-  if (digits.startsWith("251")) return `+${digits}`;
-  return `+251${digits.replace(/^0/, "")}`;
 }

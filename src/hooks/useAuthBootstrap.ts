@@ -1,7 +1,12 @@
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore, type AppUser } from "@/stores/authStore";
-import type { ConsolePermission, Role } from "@/config/permissions";
+import {
+  ROLE_PERMISSIONS,
+  type ConsolePermission,
+  type Permission,
+  type Role,
+} from "@/config/permissions";
 
 // Exported so set-password.tsx can refetch after the activate-invited-user
 // Edge Function resolves, instead of racing the USER_UPDATED listener below
@@ -60,18 +65,40 @@ async function fetchConsolePermissions(): Promise<ConsolePermission[]> {
   return data;
 }
 
+// Mirrors fetchConsolePermissions() above -- current_permissions()
+// (00000000000016_current_permissions_rpc.sql) resolves the same
+// role_permission-then-default_role_perms() chain user_has_perm() enforces,
+// server-side, so the client's PermissionGate/hasPermission() checks agree
+// with what the database actually allows instead of only the compiled-in
+// ROLE_PERMISSIONS default (F7). Falls back to that compiled default here on
+// any failure -- authStore.setAuth() does the same when `permissions` is
+// omitted entirely, so this only needs to guarantee "never throws".
+async function fetchTenantPermissions(role: Role): Promise<Permission[]> {
+  const { data, error } = await (
+    supabase.rpc as unknown as (fn: string) => Promise<{
+      data: Permission[] | null;
+      error: { message: string } | null;
+    }>
+  )("current_permissions");
+  if (error || !data) return ROLE_PERMISSIONS[role] ?? [];
+  return data;
+}
+
 // Exported so login.tsx can populate the store with the full auth state in
 // one call instead of duplicating the app_user query and always defaulting
 // consolePermissions to [] -- a restricted-role super_admin logging in
 // through the form would otherwise briefly (or, if the ambient
 // USER_UPDATED listener's correction loses the race, indefinitely until
 // reload) see every console section as denied.
-export async function fetchAuthState(
-  userId: string,
-): Promise<{ appUser: AppUser | null; consolePermissions: ConsolePermission[] }> {
+export async function fetchAuthState(userId: string): Promise<{
+  appUser: AppUser | null;
+  consolePermissions: ConsolePermission[];
+  permissions: Permission[];
+}> {
   const appUser = await fetchAppUser(userId);
   const consolePermissions = appUser?.console_role_id ? await fetchConsolePermissions() : [];
-  return { appUser, consolePermissions };
+  const permissions = appUser ? await fetchTenantPermissions(appUser.role) : [];
+  return { appUser, consolePermissions, permissions };
 }
 
 export function useAuthBootstrap() {
@@ -88,9 +115,9 @@ export function useAuthBootstrap() {
         clearAuth();
         return;
       }
-      const { appUser, consolePermissions } = await fetchAuthState(sessionUser.id);
+      const { appUser, consolePermissions, permissions } = await fetchAuthState(sessionUser.id);
       if (!mounted) return;
-      setAuth(sessionUser, appUser, consolePermissions);
+      setAuth(sessionUser, appUser, consolePermissions, permissions);
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
@@ -106,8 +133,8 @@ export function useAuthBootstrap() {
         }
         // Defer fetch so we don't block the auth callback.
         setTimeout(() => {
-          fetchAuthState(sessionUser.id).then(({ appUser, consolePermissions }) => {
-            if (mounted) setAuth(sessionUser, appUser, consolePermissions);
+          fetchAuthState(sessionUser.id).then(({ appUser, consolePermissions, permissions }) => {
+            if (mounted) setAuth(sessionUser, appUser, consolePermissions, permissions);
           });
         }, 0);
         // record-login (last_login_at) is deliberately NOT fired from this

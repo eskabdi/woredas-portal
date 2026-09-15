@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Section, Grid, FieldWrap, Select } from "@/components/forms/FormSection";
 import { ResidentSearchPicker } from "@/components/forms/ResidentSearchPicker";
+import { PhoneDigitsInput } from "@/components/forms/PhoneDigitsInput";
 import { supabase } from "@/integrations/supabase/client";
 import type { HouseholdFormInput } from "@/lib/householdSchema";
 
@@ -70,11 +71,14 @@ export function HouseholdFormFields({
     }
   }, [houseType, setValue]);
 
-  const handlePhoneChange = (raw: string) => {
-    let v = raw.replace(/\D/g, "");
-    if (v.startsWith("0")) v = v.slice(1);
-    if (v.length > 9) v = v.slice(0, 9);
-    setValue("phone_digits", v, { shouldDirty: true, shouldValidate: false });
+  const handlePhoneChange = (digits: string) => {
+    setValue("phone_digits", digits, { shouldDirty: true });
+  };
+  // Validate on blur, not on every keystroke -- an in-progress 9-digit
+  // number is legitimately "too short" for all but its last character, so
+  // live-validating it would flash an error on the very first digit typed.
+  const handlePhoneBlur = () => {
+    setValue("phone_digits", phoneDigits ?? "", { shouldValidate: true });
   };
 
   return (
@@ -281,18 +285,11 @@ export function HouseholdFormFields({
       <Section icon={Phone} titleAm="እውቂያ" titleEn="Contact">
         <Grid>
           <FieldWrap labelAm="ስልክ ቁጥር" labelEn="Phone Number" error={errors.phone_digits?.message}>
-            <div className="flex">
-              <span className="font-mono inline-flex h-10 items-center rounded-l-md border border-r-0 border-input bg-slate-50 px-3 text-sm text-slate-600">
-                +251
-              </span>
-              <Input
-                value={phoneDigits ?? ""}
-                onChange={(e) => handlePhoneChange(e.target.value)}
-                placeholder="9XXXXXXXX"
-                inputMode="numeric"
-                className="rounded-l-none font-mono"
-              />
-            </div>
+            <PhoneDigitsInput
+              value={phoneDigits ?? ""}
+              onChange={handlePhoneChange}
+              onBlur={handlePhoneBlur}
+            />
           </FieldWrap>
 
           <FieldWrap labelAm="ፖሳቁ" labelEn="PO Box" error={errors.po_box?.message}>

@@ -54,7 +54,7 @@ import { PermissionGate } from "@/components/common/PermissionGate";
 import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/integrations/supabase/client";
 import { P } from "@/config/permissions";
-import { formatEthiopianDateShortOnly } from "@/utils/ethiopianCalendar";
+import { formatEthiopianDateShortOnly, formatEthiopianDateShort } from "@/utils/ethiopianCalendar";
 
 type SexFilter = "all" | "male" | "female";
 type StatusFilter = "all" | "active" | "inactive" | "deceased" | "moved_out";
@@ -114,7 +114,63 @@ function ResidentsListPage() {
     }
   };
 
-  const buildResidentsQuery = () => {
+  // my_phone_blind_index isn't in the generated types yet (00000000000023_
+  // pii_encryption.sql) -- same untyped-client cast pattern used for
+  // id_card_template_field_draft in admin.credential-template.tsx. db.rpc(...)
+  // must stay a method call on this cast object, never extracted into its
+  // own const -- SupabaseClient#rpc reads `this.rest.rpc(...)` internally,
+  // and an unbound call throws before any request is sent (see that file's
+  // own comment on the same gotcha).
+  const db = supabase as unknown as {
+    rpc: (
+      fn: string,
+      params: Record<string, unknown>,
+    ) => Promise<{ data: unknown; error: { message: string } | null }>;
+  };
+
+  // resident.phone_number is encrypted at rest (00000000000023_
+  // pii_encryption.sql) -- a randomized cipher can't be substring-matched,
+  // so the .ilike search this field used is no longer possible. This
+  // resolves the search term to the deterministic blind index the migration
+  // added instead, which only supports an exact match: my_phone_blind_index
+  // normalizes server-side (see normalize_phone's own comment for the exact
+  // rule) and returns NULL for anything that isn't phone-shaped, so a plain
+  // name/ID search costs one query returning no clause to add, not a broken
+  // filter. Real, disclosed regression: a staff member searching a PARTIAL
+  // phone number now gets no match on that field (the other four fields
+  // below still match on partial input) -- see docs/security-functionality.md.
+  const phoneBlindIndexQuery = useQuery({
+    queryKey: ["resident-search-phone-blind-index", search],
+    enabled: !!search && !!woredaId,
+    queryFn: async () => {
+      const { data, error } = await db.rpc("my_phone_blind_index", { _phone: search });
+      if (error) throw new Error(error.message);
+      return data as string | null;
+    },
+  });
+
+  // resident.national_id_no is encrypted at rest
+  // (00000000000044_task6_household_rent_national_id_pii.sql), same
+  // exact-match-only trade-off as phone_number above: my_national_id_blind_index
+  // is a deterministic HMAC (no normalization beyond trim), so a PARTIAL
+  // national ID typed into search no longer matches on this field --
+  // disclosed in that migration's own header comment. An exact ID still
+  // matches; full-name, Amharic name and resident number still match on
+  // partial input.
+  const nationalIdBlindIndexQuery = useQuery({
+    queryKey: ["resident-search-national-id-blind-index", search],
+    enabled: !!search && !!woredaId,
+    queryFn: async () => {
+      const { data, error } = await db.rpc("my_national_id_blind_index", { _id: search });
+      if (error) throw new Error(error.message);
+      return data as string | null;
+    },
+  });
+
+  const buildResidentsQuery = (
+    phoneBlindIndex?: string | null,
+    nationalIdBlindIndex?: string | null,
+  ) => {
     let q = supabase
       .from("resident")
       .select(RESIDENT_SELECT, { count: "exact" })
@@ -124,15 +180,15 @@ function ResidentsListPage() {
     if (status !== "all") q = q.eq("residency_status", status);
     if (search) {
       const escaped = search.replace(/[%,]/g, "");
-      q = q.or(
-        [
-          `full_name.ilike.%${escaped}%`,
-          `full_name_am.ilike.%${escaped}%`,
-          `resident_number.ilike.%${escaped}%`,
-          `national_id_no.ilike.%${escaped}%`,
-          `phone_number.ilike.%${escaped}%`,
-        ].join(","),
-      );
+      const clauses = [
+        `full_name.ilike.%${escaped}%`,
+        `full_name_am.ilike.%${escaped}%`,
+        `resident_number.ilike.%${escaped}%`,
+      ];
+      if (phoneBlindIndex) clauses.push(`phone_number_blind_index.eq.${phoneBlindIndex}`);
+      if (nationalIdBlindIndex)
+        clauses.push(`national_id_no_blind_index.eq.${nationalIdBlindIndex}`);
+      q = q.or(clauses.join(","));
     }
     return q
       .order(sortColumn(sort.field), { ascending: sort.dir === "asc" })
@@ -140,10 +196,31 @@ function ResidentsListPage() {
   };
 
   const residentsQuery = useQuery({
-    queryKey: ["residents", woredaId, search, sex, status, kebeleId, page, pageSize, sort.key],
-    enabled: !!woredaId && hasPermission(P.RESIDENT_READ),
+    queryKey: [
+      "residents",
+      woredaId,
+      search,
+      phoneBlindIndexQuery.data,
+      nationalIdBlindIndexQuery.data,
+      sex,
+      status,
+      kebeleId,
+      page,
+      pageSize,
+      sort.key,
+    ],
+    // Waits for both blind-index lookups above to settle whenever there's a
+    // search term, so the first fetch after typing a phone number or
+    // national ID doesn't run without that clause and silently under-match.
+    enabled:
+      !!woredaId &&
+      hasPermission(P.RESIDENT_READ) &&
+      (!search || (!phoneBlindIndexQuery.isPending && !nationalIdBlindIndexQuery.isPending)),
     queryFn: async () => {
-      const q = buildResidentsQuery().range(page * pageSize, page * pageSize + pageSize - 1);
+      const q = buildResidentsQuery(
+        phoneBlindIndexQuery.data,
+        nationalIdBlindIndexQuery.data,
+      ).range(page * pageSize, page * pageSize + pageSize - 1);
 
       const { data, error, count } = await q;
       if (error) throw error;
@@ -196,7 +273,7 @@ function ResidentsListPage() {
     { header: "ጾታ / Sex", value: (r) => r.sex },
     {
       header: "የልደት ቀን / DOB",
-      value: (r) => (r.date_of_birth ? new Date(r.date_of_birth).toLocaleDateString() : ""),
+      value: (r) => formatEthiopianDateShortOnly(r.date_of_birth ?? "", ""),
     },
     {
       header: "ቀበሌ / Kebele",
@@ -208,11 +285,27 @@ function ResidentsListPage() {
       },
     },
     { header: "ሁኔታ / Status", value: (r) => r.residency_status },
-    { header: "የተሻሻለበት / Updated", value: (r) => new Date(r.updated_at).toLocaleDateString() },
+    {
+      header: "የተሻሻለበት / Updated",
+      value: (r) => formatEthiopianDateShort(new Date(r.updated_at)),
+    },
   ];
 
   const fetchAllResidentsForExport = async () => {
-    const q = buildResidentsQuery().range(0, 4999);
+    let phoneBlindIndex: string | null = null;
+    let nationalIdBlindIndex: string | null = null;
+    if (search) {
+      const [{ data: phoneHash, error: phoneError }, { data: idHash, error: idError }] =
+        await Promise.all([
+          db.rpc("my_phone_blind_index", { _phone: search }),
+          db.rpc("my_national_id_blind_index", { _id: search }),
+        ]);
+      if (phoneError) throw new Error(phoneError.message);
+      if (idError) throw new Error(idError.message);
+      phoneBlindIndex = phoneHash as string | null;
+      nationalIdBlindIndex = idHash as string | null;
+    }
+    const q = buildResidentsQuery(phoneBlindIndex, nationalIdBlindIndex).range(0, 4999);
     const { data, error } = await q;
     if (error) throw error;
     let rows = data ?? [];
@@ -457,7 +550,7 @@ function ResidentsListPage() {
                       <StatusChip status={r.residency_status} />
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-500">
-                      {new Date(r.updated_at).toLocaleDateString()}
+                      {formatEthiopianDateShort(new Date(r.updated_at))}
                     </td>
                     <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                       <RowActions

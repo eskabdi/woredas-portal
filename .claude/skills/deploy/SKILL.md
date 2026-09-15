@@ -110,8 +110,15 @@ A `201` on a deploy call means it was accepted, not that it works. Check each
 artifact at its own surface:
 
 ```bash
-# schema + seed
-"select count(*) from role_permission;"          # expect 972
+# schema + seed -- row count is woredas × permission keys × roles, which
+# grows as tenants are added, so check the invariant rather than a fixed
+# number (was 972 at 18 woredas; 1512 = 6 woredas × 42 keys × 6 roles as of
+# 2026-09-02 -- a hardcoded count here goes stale the next time a woreda is
+# provisioned). The `count(*) > 0` guard matters: without it, an empty
+# role_permission table (seed never ran) trivially satisfies
+# `0 = 0*0*0` and reports healthy on the exact failure this check exists
+# to catch.
+"select count(*) > 0 and count(*) = (select count(*) from woreda) * (select count(distinct permission_key) from role_permission) * (select count(distinct role_name) from role_permission) from role_permission;"  # expect true
 
 # edge functions — 401 means deployed, 404 means absent
 curl -X POST "https://$REF.supabase.co/functions/v1/invite-tenant-user" \

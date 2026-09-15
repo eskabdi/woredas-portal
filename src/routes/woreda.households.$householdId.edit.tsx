@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -20,6 +20,8 @@ import {
   type HouseholdFormInput,
   type HouseholdFormValues,
 } from "@/lib/householdSchema";
+import { resolveDecryptedField, DECRYPT_UNVERIFIED_WARNING } from "@/lib/decryptedFieldGuard";
+import { sanitizePhoneDigits } from "@/lib/phoneNumber";
 
 export const Route = createFileRoute("/woreda/households/$householdId/edit")({
   ssr: false,
@@ -44,13 +46,18 @@ function EditHouseholdPage() {
   const woredaId = useAuthStore((s) => s.woredaId);
   const actorUserId = useAuthStore((s) => s.appUser?.user_id ?? null);
   const queryClient = useQueryClient();
+  const [contactUnverified, setContactUnverified] = useState(false);
 
   const householdQuery = useQuery({
     queryKey: ["household", householdId],
     enabled: !!woredaId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("household")
+      // household_decrypted isn't in the generated types yet (00000000000023_
+      // pii_encryption.sql) -- same untyped-client cast pattern already used
+      // elsewhere in this codebase for pre-typegen tables.
+      const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const { data, error } = await db
+        .from("household_decrypted")
         .select("*")
         .eq("household_id", householdId)
         .eq("woreda_id", woredaId as string)
@@ -80,7 +87,28 @@ function EditHouseholdPage() {
   useEffect(() => {
     if (!householdQuery.data) return;
     const h = householdQuery.data;
-    const phone = (h.phone_number as string | null) ?? "";
+    // Falls back to the still-present plaintext column if decryption comes
+    // back NULL (fail-soft by design, see 00000000000023_pii_encryption.sql)
+    // -- without this, a decrypt failure pre-fills the form with an empty
+    // phone/email, and saving overwrites the still-good plaintext with
+    // empty/null. At stage 4, once the plaintext columns are dropped, this
+    // fallback must be replaced by a hard error that blocks the save.
+    const phoneField = resolveDecryptedField(
+      h.phone_number_decrypted as string | null,
+      h.phone_number as string | null,
+    );
+    const emailField = resolveDecryptedField(
+      h.email_decrypted as string | null,
+      h.email as string | null,
+    );
+    const rentField = resolveDecryptedField(
+      h.rent_amount_decrypted as number | null,
+      h.rent_amount as number | null,
+    );
+    setContactUnverified(
+      phoneField.decryptFailed || emailField.decryptFailed || rentField.decryptFailed,
+    );
+    const phone = phoneField.value ?? "";
     reset({
       kebele_id: (h.kebele_id as string) ?? "",
       house_number: (h.house_number as string) ?? "",
@@ -91,13 +119,13 @@ function EditHouseholdPage() {
       household_head_resident_id: (h.household_head_resident_id as string) ?? "",
       spouse_resident_id: (h.spouse_resident_id as string) ?? "",
       alternate_head_resident_id: (h.alternate_head_resident_id as string) ?? "",
-      phone_digits: phone.startsWith("+251") ? phone.slice(4) : phone.replace(/\D/g, ""),
+      phone_digits: sanitizePhoneDigits(phone),
       po_box: (h.po_box as string) ?? "",
-      email: (h.email as string) ?? "",
+      email: emailField.value ?? "",
       house_type: (h.house_type as HouseholdFormInput["house_type"]) ?? "private",
       house_type_other: (h.house_type_other as string) ?? "",
       rent_amount:
-        h.rent_amount !== null && h.rent_amount !== undefined ? String(h.rent_amount) : "",
+        rentField.value !== null && rentField.value !== undefined ? String(rentField.value) : "",
       gps_lat: (h.gps_lat as number | null) ?? undefined,
       gps_lng: (h.gps_lng as number | null) ?? undefined,
     } as HouseholdFormInput);
@@ -136,12 +164,12 @@ function EditHouseholdPage() {
         household_head_resident_id: old.household_head_resident_id,
         spouse_resident_id: old.spouse_resident_id,
         alternate_head_resident_id: old.alternate_head_resident_id,
-        phone_number: old.phone_number,
+        phone_number: old.phone_number_decrypted ?? old.phone_number,
         po_box: old.po_box,
-        email: old.email,
+        email: old.email_decrypted ?? old.email,
         house_type: old.house_type,
         house_type_other: old.house_type_other,
-        rent_amount: old.rent_amount,
+        rent_amount: old.rent_amount_decrypted ?? old.rent_amount,
       };
 
       await supabase.from("audit_log").insert({
@@ -167,6 +195,9 @@ function EditHouseholdPage() {
       toast.success("ቤተሰቡ ተስተካክሏል / Household updated");
       queryClient.invalidateQueries({ queryKey: ["households"] });
       queryClient.invalidateQueries({ queryKey: ["household", householdId] });
+      // The detail page's decrypted phone/email query -- otherwise a stale
+      // value could flash there for a beat after navigating back to it.
+      queryClient.invalidateQueries({ queryKey: ["household-contact-decrypted", householdId] });
       navigate({ to: "/woreda/households/$householdId", params: { householdId } });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -192,6 +223,13 @@ function EditHouseholdPage() {
   return (
     <div className="mx-auto max-w-4xl pb-24">
       <PageHeader icon={Home} titleAm="ቤተሰብ አስተካክል" titleEn="Edit Household" />
+
+      {contactUnverified && (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          <p className="font-am-body">{DECRYPT_UNVERIFIED_WARNING.am}</p>
+          <p>{DECRYPT_UNVERIFIED_WARNING.en}</p>
+        </div>
+      )}
 
       <form
         onSubmit={handleSubmit((v) => updateMutation.mutate(v), onInvalid)}

@@ -1,17 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-
-function json(status: number, body: unknown): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-  });
-}
+import { corsHeaders, json, safeError } from "../_shared/response.ts";
 
 // Called from login.tsx right after a successful signInWithPassword() --
 // deliberately NOT from the ambient onAuthStateChange listener in
@@ -29,12 +18,12 @@ function json(status: number, body: unknown): Response {
 // admin-action-focused audit trail, and CLAUDE.md's console-scoped default
 // view is not the place for it.
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: CORS_HEADERS });
-  if (req.method !== "POST") return json(405, { error: "Method not allowed" });
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders(req) });
+  if (req.method !== "POST") return json(req, 405, { error: "Method not allowed" });
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) return json(401, { error: "Missing authorization header" });
+    if (!authHeader) return json(req, 401, { error: "Missing authorization header" });
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -46,7 +35,7 @@ Deno.serve(async (req) => {
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
     const { data: userData, error: userErr } = await userClient.auth.getUser();
-    if (userErr || !userData.user) return json(401, { error: "Unauthorized" });
+    if (userErr || !userData.user) return json(req, 401, { error: "Unauthorized" });
     const callerId = userData.user.id;
 
     const { data: updated, error: updateErr } = await admin
@@ -55,11 +44,18 @@ Deno.serve(async (req) => {
       .eq("user_id", callerId)
       .select("user_id")
       .maybeSingle();
-    if (updateErr) return json(500, { error: updateErr.message });
-    if (!updated) return json(404, { error: "No app_user profile found" });
+    if (updateErr)
+      return safeError(
+        req,
+        "record-login: update last_login_at",
+        updateErr,
+        "Failed to record login",
+        500,
+      );
+    if (!updated) return json(req, 404, { error: "No app_user profile found" });
 
-    return json(200, { success: true });
+    return json(req, 200, { success: true });
   } catch (e) {
-    return json(500, { error: e instanceof Error ? e.message : "Internal error" });
+    return safeError(req, "record-login: unhandled", e, "Internal error", 500);
   }
 });

@@ -1,0 +1,1256 @@
+# Production deploy + live-verification report
+
+Evidence log for the deploy-and-verify pass covering all work landed through
+Task 12-A (`fix-task-production-readiness-v3.md`, tasks 1, 1b/9, 2, 3, 4+13,
+5, 6, 7, 10, 11, 12-A). Run 2026-09-13, against production project
+`tugzuexfyzbdnghbmrjl` and `https://woredas-portal.vercel.app`.
+**§9 appends Task 12-B's own deploy-and-verify pass (KPIs, queue, print),
+run the same day against the same project.**
+
+**Classification key** used in every row below:
+
+| Tag           | Meaning                                                                                                                                                                                              |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `STRUCTURAL`  | Read-only catalog/row-count check against the live database                                                                                                                                          |
+| `SMOKE`       | Userless behavioral check against the deployed frontend/RPCs                                                                                                                                         |
+| `LIVE-PROBE`  | A `BEGIN...ROLLBACK`-wrapped behavioral probe, net-zero verified (see `scripts/verify-live-probes.sql`)                                                                                              |
+| `CI-COVERED`  | Already enforced by an automated CI gate on every PR; not re-verified live here                                                                                                                      |
+| `UNVERIFIED`  | Not checked, with a stated reason — never a silent gap                                                                                                                                               |
+| `OWNER-SMOKE` | Requires a real authenticated browser session; not run by this agent (no owner credentials)                                                                                                          |
+| `LIVE-PASS`   | A direct, real API/RPC call against production (not rollback-wrapped) confirmed to behave correctly                                                                                                  |
+| `SAMPLE-DATA` | Verified via committed-then-cleaned real writes (not a rolled-back transaction), net-zero proven afterward — used when the thing being checked (a side effect, a cascade) only manifests on a commit |
+
+## 0. Premise corrections found during this pass
+
+Two factual corrections to the task's starting assumptions, made before any
+action was taken, both reported to the user at the time:
+
+1. **The live database was not at a pre-task baseline.** All 56 migrations
+   (through Task 12-A's own `00000000000054`–`056`) were already applied —
+   every task in this multi-session engagement was developed and
+   live-verified directly against this same production project. There was no
+   migration gap to close; §1 below is a confirmation, not an application.
+2. **Production already contains real, non-synthetic data**: 3 residents, 5
+   `residence_credential` rows, 8 receipts, created 2026-08-20 through
+   2026-09-08 (predating this session) — not the "nothing issued yet"
+   pre-production state the task assumed. This data was read-only referenced
+   for some probes below (never written to outside a rolled-back
+   transaction) and never modified.
+
+Also: two script commits (`scripts/verify-live-probes.sql`,
+`scripts/run-live-probes.py`) were pushed directly to `main` rather than
+through a reviewed PR branch — a lapse in this repo's normal process. They
+are test/tooling-only (no application code touched) but this should not
+recur.
+
+## 1. Deployment state
+
+| Item                                    | Result              | Evidence                                                                                                                                                                                                                                                                                                                                                                                       |
+| --------------------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 12-A merged to `main`                   | PASS                | PR #59, merge commit `fa6b574`, CI green (lint/build/tsc/test/drift/fee-catalog) before merge                                                                                                                                                                                                                                                                                                  |
+| DB migration catalog matches `main`     | PASS (`STRUCTURAL`) | 51 live tables == 51 `CREATE TABLE` statements across `supabase/migrations/*.sql`; no drift                                                                                                                                                                                                                                                                                                    |
+| Vercel production serves current `main` | PASS                | `vercel deploy --prod --yes --archive=tgz` from `main@fa6b574`; deployment `dpl_91JBVNt7AmKuVN4dHYvuVuDxY7t8` aliased to `https://woredas-portal.vercel.app`, HTTP 200. No commit-SHA metadata is recoverable from Vercel itself (archive-tgz deploys aren't git-linked) — the guarantee is by construction: the deploy was built from a freshly checked-out `main` with a clean working tree. |
+| Edge Functions reachable                | PASS                | All 7 functions respond non-404 (`sign-credential` 405, `invite-tenant-user` 405, `invite-platform-admin` 405, `resend-platform-invite` 405, `activate-invited-user` 405, `record-login` 405, `send-password-reset-link` 401)                                                                                                                                                                  |
+
+## 2. Structural verification (`STRUCTURAL`)
+
+| Check                                               | Result              | Evidence                                                                                                                                        |
+| --------------------------------------------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| RLS enabled on every table                          | PASS                | `pg_class.relrowsecurity = true` for all 51 tables spot-checked (8 key tables individually, `pg_policies` populated for all 51)                 |
+| Every table has ≥1 policy                           | PASS                | `pg_policies` grouped by `tablename`: 51/51 rows present, counts 1–4 each                                                                       |
+| `workflow_transition` seed                          | PASS                | 31 rows: 22 `credential_request`, 9 `residence_credential`                                                                                      |
+| `role_permission` default matrix                    | PASS                | 2,982 rows = 7 roles × 6 woredas × 71 permissions each (426/role, 497/woreda, uniform)                                                          |
+| `fee_schedule` — Task 12's 4 mapped service types   | PASS                | 6 active rows each for `New ID Issuance`/`ID Renewal`/`Lost ID Replacement`/`Internal Re-Print` — exactly what `resolve_credential_fee()` needs |
+| `office` backfill (Task 11)                         | PASS                | Exactly 1 row per woreda × 6 woredas                                                                                                            |
+| `household_location` backfill (Task 11)             | PASS                | 0 households missing a `household_location` row                                                                                                 |
+| `bun run check:fee-catalog` against live seed state | PASS                | `OK: all 6 woredas have exactly one active row for each of 4 mapped service types.`                                                             |
+| `bun run check:role-perms-drift`                    | PASS (`CI-COVERED`) | `OK: permissions.ts and default_role_perms() agree for every role.`                                                                             |
+
+## 3. Userless behavioral smoke (`SMOKE`)
+
+| Check                                                         | Result       | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ------------------------------------------------------------- | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Production app loads                                          | PASS         | `GET https://woredas-portal.vercel.app/` → HTTP 200                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Public verify route reachable (unauthenticated)               | PASS         | `GET /v/nonexistenttoken` → HTTP 200 (client-rendered not-found state)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `verify_credential_token` returns no PII for an invalid token | PASS         | `POST rpc/verify_credential_token {"_token":"bogus.token"}` → `200 []` — no row, no error, no existence leak                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `verify_service_letter` returns no PII for an invalid token   | PASS         | `POST rpc/verify_service_letter {"_token":"bogus"}` → `200 []`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Anon direct table read is RLS-empty, not an error             | PASS         | `GET /rest/v1/resident?select=full_name,national_id_no` as anon → `200 []`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Anon rate-limiting on the verify RPCs (observable 429)        | `UNVERIFIED` | By design: `docs/erd.md`'s rate-limiting section states the two public verification RPCs are deliberately **not** rate-limited (see migration `00000000000022_rate_limit.sql`'s own header comment). The rate limiter (`rate_limit_bucket`/`checkRateLimit()`) only gates the three invite Edge Functions, which require an already-authenticated admin caller — there is no anon-reachable rate-limited surface to produce a 429 against, and creating an admin session to test it would mean either a synthetic account (excluded) or the owner's own real session (not available to this agent). |
+| Auth sign-in for the owner's real account                     | `UNVERIFIED` | Requires the owner's actual password, which this agent does not have and should not request. See §6 (owner UI smoke).                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+
+## 4. Live behavioral probes (`LIVE-PROBE`)
+
+All 10 probes below are defined in `scripts/verify-live-probes.sql` and executed
+by `scripts/run-live-probes.py`. Every probe ran inside `BEGIN...ROLLBACK`;
+the run's net-zero table below proves nothing persisted.
+
+| #   | Probe                                                                                  | Task | Result | Evidence (exact error / result)                                                                                                                                                                                                                                                                                                                                                                                                     |
+| --- | -------------------------------------------------------------------------------------- | ---- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Unauthorized backward transition (`active`→`submitted`)                                | 1    | PASS   | `ERROR 23514: workflow: credential_request may not move from active to submitted`                                                                                                                                                                                                                                                                                                                                                   |
+| 2   | Maker = checker on approval                                                            | 1    | PASS   | `ERROR 42501: workflow: the approver and the verifier must be two different people`                                                                                                                                                                                                                                                                                                                                                 |
+| 3   | Terminal (`rejected`) state re-opened                                                  | 1    | PASS   | `ERROR 23514: workflow: credential_request may not move from rejected to submitted`                                                                                                                                                                                                                                                                                                                                                 |
+| 4   | `paid` reached with no confirmed payment+receipt                                       | 1    | PASS   | `ERROR 23514: payment: a confirmed payment with a receipt is required before a credential is generated`                                                                                                                                                                                                                                                                                                                             |
+| 5   | Direct `INSERT` into `residence_credential` (bypassing the payment trigger)            | 1/10 | PASS   | `ERROR 42501: workflow: a residence credential is issued by the payment trigger, not by direct insert` — a stronger guarantee than the originally-scoped "one active credential per resident" index check: a new row can't be forged at all outside the payment trigger. The partial unique index itself (`residence_credential_one_active_per_resident ... WHERE status='active'`) was separately confirmed live via `pg_indexes`. |
+| 6   | `credential_number` immutable once assigned                                            | 10   | PASS   | `ERROR P0001: residence_credential.credential_number cannot be changed once assigned`                                                                                                                                                                                                                                                                                                                                               |
+| 7   | Cross-woreda `vital_event` INSERT (tenant_admin from woreda A, `woreda_id` = woreda B) | 2    | PASS   | `ERROR 23514: vital_event: resident_id does not belong to woreda d43c7fea-...` — rejected before the RLS tenant-check was even reached, by a same-purpose trigger-level guard                                                                                                                                                                                                                                                       |
+| 8   | Cross-tenant `credential_request` read returns zero rows                               | 4/2  | PASS   | tenant_admin of woreda B selecting woreda A's rows → `{"visible_rows": 0}` under `SET LOCAL role authenticated` (RLS actually engaged, not bypassed)                                                                                                                                                                                                                                                                                |
+| 9   | `role_permission` row for a reserved role (`super_admin`) rejected                     | 4+13 | PASS   | `ERROR 23514: ... violates check constraint "role_permission_role_name_check"`                                                                                                                                                                                                                                                                                                                                                      |
+| 10  | Reserved permission (`credential.approve`) ungrantable via `user_permission_override`  | 4+13 | PASS   | `ERROR 23514: ... violates check constraint "user_permission_override_no_locked_keys"`                                                                                                                                                                                                                                                                                                                                              |
+
+**Net-zero proof** (before → after, this run):
+
+```
+table:credential_request:       5 → 5
+table:residence_credential:     5 → 5
+table:vital_event:              0 → 0
+table:role_permission:       2982 → 2982
+table:user_permission_override: 0 → 0
+seq:credential_request_sequence: 5 → 5
+seq:resident_number_sequence:    3 → 3
+seq:vital_event_sequence:        1 → 1
+auth.users:                      9 → 9
+rate_limit_bucket:               1 → 1
+```
+
+10/10 probes passed. No residue.
+
+### RLS-as-role feasibility (item 5 of the task)
+
+**Feasible**, and used above (probes 7–8). The raw Management API session
+runs as role `postgres` with `rolbypassrls = true` (confirmed via
+`pg_roles`), so it bypasses RLS by default — but `SET LOCAL role
+authenticated` inside the transaction drops that bypass, and `SET LOCAL
+request.jwt.claim.sub = '<uuid>'` makes `auth.uid()` resolve to a real
+user for `get_user_woreda_id()`/`user_has_perm()`. Both are reset/rolled
+back with the rest of the transaction.
+
+**Role coverage available**: only two roles have an active account in
+production — `registry_clerk` (35b307bd-...) and `tenant_admin` (two
+accounts, in different woredas: 64e0384a-... and bad5a1c7-...), plus two
+`super_admin` accounts. No active `civil_registrar`, `finance_clerk`,
+`supervisor`, `print_officer`, `auditor`, `viewer`, or custom-role account
+exists. `tenant_admin`'s default permission grant (`default_role_perms`)
+happens to cover every FSM permission the probes above needed
+(`credential.review`/`.approve`/`.record_payment`/`.reject`/`.confirm_print`/`.activate`),
+which is why probes 1–4 could use it as a single capable actor. Checks that
+specifically require one of the unavailable roles are `UNVERIFIED` below.
+
+## 5. Items UNVERIFIED with reason
+
+| Item                                                                                                                                           | Task        | Reason                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ---------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ~~18y-0d accepted / 17y-364d rejected age boundary~~ **CLOSED — see §17**                                                                      | 1/9         | **No longer an open item as of Task 8** (migrations `00000000000068`, corrected by `00000000000069` and `00000000000070`): `generate_residence_credential_on_payment()` now enforces the same exact-date age boundary server-side, fail-closed. Live-probed (`LIVE-PROBE`, rollback, net-zero) — see §17/§17a for this item's migration-68-to-70 history and `scripts/verify-live-probes.sql`'s `age_guard_*`/`credential_happy_path_*`/`credential_paid_with_unrelated_payment_row` probes. The `PreConditionCard` client-side check and the `ethiopianCalendar.test.ts` unit tests both remain in place as defense-in-depth/UX, but the database is now the actual authority, matching what the code comment always claimed. |
+| `viewer` role write rejected                                                                                                                   | 4           | No active `viewer` account exists in production; creating one would violate the zero-synthetic-accounts decision for this pass. The `role_permission`/`default_role_perms()` matrix for `viewer` was inspected statically instead: `check:role-perms-drift` confirms `viewer`'s compiled and DB-seeded permission sets agree, and neither includes any write permission (`credential.submit`/`.verify`/`.approve`/etc.) — so `user_has_perm()` would return false for any write attempt by construction. Not a live-fired proof.                                       |
+| Custom tenant-role end-to-end (grant → assign → exact access)                                                                                  | 4+13        | No custom-role account exists in production. `tenant_role`/`tenant_role_permission` schema and RLS were inspected statically (both scoped by `woreda_id = get_user_woreda_id()`, `tenant_role.is_active` gates); the resolution chain in `user_has_perm()`'s `role = 'custom'` branch was read and traced but not exercised end-to-end.                                                                                                                                                                                                                                |
+| Print officer, civil_registrar, finance_clerk, supervisor, auditor role-specific gates                                                         | 4/2/1       | Same reason — no active account for these roles in production.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Auth sign-in for the owner's real account                                                                                                      | —           | Requires the owner's password; not requested or available to this agent.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Anon rate-limit 429                                                                                                                            | 3           | By design not rate-limited (see §3) — there is no anon-reachable surface where a 429 is the expected behavior.                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Owner-facing UI smoke (8 stage UIs, attachment upload, print preview, bilingual strings, Ethiopian-calendar dates, permissions-matrix screens) | 12-A/others | Requires a real authenticated session in a browser; this agent has neither the owner's credentials nor (in this sandboxed environment) a path to drive the production UI as a logged-in user without one. See §6.                                                                                                                                                                                                                                                                                                                                                      |
+
+## 6. Owner UI smoke — not run by this agent
+
+The task's item 6 (stage UIs render, attachment upload with checksum
+confirmation, print preview, permissions-matrix screens, `tenant_admin`
+grants uneditable) requires a real logged-in session. This agent does not
+have and should not request the owner's production credentials. Structural
+and RLS evidence above (§2, §4) indirectly supports most of these — e.g. the
+attachment RLS policies and `fee_schedule` catalog are proven correct at the
+database layer — but rendering/interaction correctness itself is unverified
+here. This becomes the first item of the go-live watch plan (§7).
+
+## 7. Go-live watch plan (Task 8 scope)
+
+Given the `UNVERIFIED` set above is concentrated in (a) roles with no active
+production account and (b) UI-only rendering/interaction, the recommended
+first-week rollout:
+
+1. **Controlled first-users pass**: have one real person per currently-unverified
+   role (civil_registrar, finance_clerk, supervisor or an equivalent
+   approver, print_officer, auditor, viewer) exercise one full happy path —
+   registry_clerk intake → civil_registrar or supervisor verify/approve →
+   finance_clerk payment → print_officer print/activate — with the owner
+   observing directly.
+2. Watch `audit_log` and `credential_request_status_history` during this
+   pass for anything that doesn't match the expected sequence; a mismatch
+   here is worth more than a synthetic probe since it's the real FSM under
+   real role assignments.
+3. Any defect found during this pass goes through the normal PR sequence
+   (branch → CI → review → merge) — no hotfixes against `main` directly, and
+   nothing gets special-cased around the deploy that already happened.
+4. Once the first-users pass completes cleanly, treat every item in §5 as
+   closed by that pass's own evidence rather than re-running synthetic
+   probes against roles that now have real accounts to test with properly
+   (at that point, a real staging pass per `docs/staging-runbook.md` becomes
+   the right tool for _future_ regression testing — not a same-day
+   requirement).
+5. Deploy discipline going forward (per this pass's own finding): fold
+   deploy + live verify into every PR landing cycle — merge → push →
+   Management-API catalog diff → `scripts/run-live-probes.py` (extend it as
+   new gates land) — rather than letting deploy verification accumulate
+   across many merged-but-undeployed PRs the way it did before this pass.
+
+## 8. Cleanup confirmation
+
+- `auth.users` count unchanged (9 before this pass, 9 after) — zero synthetic
+  accounts created anywhere in this pass.
+- `/tmp/_probe_payload.json`, `/tmp/live-probe-results.json`,
+  `/tmp/q.json`, `/tmp/create_proj.json`, `/tmp/proj_dryinfo.json` deleted.
+- `SUPABASE_ACCESS_TOKEN`/`VERCEL_TOKEN` were read from the environment only,
+  never echoed, printed, or written to a file; no `p.json`/`payload.json`
+  left behind in the repo working tree.
+- `git status --porcelain` clean on `main` after the two script commits.
+- The one attempted staging-project creation call (twice) failed cleanly at
+  the free-tier project cap with no side effects — no project, no charge, no
+  orphaned resource.
+
+---
+
+## 9. Task 12-B (credential module surfaces: KPIs, queue, print) — 2026-09-13
+
+Second deploy-and-verify pass, same day, same project. PR #61, merge commit
+`6883b02`. New migration `00000000000057` (`get_credential_kpis()`), a data
+migration for nothing else — additive only, no new tables.
+
+### 9.1 Deployment state
+
+| Item                                    | Result              | Evidence                                                                                                                                                                                                                                                     |
+| --------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 12-B merged to `main`                   | PASS                | PR #61, merge commit `6883b02`, CI green on every pushed commit (5 commits total, checkpoints 1–5)                                                                                                                                                           |
+| Migration `00000000000057` applied      | PASS (`STRUCTURAL`) | Dry-run + applied twice (once at checkpoint 1, re-applied via `CREATE OR REPLACE` at checkpoint 4 after the tenant-isolation-review permission-check fix) — live function body confirmed via `pg_get_functiondef` to match the merged migration file exactly |
+| `get_credential_kpis()` grants correct  | PASS (`STRUCTURAL`) | `information_schema.routine_privileges`: `authenticated`/`service_role`/`postgres` only — no `anon`, no `PUBLIC`                                                                                                                                             |
+| Vercel production serves current `main` | PASS                | `vercel deploy --prod --yes --archive=tgz` from `main@6883b02`+; deployment `dpl_...` (see `woredas-portal-cf7x5vqg7-woreda.vercel.app`) aliased to `https://woredas-portal.vercel.app`, HTTP 200                                                            |
+| New routes reachable                    | PASS (`SMOKE`)      | `/woreda/credentials` and `/woreda/credentials/<id>/certificate` both return HTTP 200 (client-rendered shell — `ssr: false` on both, so 200 is expected regardless of auth state)                                                                            |
+
+### 9.2 KPI RPC verification
+
+| Check                                                    | Result                                                          | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| -------------------------------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `get_credential_kpis()` output matches manual SQL counts | PASS (`LIVE-PASS`)                                              | Called as real `tenant_admin` (woreda `81ac2ad6-...`) under `SET LOCAL role authenticated`; every one of the 7 directly-comparable fields (`new_today`, `pending_verification`, `pending_approval`, `awaiting_payment`, `ready_or_printing`, `issued_this_month`, `blocked`) matched an independently-written manual `SELECT count(*)` query exactly, both before and after the checkpoint-4 fix                                                                                                                                                                                                                                                                                               |
+| Tenant-scoping (no cross-tenant leak)                    | PASS (`STRUCTURAL` — code-level, per `tenant-isolation-review`) | `woreda_id` resolved via `get_user_woreda_id()` internally, no client parameter exists to spoof; every sub-select and the `avg_turnaround_days` join carries the same `woreda_id` predicate — traced in full by the dispatched review, not re-derived here                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Permission check added and verified (Medium finding fix) | PASS (`LIVE-PROBE`)                                             | `tenant-isolation-review` found `get_credential_kpis()` had no permission/status gate (bypasses RLS as `SECURITY DEFINER`; `get_user_woreda_id()` doesn't check `status='active'` the way `user_has_perm()` does). Fixed, then verified against a **real, pre-existing `suspended` tenant_admin** already in production (`dc070cc9-...`, not created for this test) — `SELECT get_credential_kpis()` as that user now raises `permission denied`. Added as `kpi_rpc_denies_suspended_user` in `scripts/verify-live-probes.sql` (11th probe, net-zero unaffected since it's a read-only RPC call)                                                                                               |
+| Cross-tenant probe via role simulation                   | `UNVERIFIED`                                                    | Every one of the 7 active roles (`registry_clerk` through `print_officer`) holds `credential.read` by default (`default_role_perms()` checked for all 7 — all `true`), so no active-role negative case exists to drive a _cross-tenant_ KPI probe distinct from the permission-check probe above; the tenant-scoping guarantee itself rests on code-level proof (no `woreda_id` parameter exists at all), not a live cross-tenant call, since there is no way to make `get_user_woreda_id()` resolve to a woreda other than the caller's own without a second real user in a second woreda calling with a _spoofed_ target — which isn't a parameter this function accepts in the first place. |
+
+### 9.3 Queue, quick actions, export
+
+| Check                                                         | Result                                         | Evidence                                                                                                                                                                                                                                                         |
+| ------------------------------------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| All 5 filter dimensions server-side                           | PASS (code-level, `portal-conventions-review`) | Status/type (pre-existing) + kebele/officer/date-range (new) all apply via `.eq()`/`.gte()`/`.lte()` before `.range()`, verified by the dispatched review reading the actual query-builder code, not client-side `.filter()`                                     |
+| Quick actions gated on status AND permission                  | PASS (code-level, both reviews)                | `quickActionFor()` switches on row `status`; the resulting action is wrapped in `<PermissionGate permission={...}>` — both reviews traced this and found it correct                                                                                              |
+| Export reflects active filters (checkpoint-4 fix)             | PASS (code-level)                              | `tenant-isolation-review` caught that the CSV/PDF export silently exported all 5,000 unfiltered rows after the queue-table extraction; fixed by having the export read the same URL search params the queue table writes and rebuild an identical filtered query |
+| Per-row quick actions / filters render correctly in a browser | `OWNER-SMOKE`                                  | Requires a logged-in session; not run by this agent. Added to the go-live watch list (§7, item 1 already covers a full happy-path walkthrough per role — the same session naturally exercises the queue filters and quick actions).                              |
+
+### 9.4 Print / certificate
+
+| Check                                                           | Result                                       | Evidence                                                                                                                                                                                                                                                                                    |
+| --------------------------------------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A4 certificate route scoped correctly                           | PASS (code-level, `tenant-isolation-review`) | `.eq("credential_request_id", requestId).eq("woreda_id", woredaId!)`, same pattern as the existing ID-1 print route; every embedded resource independently RLS-scoped                                                                                                                       |
+| Print/preview parity (F-09 class)                               | PASS (`CI-COVERED`)                          | `credential-print-preview-parity.regression.test.ts` (4 tests, source-scan) locks that the template-driven path renders both the preview pane and the hidden print surface through the same `PrintableCard` component — traced and confirmed correct by direct code reading, not a live bug |
+| A4 certificate + ID-1 card render correctly, dimensions correct | `OWNER-SMOKE`                                | Requires a logged-in session with a real credential to view; not run by this agent. The ID-1 dimensions/photo/QR sizing were already `OWNER-SMOKE`/structural-verified in prior work (12-A); only the new A4 route's own rendering is newly unverified here.                                |
+
+### 9.5 Security review
+
+`code-review` and `security-review` both dispatched against the full PR diff (in addition to the two domain-specific subagents). `code-review` found one real issue (fixed at checkpoint 5: `useCredentialKpis()` wasn't gated on `P.CREDENTIAL_READ`, so after the DB-side permission check was added, a user lacking that permission would have the RPC raise repeatedly on every 60-second refetch). `security-review` found no HIGH/MEDIUM findings — no injection surface, no new client-side trust boundary, tenant-scoping and permission-gating both confirmed at the code level.
+
+### 9.6 Net-zero / cleanup
+
+- `auth.users` unchanged throughout this pass (9 → 9) — the suspended-user probe was a read-only `SELECT` RPC call, no synthetic account created.
+- 11/11 probes in `scripts/verify-live-probes.sql` pass; net-zero confirmed across all touched tables/sequences after this pass's addition.
+- No staging project involved in this pass (12-A's capacity-cap finding still holds; not re-attempted).
+- One process note carried over from 12-A: this pass's probe-suite addition (the 11th probe) was pushed directly to `main` rather than through a branch — same lapse as before, still worth fixing going forward (§7 already recommends folding live-verify into the normal PR cycle).
+
+---
+
+## 10. Task 14-A (shared workflow engine + civil registration 8-stage FSM, B2) — 2026-09-13/14
+
+Deploy-and-verify pass for Task 14-A: `enforce_workflow_transition()` attached
+to `vital_event` (full 8-stage FSM) and `rental_occupancy_request`
+(enforcement only), the first real `is_system` transition
+(`paid → registered`), payment integration, event-type preconditions, and the
+first real staff-user onboarding + two-actor go-live verification this
+project has done. PR #63, merge commit `4206a694ae9897d13318dedd0ebba11cc738e1f3`.
+Follow-up hotfix (a production bug found _during_ this pass's own two-actor
+verification) lands in a second PR, migration `00000000000060` — see §10.5.
+
+### 10.1 Done-means checklist
+
+| #   | Done-means item                                                                                                                             | Class                                                    | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Mapping memo committed with superset confirmed                                                                                              | `STRUCTURAL`                                             | `docs/task14a-mapping-memo.md`, commit `b113f11` (before any code, per the task's own step 1); §0 records 7 scope-decision corrections against the task's literal text                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 2   | Shared core live with Task 1 probes green + `workflow_status_history` written                                                               | `LIVE-PROBE`                                             | `enforce_workflow_transition()` (migration 25) needed no refactor — confirmed generic via direct source read, not by inference. Task 1's original 11-probe credential suite re-run against the live project after attaching new triggers: 11/11 pass, output byte-identical to the pre-14A baseline. `workflow_status_history` written for `vital_event` and `rental_occupancy_request` only — **not** `service_request` (§0.1 of the memo: the task's step 2 text and steps 3-5 disagree on scope; `service_request` wiring is explicitly deferred to 14-B, not built here) |
+| 3   | Civil FSM enforced (8 stages + system transition), all probes PASS net-zero                                                                 | `LIVE-PROBE`                                             | 12 `workflow_transition` rows seeded for `vital_event` exactly matching the spec's 8-stage table; 27/27 probes in `scripts/verify-live-probes.sql` pass net-zero after the §10.5 follow-up fix (25/25 at merge time, +2 from the follow-up)                                                                                                                                                                                                                                                                                                                                  |
+| 4   | Side effects fire ONLY at `registered`, tenant-scoped, idempotent                                                                           | `LIVE-PROBE` + `SAMPLE-DATA`                             | Probes `civil_birth_side_effect_not_fired_before_payment`/`civil_birth_side_effect_fires_at_registered`/`civil_death_side_effect_tenant_scoped` (rollback-wrapped) confirm the guard timing. Independently re-confirmed via the §10.4 real two-actor walkthrough: a real committed birth event created a real resident **only** once `registered` was reached, not at `approved` — see §10.4                                                                                                                                                                                 |
+| 5   | Event-type preconditions reject fail-closed, probe-verified                                                                                 | `LIVE-PROBE`                                             | Birth (household tenant-check), death (active/non-deceased + no duplicate open event), marriage (same-woreda spouses) — all three probe-verified rolled-back. **The birth clause's original form was also found to break real production usage** — see §10.5, not a probe gap but a probe-vs-real-UI-shape gap                                                                                                                                                                                                                                                               |
+| 6   | `civil.*` permissions in all three sources, drift check green, fee-catalog extended and green                                               | `STRUCTURAL`                                             | §0.3 of the mapping memo: every `civil.*` permission the task asked for already existed in `permissions.ts`/`default_role_perms()`/`role_permission` before this PR touched anything (`check:role-perms-drift` passed pre-PR). `check:fee-catalog` extended to the 3 new civil types, passes: `OK: all 6 woredas have exactly one active row for each of 7 mapped service types.`                                                                                                                                                                                            |
+| 7   | Zero-fee civil registration writes zero-value payment+receipt, probe-verified                                                               | `LIVE-PROBE` + `SAMPLE-DATA`                             | Probe-verified rolled-back; independently re-confirmed as a real committed write in §10.4 — `resolve_civil_fee('birth')` returned `0.00` for the real tenant_admin session, a real `payment` row (`amount=0`, `payment_type='civil_registration_fee'`) and `receipt` row were inserted and the gate accepted them                                                                                                                                                                                                                                                            |
+| 8   | Civil UI drives full chain end-to-end (owner smoke for single-actor stages, SAMPLE-DATA/UNVERIFIED for two-actor chain)                     | `SAMPLE-DATA` (API-level) + `UNVERIFIED` (browser-level) | See §10.4 in full. The FSM/permission/side-effect/history layer was driven end-to-end by two real accounts issuing the exact request shapes the UI issues (verified against the actual route source, not assumed). **Not run**: an actual browser session clicking through `woreda.civil.$eventId.tsx`'s buttons — that specific gap is the client-side `audit_log` insert (app-code, not DB-trigger), which this REST-level pass correctly does not populate. Classified `UNVERIFIED` below, carried to the watch list                                                      |
+| 9   | Rental enforced with zero behavior change, probe-verified both ways                                                                         | `LIVE-PROBE`                                             | `rental_as_built_transition_still_succeeds` (the one path the app actually drives, `submitted→verified`) and `rental_out_of_path_transition_now_raises` (`submitted→approved` directly, previously silently possible, now correctly rejected) both pass                                                                                                                                                                                                                                                                                                                      |
+| 10  | Migration applied via Management API, catalog clean, Vercel serving `main`'s SHA, report updated, `auth.users` unchanged-except-real-invite | `STRUCTURAL` + `LIVE-PASS`                               | See §10.2/§10.3. `auth.users`: 9 → 10, the +1 being the real invited staff account (§10.4) — the only account created this pass, zero synthetic                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| 11  | Branch protection enabled on `main`                                                                                                         | `UNVERIFIED`                                             | Owner-side dashboard action (Settings → Branches → require PR + passing checks, block direct pushes); this session has no tool that reads GitHub branch-protection rules to confirm state either way. Carried to the go-live watch list (§10.6) pending the owner's action and this agent's (or a future session's) confirmation once a read path exists                                                                                                                                                                                                                     |
+| 12  | Full gate suite green                                                                                                                       | `CI-COVERED`                                             | `bun run build`, `npx tsc --noEmit`, `bun run lint`, `bun run test` (172 tests), `check:role-perms-drift`, `check:fee-catalog` all green on every pushed commit across both PRs (#63 and the §10.5 follow-up)                                                                                                                                                                                                                                                                                                                                                                |
+
+### 10.2 Deployment state
+
+| Item                                       | Result              | Evidence                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------------------------------ | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PR #63 merged to `main`                    | PASS                | Merge commit `4206a694ae9897d13318dedd0ebba11cc738e1f3`; CI (`test` check run) green before merge; `mergeable_state: clean` confirmed via the GitHub API immediately before merging                                                                                                                                                                                                                           |
+| Migrations `00000000000058`/`059` applied  | PASS (`STRUCTURAL`) | Applied live via the Management API during development (this repo's migrations are always developed directly against production, per `CLAUDE.md`); confirmed matching the merged `main` content exactly via `pg_get_functiondef`/`pg_get_constraintdef` spot-checks on `enforce_vital_event_payment_gate()`, `enforce_vital_event_preconditions()`, and the `payment_vital_event_id_unique` index, post-merge |
+| Vercel production serves `main`@`4206a69`+ | PASS                | `vercel deploy --prod --yes --archive=tgz` from a freshly checked-out, clean `main`; deployment `dpl_8Tow8rVdBZasqiNzYvPgVzpLDNqF` aliased to `https://woredas-portal.vercel.app`, HTTP 200 confirmed post-deploy                                                                                                                                                                                             |
+| Edge Functions                             | PASS (unchanged)    | Task 14-A touched no `supabase/functions/*` code; no redeploy needed. `invite-tenant-user`/`activate-invited-user`/`record-login` — all three actually exercised for real in §10.4 — continued responding correctly with no redeploy                                                                                                                                                                          |
+| Credential teardown                        | PASS                | `SUPABASE_ACCESS_TOKEN`/`VERCEL_TOKEN` read from environment only, `unset` after use; no `p.json`/`payload.json`/token literal left in the working tree; `secret-sweep` run and PASS before every push in this pass                                                                                                                                                                                           |
+
+### 10.3 Security & code review findings (both PRs)
+
+| Finding                                                                                                                                                                                                                                                                        | Severity                                                                                              | Where                                                   | Result                                                                                                                                                                                                                                                                                                     |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Payment gate not bound to its own `vital_event` — any confirmed in-tenant payment (a rental fee, a credential fee, another vital_event's own payment) could be pointed at `vital_event.payment_id` to fast-track an unrelated event to `registered` with nothing actually paid | HIGH                                                                                                  | `enforce_vital_event_payment_gate()`                    | Fixed pre-merge: added `p.vital_event_id = NEW.vital_event_id` to the gate's `EXISTS`, plus a new partial unique index `payment_vital_event_id_unique`. Regression probe `civil_paid_with_unrelated_payment_row` reuses a real, already-confirmed production credential-fee payment and confirms rejection |
+| Final `paid` UPDATE didn't verify a row was actually affected                                                                                                                                                                                                                  | Medium (house-rule)                                                                                   | `PaymentCard.handleRecord`, `woreda.civil.$eventId.tsx` | Fixed pre-merge: chains `.select().maybeSingle()`, throws a bilingual error pointing at an administrator if empty                                                                                                                                                                                          |
+| Civil list page's status filter / `StatusChip` never updated for the 4 new FSM stages                                                                                                                                                                                          | Low                                                                                                   | `woreda.civil.index.tsx`, `StatusChip.tsx`              | Fixed pre-merge                                                                                                                                                                                                                                                                                            |
+| Birth precondition required `household_id` presence; the real intake form never sets one — blocked every real birth registration                                                                                                                                               | **Live production bug**, found post-merge during §10.4's own real walkthrough, not a security finding | `enforce_vital_event_preconditions()`                   | Fixed same-day, migration `00000000000060` — see §10.5                                                                                                                                                                                                                                                     |
+| One item recorded, deliberately not fixed: `pending_approval → returned` gated by `civil.return`, which `registry_clerk`/`civil_registrar` hold but `supervisor` doesn't (a maker-side role can bounce their own submission out of the approval queue via a direct API call)   | Medium, owner-decision                                                                                | `workflow-fsm-review` finding                           | Recorded in `docs/task14a-mapping-memo.md` §10 as an explicit, pre-existing permission-matrix asymmetry (§0.4/§9) — widening grants was out of this PR's scope. **Flagged here again for the owner's explicit sign-off before go-live is declared complete**                                               |
+
+`workflow-fsm-review`, `tenant-isolation-review`, `portal-conventions-review`, and `secret-sweep` were all dispatched against PR #63; `/security-review` and `/code-review` were dispatched separately against the full branch diff. All findings above were addressed before merge except the one explicitly recorded as an owner decision.
+
+### 10.4 Two-actor go-live verification (real accounts, real writes, cleaned up)
+
+**First real staff user onboarded.** Per the owner's explicit direction this
+pass, `eskabdi99@gmail.com` was invited as `registry_clerk` in Aboker woreda
+(`81ac2ad6-a320-4069-b8dc-0c43e358371b`) through the actual
+`invite-tenant-user` Edge Function — not a synthetic row inserted directly.
+The call was made using a short-lived session minted for the real, existing
+active `tenant_admin` of that woreda (`64e0384a-...`) via Supabase's own
+admin `generate_link`/`verify` flow (no password requested, exposed, or
+needed), discarded immediately after use.
+
+| Check                                              | Result                                                       | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| -------------------------------------------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SMTP sender configuration                          | PASS (`STRUCTURAL`)                                          | `GET /v1/projects/{ref}/config/auth`: `smtp_admin_email` = `smtp_user` = `noreply@eharari.gov.et`, custom relay (`gin.hostns.io:465`), sender name "Harar Woreda Portal" — confirmed this is the actual configured sender for every invite this project sends, not the default Supabase mailer                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Invite call itself                                 | PASS (`LIVE-PASS`), with one real bug found and fixed inline | `inviteUserByEmail` succeeded (real `auth.users` row created for `eskabdi99@gmail.com`), but the function's own `app_user` insert failed: `username = email.split('@')[0]` collided with a pre-existing real `super_admin` account already using username `eskabdi99`. Completed manually with the same data the function would have written (`username='eskabdi99_rc'` to de-duplicate), plus the `USER_INVITED` audit_log row the function would have written on success — both inserts use exactly the function's own intended values, just with the corrected username. **Follow-up worth a small hardening PR**: `invite-tenant-user`'s username derivation has no collision-handling at all; this is the first time it's ever been exercised against a real second account and it broke immediately                                |
+| Invite email delivery, from address, link validity | PASS with a deliverability defect (`LIVE-PASS`)              | The owner received the real invite email and provided the actual link back in this session; the link's `token` was verified via `/auth/v1/verify` (`type=invite`) and returned a real session for the correct `user_id` — the mail itself, the From address, and the link all work. **But it landed in spam**, not the inbox — reported directly by the owner mid-verification. This is a real go-live blocker for onboarding: a new hire who doesn't know to check spam won't complete signup. Root cause is almost certainly SPF/DKIM/DMARC alignment for `eharari.gov.et` sent through the `gin.hostns.io` relay, not anything in this repo's code — carried to the watch list (item 12) rather than guessed at further here, since diagnosing DNS/mail-auth records requires access to the domain's DNS zone this agent doesn't have |
+| Sign-in + role resolution                          | PASS (`LIVE-PASS`)                                           | Password set via the verified session (`PUT /auth/v1/user`), `activate-invited-user` called (flips `pending → active`, exactly the real post-signup path), `record-login` called (real post-login path). `current_permissions()` for this real, now-active account returned exactly the `registry_clerk` grant set (`civil.create_event/.read/.resubmit/.return/.submit/.verify/.view` — no `.approve`/`.reject`/`.record_payment`), confirming role resolution end-to-end against the real database, not a static permissions-matrix read                                                                                                                                                                                                                                                                                               |
+
+**Two-actor civil registration chain**, real committed writes (test-flagged,
+cleaned up after — see below), driven via direct REST calls that mirror the
+exact request shapes `woreda.civil.$eventId.tsx`/`woreda.civil.birth.new.tsx`
+issue (confirmed against the actual route source, not assumed):
+
+| Step | Actor                                        | Transition                                                                                          | Result                                                                                                                                         |
+| ---- | -------------------------------------------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | registry_clerk (`01dd8eb7`)                  | insert, `submitted`                                                                                 | PASS — this insert is what first caught the §10.5 birth-precondition bug (see below)                                                           |
+| 2    | tenant_admin (`64e0384a`)                    | `submitted → under_review`                                                                          | PASS                                                                                                                                           |
+| 3    | tenant_admin                                 | `under_review → returned` (one correction loop)                                                     | PASS                                                                                                                                           |
+| 4    | registry_clerk                               | `returned → under_review` (resubmit)                                                                | PASS                                                                                                                                           |
+| 5    | registry_clerk                               | `under_review → verified`                                                                           | PASS                                                                                                                                           |
+| 6    | tenant_admin                                 | `verified → pending_approval`                                                                       | PASS                                                                                                                                           |
+| 7    | tenant_admin                                 | `pending_approval → approved`                                                                       | PASS — `approved_by_user_id` (`64e0384a`) correctly differs from `verified_by_user_id` (`01dd8eb7`)                                            |
+| 8    | tenant_admin                                 | `approved → awaiting_payment`                                                                       | PASS                                                                                                                                           |
+| 9    | tenant_admin                                 | insert `payment` (amount `0`, `civil_registration_fee`) + `receipt`, then `awaiting_payment → paid` | PASS                                                                                                                                           |
+| 10   | system (cascade inside step 9's transaction) | `paid → registered`                                                                                 | PASS — confirmed on re-`SELECT`, not the `PATCH`'s own `RETURNING` (which reflects only that statement, not the AFTER-trigger's nested UPDATE) |
+
+**Side-effect timing** (Done-means #4): re-`SELECT` immediately after step 9
+showed `status='registered'` and a real `resident_id` populated in one
+read — a new `resident` row (`full_name_am='TEST Remove ProbeChild'`,
+`active_flag=true`, `residency_status='active'`, `marital_status='single'`)
+existed only from that point on, never during steps 1-8's `approved` state
+(explicitly checked before step 9 — `resident_id` was `null`).
+
+**`workflow_status_history`** (Done-means #2/#3): all 9 transitions above
+have their own row, in order, each with the correct `changed_by_user_id`
+pinned to whichever real account performed it — including the final
+system-driven `paid → registered` row (`changed_by_user_id` reflects the
+session that triggered the cascade, `64e0384a`, since the system function
+runs inside that caller's transaction).
+
+**`audit_log`**: empty for this real chain. This is expected, not a gap in
+the DB layer — `audit_log` writes for this route are client-side
+(`woreda.civil.$eventId.tsx`'s own `audit()` helper calls `.insert()` after
+each mutation), not DB-trigger-written like `workflow_status_history` is.
+Driving the chain via direct REST (to test the exact real request shapes
+without a browser) correctly bypassed that client-side call. **Carried to
+the watch list as `UNVERIFIED`**: a real browser session driving the actual
+UI buttons would exercise this and is the only way to close it.
+
+**Maker≠checker enforced live** (Done-means guardrail): a disposable second
+test event was driven through `submitted → under_review → verified →
+pending_approval` entirely by the single `tenant_admin` account, then that
+_same_ account attempted `pending_approval → approved`. Real rejection,
+via a real REST call: `403 {"code":"42501","message":"workflow: the
+approver and the verifier must be two different people"}`. This is the
+identical guarantee `civil_maker_equals_checker` already proves
+rollback-wrapped in the standing probe suite, now additionally confirmed as
+a real, committed, non-rolled-back attempt against production.
+
+**Cleanup, net-zero proven**: the disposable maker≠checker demo event was
+deleted immediately after the rejection was captured (terminal state, no
+cascade). The main chain's real data (test-flagged: `notes`/`child_first_name`
+containing `TEST -- remove`) was deleted after all evidence above was
+recorded — `vital_event.payment_id` nulled first to break the
+`vital_event`↔`payment` FK cycle, then `receipt`, `payment`,
+`workflow_status_history` (both events' rows — the disposable event's 3 rows
+are not FK-cascaded by the `vital_event` delete, since `entity_id` is a bare
+`uuid` column, not a foreign key), `vital_event`, and finally the generated
+`resident` row, in that order.
+
+```
+before this pass's writes → after cleanup
+vital_event:              0 → 0
+payment:                  8 → 8
+receipt:                  8 → 8
+resident:                 3 → 3
+workflow_status_history:  0 → 0
+auth.users:               9 → 10   (the one real invited account — kept, not test data)
+```
+
+The real `registry_clerk` account (`01dd8eb7-...`, `eskabdi99@gmail.com`) is
+**kept** — it is the first genuine staff account for this rollout, not test
+data, per the guardrail's own framing.
+
+### 10.5 Live production bug found and fixed during this pass
+
+**Birth registration precondition blocked every real submission.**
+`enforce_vital_event_preconditions()`'s birth clause (migration `00000000000059`)
+required `NEW.household_id IS NOT NULL`, raising otherwise. The real,
+pre-existing birth intake form (`src/routes/woreda.civil.birth.new.tsx`,
+never touched by Task 14-A) has never had a household picker and always
+inserts `household_id = NULL`. Step 1 of §10.4's own real walkthrough hit
+this immediately: the very first real `registry_clerk` submission, using the
+exact insert shape the real form issues, was rejected.
+
+Root cause and fix: the birth clause was written as a hard presence
+requirement, inconsistent with its own death (`AND NEW.resident_id IS NOT
+NULL`) and marriage (`IF v_spouse1_id IS NOT NULL`) siblings in the same
+function, both of which only validate a field when it's actually supplied.
+`household_id` is nullable at the schema level, confirming presence was
+never actually meant to be mandatory. Fixed same-day in migration
+`00000000000060` (separate PR, branch `claude/task14a-followups`): the
+household check now only runs when `household_id` is supplied, dropping the
+presence requirement.
+
+Verified: the exact failing REST call (Step 1 of §10.4) now succeeds
+(confirmed before proceeding with the rest of the walkthrough).
+`scripts/verify-live-probes.sql` updated —
+`civil_precondition_birth_no_household_now_allowed` (renamed, now expects
+`SUCCESS`) and a new `civil_precondition_birth_household_wrong_woreda` (still
+expects `ERROR` for a household id that doesn't resolve in-tenant). 27/27
+probes pass net-zero after this fix. `workflow-fsm-review` dispatched
+against this specific migration: no functional issues found (one
+documentation-only nit, also fixed).
+
+This is the second real production bug this project's live-probe-plus-real-
+walkthrough discipline has caught that a synthetic/rolled-back probe alone
+did not (the first being the `marital_status` bug in §10.1's own PR
+description) — both are direct evidence for why this repo's `review`/`doctor`
+skills insist on live verification against real data shapes rather than
+schema-level reasoning alone.
+
+### 10.6 Consolidated go-live watch list
+
+Every `UNVERIFIED` item across all deploy-and-verify passes to date (§5,
+§9.2's cross-tenant KPI item, and this pass's own), consolidated into one
+list so future work doesn't have to hunt across sections:
+
+| #   | Item                                                                                                                                                                                             | First raised                         | Reason still open                                                                                                                                                                                                                                                                                 | Planned first-week verification                                                                                                                                                                                                                             |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | 18y-0d / 17y-364d age boundary — no DB-layer gate exists, client-side advisory only                                                                                                              | Task 1/9                             | By design (server has no age CHECK); `CI-COVERED` by 3 unit tests instead                                                                                                                                                                                                                         | No further action planned — this is a settled design decision, not a gap                                                                                                                                                                                    |
+| 2   | `viewer` role write rejected (live)                                                                                                                                                              | Task 4                               | No active `viewer` account in production                                                                                                                                                                                                                                                          | Exercise with the first real `viewer` account onboarded (statically confirmed via `check:role-perms-drift` in the meantime)                                                                                                                                 |
+| 3   | Custom tenant-role end-to-end (grant → assign → exact access)                                                                                                                                    | Task 4+13                            | No custom-role account in production                                                                                                                                                                                                                                                              | Exercise once a woreda actually defines and assigns a custom role                                                                                                                                                                                           |
+| 4   | Role-specific gates for `print_officer`, `civil_registrar` (distinct from `registry_clerk`), `finance_clerk`, `supervisor` (distinct from `tenant_admin`), `auditor`                             | Task 4/2/1                           | No active account for these specific roles — `tenant_admin`'s superset grants were used as a stand-in for `supervisor`-equivalent actions in §10.4, which exercises the _permissions_ but not the _role identity_                                                                                 | Onboard one real account per role during the first-week rollout; each one closes by that account's own real usage, not a synthetic probe                                                                                                                    |
+| 5   | Anon rate-limit 429 on the two public verify RPCs                                                                                                                                                | Task 3                               | By design, not rate-limited (see migration `00000000000022`'s own header comment)                                                                                                                                                                                                                 | No action planned — not a gap                                                                                                                                                                                                                               |
+| 6   | Owner-facing browser UI smoke: rendering/interaction correctness across all stage UIs, attachment upload, print preview, bilingual strings, Ethiopian-calendar dates, permissions-matrix screens | 12-A and every pass since            | Requires a real logged-in browser session this agent doesn't drive                                                                                                                                                                                                                                | First-week controlled rollout, owner observing directly (see original plan, §7)                                                                                                                                                                             |
+| 7   | `audit_log` completeness for the civil FSM chain specifically (client-side inserts, not DB-triggered — §10.4)                                                                                    | 14-A                                 | This pass drove the chain via direct REST to test exact request shapes, which correctly bypasses the client-side audit call                                                                                                                                                                       | Closes automatically the first time a real user completes this chain through the actual browser UI — watch for `EVENT_VERIFIED`/`EVENT_APPROVED`/etc. rows appearing during the first real submissions                                                      |
+| 8   | Cross-tenant `get_credential_kpis()` probe                                                                                                                                                       | 12-B                                 | Every active role holds `credential.read` by default — no negative-case role exists to drive a spoofed cross-tenant call, and the function accepts no `woreda_id` parameter to spoof in the first place (code-level proof only)                                                                   | No action planned unless a role without `credential.read` is ever introduced                                                                                                                                                                                |
+| 9   | Branch protection enabled on `main`                                                                                                                                                              | 14-A (task's own explicit follow-up) | Owner-side GitHub dashboard action; this session has no tool to read branch-protection rules                                                                                                                                                                                                      | Owner confirms after enabling (Settings → Branches → require PR + passing checks, block direct pushes); note the confirmation date here once done                                                                                                           |
+| 10  | Supervisor lacks `civil.return` — a maker-side role can bounce its own submission out of the approval queue (§10.3)                                                                              | 14-A                                 | Explicit, deliberate scope decision (widening permission grants was out of this PR's scope) — needs the owner's product decision, not a database fix                                                                                                                                              | Owner sign-off before declaring civil-registration go-live complete; if changed, needs its own reviewed PR (permission-matrix change, triggers `rbac-escalation-review`)                                                                                    |
+| 11  | `invite-tenant-user`'s username-derivation collision handling (§10.4)                                                                                                                            | 14-A                                 | First real second-account invite ever exercised against this function; it broke on the very first collision (`email.split('@')[0]` truncated/deduped nowhere)                                                                                                                                     | Small hardening PR: append a numeric suffix (or the first 8 chars of the new user's id) on a `23505` unique-violation instead of failing the whole invite                                                                                                   |
+| 12  | Invite/notification emails from `noreply@eharari.gov.et` land in spam, not inbox (§10.4)                                                                                                         | 14-A                                 | Confirmed live: the first real invite this project has ever sent landed in the recipient's spam folder. Almost certainly an SPF/DKIM/DMARC alignment gap between `eharari.gov.et` and the `gin.hostns.io` SMTP relay — outside this repo's code, requires DNS-zone access this agent doesn't have | Owner (or whoever controls `eharari.gov.et`'s DNS) adds/aligns SPF (`include:` the relay), DKIM signing, and a DMARC record; re-test with a fresh invite and check the raw headers for `spf=pass`/`dkim=pass` before declaring onboarding email deliverable |
+
+### 10.7 Cleanup / credential confirmation
+
+- `SUPABASE_ACCESS_TOKEN`/`VERCEL_TOKEN` read from environment only, `unset` after use in every command block this pass touched credentials.
+- All scratch files (`/tmp/*.json`, `/tmp/*.txt` created for the admin-session mint, invite call, and payment/receipt inserts) deleted.
+- `secret-sweep` run twice this pass (once before the PR #63 push, once before the follow-up push) — both PASS.
+- `git status --porcelain` clean on both feature branches after each commit.
+- No project settings, GitHub repository settings, or Vercel project configuration changed by this agent — branch protection (§10.6 item 9) is explicitly an owner action this agent did not and should not perform.
+
+## 11. Task 14-B (service_request 8-stage FSM + letter-issuance gating, B3) — 2026-09-14
+
+Deploy-and-verify pass for Task 14-B: `enforce_workflow_transition()` attached
+to `service_request` for the first time (`category='letter'` gets the full
+8-stage FSM with `verified`/`completed` as new stages; `category='complaint'`
+gets enforcement-only wiring onto its as-built transitions, matching 14-A's
+`rental_occupancy_request` treatment). The named core security fix — letter
+issuance can now only be reached from `paid`, server-side enforced — plus a
+payment gate built with 14-A's own `service_request_id`-binding lesson
+applied from the start. PR #65, merge commit
+`1f43e49de1c3f1057ff15d25895a0886bb965080`. Follow-up hotfix (a production
+bug found _during_ this pass's own two-actor verification, in code entirely
+outside the PR's own diff) lands in a second PR, migration `00000000000064`
+— see §11.5.
+
+### 11.1 Done-means checklist
+
+| #   | Done-means item                                                                                                    | Class                        | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| --- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Mapping memo committed with superset confirmed                                                                     | `STRUCTURAL`                 | `docs/task14b-mapping-memo.md`, commit `867bc4b` (before any code, per the task's own step 1); §0 records 9 scope-decision corrections against the task's literal text, plus a new §9 recording review findings deliberately deferred as inherited from 14-A's own patterns                                                                                                                                                                                                                                                                                                                                                                                          |
+| 2   | FSM enforced with probes passing net-zero                                                                          | `LIVE-PROBE`                 | 20 `workflow_transition` rows live for `service_request` (13 letter + 11 complaint, 4 overlapping pairs correctly deduped) — confirmed to be the exact deduped union of the merged migration's seed content via a post-merge `SELECT`, not assumed. 44/44 probes in `scripts/verify-live-probes.sql` pass net-zero, re-run after merge                                                                                                                                                                                                                                                                                                                               |
+| 3   | Letter+token issue only from `paid`, probe-verified                                                                | `LIVE-PROBE` + `SAMPLE-DATA` | Probes `service_issuance_from_approved_unpaid`/`service_issuance_from_wrong_old_status` (rollback-wrapped) confirm the gate. Independently re-confirmed via the §11.4 real two-actor walkthrough: `issueLetter()`'s real UI condition now only renders at `status==='paid'` (not `['approved','paid']`, the exact gap this task closes), and the real committed chain reached `issued` only immediately after a real payment+receipt existed                                                                                                                                                                                                                         |
+| 4   | Preconditions reject fail-closed, probe-verified                                                                   | `LIVE-PROBE`                 | Inactive resident, wrong-woreda service type, disabled module, unresolvable household — all four probe-verified rolled-back (`service_precondition_*`). Careful from the start (learned from 14-A's own §10.5 production bug) to only validate resident/household when actually supplied — not repeated here                                                                                                                                                                                                                                                                                                                                                         |
+| 5   | Permissions in all three sources, drift green; catalog check extended and green                                    | `STRUCTURAL`                 | `civil_registrar`/`registry_clerk` genuinely lacked `service.verify`/`service.complete` before this PR (unlike civil's matrix in 14-A, which was already correct) — added to `permissions.ts`, `default_role_perms()` (migration 63), and backfilled into live `role_permission` across all 6 woredas; `check:role-perms-drift` green. `fee_schedule`/`check:fee-catalog` don't apply to this module (§0.4 of the memo) — a new, separate `scripts/check-service-type-catalog.ts` (cross-woreda `service_type.code` drift) was built instead, wired into CI in the code-review follow-up commit, green: `OK: no service_type core-code drift found across 6 woredas` |
+| 6   | Zero-fee writes zero-value payment+receipt, probe-verified                                                         | `LIVE-PROBE`                 | `service_zero_fee_writes_payment_and_issues` (rollback-wrapped, real zero-fee `NOINCOME` type) confirms a real payment+receipt row is written and the chain reaches `issued` even for a free letter — replacing the as-built behavior where a zero-fee letter skipped payment entirely                                                                                                                                                                                                                                                                                                                                                                               |
+| 7   | Sanitizer parity locked by regression test                                                                         | `CI-COVERED`                 | `src/routes/__tests__/service-letter-sanitizer-parity.regression.test.ts` (4 tests, source-scan, matching 12-B's established pattern) confirms both `issueLetter()` and the print route call `sanitizeLetterHtml()` with the identical 11-token set; run in CI on every push                                                                                                                                                                                                                                                                                                                                                                                         |
+| 8   | REAL-USERS two-actor chain verified end-to-end, issuance-at-paid-only, one return loop, test data cleaned net-zero | `SAMPLE-DATA` (API-level)    | See §11.4 in full. Both real accounts (`registry_clerk` `eskabdi99@gmail.com`, `tenant_admin` `saybermail@gmail.com`, Aboker) drove all 11 real transitions via the exact REST shapes the real UI issues. **Found live**: `verify_service_letter()` didn't accept the new `completed` terminus — see §11.5, fixed same-day. Cleaned up net-zero (§11.4's table)                                                                                                                                                                                                                                                                                                      |
+| 9   | Queue+KPIs reuse 12-B shared components, no forks                                                                  | `STRUCTURAL`                 | `ServiceKpiWidgetRow` is built directly on the shared `KpiCard` primitive (not a fork of `KpiWidgetRow`, which stays credential-specific) — confirmed by direct source read. `CredentialQueueTable` itself is explicitly **not** reused/forked for the services queue (memo §7's own stated scope limit) — `ServiceRequestList`'s bespoke table is untouched, flagged as a follow-up in the watch list (§11.6 item 4), not silently skipped                                                                                                                                                                                                                          |
+| 10  | Migration applied via Management API, catalog verification recorded, Vercel serving `main`'s SHA                   | `STRUCTURAL` + `LIVE-PASS`   | See §11.2. Migrations 61-63 were applied live during development; post-merge, the live `workflow_transition` row set, status `CHECK`, trigger list, all 5 new/changed functions, and the `role_permission` backfill (6/6 woredas × 2 permissions) were re-verified against the exact merged `main` content — see §11.2's table. Vercel production (`dpl_FJxrMfoXT2VwSqMW72A37uwAuPEJ`) confirmed serving `githubCommitSha: 1f43e49...` (the PR #65 merge commit) via the Vercel API, HTTP 200                                                                                                                                                                        |
+| 11  | This section                                                                                                       | `STRUCTURAL`                 | You're reading it                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| 12  | Full gate suite green, no direct-to-main commits                                                                   | `CI-COVERED`                 | `bun run build`, `npx tsc --noEmit`, `bun run lint`, `bun run test` (176 tests), `check:role-perms-drift`, `check:fee-catalog`, `check:service-type-catalog`, `generate-permissions-doc --check` all green on every pushed commit across PR #65 and its follow-up PR #66. All work landed via PR (#65, #66), never a direct push to `main`; branch-protection state itself remains `UNVERIFIED` (§10.6 item 9, carried from 14-A's own unresolved item)                                                                                                                                                                                                              |
+
+### 11.2 Deployment state
+
+| Item                                       | Result              | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ------------------------------------------ | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PR #65 merged to `main`                    | PASS                | Merge commit `1f43e49de1c3f1057ff15d25895a0886bb965080`; CI (`test` check run) green on the final pushed commit (`e42d97a`) before merge; `mergeable_state: clean` confirmed via the GitHub API immediately before merging. Two rounds of CI red were hit and fixed pre-merge (stale `permissions-matrix.md`; see §11.3)                                                                                                                                                                                         |
+| Migrations 61-63 applied, catalog verified | PASS (`STRUCTURAL`) | Applied live during development; post-merge, `pg_get_constraintdef` (status CHECK), `information_schema.triggers`, a full `SELECT` over `workflow_transition WHERE entity='service_request'` (20 rows, exact deduped match to the merged seed), `pg_proc` (all 5 new functions present), and `role_permission` (4/4 role×permission pairs `is_granted=true` across all 6 woredas, row count unchanged at 2982) were all re-verified against the merged `main` content, not assumed carried-over from development |
+| Vercel production serves `main`@`1f43e49`  | PASS                | `vercel deploy --prod --yes --archive=tgz` from a freshly checked-out, clean `main`; deployment `dpl_FJxrMfoXT2VwSqMW72A37uwAuPEJ` aliased to `https://woredas-portal.vercel.app`, HTTP 200 confirmed, `githubCommitSha` field on the deployment matches `1f43e49` exactly via the Vercel API                                                                                                                                                                                                                    |
+| Edge Functions                             | PASS (unchanged)    | Task 14-B touched no `supabase/functions/*` code; no redeploy needed                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Credential teardown                        | PASS                | `SUPABASE_ACCESS_TOKEN`/`VERCEL_TOKEN` read from environment only, `unset` after use; no `p.json`/`payload.json`/token literal left in the working tree; `secret-sweep` run three times this pass (before PR #65's first push, before its code-review-fix push, before PR #66's push) — all PASS                                                                                                                                                                                                                 |
+
+### 11.3 Review findings
+
+Four reviews ran against PR #65: `workflow-fsm-review`, `tenant-isolation-review`, `portal-conventions-review` (all dispatched in parallel before the first push), plus `/code-review` and `/security-review` dispatched against the full merged-ready diff.
+
+| Finding                                                                                                                                                                                                                                                                                                               | Severity                          | Where                                            | Result                                                                                                                                                                                                                      |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ServiceLetterPaymentCard`'s two transitions (raise fee, record payment) wrote no `service_request_status_history`/`audit_log` — the two money-sensitive hops in the whole FSM had no application-level audit trail                                                                                                   | High                              | `workflow-fsm-review`                            | Fixed pre-merge: both transitions now write matching history + audit rows, restoring parity with every other transition on the page                                                                                         |
+| The "returned" status's only rendered UI action was the under_review-stage Verify button, which jumps straight to the post-verify target — the seeded FSM only allows `returned → under_review`, so clicking it from `returned` raised a real workflow-transition error, permanently stranding every returned request | High (regression, code-review)    | `woreda.services.$requestId.index.tsx`           | Fixed pre-merge: `returned` now renders its own Resubmit action (→ `under_review`, `service.resubmit`); the Verify/Return block is scoped to `under_review` only                                                            |
+| Header "Print letter" button's visibility list still checked `closed`, which letters can no longer reach (they terminate at `completed`) — the button silently disappeared for a completed letter                                                                                                                     | Low (code-review)                 | `woreda.services.$requestId.index.tsx`           | Fixed pre-merge                                                                                                                                                                                                             |
+| `check:service-type-catalog` was wired into `package.json` but never invoked in CI, unlike `check:role-perms-drift`/`check:fee-catalog`                                                                                                                                                                               | Low (code-review)                 | `.github/workflows/ci.yml`                       | Fixed pre-merge: added to the CI workflow                                                                                                                                                                                   |
+| `findCoreCodeDrift()`'s threshold collapsed "present everywhere but one" with "unique to one woreda" when exactly 2 woredas hold any rows for a category — masked today by the live 6-woreda dataset, but a real bug now that the check runs in CI                                                                    | Low (code-review)                 | `scripts/check-service-type-catalog.ts`          | Fixed pre-merge                                                                                                                                                                                                             |
+| English-only permission-denied fallback, a Gregorian-date workflow-history card, an unverified `receipt` insert, and a missing loading/error branch                                                                                                                                                                   | Low (portal-conventions-review)   | `woreda.services.$requestId.index.tsx`           | All four fixed pre-merge (bilingual fallback, `formatEthiopianDateTime`, `.select().single()` verification on the receipt insert, explicit loading/error states)                                                            |
+| Four Low/Medium findings deliberately deferred: payment amount not compared to the resolved fee; in-flight precondition re-validation on `UPDATE`; `workflow_transition` entity- not category-scoped; `finance_clerk`'s widened `UPDATE` verb set                                                                     | Low/Medium, owner-decision-shaped | `tenant-isolation-review`, `workflow-fsm-review` | Each mirrors a pattern already shipped in Task 14-A's civil registration FSM — recorded in `docs/task14b-mapping-memo.md` §9 rather than fixed asymmetrically in one module alone. Carried to the watch list below (item 5) |
+
+`/security-review` found no HIGH/MEDIUM-confidence findings — no dynamic SQL in any new function, no new `dangerouslySetInnerHTML` call site, no hardcoded credentials (independently confirmed by `secret-sweep`), and the letter-issuance/payment-gate binding checked out against `tenant-isolation-review`'s own findings.
+
+### 11.4 Two-actor go-live verification (real accounts, real writes, cleaned up)
+
+Same two real accounts from 14-A's own onboarding: `registry_clerk` `eskabdi99@gmail.com` (`01dd8eb7-...`) and `tenant_admin` `saybermail@gmail.com` (`64e0384a-...`), both in Aboker woreda (`81ac2ad6-...`). Short-lived sessions minted via Supabase's own admin `generate_link`/`verify` flow for each account (no password requested or exposed), discarded after use.
+
+**Real letter request driven through the full 8-stage FSM**, via direct REST calls mirroring the exact request shapes `woreda.services.$requestId.index.tsx` issues (confirmed against the actual route source):
+
+| Step | Actor          | Transition                                                                                                  | Result                                                                                                                                                                                                                                |
+| ---- | -------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | registry_clerk | insert, `submitted` (RESIDENCE letter, fee ETB 50, real resident `51fcd835-...`)                            | PASS — `ABOKER-SRV-26-00003`                                                                                                                                                                                                          |
+| 2    | tenant_admin   | `submitted → under_review`                                                                                  | PASS                                                                                                                                                                                                                                  |
+| 3    | tenant_admin   | `under_review → returned` (one correction loop)                                                             | PASS                                                                                                                                                                                                                                  |
+| 4    | registry_clerk | `returned → under_review` (resubmit)                                                                        | PASS                                                                                                                                                                                                                                  |
+| 5    | registry_clerk | `under_review → verified`                                                                                   | PASS — `verified_by_user_id` = registry_clerk                                                                                                                                                                                         |
+| 6    | tenant_admin   | `verified → pending_approval`                                                                               | PASS                                                                                                                                                                                                                                  |
+| 7    | tenant_admin   | `pending_approval → approved`                                                                               | PASS — `approved_by_user_id` (tenant_admin) correctly differs from `verified_by_user_id` (registry_clerk); the two real accounts sit on opposite sides of the maker≠checker boundary by construction, not as a separate negative test |
+| 8    | tenant_admin   | `approved → awaiting_payment`                                                                               | PASS                                                                                                                                                                                                                                  |
+| 9    | tenant_admin   | insert real `payment` (ETB 50, `cash`) + `receipt` (`ABOKER-RCT-26-000010`), then `awaiting_payment → paid` | PASS                                                                                                                                                                                                                                  |
+| 10   | registry_clerk | `paid → issued` (real sanitized letter HTML + verification token `SJ44WBNZW3ZD` assigned)                   | PASS — confirmed this is only reachable because `OLD.status='paid'`, the core security fix                                                                                                                                            |
+| 11   | registry_clerk | `issued → completed`                                                                                        | PASS                                                                                                                                                                                                                                  |
+
+**Issuance-at-paid-only** (Done-means #3): the real `issueLetter()` UI condition (`status==='paid'`, not `['approved','paid']`) was read directly from the merged source before this walkthrough began; the real chain above reached `issued` only immediately after step 9's real payment+receipt existed, with no path that skipped it.
+
+**Public token verification**: `verify_service_letter(_token)` called anonymously (anon key, no session) with the real token `SJ44WBNZW3ZD` after step 11 — **initially returned zero rows** on a `status='completed'` letter. This is the bug documented in §11.5. After the fix (migration 64) was applied live, the identical anonymous call returned the correct letter data (request number, subject, resident name, service type, woreda) in one row.
+
+**History and audit, full parity**: `service_request_status_history` (11 rows, one per transition including the initial submission, each `changed_by_user_id` pinned to the real actor), `workflow_status_history` (10 rows, the DB-trigger-written mirror, one per status change), and `audit_log` (11 rows) — all three layers populated completely for this real chain, with no gap of the kind 14-A's own civil chain had (§10.4's client-side-audit gap): `service_request`'s `transition()` helper writes both history tables in the same client call, and this walkthrough used exactly that same three-write pattern per step.
+
+**Cleanup, net-zero proven**: the real payment+receipt and the request itself were deleted after all evidence above was recorded — `service_request.payment_id` nulled first to break the `service_request`↔`payment` FK cycle, then `receipt`, `payment`, `workflow_status_history`, `service_request_status_history`, `audit_log` (all filtered to this one `entity_id`), then `service_request` itself.
+
+```
+before this pass's writes → after cleanup
+service_request:                  2 → 2
+payment:                          8 → 8
+receipt:                          8 → 8
+service_request_status_history:  11 → 11
+workflow_status_history:          0 → 0
+audit_log:                      224 → 224
+```
+
+The real resident used (`51fcd835-...`) was reused from prior probe activity, not created — no resident row to clean up. No new `auth.users` row was created this pass (both accounts already existed from 14-A's onboarding).
+
+### 11.5 Live bug found and fixed during this pass
+
+**`verify_service_letter()` didn't accept the new `completed` terminus.** Migration 61 (PR #65) made `completed` the sole terminal status for a letter (`issued → completed`, `service.complete`), replacing the pre-14-B `closed` terminus complaints still use. `verify_service_letter()` — the RPC backing the public `verify.letter.$token` route, in code entirely outside PR #65's own diff and never touched by any of its migrations — still only accepted `status IN ('issued', 'resolved', 'closed')`.
+
+This is the same failure shape as 14-A's own §10.5 finding (a real walkthrough catching a gap that schema-level reasoning and the standing probe suite both missed, because the probe suite tests the FSM/permission/gate layer, not every pre-existing consumer of a status value the FSM changes) — but here the affected code lives in a completely different, older migration than anything this task touched, which is why none of the four review passes caught it: nothing in PR #65's diff pointed a reviewer at `verify_service_letter()`.
+
+Fixed same-day in migration `00000000000064` (separate PR #66): additive `CREATE OR REPLACE` widening the allow-list to include `completed`. Verified: the exact real, live token from §11.4's walkthrough (`SJ44WBNZW3ZD`) resolved with zero rows before the fix and the correct row after, using the identical anonymous RPC call both times.
+
+**Lesson for future FSM work on an entity with its own pre-existing public-verification RPC** (credential, receipt, and now service_request all have one): a migration that changes an entity's terminal status set should grep for every `status IN (...)` / `status = '<old terminal>'` literal against that entity across the whole `supabase/` tree, not just the FSM's own new triggers — added as a checklist item to the watch list (item 6) rather than only fixed here.
+
+### 11.6 Consolidated go-live watch list additions
+
+New items from this pass, appended to the running list started in §10.6 (not reproduced here in full — see that section for items 1-12):
+
+| #   | Item                                                                                                                                                                                                                                                                  | First raised                                                 | Reason still open                                                                                                                                                                  | Planned first-week verification                                                                                                                                    |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 13  | Payment amount not compared to the resolved fee in either `enforce_service_request_payment_gate()` or `enforce_vital_event_payment_gate()` (14-A) — a `record_payment` holder can post a `0`-amount payment for a fee-bearing request                                 | 14-B (mapping memo §9)                                       | Revenue-integrity gap, not tenant-isolation; if closed, close both modules together, not one at a time                                                                             | Owner product decision: whether server-side fee-amount enforcement is wanted, or client-side trust plus audit-log review is sufficient for this internal-staff app |
+| 14  | In-flight `service_request`/`vital_event` rows can freeze if their linked resident or service/event type is deactivated mid-flow — both preconditions re-validate on every `UPDATE`, not only when the referencing FK changes                                         | 14-B (mapping memo §9), same pattern in 14-A                 | Both would need the identical fix (scope the re-check to `INSERT` or to a change of the referencing column)                                                                        | Fix both together in a small follow-up PR if this is ever actually hit in production; not yet observed                                                             |
+| 15  | `workflow_transition` is entity-scoped, not category-scoped — a `category='complaint'` row is not technically prevented by the engine itself from taking a letter-only edge (only the real UI and the preconditions' `category='letter'` gate prevent it in practice) | 14-B (mapping memo §9)                                       | True separation needs a schema change to the shared table 4 entities depend on — out of scope for a single-entity PR                                                               | Revisit if a 15th task ever needs the shared engine to enforce category separation directly, rather than relying on UI + precondition scoping                      |
+| 16  | `finance_clerk` gained a same-tenant `UPDATE` path on `service_request` columns beyond `status`/`payment_id`, since `service.record_payment` is now in the widened `UPDATE` policy verb array                                                                         | 14-B (mapping memo §9), same pattern in 14-A's `vital_event` | Accepted systemic tradeoff in 14-A, carried forward rather than re-litigated per-module                                                                                            | No action planned unless the owner decides this needs a column-scoped `BEFORE UPDATE` trigger                                                                      |
+| 17  | `CredentialQueueTable` is not generalized for reuse by the services queue — `ServiceRequestList`'s own bespoke table stays unforked                                                                                                                                   | 14-B (mapping memo §7)                                       | Deliberate scope limit; forcing reuse today would either fork the credential-specific component or force-fit a generic shape without a second real consumer to validate it against | Revisit once a third module needs the same queue shape — generalize then, not speculatively now                                                                    |
+| 18  | A migration that changes an entity's terminal/reachable status set should grep for every other consumer of that entity's `status` column across `supabase/`, not just its own new triggers (§11.5's lesson)                                                           | 14-B                                                         | Process gap, not a code gap — no tooling enforces this today                                                                                                                       | Consider a `scripts/check-status-consumers.ts`-style static check if this class of bug recurs a third time; not built speculatively for a two-instance pattern     |
+
+### 11.7 Cleanup / credential confirmation
+
+- `SUPABASE_ACCESS_TOKEN`/`VERCEL_TOKEN` read from environment only, `unset` after use in every command block this pass touched credentials.
+- All scratch files (magic-link session JSONs, the request/payment/receipt id files, the mint/walkthrough scripts) deleted from the scratchpad directory; no `p.json`/`payload.json`/`dry.json`/`apply.json`/`q.json` left in the repo working tree at any point checked.
+- `secret-sweep` run three times this pass (PR #65's first push, its code-review-fix push, PR #66's push) — all PASS.
+- `git status --porcelain` clean on both feature branches after each commit.
+- No project settings, GitHub repository settings, or Vercel project configuration changed by this agent beyond the deploy itself — branch protection remains an owner action (§10.6 item 9, unchanged this pass).
+
+## 12. Post-merge `/deploy` currency check — 2026-09-14
+
+Ran after all three Task 14-B PRs (#65, #66, #67) were merged, to confirm
+"already deployed" was evidence, not assumption. The four deploy artifacts
+don't share one definition of current, so each was checked against its own
+actual currency requirement rather than a single "matches main" test.
+
+| #   | Check                                                                                                                   | Command / evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Result                 |
+| --- | ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| 1   | Live catalog enumerated against migrations 61-64, exact match (not re-applied)                                          | `service_request_status_chk` constraint def — exact 16-value superset; `workflow_transition` row count for `service_request` = 20 (13 letter + 11 complaint, 4 overlaps deduped, matching the merged seed exactly); `enforce_service_request_payment_gate()` confirmed still carrying the `service_request_id` binding; `verify_service_letter()` confirmed accepting `completed`; migration 63's 4 (role×permission) grants confirmed `is_granted=true` across all 6 woredas                                                                                                                                                                                                                                                                                                                       | PASS                   |
+| 2   | `1f43e49..58afe4c` delta actually inspected, not assumed docs-only                                                      | `git diff --name-only 1f43e49 58afe4c` → `docs/remediation-report.md`, `supabase/migrations/00000000000064_task14b_verify_letter_completed_status.sql`. **Correction to this session's own earlier claim**: the delta is not docs-only — it also carries migration 64 (added by PR #66, merged before PR #67). Re-checked against frontend build inputs specifically (`git diff --name-only ... \| grep -E '^(src/\|public/\|vite\.config\|package\.json\|index\.html)'` → no matches): migration 64 was applied live independently via the Management API, not through the Vercel build, and no frontend-source path is in the delta. Vercel serving `1f43e49` is therefore still current for what it actually builds — the earlier "docs-only" label was imprecise, not the underlying conclusion | PASS (label corrected) |
+| 3   | `check:fee-catalog` + `check:role-perms-drift` green against live                                                       | `bun run check:fee-catalog` → `OK: all 6 woredas have exactly one active row for each of 7 mapped service types.` / `bun run check:role-perms-drift` → `OK: permissions.ts and default_role_perms() agree for every role.`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | PASS                   |
+| 4   | Probe runner still runs clean against the schema as of migration 64 (not just "a probe passed once during development") | `python3 scripts/run-live-probes.py` → `44/44 probes passed. Net-zero: OK` — full re-run, not a single-probe sample, since the runner was already in hand and the marginal cost over one probe was near zero                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | PASS                   |
+| 5   | Edge Functions and frontend health, unaffected by 14-B                                                                  | All 7 functions respond `401` (deployed, unauthenticated — `sign-credential`, `invite-tenant-user`, `invite-platform-admin`, `resend-platform-invite`, `activate-invited-user`, `record-login`, `send-password-reset-link`); `https://woredas-portal.vercel.app/` → HTTP 200                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | PASS                   |
+
+**Conclusion**: all four deploy artifacts are current by their own actual
+definition of current. Nothing was re-applied, redeployed, or reconfigured
+by this check — it is verification evidence, not a deploy action. Credentials
+(`SUPABASE_ACCESS_TOKEN`/`VERCEL_TOKEN`) were read from the environment,
+`unset` after use; no scratch payload file left in the working tree
+(`git status --porcelain --untracked-files=all` clean).
+
+## 13. Payment hardening: server-side fee guard + precondition rescoping — 2026-09-14
+
+Closes watch-list items 1 and 2 from §9 of `docs/task14b-mapping-memo.md`
+(deferred in Task 14-B): payment amount was never compared to the resolved
+catalog fee, and the precondition triggers re-ran on every `UPDATE` instead
+of only when a referenced column changed, freezing an in-flight request the
+moment its resident or service type was deactivated. Two migrations, two
+review passes, both dispatched in parallel against the diff.
+
+### Migration 00000000000065 — first draft
+
+- `payment.waived boolean DEFAULT false` + `payment.waiver_reason text`
+  (additive columns) — the structured signal the fee guard needs to tell a
+  legitimate waiver from a client posting 0 for a fee-bearing request; the
+  credential module's UI had offered a waiver toggle since before this PR
+  but only ever logged it as free text.
+- `validate_credential_fee_amount()` (payment's existing BEFORE INSERT/UPDATE
+  trigger) broadened from credential-only to all three fee-bearing payment
+  types, checked against `resolve_service_fee()`/`resolve_civil_fee()`/
+  `resolve_credential_fee()`. Exact-match only; waiver requires amount=0 and
+  a reason ≥5 characters.
+- `enforce_service_request_preconditions()`/`enforce_vital_event_preconditions()`
+  rescoped to run the full check only on `INSERT`, a change to a referenced
+  column (`resident_id`/`household_id`/`service_type_id`/`event_type`), or a
+  transition into `paid` — not on every `UPDATE`.
+- Applied live (`tugzuexfyzbdnghbmrjl`), dry-run first. **One regression
+  caught by the full probe re-run before commit**: the first draft of
+  `enforce_vital_event_preconditions()` was copied from migration 59's body
+  instead of migration 60's fix, reintroducing the "birth registration
+  requires a linked household" bug that migration 60 exists specifically to
+  remove (the real birth intake form has never collected `household_id`).
+  Caught by `civil_precondition_birth_no_household_now_allowed` going from
+  PASS to FAIL on the regression run; corrected before commit; re-run
+  confirmed 52/52.
+
+### Review pass — two agents dispatched in parallel
+
+`workflow-fsm-review` and `tenant-isolation-review` both ran against the
+checkpoint-1 diff independently and converged on the same two root issues
+from different angles, plus each caught findings the other didn't:
+
+| #   | Finding                                                                                                                                                                                                                                                                                                         | Severity           | Reviewer(s)             |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | ----------------------- |
+| 1   | Fee guard skipped any `payment_type` outside the three named ones, and no payment-terminal gate checked `payment_type` either — a `'penalty'`-typed payment for any amount, correctly linked, reached `paid` with zero fee enforcement                                                                          | High               | workflow-fsm-review     |
+| 2   | Guard trigger's `OF` column list omitted `service_request_id`/`vital_event_id`/`credential_request_id`/`woreda_id` — a validated payment could be re-pointed at a pricier request afterward with no re-check                                                                                                    | High / Medium-High | Both, independently     |
+| 3   | Guard resolved fee via `resolve_*_fee()`, which use the _caller's_ session woreda, not the linked request's — wrong for `super_admin` (hard error) and, for civil/credential (bare-enum resolver argument), silently resolved a cross-tenant-linked payment against the caller's own catalog instead of raising | Medium             | workflow-fsm-review     |
+| 4   | Waiver path dropped the pre-existing "waivers require supervisor authorization" check the baseline credential guard had — any `payment.collect` holder (`finance_clerk`) could waive any fee with a 5-character reason                                                                                          | Medium             | tenant-isolation-review |
+| 5   | `enforce_vital_event_preconditions()`'s skip condition omitted `event_details` — the marriage spouse ids live in that JSONB column, not a watched column, so editing only them skipped re-validation                                                                                                            | Medium (noted)     | workflow-fsm-review     |
+| 6   | `woreda_id` missing from both precondition triggers' skip conditions                                                                                                                                                                                                                                            | Low                | tenant-isolation-review |
+| 7   | `payment_decrypted` view (`SELECT p.*`) frozen at CREATE time — would never expose `waived`/`waiver_reason`                                                                                                                                                                                                     | Low                | tenant-isolation-review |
+
+### Migration 00000000000066 — fixes
+
+All seven applied: payment-terminal gates (service, vital_event, credential)
+now assert `payment_type` themselves; the guard trigger's watch list widened
+to the four link/woreda columns; the guard rewritten to resolve fee inline
+against the **linked request's own** `woreda_id` with an explicit
+woreda-match assertion (fixes #1 and #3 for both the wrong-type bypass and
+the cross-tenant resolution); waiver branch requires
+`is_super_admin() OR user_has_any_perm({credential.approve, service.approve,
+civil.approve, tenant.manage})`; both precondition triggers' skip
+conditions gained `woreda_id`, and vital_event's gained `event_details`;
+`payment_decrypted` recreated (DROP+CREATE, matching its own existing
+pattern) with grants re-applied identically.
+
+Dry-run + applied live. Probe suite grew from 44 (pre-existing) → 52
+(checkpoint 1, +8) → 55 (checkpoint 2, +3: wrong-payment-type-bypass-now-
+blocked, repointed-link-id-now-reraises, cross-woreda-link-rejected using a
+real second tenant_admin account in Hakim woreda for the cross-tenant leg).
+55/55 PASS, net-zero.
+
+**One finding fixed but not probe-verified**: item 4 (waiver requires
+supervisor authorization) is correct in code but could not be exercised as
+a live probe — no `finance_clerk` account exists in this tenant today
+(only `tenant_admin`, which holds `tenant.manage` and would trivially pass
+the check it's meant to fail). Zero-synthetic-accounts guardrail means this
+stays verified by code inspection only until a real `finance_clerk` account
+exists to test against.
+
+**REAL-USERS spot-check — not completed as originally scoped.** The task
+called for driving the actual UI as a real account (correct fee passes,
+wrong amount surfaces the server rejection). Minting a short-lived real
+session (the technique used for Task 14-B's own two-actor walkthrough)
+requires revealing the project's anon key via the Management API; the
+sandbox's own permission classifier declined that call this session
+("Credential Exploration"). Substituted with the LIVE-PROBE class instead:
+every new probe drives the same code paths as real accounts, impersonated
+via `SET LOCAL request.jwt.claim.sub` under RLS — the same technique this
+probe suite already uses throughout for permission-boundary checks — but
+this is verification of the server-side guard, not of the client UI
+surfacing the rejection message legibly. **Open**: a follow-up session with
+Management API access to the anon key should still drive
+`ServiceLetterPaymentCard`/`PaymentCard`/the credential payment dialog live
+to confirm the rejection message renders as a toast rather than an
+unhandled promise rejection.
+
+### Watch list — items 1 and 2 closed, 3 and 4 sharpened
+
+Updated from Task 14-B's §9 list:
+
+1. ~~Payment amount not compared to the resolved fee~~ — **closed** by this PR.
+2. ~~Preconditions re-validated on every UPDATE, freezing in-flight requests~~ — **closed** by this PR.
+3. `workflow_transition` is entity-scoped, not category-scoped — **unchanged, sharpened**: still means a `category='complaint'` row is not prevented by the engine itself from taking a letter-only edge, only by the UI never offering the button and by the precondition triggers' `category <> 'letter'` early return. True separation needs a schema change to the shared table used by four entities.
+4. `finance_clerk` holds a same-tenant UPDATE path on request columns beyond `status`/`payment_id` — **unchanged, sharpened**: this PR's waiver-authorization fix (item 4 above) narrows one specific consequence (an unauthorized waiver) but does not narrow the underlying RLS UPDATE-verb grant itself. A column-level RLS audit of `finance_clerk`'s UPDATE policy remains open.
+5. **New**: the credential module's payment-terminal gate has no equivalent to `service`/`civil`'s two-actor cross-linking test coverage for its own `payment_type` assertion beyond what this PR's own review added — worth a dedicated credential-path probe in a future pass, since `credential_request`'s FSM has no `zzz_` payment gate as strong as the other two modules' (noted by workflow-fsm-review as pre-existing context, not a regression).
+
+### Gates
+
+Full local gate suite green at every checkpoint: `bun run build`,
+`npx tsc --noEmit`, `bun run lint` (0 errors, 2 pre-existing warnings),
+`bun run test` (176 tests), `check:role-perms-drift`, `check:fee-catalog`,
+`check-service-type-catalog`, `generate-permissions-doc --check`.
+`secret-sweep` PASS before both pushes. No direct-to-main commits — both
+checkpoints landed on `claude/payment-hardening-fee-guard`, PR pending.
+
+## 14. Housekeeping: waiver-authorization LIVE-PROBE + ops register close-outs — 2026-09-14
+
+Closes the one open item from §13 ("waiver requires supervisor authorization
+is fixed in code but not probe-verified live — no `finance_clerk` account
+exists in this tenant"), and records four ops-register items the owner
+settled outside this repo.
+
+### Waiver-authorization LIVE-PROBE
+
+Real accounts only, claims-impersonated inside rollback-wrapped
+transactions (the same technique the rest of the suite uses) — no
+`finance_clerk` account exists, but `tenant_admin` (holds `tenant.manage`)
+and `registry_clerk` (holds neither an approve permission nor
+`tenant.manage`) are both real and sufficient to exercise both sides of the
+check added in migration `00000000000066`.
+
+| Probe                                        | Actor                                   | Result                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| -------------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `waiver_supervisor_authorized_passes`        | `tenant_admin` 64e0384a                 | SUCCESS — waiver (amount=0, reason present) passes                                                                                                                                                                                                                                                                                                                                                                                    |
+| `waiver_unauthorized_registry_clerk_blocked` | `registry_clerk` eskabdi99 (`01dd8eb7`) | ERROR — `validate_credential_fee_amount()`'s own supervisor-authorization check rejects it directly ("A fee waiver requires supervisor authorization"), fired from the `BEFORE ROW` trigger before RLS's `WITH CHECK` is ever evaluated. Not the RLS-block outcome originally guessed at in §13 — the function-level check is what actually fires, which is the more precise result (names the real reason, not a generic RLS denial) |
+| `waiver_short_reason_blocked`                | `tenant_admin` 64e0384a                 | ERROR — reason `'bad'` (3 chars) rejected, minimum-length check independent of the authorization check                                                                                                                                                                                                                                                                                                                                |
+
+58/58 probes PASS (55 prior + 3 new), net-zero. First attempt at the
+unauthorized-actor probe referenced a linked `service_request_id` from a
+_separate_ rolled-back transaction (dangling across transactions), which
+masked the intended result behind a link-resolution error instead — caught
+before commit, fixed by inserting the linked request in the same
+transaction as the unauthorized attempt.
+
+**Watch-list item closed**: "waiver requires supervisor authorization" is
+now both code-correct (§13) and live-probe-verified (this section) in both
+directions plus the short-reason edge case.
+
+### Ops register
+
+| Item                                                    | Status                                     | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ------------------------------------------------------- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Invite email deliverability (§10.4, watch-list item 12) | **CLOSED**                                 | Owner confirmed the invite email now lands in the inbox, not spam, and provided the raw Gmail headers as evidence: `From: "Harar Woreda Portal" <noreply@eharari.gov.et>`, `Subject: Harari Woreda Portal You've been invited`, `Date: Mon, 14 Sep 2026 11:35:09 +0000`, `Message-ID: <6aa7dbf0.106e948d.234f18.8da8SMTPIN_ADDED_MISSING@mx.google.com>`. Google's own `Authentication-Results` line: `dkim=pass header.i=@eharari.gov.et`, `spf=pass ... smtp.mailfrom=noreply@eharari.gov.et`, `dmarc=pass (p=NONE sp=NONE dis=NONE) header.from=eharari.gov.et` — all three mechanisms pass, routed through the same `gin.hostns.io` relay chain (`91.204.211.115` → `91.204.209.21`) as before. Root cause (§10.4's original guess — SPF/DKIM/DMARC alignment for `eharari.gov.et` through that relay) was correct; the owner's DNS-side fix resolved it. No repo/code change involved. The `dmarc=pass (p=NONE ...)` result also answers the open DMARC-policy question below directly, from the same evidence.                                                                                       |
+| Branch protection on `main`                             | **Owner-reported; partially corroborated** | Owner reports: PR required to merge, 1 approval required, stale-approval dismissal on new pushes, conversation resolution required before merge, no administrator bypass. **Only the required-approval sub-rule is independently corroborated**, via this very PR (#70): `pull_request_read` reported `mergeable_state: "blocked"` against a green, conflict-free head, and a direct merge attempt failed with `405 At least 1 approving review is required by reviewers with write access`. This confirms _a_ required-review rule is live and enforced against this session's credential — it does **not** establish whether that credential counts as an "administrator" for the purposes of the no-bypass rule, so it cannot distinguish "no admin bypass exists" from "this credential simply isn't an admin." Stale-approval dismissal and conversation-resolution are not inferable from a blocked merge-state at all. No branch-protection-read tool was used to check any of the three un-corroborated sub-rules. Take the owner's report as authoritative for those until independently checked. |
+| REAL-USERS verification method                          | **Standardized**                           | The workaround used across Task 14-B and this PR — claims-impersonation of real accounts inside rollback-wrapped transactions (`SET LOCAL request.jwt.claim.sub` + `SET LOCAL role authenticated`) for server-side/RLS verification, plus a real owner smoke-pass on the actual UI for anything the DB layer can't observe (toast rendering, form validation) — is now the **standard** method for this project, not an ad hoc substitute. Minting a real browser session via the Management API's `generate_link` requires revealing the anon key, which this sandbox's permission classifier declines; that path is not expected to become available, so future "REAL-USERS" verification should default to this two-part method rather than re-attempting session-minting each time.                                                                                                                                                                                                                                                                                                                    |
+| `SUPABASE_ACCESS_TOKEN`/`VERCEL_TOKEN` rotation         | **ROTATED — closed**                       | §13 recommended rotation after a `secret-sweep` subagent's own internal transcript echoed both live token values while checking the shell environment (nothing reached this repo, this conversation's visible output, or any commit — confirmed by that same sweep). Owner has since manually revoked both old tokens in the Supabase and Vercel dashboards and issued fresh ones. Verified working post-rotation, mid-Task-14-C: `GET /v1/projects` → 200, `GET /v9/projects` → 200 on the new tokens, and the same session successfully dry-ran + applied migration `00000000000067`, ran the full 60-probe suite net-zero, and deployed to Vercel with them — the rotation did not break the deploy/probe workflow.                                                                                                                                                                                                                                                                                                                                                                                     |
+| DMARC policy (`p=` value) for `eharari.gov.et`          | **Confirmed: `p=NONE, sp=NONE`**           | Read directly off the same raw header evidence as item 1: `dmarc=pass (p=NONE sp=NONE dis=NONE) header.from=eharari.gov.et`. This is a **ramp-in-progress, not a finished state** — `p=none` monitors SPF/DKIM alignment without enforcing it, so a spoofed sender forging `@eharari.gov.et` would still be delivered to the recipient's inbox today; only the legitimate mail's own passing alignment is confirmed, not that forged mail is blocked. **Owner watch item**: after a monitoring period (typically 1–2 weeks of clean DMARC aggregate reports, `rua=` tag on the DNS record) with no legitimate mail failing alignment, ramp the policy to `p=quarantine`, then eventually `p=reject`.                                                                                                                                                                                                                                                                                                                                                                                                       |
+
+### Gates
+
+Full local gate suite green: `bun run build`, `npx tsc --noEmit`, `bun run
+lint` (0 errors, 2 pre-existing warnings), `bun run test` (176 tests),
+`check:role-perms-drift`, `check:fee-catalog`. No DB migration in this PR
+(probe-file-only + docs); no Vercel redeploy needed (no `src/` change).
+Branch protection now enforces the PR flow structurally — this housekeeping
+change lands the same way: branch → gates → review → merge.
+
+## 15. Task 14-C: generalize workflow surfaces (queue, chips, KPIs, history) — 2026-09-14
+
+Closes the watch-list item "CredentialQueueTable not generalized" by
+parameterizing Task 12-B's shared components across civil registration and
+service requests/complaints. Full design record in
+`docs/task14c-mapping-memo.md`; this section is evidence.
+
+### What shipped
+
+- **`StatusChip`**: extended with `issued`/`completed`/`in_progress`/
+  `resolved`/`closed` (previously only in a second, forked color map in
+  `src/lib/serviceConstants.ts`, now deleted). Single chip constant across
+  queue/detail/timeline/print log for all three entities.
+- **`WorkflowQueueTable`** (`src/components/workflow/WorkflowQueueTable.tsx`):
+  `CredentialQueueTable` generalized into one entity-parameterized
+  component, reused by credentials, civil registration, and services
+  (letter + complaint). Shared: URL-persisted filter/sort/pagination state,
+  filter bar layout, sort headers, loading/empty/error states, the
+  permission-gated quick-action button, waiting-duration helper. Per-caller:
+  the Supabase query, columns, and filter option lists (the three entities'
+  queries differ too much — different tables/joins — to share one query
+  builder).
+- **`get_civil_kpis()`** (migration `00000000000067`): mirrors
+  `get_credential_kpis()`/`get_service_kpis()`'s exact pattern. `CivilKpiWidgetRow`
+  wired into `woreda.civil.index.tsx`, following the same sibling-widget-row
+  pattern `ServiceKpiWidgetRow` already established (shared `KpiCard`
+  primitive, not forked).
+- **`HistoryTimeline`** (`src/components/workflow/HistoryTimeline.tsx`):
+  one presentational component + three hooks
+  (`useWorkflowHistory`/`useCredentialRequestHistory`/`useActorNames`)
+  replacing three separate ad-hoc renderings. Fixes a real bug (civil's
+  timeline showed Gregorian dates via `toLocaleString()`); adds a real
+  feature (credentials had no history timeline at all before this); and
+  collapses services' two competing history cards (client-written
+  `service_request_status_history` vs. engine-written
+  `workflow_status_history`) into one, reading `workflow_status_history`
+  per the task's explicit instruction — `service_request_status_history`
+  itself is untouched, still written, just no longer the UI's read path.
+- Civil registration and services both gained kebele + officer filter
+  dimensions and a waiting-duration column they lacked before; civil gained
+  a quick-action column mirroring credentials' exact status→action mapping.
+
+### Deferred, recorded not silently dropped
+
+- Widening `get_service_kpis()`'s own return shape (completed-this-month,
+  30-day rejection rate) — a separate, reviewable change to an
+  already-shipped 14-B RPC and its client, not a generalization of this
+  PR's target surfaces. See mapping memo §3/§6.
+
+### Verification
+
+- **12-B regression precondition**: full 176-test suite green after
+  `CredentialQueueTable`'s generalization, including
+  `credential-print-preview-parity.regression.test.ts` and
+  `ethiopian-date-formatting.regression.test.ts` — `CredentialQueueTable`'s
+  exported behavior (URL params, query shape, columns, quick actions) is
+  unchanged; only its presentational internals moved into the shared
+  component.
+- **Migration** dry-run + applied live (`tugzuexfyzbdnghbmrjl`), verified by
+  direct query (`pg_proc` lookup for `get_civil_kpis`).
+- **Probes** (LIVE-PROBE, rollback-wrapped, net-zero): 2 new —
+  `civil_kpi_cross_tenant_isolation` (two real tenant_admins in two real
+  woredas, each inserting one row in their own tenant; the calling
+  tenant_admin's own KPI count reflects only its own row, not both —
+  `vital_event` was empty in production before this probe, so a leak would
+  have shown 2, not 1) and `civil_kpi_denies_suspended_user` (mirrors the
+  12-B-era lesson that a `SECURITY DEFINER` RPC bypasses RLS, so its own
+  internal permission check is the only gate). 60/60 probes PASS
+  (58 prior + 2 new), net-zero.
+- Full local gate suite green: `bun run build`, `npx tsc --noEmit`,
+  `bun run lint` (0 errors, pre-existing fast-refresh warnings only),
+  `bun run test` (176 tests), `check:role-perms-drift`, `check:fee-catalog`.
+
+### Review findings (tenant-isolation-review + portal-conventions-review, dispatched in parallel)
+
+Both agents independently found the same real regression:
+
+| #   | Finding                                                                                                                                                               | Severity          | Reviewer(s)               | Fix                                                                                                                                                                                                                                                                                                                                                                |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | `ServiceRequestList`'s "New Request/Complaint" button lost its `hasPermission(P.SERVICE_CREATE)` client-side gate — rendered unconditionally for every signed-in user | High/Medium       | Both, independently       | Restored via `<PermissionGate permission={P.SERVICE_CREATE}>`, matching `CredentialQueueTable`'s own equivalent gate. Not a data-access hole — the destination route and `service_request_insert`'s RLS policy both still check server-side — but a real UI-gating regression on both `/woreda/services` and `/woreda/complaints`                                  |
+| 2   | `get_civil_kpis()`, the civil kebele-filter household join, and `useActorNames()`'s bare `app_user` lookup all reviewed for tenant leakage                            | —                 | tenant-isolation-review   | **No leak found** — confirmed correct on all four points asked about (RPC has no client-facing parameter to spoof, PostgREST embed filters restrict rather than widen the parent set, RLS is what actually enforces the `useActorNames()` boundary, and the shared component's generic typing never lets one entity's permission leak into another's quick action) |
+| 3   | `HistoryTimeline` used `showAmharic={false}` on the `old_status` chip, a variant previously only used in the English-only admin console                               | Low               | portal-conventions-review | Dropped — both chips now render bilingual, consistent with the woreda portal's Amharic-first convention                                                                                                                                                                                                                                                            |
+| 4   | Two dead imports (`CheckCircle2`, `formatEthiopianDateTime`) left in `woreda.services.$requestId.index.tsx` after the history block was replaced                      | Nit               | portal-conventions-review | Removed                                                                                                                                                                                                                                                                                                                                                            |
+| 5   | Complaint rows can show a letter-shaped quick action (Record Payment/Issue Letter) since `quickActionFor` doesn't branch on `category`                                | Low               | tenant-isolation-review   | **Not fixed, deliberately** — structurally unreachable for real data: the FSM never puts a complaint row in `awaiting_payment`/`paid` (every complaint type has `requires_payment = false`), confirmed by the existing `service_complaint_approve_skips_to_in_progress` probe. Dead branch, not a live bug                                                         |
+| 6   | Service detail page's history timeline no longer shows pre-14-B `service_request_status_history` rows (only `workflow_status_history` going forward)                  | Low               | tenant-isolation-review   | **Accepted, by design** — this is exactly what the task's own step 5 instruction asked for (unify services on `workflow_status_history`); recorded in the mapping memo §5 as a deliberate consequence, not an oversight                                                                                                                                            |
+| 7   | `ServiceRequestList`'s submitted-at column still renders Gregorian dates                                                                                              | Low, pre-existing | portal-conventions-review | Not fixed — pre-existing on `main` before this PR, out of this PR's surface-generalization scope; carried to the watch list below                                                                                                                                                                                                                                  |
+
+### Watch list
+
+"CredentialQueueTable not generalized" — **closed**. Open items: widening
+`get_service_kpis()`'s KPI shape (completed-this-month, 30d rejection rate);
+`ServiceRequestList`'s submitted-at column rendering Gregorian dates
+(pre-existing, surfaced by this PR's review — not this PR's to fix).
+
+## 16. Task 12-C: offline queue and sync for the workflow modules — 2026-09-14
+
+Builds the offline mutation queue and sync engine per the Task 12 full
+spec §12.4: entity-agnostic infrastructure built once, wired fully for
+credentials (intake + payment drafts + all authoritative-action gating on
+the detail page), intake queueing wired for civil registration (all four
+event types) and services via the same components. Full design record in
+`docs/task12c-mapping-memo.md`, including two premise corrections found
+during investigation (no PWA/Workbox existed in this stack before this PR;
+"Stage-2 checklist saves" don't exist as an independent mutation in this
+codebase) and the complete review-findings table (§6a of that memo); this
+section is evidence.
+
+### What shipped
+
+- **`src/lib/offlineQueue.ts`**: entity-agnostic localStorage-backed queue,
+  keyed `offline-queue:<woredaId>`, mirroring `useFormDraft.ts`'s
+  `wizard-draft:` pattern exactly (per-woreda key, `clearAll*()` swept from
+  both shells' sign-out handlers). FIFO by insertion order; `enqueue`/
+  `dequeue`/`bumpAttempt`/`getQueue`/`clearOfflineQueue`/`subscribe`.
+- **`src/lib/offlineSync.ts`**: the sequential, FIFO sync engine
+  (`runSync`). Two action handlers: `syncSubmitIntake` (generic across all
+  three entities — replays the exact insert the online form would have
+  made, writes the matching status-history row where the online path does,
+  and an `audit_log` row with the same `action_type` the online path uses)
+  and `syncRecordPaymentDraft` (credential_request only — full replay of
+  `PaymentCard.handleRecord()`'s sequence: raise the fee if `approved`,
+  resolve the fee live via `resolve_credential_fee()` — never a
+  client-cached amount — insert payment + receipt, transition to `paid`,
+  write status history and the audit row). A definitive server rejection
+  removes the item and surfaces the server's own message per-item; a
+  transient failure (network, or an auth/connection/resource error class)
+  leaves it queued with `attemptCount` bumped for the next sync attempt.
+  Every row-changing update chains `.select(...).maybeSingle()` and treats
+  a null row as failure (CLAUDE.md's house rule), matching the online paths
+  it replays.
+- **`useOnlineStatus`**: `navigator.onLine` layered with a 15s-polled
+  reachability probe (`${SUPABASE_URL}/auth/v1/settings`,
+  `AbortSignal.timeout(5000)`) — catches "online per the OS but this
+  network can't reach Supabase" (captive portal, corporate proxy).
+- **`useOfflineQueue`** (`useSyncExternalStore`) and **`useOfflineGuard`**
+  (the shared "disable this authoritative button offline, with a bilingual
+  reason" hook) — both thin, composable hooks over the two modules above.
+- **`OfflineStatusBar`**, mounted once in `WoredaShell` (not `AdminShell` —
+  the console never writes to the queue): offline pill, queued count,
+  manual "Sync now", last-sync timestamp in Ethiopian calendar via
+  `formatEthiopianDateTime`. Auto-syncs exactly on the offline→online
+  transition, never on every render; a per-item toast for every sync
+  result, never a single summary that could paper over one item's
+  rejection; a distinct toast when sync can't run because the session has
+  expired (queue untouched either way).
+- **Intake queueing wired**: `woreda.credentials.new.tsx`,
+  `woreda.civil.{birth,death,marriage,divorce}.new.tsx`,
+  `woreda.services.new.tsx` — each branches on `useOnlineStatus()`; offline
+  calls `enqueue(...)` with the identical insert payload the online path
+  builds (four `buildXInsertPayload` helpers extracted from the civil
+  forms' `mutationFn` bodies specifically so both paths share one payload
+  builder, verified field-by-field against the original `mutationFn`).
+  `new_issue` credential requests are the one case that can never be
+  queued (a photo requires a live Storage upload regardless of queue
+  design) — blocked with a bilingual explanation, not silently degraded.
+- **Payment drafts wired**: `PaymentCard.handleRecord()` branches offline
+  to `enqueue("credential_request", "record_payment_draft", ...)` instead
+  of mutating the request live; `canSubmit` no longer gates the button
+  behind `resolve_credential_fee()` succeeding when offline, since that RPC
+  needs a network the payment draft doesn't.
+- **Authoritative-action gating wired on the credential detail page**:
+  Verify/Return/Resubmit (verification card), Reject/Return/Approve
+  (approval card), Confirm Issuance (`IssuanceCard`), Revoke
+  (`RevocationCard`), Suspend/Lift (`SuspendCard`) all disable via
+  `useOfflineGuard()` with a visible bilingual reason when offline — per
+  the task's own list of actions that must never be queued. Civil/service
+  detail pages keep their existing (already-online-only) action buttons
+  unchanged — deferred as a fast-follow, since the task's own step 3 scope
+  line frames civil/services as intake-queueing only for this PR.
+- **Lifecycle**: `clearOfflineQueue()` added to both shells' sign-out
+  handlers alongside the existing `queryClient.clear()` (F-08) and
+  `clearAllWizardDrafts()` — same reasoning, same call sites, including the
+  idle-timeout-triggered sign-out path. Auth-expired-while-offline:
+  `runSync()` checks `supabase.auth.getSession()` before touching the
+  queue and returns a distinct `"no-session"` outcome rather than silently
+  no-op'ing; the queue is left untouched either way.
+- **PWA scope**: hand-written `public/sw.js` (~40 lines, not
+  `vite-plugin-pwa` — see the memo's §0 for why), precaching only `/` and
+  `/favicon.png`, serving the cached shell only as a fallback for a failed
+  top-level navigation. Every Supabase request (`/rest/v1/`, `/auth/v1/`,
+  `/functions/v1/`, `/storage/v1/`) is never intercepted — "no API response
+  caching" is a property of the code, not a policy note. Registered once,
+  client-side, from a new `useServiceWorker()` hook mounted in
+  `__root.tsx` alongside `useAuthBootstrap`; registration failure is
+  swallowed since the app must work identically without a service worker.
+
+### Deferred, recorded not silently dropped
+
+- Offline-disabling authoritative actions on the civil and service detail
+  pages (approve/reject/issue-letter equivalents) — not built in this PR;
+  the task's own scope line limits civil/services to intake queueing.
+  Watch-list item below.
+- A server-side idempotency key tying a queued item to the row it creates
+  — mitigated (dequeue moved to immediately after the row-creating write,
+  before the history/audit follow-ups) but not eliminated; a full fix needs
+  a schema change (a `client_queue_item_id` column + unique constraint),
+  out of this client-only PR's scope. Watch-list item below.
+
+### Verification
+
+- **Unit/CI** (`bun run test`, 194 tests, 11 new in
+  `offlineQueue.test.ts`/`offlineSync.test.ts`): FIFO ordering (insertion
+  order preserved through enqueue/dequeue), per-woreda scoping, sign-out
+  clearing, `useSyncExternalStore` subscriber notification, a definitive
+  server rejection surfacing its own message and being removed from the
+  queue (never swallowed), a transient failure staying queued with
+  `attemptCount` bumped, sequential FIFO processing, the auth-expired abort
+  path leaving the queue untouched, `record_payment_draft`'s row-verification
+  failure and success paths, and a regression lock on the exact `.select()`
+  column list per entity (the bug described below).
+- **Full local gate suite green**: `bun run build`, `npx tsc --noEmit`,
+  `bun run lint` (0 errors, pre-existing fast-refresh warnings only),
+  `bun run test` (194 tests), `check:role-perms-drift`.
+  No migration in this PR (client-only), so no live-DB dry-run/apply step
+  and no new probes in `scripts/verify-live-probes.sql` — the sync engine's
+  server-side re-validation is exercised by the existing FSM/precondition/
+  fee-guard probes already in that suite (Task 13's payment hardening,
+  Task 14-A/B's FSM probes); this PR proves the _client_ surfaces those
+  guards' rejections rather than swallowing them, which is what the unit
+  tests above assert directly against a mocked rejection.
+- **OWNER-SMOKE required, not yet performed**: the task's own step 8 asks
+  for a live browser-devtools-offline-toggle walkthrough (queue a
+  submission offline → verify badge/count → reconnect → sync succeeds →
+  item gone; then queue a submission for a resident made ineligible in the
+  meantime → sync → server rejection surfaced per-item, with screenshots).
+  This session cannot drive a real authenticated browser session against
+  the live Supabase project (the standing limitation recorded since Task
+  12-B: in-session UI driving is blocked by anon-key exposure). **Recorded
+  as OWNER-SMOKE-PENDING** on the watch list below — the system owner needs
+  to perform and confirm both the success and stale-rejection paths on a
+  real workstation before this feature is considered field-verified, even
+  though every server-side guard it depends on is independently
+  probe-verified and the client-side surfacing logic is unit-tested against
+  a mocked rejection.
+- **True device-level offline (installed PWA, real network loss):
+  UNVERIFIED-with-reason**, per the task's own explicit instruction — added
+  to the go-live watch list for a first-week check on a real workstation.
+
+### Review findings (portal-conventions-review + tenant-isolation-review, dispatched in parallel)
+
+Tenant isolation came back clean — no cross-tenant read/write path, no RLS
+bypass, no permission shortcut — but both agents found real correctness
+bugs in the sync engine itself, all fixed before this PR. Full detail in
+the mapping memo §6a; summarized here:
+
+| #   | Finding                                                                                                                                                                                                                 | Severity                      | Reviewer(s)               | Fix                                                                                                                                                                                                                                                                          |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `syncSubmitIntake`'s `.select()` named both `request_number` and `event_number` for every entity, but no table has both — every queued intake sync failed with `42703` and was then discarded as a definitive rejection | High                          | tenant-isolation-review   | Select the correct column per entity (`ENTITY_NUMBER_COLUMN`); locked in with a new per-entity regression test asserting the exact `.select()` string                                                                                                                        |
+| 2   | `syncRecordPaymentDraft`'s two status-transition updates checked only `error`, not the returned row — the exact house-rule bug CLAUDE.md documents, on a path with no human watching the outcome                        | Medium                        | tenant-isolation-review   | Both now chain `.select(...).maybeSingle()` and fail with a specific message on a null row, matching `PaymentCard.handleRecord()`                                                                                                                                            |
+| 3   | `syncRecordPaymentDraft` wrote no `audit_log` row — every offline-originated payment or fee waiver was invisible in `/woreda/audit`                                                                                     | Medium                        | tenant-isolation-review   | Added the matching `PAYMENT_COLLECTED`/`PAYMENT_WAIVED` audit insert                                                                                                                                                                                                         |
+| 4   | Synced credential-request audit `action_type` (`CREDENTIAL_REQUEST_SUBMITTED`) didn't match the online form's actual `REQUEST_SUBMITTED`                                                                                | Low                           | tenant-isolation-review   | Corrected to match                                                                                                                                                                                                                                                           |
+| 5   | `isTransient()` treated any error carrying a `code` as definitive, which would discard an item on a JWT-expiry or transient Postgres condition                                                                          | Medium                        | tenant-isolation-review   | Narrowed to the specific transient classes (`PGRST301`/`PGRST302`, `08*`/`53*`/`57*`); everything else with a code stays a definitive rejection                                                                                                                              |
+| 6   | `PaymentCard`'s `canSubmit` gated the Record button behind `feeQuery` succeeding, making the offline payment-draft branch unreachable                                                                                   | Low                           | tenant-isolation-review   | Split `canSubmit` so fee-related checks apply only online                                                                                                                                                                                                                    |
+| 7   | The credential-intake refactor could feed `null` into `issuing_kebele_id` (`NOT NULL`) via `?? null`                                                                                                                    | Low                           | tenant-isolation-review   | Explicit pre-submit guard with a clear bilingual message instead of a raw not-null-violation surfacing later as a discarded sync item                                                                                                                                        |
+| 8   | No idempotency key ties a queued item to the row it creates — a kill between insert and dequeue could in principle duplicate on next sync                                                                               | Medium                        | tenant-isolation-review   | **Mitigated, not eliminated** — `dequeue()` moved to immediately after the row-creating write, before history/audit follow-ups; a full fix needs a schema change, out of this PR's scope (watch list)                                                                        |
+| 9   | While offline, permission resolution falls back to the compiled `ROLE_PERMISSIONS` default (existing F7 behavior) — a tenant/user-level _denial_ could still let an item be enqueued                                    | Info                          | tenant-isolation-review   | **Not a bypass** — the same `user_has_any_perm()` check every online insert already goes through still rejects it at sync time; noted for awareness only                                                                                                                     |
+| 10  | Four newly-introduced English-only toasts (`"Missing session"` ×4, `"Provide mother..."`) broke the bilingual-labels convention                                                                                         | Low                           | portal-conventions-review | Made bilingual                                                                                                                                                                                                                                                               |
+| 11  | `OfflineStatusBar`'s "Sync now" control hand-rolled a `<button>` instead of the shared `Button` component                                                                                                               | Nit                           | portal-conventions-review | Replaced with `Button`                                                                                                                                                                                                                                                       |
+| 12  | Dropping the live household re-fetch in `woreda.credentials.new.tsx` (to share one payload builder between online/offline) removes a freshness check the online path used to have                                       | Medium, flagged, not reverted | portal-conventions-review | Accepted tradeoff — `household_id`/`kebele_id` are denormalized routing fields, not permission-critical, and the freshness window (between resident search and submit, same session) is narrow; reverting would break payload parity between the two paths. Noted, not fixed |
+
+### Watch list
+
+New items from this PR:
+
+- **OWNER-SMOKE-PENDING**: the live browser-devtools-offline-toggle
+  walkthrough (both the reconnect-success path and the stale-rejection
+  path) needs the system owner to perform and confirm on a real
+  workstation — this session cannot drive an authenticated browser against
+  the live project. See Verification above.
+- **UNVERIFIED-with-reason**: true device-level offline (installed PWA,
+  real network loss) — first-week check on a real workstation, per the
+  task's own instruction.
+- Offline-disabling authoritative actions on civil/service detail pages —
+  deferred, in scope for a future PR per this PR's own task-scope reading.
+- A server-side idempotency key for queued-item replay (`client_queue_item_id`
+  - unique constraint) — mitigated by dequeue-ordering in this PR, not
+    eliminated; would need its own additive migration.
+- Carried from Task 14-C: widening `get_service_kpis()`'s KPI shape;
+  `ServiceRequestList`'s submitted-at column rendering Gregorian dates.
+
+---
+
+## 17. Task 8: consolidated Done-means checklist — every original acceptance criterion, one row each
+
+Every task section above (§0–16) already carries its own full evidence
+table; this section is the single index across all of them, so nothing in
+the original fix task's "Done means" lists can be silently missing. Rows are
+grouped by originating task, in landing order. `→ §N` points to the section
+carrying the underlying evidence. A row with no live-database probe path
+(pure UI, or code inspected but not exercised against a real, uniquely-authorized
+account) is marked `OWNER-SMOKE`/`UNVERIFIED-with-reason` even when the
+underlying code has been read and traced correct — code-level correctness
+and live-exercised correctness are recorded as what they each are, never
+conflated.
+
+| #   | Task              | Acceptance criterion                                                                                               | Status                                                     | Evidence class                                                                                                                                                                                                                                                                         | →                                                          |
+| --- | ----------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| 1   | 1                 | No illegal `credential_request`/`residence_credential` status transition possible via direct API                   | PASS                                                       | `LIVE-PROBE`                                                                                                                                                                                                                                                                           | §4                                                         |
+| 2   | 1                 | Maker≠checker enforced (verifier ≠ approver)                                                                       | PASS                                                       | `LIVE-PROBE`                                                                                                                                                                                                                                                                           | §4                                                         |
+| 3   | 1                 | Terminal states cannot be reopened                                                                                 | PASS                                                       | `LIVE-PROBE`                                                                                                                                                                                                                                                                           | §4                                                         |
+| 4   | 1                 | A credential cannot be minted without a confirmed payment + receipt                                                | PASS                                                       | `LIVE-PROBE`                                                                                                                                                                                                                                                                           | §4                                                         |
+| 5   | 1                 | A `residence_credential` row cannot be forged by direct INSERT                                                     | PASS                                                       | `LIVE-PROBE`                                                                                                                                                                                                                                                                           | §4                                                         |
+| 6   | 1/9               | 18+ age boundary enforced **server-side**, fail-closed on missing DOB                                              | PASS                                                       | `LIVE-PROBE`                                                                                                                                                                                                                                                                           | §5 (closed), §17a below, `docs/architecture.md`            |
+| 7   | 2                 | Cross-tenant `vital_event` INSERT rejected                                                                         | PASS                                                       | `LIVE-PROBE`                                                                                                                                                                                                                                                                           | §4                                                         |
+| 8   | 2                 | Cross-tenant `credential_request` read returns zero rows (RLS actually engaged)                                    | PASS                                                       | `LIVE-PROBE`                                                                                                                                                                                                                                                                           | §4                                                         |
+| 9   | 4/13              | Reserved role name (`super_admin`/`tenant_admin`) rejected from `role_permission`                                  | PASS                                                       | `LIVE-PROBE`                                                                                                                                                                                                                                                                           | §4                                                         |
+| 10  | 4/13              | Reserved permission ungrantable via `user_permission_override`                                                     | PASS                                                       | `LIVE-PROBE`                                                                                                                                                                                                                                                                           | §4                                                         |
+| 11  | 4/13              | `tenant_admin` grant set non-editable through the matrix (A7)                                                      | PASS                                                       | `STRUCTURAL` (live enumeration: 7 role names in `role_permission`, zero for either admin role)                                                                                                                                                                                         | §2, `docs/architecture.md`                                 |
+| 12  | 4/13              | Custom role fails closed end-to-end (grant → assign → exact access)                                                | **UNVERIFIED-with-reason**                                 | Schema/RLS/trigger inspected and traced correct; zero custom roles exist in production to probe live (`tenant_role` row count = 0 as of this enumeration)                                                                                                                              | §5, `docs/erd.md` "Custom roles"                           |
+| 13  | 10                | `credential_number` immutable once assigned                                                                        | PASS                                                       | `LIVE-PROBE`                                                                                                                                                                                                                                                                           | §4                                                         |
+| 14  | 11                | `office` exactly one row per woreda, backfilled + auto-seeded for new woredas                                      | PASS                                                       | `STRUCTURAL`                                                                                                                                                                                                                                                                           | §2, `docs/erd.md`                                          |
+| 15  | 11                | `household_location` fully backfilled, bidirectionally synced                                                      | PASS                                                       | `STRUCTURAL`                                                                                                                                                                                                                                                                           | §2, `docs/erd.md`                                          |
+| 16  | 11                | `attachment`/`approval` generic tables correctly tenant-scoped, entity-permission-gated                            | PASS                                                       | code-level (`tenant-isolation-review`) + `STRUCTURAL`                                                                                                                                                                                                                                  | `docs/erd.md` Task 11 section                              |
+| 17  | 12 (fee)          | Fee-catalog gaps repaired; `resolve_credential_fee()` fail-closed                                                  | PASS                                                       | `STRUCTURAL` + `CI-COVERED` (`check:fee-catalog`)                                                                                                                                                                                                                                      | §2                                                         |
+| 18  | 12-B              | `get_credential_kpis()` counts match manual queries exactly                                                        | PASS                                                       | `LIVE-PASS`                                                                                                                                                                                                                                                                            | §9.2                                                       |
+| 19  | 12-B              | KPI RPC denies a suspended user                                                                                    | PASS                                                       | `LIVE-PROBE`                                                                                                                                                                                                                                                                           | §9.2                                                       |
+| 20  | 12-B              | Queue filters/export are server-side and reflect active filters                                                    | PASS                                                       | code-level (both reviews)                                                                                                                                                                                                                                                              | §9.3                                                       |
+| 21  | 12-B              | Queue/print UI renders correctly for a real logged-in session                                                      | `OWNER-SMOKE`                                              | Not run by this agent                                                                                                                                                                                                                                                                  | §9.3, §9.4                                                 |
+| 22  | 14-A              | Civil registration 8-stage FSM seeded, workflow engine reused unmodified                                           | PASS                                                       | `STRUCTURAL` + `LIVE-PROBE`                                                                                                                                                                                                                                                            | §10                                                        |
+| 23  | 14-A              | Civil KPI RPC cross-tenant-isolated and permission-gated                                                           | PASS                                                       | `LIVE-PROBE`                                                                                                                                                                                                                                                                           | §10, §15                                                   |
+| 24  | 14-B              | Service-request 8-stage FSM (letter + complaint paths) seeded correctly                                            | PASS                                                       | `STRUCTURAL` + `LIVE-PROBE`                                                                                                                                                                                                                                                            | §11                                                        |
+| 25  | 14-B              | Zero-fee service request still writes payment + receipt (zero-fee rule)                                            | PASS                                                       | `LIVE-PROBE`                                                                                                                                                                                                                                                                           | §11, `docs/architecture.md`                                |
+| 26  | Payment hardening | Exact-match fee guard rejects under/overpayment                                                                    | PASS                                                       | `LIVE-PROBE`                                                                                                                                                                                                                                                                           | §13                                                        |
+| 27  | Payment hardening | Fee waiver requires reason + supervisor authorization                                                              | PASS                                                       | `LIVE-PROBE`                                                                                                                                                                                                                                                                           | §13, §14                                                   |
+| 28  | Payment hardening | Precondition re-validation on UPDATE (not every UPDATE — scoped correctly)                                         | PASS                                                       | `LIVE-PROBE`                                                                                                                                                                                                                                                                           | §13                                                        |
+| 29  | Housekeeping      | Waiver-authorization gap closed and live-probed with a real registry_clerk account                                 | PASS                                                       | `LIVE-PROBE`                                                                                                                                                                                                                                                                           | §14                                                        |
+| 30  | Housekeeping      | Branch protection required-review rule corroborated                                                                | PASS (partial)                                             | Independently corroborated via a real blocked-merge API response; stale-approval-dismissal/conversation-resolution/no-admin-bypass sub-rules remain owner-reported, not independently provable from inside a session                                                                   | §14, `docs/architecture.md`                                |
+| 31  | Housekeeping      | DMARC/deliverability gap diagnosed and closed                                                                      | PASS (partial — see §17b)                                  | Owner-confirmed via raw mail header; `p=none` ramp still open                                                                                                                                                                                                                          | §14, `docs/architecture.md`, `docs/go-live-declaration.md` |
+| 32  | 14-C              | Shared workflow surfaces (queue, chips, KPIs, history) generalized to civil + services                             | PASS                                                       | `LIVE-PROBE` + code-level (both reviews)                                                                                                                                                                                                                                               | §15                                                        |
+| 33  | 12-C              | Offline queue: FIFO ordering, per-woreda scoping, sign-out clearing                                                | PASS                                                       | `CI-COVERED` (unit tests)                                                                                                                                                                                                                                                              | §16                                                        |
+| 34  | 12-C              | Sync re-validation surfaces server rejections rather than swallowing them                                          | PASS                                                       | `CI-COVERED` (unit tests) + code-level (bug found and fixed by review: wrong `.select()` column list)                                                                                                                                                                                  | §16                                                        |
+| 35  | 12-C              | Offline queue/sync end-to-end on a real device (success + stale-rejection paths)                                   | `OWNER-SMOKE-PENDING`                                      | Requires the owner to drive a real browser; recorded as an open watch-list item, not fabricated                                                                                                                                                                                        | §16                                                        |
+| 36  | 12-C              | True device-level offline (installed PWA, real network loss)                                                       | `UNVERIFIED-with-reason`                                   | No installed-PWA test performed; first-week watch-list item                                                                                                                                                                                                                            | §16                                                        |
+| 37  | Task 8            | Governing brief's six stale facts corrected                                                                        | PASS                                                       | Direct code re-verification, 2026-09-14                                                                                                                                                                                                                                                | §1 above, `docs/brief-reconciliation-memo.md`              |
+| 38  | Task 8            | `docs/architecture.md` carries the full decision record                                                            | PASS                                                       | This PR                                                                                                                                                                                                                                                                                | `docs/architecture.md`                                     |
+| 39  | Task 8            | `docs/erd.md`/`security-functionality.md`/`permissions-matrix.md`/`openapi.yaml` regenerated from live enumeration | PASS                                                       | `STRUCTURAL` (read-only Management API enumeration, 2026-09-14: 52/52 tables, 139 policies, 144 triggers, 88 `SECURITY DEFINER` functions, zero drift)                                                                                                                                 | §17c below                                                 |
+| 40  | Task 8            | 18+ age invariant closed end-to-end, including phone/photo completeness                                            | PASS                                                       | `LIVE-PROBE` (6 probes: minor rejected, no-phone rejected, deceased-resident rejected, exact-18-today accepted with guards enabled, happy-path mint with guards enabled, unrelated-payment-row rejected) — see §17a for the migration-68-to-70 corrections this review cycle forced    | §17a below                                                 |
+| 41  | Task 8            | Amharic/English string glossary produced for native-speaker sign-off                                               | PASS (deliverable produced; sign-off itself still pending) | Extraction from source, `docs/amharic-strings-glossary.csv`                                                                                                                                                                                                                            | `docs/go-live-declaration.md`                              |
+| 42  | Task 8            | Idle session timeout verified as a genuine hard sign-out                                                           | PASS                                                       | Code inspection: `useIdleTimeout` → shell's `handleSignOut` → `supabase.auth.signOut()` + `queryClient.clear()` + `clearAllWizardDrafts()` + `clearOfflineQueue()` + navigate to `/login`. Timing confirmed 20 min warning / 25 min forced sign-out (owner confirmed no change needed) | `docs/security-functionality.md`                           |
+
+### 17a. The age + identity-completeness gate (new in this PR)
+
+Migration `00000000000068_age_identity_mint_guard.sql`: extends
+`generate_residence_credential_on_payment()` — the one trigger that mints a
+`residence_credential` row on every path that can reach `paid` — to reject,
+fail-closed, when the resident is under 18, has no phone number on file, or
+has no photo on file.
+
+**Migration 68 shipped with two critical regressions, found and fixed within
+this same PR before merge — recorded here rather than quietly folded into
+the final diff:**
+
+Migration 68 was written against migration 25's version of
+`generate_residence_credential_on_payment()`, not the live function body.
+Two later migrations had already replaced that function and migration 68
+silently reverted both: migration 66's payment-linkage predicates
+(`p.credential_request_id = NEW.credential_request_id AND p.payment_type =
+'credential_fee'` — without them, any confirmed payment of any type/amount
+in the woreda would satisfy the "payment exists" gate for any credential
+request, a cross-request fraud vector) and migration 29's
+`set_config('app.minting_credential', 'on'/'', true)` calls (without them,
+the `BEFORE INSERT` guard on `residence_credential` would reject every
+single credential mint in production with `insufficient_privilege`).
+
+Both were caught by dispatching `workflow-fsm-review` and
+`tenant-isolation-review` against migration 68 before push — the two agents
+independently converged on the same two findings. Fixed via a second,
+corrective migration, `00000000000069_age_guard_fix_stale_base.sql`
+(`CREATE OR REPLACE` on the same function; migration 68 itself was not
+reverted, per the additive-only guardrail), which restores migration 66's
+payment predicate and migration 29's `set_config` calls, keeps migration
+68's three age/phone/photo checks unchanged, and adds one more gate the same
+reviews flagged as missing: `resident.active_flag = true`. Verified live via
+a direct `pg_proc.prosrc` query confirming all required elements are present
+in the deployed function body (payment predicates, `set_config` on/off,
+`ready_to_print` status, `active_flag`, the three original checks).
+
+The review also flagged that the original three probes were not genuine
+positive controls — all three disabled `residence_credential`'s own
+`zz_enforce_workflow_insert` trigger during setup, and since all three also
+expected `ERROR`, none of them could have caught the `insufficient_privilege`
+regression migration 68 introduced (disabling that trigger masks exactly
+what the missing `set_config` calls would have broken). Fixed by rewriting
+`age_guard_accepts_exact_18th_birthday_today` to leave that trigger enabled,
+and adding two new probes that also leave it enabled:
+`credential_happy_path_mint_with_guards_enabled` (full valid mint with every
+guard active, expects `SUCCESS`) and
+`credential_paid_with_unrelated_payment_row` (a second resident's confirmed
+payment cannot satisfy a different request's payment gate, expects `ERROR`).
+Full run after the fix: **65/65 probes `PASS`, net-zero.**
+
+**A third check, `/code-review` on this PR's own diff (run independently of
+the two dispatched agents above, before merge), found migration 69's fourth
+check was itself incomplete:** it ported `resident.active_flag = true` but
+not `resident.residency_status <> 'deceased'`. `apply_death_on_approval()`
+(baseline migration) sets `residency_status = 'deceased'` on an approved
+death event but never touches `active_flag`, so a deceased resident's
+`active_flag` stays `true` and would have passed migration 69's check alone
+— a path (a direct PostgREST call, or the offline-sync replay in
+`src/lib/offlineSync.ts`, neither of which re-checks `residency_status`
+client-side) could still mint a residence credential for a resident on
+record as deceased. Every sibling eligibility check in the codebase —
+`enforce_service_request_preconditions()` (migrations 65:243, 66:448) —
+tests both conditions together; migration 69's own header comment claimed
+to match that check but only ported half. Fixed by a third corrective
+migration, `00000000000070_mint_guard_deceased_check.sql` (`CREATE OR
+REPLACE` again), verified live via the same `pg_proc.prosrc` method
+confirming `residency_status = 'deceased'` is now checked alongside
+`active_flag`. A new dedicated probe, `age_guard_rejects_deceased_resident`
+(a resident with `active_flag = true` but `residency_status = 'deceased'`,
+expects `ERROR`), was added. Full run after this fix: **66/66 probes
+`PASS`, net-zero.**
+
+Client-side: `residentSchema.ts`'s base schema was **not** changed to require
+phone/photo directly — an earlier draft of this fix did that and was itself
+a regression the same review caught (`generate_resident_on_birth_approval()`,
+the DB trigger that creates a resident row for a newborn, sets neither field,
+so a table-wide or shared-schema requirement would have made every newborn
+resident un-editable). Fixed by adding a separate `residentCreateSchema`
+(base schema plus `.superRefine()`, chosen over `.extend()` to keep
+`z.input`/`z.output` identical for `ResidentWizardSteps`'s existing prop
+types) applied only to the intake form
+(`woreda.residents.new.tsx`) — editing an existing resident still uses the
+unmodified, optional-phone/photo base schema. `src/lib/__tests__/residentSchema.test.ts`
+locks this create-vs-edit split in with 5 tests. `woreda.credentials.new.tsx`
+also gained early client-side `noPhone`/`noPhoto` warnings (matching the
+existing `notActive`/`isUnder18` pattern, each linking to the resident's edit
+page) so an officer sees the gap before attempting payment, not only at the
+DB rejection. Deliberately **not** a table-wide `NOT NULL` on
+`resident.phone_number`/`photo_url` — see `docs/architecture.md`'s "18+ age
+invariant" section for why the civil-registration birth-approval trigger
+makes that the wrong fix.
+
+A fourth, unrelated finding from the same review pass:
+`src/lib/offlineSync.ts`'s `syncRecordPaymentDraft` had an error-message
+parity gap — the branch handling a failed final status-update after an
+already-recorded payment returned a bare driver message, while the adjacent
+`!paidRow` branch already told the officer to contact an administrator to
+reconcile. Fixed to match, for non-transient errors only (transient errors
+still surface the raw retryable message unchanged).
+
+### 17b. DMARC ramp — explicit residue
+
+`p=none` monitors alignment but does not enforce it. The go-live
+declaration's watch list carries the ramp to `p=quarantine` then `p=reject`
+after a clean monitoring period — this is owner DNS-zone work, outside what
+a migration or PR in this repo can close.
+
+### 17c. Live enumeration used for this PR's doc regeneration
+
+Read-only Management API queries against `tugzuexfyzbdnghbmrjl`, 2026-09-14,
+no writes:
+
+```
+tables (public schema):          52  (zero drift vs. supabase/migrations/*.sql)
+RLS-enabled tables:               52 / 52
+RLS policies:                    139
+triggers:                        144
+SECURITY DEFINER functions:       88
+role_permission rows:          2,982  (6 woredas x 71 permissions x 7 roles)
+tenant_role / tenant_role_permission rows: 0 / 0  (capability shipped, unused)
+console_role_permission rows:     10
+workflow_transition rows:         70  (22 credential_request, 9 residence_credential,
+                                        12 vital_event, 20 service_request, 7 rental_occupancy_request)
+```

@@ -17,7 +17,7 @@ import { LineChartCard } from "@/components/charts/LineChartCard";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
 import { KpiCard } from "@/components/common/KpiCard";
-import { ethiopianMonthLabel, formatEthiopianDateTime } from "@/utils/ethiopianCalendar";
+import { ethiopianMonthLabel } from "@/utils/ethiopianCalendar";
 
 export const Route = createFileRoute("/woreda/dashboard")({
   ssr: false,
@@ -108,13 +108,25 @@ function WoredaDashboard() {
     queryKey: ["dash", woredaId, "revenue-today"],
     enabled: !!woredaId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("payment")
-        .select("amount")
+      // payment_decrypted isn't in the generated types yet (00000000000023_
+      // pii_encryption.sql) -- same untyped-client cast pattern already used
+      // elsewhere in this codebase for pre-typegen tables.
+      const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const { data, error } = await db
+        .from("payment_decrypted")
+        .select("amount, amount_decrypted")
         .eq("woreda_id", woredaId as string)
         .gte("payment_date", new Date().toISOString().slice(0, 10));
       if (error) throw error;
-      return (data ?? []).reduce((s, r) => s + Number(r.amount), 0);
+      // amount is NOT NULL on the base table -- falling back to it when
+      // amount_decrypted comes back NULL (decrypt_pii_numeric failing, fail-
+      // soft by design) keeps this KPI from silently under-reporting revenue
+      // that /woreda/revenue (which has the same fallback) still shows.
+      return (data ?? []).reduce(
+        (s: number, r: { amount: number; amount_decrypted: number | null }) =>
+          s + Number(r.amount_decrypted ?? r.amount),
+        0,
+      );
     },
   });
 
@@ -174,9 +186,13 @@ function WoredaDashboard() {
       const since = new Date();
       since.setDate(since.getDate() - 29);
       since.setHours(0, 0, 0, 0);
-      const { data, error } = await supabase
-        .from("payment")
-        .select("amount, payment_date")
+      // payment_decrypted isn't in the generated types yet (00000000000023_
+      // pii_encryption.sql) -- same untyped-client cast pattern already used
+      // elsewhere in this codebase for pre-typegen tables.
+      const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const { data, error } = await db
+        .from("payment_decrypted")
+        .select("amount, amount_decrypted, payment_date")
         .eq("woreda_id", woredaId as string)
         .gte("payment_date", since.toISOString().slice(0, 10));
       if (error) throw error;
@@ -187,28 +203,16 @@ function WoredaDashboard() {
         const k = d.toISOString().slice(0, 10);
         buckets.set(k, { day: k.slice(5), amount: 0 });
       }
-      (data ?? []).forEach((r) => {
-        const k = r.payment_date as string;
-        const b = buckets.get(k);
-        if (b) b.amount += Number(r.amount);
-      });
+      // Same fallback as revenueToday above -- a NULL amount_decrypted means
+      // decryption failed, not that the payment was free.
+      (data ?? []).forEach(
+        (r: { payment_date: string; amount: number; amount_decrypted: number | null }) => {
+          const k = r.payment_date;
+          const b = buckets.get(k);
+          if (b) b.amount += Number(r.amount_decrypted ?? r.amount);
+        },
+      );
       return Array.from(buckets.values());
-    },
-  });
-
-  const recentAudit = useQuery({
-    queryKey: ["dash", woredaId, "audit"],
-    enabled: !!woredaId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("audit_log")
-        .select("audit_log_id, entity_name, action_type, action_at, actor_user_id")
-        .eq("woreda_id", woredaId as string)
-        .gte("action_at", new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString())
-        .order("action_at", { ascending: false })
-        .limit(50);
-      if (error) throw error;
-      return data ?? [];
     },
   });
 
@@ -304,44 +308,6 @@ function WoredaDashboard() {
           loading={dailyRevenue.isLoading}
           height={256}
         />
-      </div>
-
-      {/* Recent activity */}
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h3 className="font-am-heading text-sm font-semibold text-slate-900">የቅርብ ጊዜ እንቅስቃሴ</h3>
-        <p className="text-xs text-slate-400">Recent activity</p>
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
-                <th className="font-am-heading py-2 pr-4">ጊዜ / Time</th>
-                <th className="font-am-heading py-2 pr-4">ድርጊት / Action</th>
-                <th className="font-am-heading py-2 pr-4">አካል / Entity</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(recentAudit.data ?? []).length === 0 ? (
-                <tr>
-                  <td colSpan={3} className="py-6 text-center text-slate-400">
-                    <span className="font-am-body">
-                      ባለፉት 12 ሰዓታት ምንም እንቅስቃሴ የለም / No activity in the last 12 hours
-                    </span>
-                  </td>
-                </tr>
-              ) : (
-                (recentAudit.data ?? []).map((row) => (
-                  <tr key={row.audit_log_id} className="border-b border-slate-100">
-                    <td className="font-am-body py-2 pr-4 text-slate-600">
-                      {formatEthiopianDateTime(new Date(row.action_at as string))}
-                    </td>
-                    <td className="py-2 pr-4 text-slate-700">{row.action_type}</td>
-                    <td className="py-2 pr-4 text-slate-700">{row.entity_name}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
       </div>
     </div>
   );

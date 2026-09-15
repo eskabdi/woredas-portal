@@ -32,6 +32,7 @@ FUNCTIONS=(
   activate-invited-user
   record-login
   sign-credential
+  send-password-reset-link
 )
 
 echo "==> Deploying ${#FUNCTIONS[@]} function(s) to $REF"

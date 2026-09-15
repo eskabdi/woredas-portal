@@ -1,15 +1,21 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { FileText, Plus, Baby, HeartCrack, Heart, Scale, ChevronDown } from "lucide-react";
+import {
+  FileText,
+  Plus,
+  Baby,
+  HeartCrack,
+  Heart,
+  Scale,
+  ChevronDown,
+  ShieldCheck,
+  Gavel,
+  CreditCard,
+} from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
-import {
-  TablePagination,
-  useUrlPagination,
-  useUrlSearchTerm,
-} from "@/components/common/TablePagination";
 import { StatusChip } from "@/components/common/StatusChip";
 import { PermissionGate } from "@/components/common/PermissionGate";
 import {
@@ -21,33 +27,36 @@ import {
 import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/integrations/supabase/client";
 import { P } from "@/config/permissions";
-import { TableSkeletonRows, TableEmptyRow, TableErrorRow } from "@/components/common/TableStates";
-import {
-  useUrlSort,
-  SortableTh,
-  useClearTableFilters,
-  TableToolbar,
-  FilterGroup,
-} from "@/components/common/TableToolbar";
+import { ExportButtons } from "@/components/common/TableToolbar";
 import { exportRowsToCsv, exportRowsToPdf, type TableColumn } from "@/utils/tableExport";
 import { useReportBranding } from "@/hooks/useReportBranding";
+import { formatEthiopianDateShortOnly } from "@/utils/ethiopianCalendar";
+import { CivilKpiWidgetRow } from "@/components/civil/CivilKpiWidgetRow";
+import {
+  WorkflowQueueTable,
+  useWorkflowQueueFilters,
+  waitingDaysLabel,
+  type QueueColumn,
+  type QueueQuickAction,
+} from "@/components/workflow/WorkflowQueueTable";
 
-const EVENT_TYPES = [
-  { value: "all", label: "ሁሉም / All" },
+const EVENT_TYPE_OPTIONS = [
   { value: "birth", label: "ልደት / Birth" },
   { value: "death", label: "ሞት / Death" },
   { value: "marriage", label: "ጋብቻ / Marriage" },
   { value: "divorce", label: "ፍቺ / Divorce" },
 ];
 
-const STATUSES = [
-  { value: "all", label: "ሁሉም / All" },
+const STATUS_OPTIONS = [
   { value: "submitted", label: "ገብቷል / Submitted" },
   { value: "under_review", label: "በክለሳ ላይ / Under Review" },
+  { value: "verified", label: "ተረጋግጧል / Verified" },
   { value: "pending_approval", label: "ጸድቆ በሚጠበቅ / Pending Approval" },
   { value: "approved", label: "ፀድቋል / Approved" },
+  { value: "awaiting_payment", label: "ክፍያ በመጠባበቅ ላይ / Awaiting Payment" },
+  { value: "paid", label: "ተከፍሏል / Paid" },
+  { value: "registered", label: "ተመዝግቧል / Registered" },
   { value: "returned", label: "ተመልሷል / Returned" },
-  { value: "approval_returned", label: "ተመልሷል (ማጽደቅ) / Returned (Approval)" },
   { value: "rejected", label: "ውድቅ / Rejected" },
 ];
 
@@ -86,75 +95,153 @@ interface VitalEventRow {
   event_date: string | null;
   status: string;
   created_at: string;
+  requested_by_user_id: string | null;
   event_details: unknown;
   resident: { resident_id: string; full_name: string | null; full_name_am: string | null } | null;
+  household: { kebele_id: string } | null;
+}
+
+/** Mirrors CredentialQueueTable's quickActionFor -- the row's status decides
+ * WHICH stage action to offer; PermissionGate (applied by WorkflowQueueTable
+ * itself) decides whether the signed-in user may actually see it. */
+function quickActionFor(row: VitalEventRow): QueueQuickAction | null {
+  switch (row.status) {
+    case "submitted":
+    case "under_review":
+      return { icon: ShieldCheck, permission: P.CIVIL_VERIFY, labelAm: "አረጋግጥ", labelEn: "Verify" };
+    case "pending_approval":
+      return { icon: Gavel, permission: P.CIVIL_APPROVE, labelAm: "አጽድቅ", labelEn: "Approve" };
+    case "awaiting_payment":
+      return {
+        icon: CreditCard,
+        permission: P.CIVIL_RECORD_PAYMENT,
+        labelAm: "ክፍያ መዝግብ",
+        labelEn: "Record Payment",
+      };
+    default:
+      return null;
+  }
 }
 
 function CivilListPage() {
   const woredaId = useAuthStore((s) => s.woredaId);
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const navigate = useNavigate();
-
-  const { input: searchInput, setInput: setSearchInput, term: search } = useUrlSearchTerm();
-  const [eventType, setEventType] = useState("all");
-  const [status, setStatus] = useState("all");
+  const filters = useWorkflowQueueFilters();
   const [exporting, setExporting] = useState(false);
   const brandingQuery = useReportBranding();
-  const sort = useUrlSort("created_at", "desc");
-  const { page, setPage, pageSize, setPageSize } = useUrlPagination(
-    [search, eventType, status, sort.key].join("|"),
-  );
 
+  const kebelesQuery = useQuery({
+    queryKey: ["kebeles-for-filter", woredaId],
+    enabled: !!woredaId,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("kebele")
+        .select("kebele_id, kebele_number, kebele_name_am")
+        .eq("woreda_id", woredaId!)
+        .order("kebele_number");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const officersQuery = useQuery({
+    queryKey: ["officers-for-filter", woredaId],
+    enabled: !!woredaId,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("app_user")
+        .select("user_id, full_name")
+        .eq("woreda_id", woredaId!)
+        .eq("status", "active")
+        .order("full_name");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  // A birth/death event may have no household_id (household is optional on
+  // vital_event) -- filtering by kebele therefore needs an INNER embed
+  // (only when the filter is actually active) so events with no household
+  // don't silently vanish from the unfiltered view, which a blanket
+  // `!inner` embed would do.
   const buildQuery = () => {
+    const householdEmbed =
+      filters.kebele.value !== "all"
+        ? "household:household_id!inner(kebele_id)"
+        : "household:household_id(kebele_id)";
     let q = supabase
       .from("vital_event")
       .select(
-        "vital_event_id, event_number, event_type, event_date, status, created_at, event_details, resident:resident_id(resident_id, full_name, full_name_am, resident_number)",
+        `vital_event_id, event_number, event_type, event_date, status, created_at, requested_by_user_id, event_details, resident:resident_id(resident_id, full_name, full_name_am, resident_number), ${householdEmbed}`,
         { count: "exact" },
       )
       .eq("woreda_id", woredaId as string);
 
-    if (eventType !== "all") q = q.eq("event_type", eventType);
-    if (status !== "all") q = q.eq("status", status);
-    if (search) {
-      const escaped = search.replace(/[%,]/g, "");
+    if (filters.type.value !== "all") q = q.eq("event_type", filters.type.value);
+    if (filters.status.value !== "all") q = q.eq("status", filters.status.value);
+    if (filters.kebele.value !== "all") q = q.eq("household.kebele_id", filters.kebele.value);
+    if (filters.officer.value !== "all") q = q.eq("requested_by_user_id", filters.officer.value);
+    if (filters.dateFrom.value) q = q.gte("event_date", filters.dateFrom.value);
+    if (filters.dateTo.value) q = q.lte("event_date", filters.dateTo.value);
+    if (filters.search) {
+      const escaped = filters.search.replace(/[%,]/g, "");
       q = q.ilike("event_number", `%${escaped}%`);
     }
-    const dbColumn = SORT_COLUMN[sort.field] ?? "created_at";
+    const dbColumn = SORT_COLUMN[filters.sort.field] ?? "created_at";
     q = q
-      .order(dbColumn, { ascending: sort.dir === "asc" })
+      .order(dbColumn, { ascending: filters.sort.dir === "asc" })
       .order("created_at", { ascending: false });
     return q;
   };
 
   const eventsQuery = useQuery({
-    queryKey: ["vital-events", woredaId, search, eventType, status, sort.key, page, pageSize],
+    queryKey: [
+      "vital-events",
+      woredaId,
+      filters.search,
+      filters.type.value,
+      filters.status.value,
+      filters.kebele.value,
+      filters.officer.value,
+      filters.dateFrom.value,
+      filters.dateTo.value,
+      filters.sort.key,
+      filters.page,
+      filters.pageSize,
+    ],
     enabled: !!woredaId && hasPermission(P.CIVIL_READ),
     queryFn: async () => {
-      const q = buildQuery().range(page * pageSize, page * pageSize + pageSize - 1);
-
+      const q = buildQuery().range(
+        filters.page * filters.pageSize,
+        filters.page * filters.pageSize + filters.pageSize - 1,
+      );
       const { data, error, count } = await q;
       if (error) throw error;
       return { rows: (data ?? []) as unknown as VitalEventRow[], count: count ?? 0 };
     },
   });
 
-  const resetFilters = () => {
-    setEventType("all");
-    setStatus("all");
-    setSearchInput("");
-  };
-  const clearFilters = useClearTableFilters([], resetFilters);
-  const filtersActive = !!search || eventType !== "all" || status !== "all" || !sort.isDefault;
+  const kebeleLabel = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const k of kebelesQuery.data ?? []) map[k.kebele_id] = `${k.kebele_number}`;
+    return map;
+  }, [kebelesQuery.data]);
 
-  const filterLabel = useMemo(() => {
-    const parts: string[] = [];
-    if (search) parts.push(`Search: "${search}"`);
-    if (eventType !== "all") parts.push(`Type: ${EVENT_TYPE_LABEL[eventType] ?? eventType}`);
-    if (status !== "all") parts.push(`Status: ${status}`);
-    if (!sort.isDefault) parts.push(`Sort: ${sort.field} ${sort.dir}`);
-    return parts.length ? parts.join(" • ") : "No filters applied";
-  }, [search, eventType, status, sort]);
+  const kebeleOptions = useMemo(
+    () =>
+      (kebelesQuery.data ?? []).map((k) => ({
+        value: k.kebele_id,
+        label: `${k.kebele_number} · ${k.kebele_name_am}`,
+      })),
+    [kebelesQuery.data],
+  );
+  const officerOptions = useMemo(
+    () => (officersQuery.data ?? []).map((o) => ({ value: o.user_id, label: o.full_name })),
+    [officersQuery.data],
+  );
 
   const subjectName = (row: {
     event_type: string;
@@ -192,7 +279,7 @@ function CivilListPage() {
     { header: "Subject (En)", value: (r) => subjectName(r).en },
     {
       header: "የክስተት ቀን / Event Date",
-      value: (r) => (r.event_date ? new Date(r.event_date).toLocaleDateString() : "—"),
+      value: (r) => formatEthiopianDateShortOnly(r.event_date ?? ""),
     },
     { header: "ሁኔታ / Status", value: (r) => r.status },
   ];
@@ -212,7 +299,7 @@ function CivilListPage() {
         fileName: `vital-events-${new Date().toISOString().slice(0, 10)}.csv`,
         columns: exportColumns,
         rows,
-        filterLabel,
+        filterLabel: filters.active ? "Filtered" : "No filters applied",
         titleEn: "Civil Registration Events",
       });
       toast.success("CSV export ready");
@@ -232,7 +319,7 @@ function CivilListPage() {
         branding: brandingQuery.data ?? { nameAm: "ወረዳ አስተዳደር", nameEn: "Woreda Administration" },
         titleAm: "የፍትሐ ብሔር ምዝገባ",
         titleEn: "Civil Registration",
-        filterLabel,
+        filterLabel: filters.active ? "Filtered" : "No filters applied",
         columns: exportColumns,
         rows,
       });
@@ -244,6 +331,73 @@ function CivilListPage() {
     }
   };
 
+  const columns: QueueColumn<VitalEventRow>[] = [
+    {
+      key: "event_number",
+      am: "የክስተት ቁጥር",
+      en: "Event #",
+      sortField: "event_number",
+      render: (r) => <span className="font-mono text-xs text-slate-700">{r.event_number}</span>,
+    },
+    {
+      key: "type",
+      am: "ዓይነት",
+      en: "Type",
+      render: (r) => (
+        <span className="font-am-body">{EVENT_TYPE_LABEL[r.event_type] ?? r.event_type}</span>
+      ),
+    },
+    {
+      key: "subject",
+      am: "ስም",
+      en: "Subject",
+      render: (r) => {
+        const sub = subjectName(r);
+        return (
+          <>
+            <div className="font-am-body font-medium text-slate-900">{sub.am}</div>
+            {sub.en && <div className="text-xs text-slate-500">{sub.en}</div>}
+          </>
+        );
+      },
+    },
+    {
+      key: "kebele",
+      am: "ቀበሌ",
+      en: "Kebele",
+      render: (r) => (
+        <span className="text-xs text-slate-600">
+          {r.household?.kebele_id ? (kebeleLabel[r.household.kebele_id] ?? "—") : "—"}
+        </span>
+      ),
+    },
+    {
+      key: "event_date",
+      am: "የክስተት ቀን",
+      en: "Event Date",
+      sortField: "event_date",
+      render: (r) => (
+        <span className="text-xs text-slate-500">
+          {formatEthiopianDateShortOnly(r.event_date ?? "")}
+        </span>
+      ),
+    },
+    {
+      key: "status",
+      am: "ሁኔታ",
+      en: "Status",
+      render: (r) => <StatusChip status={r.status} />,
+    },
+    {
+      key: "waiting",
+      am: "የቆየበት ጊዜ",
+      en: "Waiting",
+      render: (r) => (
+        <span className="text-xs text-slate-500">{waitingDaysLabel(r.created_at)}</span>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -252,6 +406,7 @@ function CivilListPage() {
         titleEn="Civil Registration"
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            <ExportButtons onCsv={handleExportCsv} onPdf={handleExportPdf} busy={exporting} />
             <PermissionGate permission={P.CIVIL_REGISTER}>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -290,134 +445,40 @@ function CivilListPage() {
         }
       />
 
-      <TableToolbar
-        searchValue={searchInput}
-        onSearchChange={setSearchInput}
+      <CivilKpiWidgetRow />
+
+      <WorkflowQueueTable
+        filters={filters}
         searchPlaceholder="የክስተት ቁጥር / Search by event #…"
-        clearActive={filtersActive}
-        onClear={clearFilters}
-        onExportCsv={handleExportCsv}
-        onExportPdf={handleExportPdf}
-        exportBusy={exporting}
-        filters={
-          <>
-            <FilterGroup
-              label="Type"
-              value={eventType}
-              onChange={(v) => {
-                setEventType(v);
-                setPage(0);
-              }}
-              options={EVENT_TYPES}
-            />
-            <FilterGroup
-              label="Status"
-              value={status}
-              onChange={(v) => {
-                setStatus(v);
-                setPage(0);
-              }}
-              options={STATUSES}
-            />
-          </>
+        statusOptions={STATUS_OPTIONS}
+        typeOptions={EVENT_TYPE_OPTIONS}
+        kebeleOptions={kebeleOptions}
+        officerOptions={officerOptions}
+        columns={columns}
+        rows={eventsQuery.data?.rows ?? []}
+        totalCount={eventsQuery.data?.count ?? 0}
+        isLoading={eventsQuery.isLoading}
+        isError={eventsQuery.isError}
+        error={eventsQuery.error}
+        onRetry={() => eventsQuery.refetch()}
+        rowKey={(r) => r.vital_event_id}
+        onRowClick={(r) =>
+          navigate({ to: "/woreda/civil/$eventId", params: { eventId: r.vital_event_id } })
+        }
+        quickActionFor={quickActionFor}
+        emptyAction={
+          <PermissionGate permission={P.CIVIL_REGISTER}>
+            <Button
+              onClick={() => navigate({ to: "/woreda/civil/birth/new" })}
+              className="mt-3 bg-blue-700 text-white hover:bg-blue-800"
+            >
+              <Baby className="mr-2 h-4 w-4" />
+              <span className="font-am-body">አዲስ የልደት ምዝገባ</span>
+              <span className="ml-2 opacity-80">/ New Birth</span>
+            </Button>
+          </PermissionGate>
         }
       />
-
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-            <tr>
-              <SortableTh field="event_number" sort={sort}>
-                <span className="font-am-body">የክስተት ቁጥር</span>
-                <span className="ml-1 text-slate-400 normal-case">/ Event #</span>
-              </SortableTh>
-              <Th am="ዓይነት" en="Type" />
-              <Th am="ስም" en="Subject" />
-              <SortableTh field="event_date" sort={sort}>
-                <span className="font-am-body">የክስተት ቀን</span>
-                <span className="ml-1 text-slate-400 normal-case">/ Event Date</span>
-              </SortableTh>
-              <Th am="ሁኔታ" en="Status" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {eventsQuery.isLoading && <TableSkeletonRows cols={5} />}
-            {eventsQuery.isError && (
-              <TableErrorRow
-                cols={5}
-                error={eventsQuery.error}
-                onRetry={() => eventsQuery.refetch()}
-              />
-            )}
-            {!eventsQuery.isLoading &&
-              !eventsQuery.isError &&
-              (eventsQuery.data?.rows.length ?? 0) === 0 && (
-                <TableEmptyRow cols={5} filtered={filtersActive} onClearFilters={clearFilters}>
-                  {!filtersActive && (
-                    <PermissionGate permission={P.CIVIL_REGISTER}>
-                      <Button
-                        onClick={() => navigate({ to: "/woreda/civil/birth/new" })}
-                        className="mt-3 bg-blue-700 text-white hover:bg-blue-800"
-                      >
-                        <Baby className="mr-2 h-4 w-4" />
-                        <span className="font-am-body">አዲስ የልደት ምዝገባ</span>
-                        <span className="ml-2 opacity-80">/ New Birth</span>
-                      </Button>
-                    </PermissionGate>
-                  )}
-                </TableEmptyRow>
-              )}
-            {eventsQuery.data?.rows.map((r) => {
-              const sub = subjectName(r);
-              return (
-                <tr
-                  key={r.vital_event_id}
-                  className="cursor-pointer transition hover:bg-blue-50/40"
-                  onClick={() =>
-                    navigate({
-                      to: "/woreda/civil/$eventId",
-                      params: { eventId: r.vital_event_id },
-                    })
-                  }
-                >
-                  <td className="px-4 py-3 font-mono text-xs text-slate-700">{r.event_number}</td>
-                  <td className="font-am-body px-4 py-3">
-                    {EVENT_TYPE_LABEL[r.event_type] ?? r.event_type}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="font-am-body font-medium text-slate-900">{sub.am}</div>
-                    {sub.en && <div className="text-xs text-slate-500">{sub.en}</div>}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-slate-500">
-                    {r.event_date ? new Date(r.event_date).toLocaleDateString() : "—"}
-                  </td>
-                  <td className="px-4 py-3">
-                    <StatusChip status={r.status} />
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      <TablePagination
-        page={page}
-        pageSize={pageSize}
-        total={eventsQuery.data?.count ?? 0}
-        onPageChange={setPage}
-        onPageSizeChange={setPageSize}
-        className="rounded-lg border bg-white"
-      />
     </div>
-  );
-}
-
-function Th({ am, en }: { am: string; en: string }) {
-  return (
-    <th className="px-4 py-3">
-      <span className="font-am-body">{am}</span>
-      <span className="ml-1 text-slate-400 normal-case">/ {en}</span>
-    </th>
   );
 }

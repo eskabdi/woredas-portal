@@ -217,12 +217,22 @@ export function HouseholdTab({
     queryKey: ["resident-tab-household", householdId, residentId, woredaId],
     enabled: !!householdId && !!woredaId,
     queryFn: async () => {
-      const [hh, members] = await Promise.all([
+      // household_decrypted isn't in the generated types yet (00000000000023_
+      // pii_encryption.sql) -- same untyped-client cast pattern already used
+      // elsewhere in this codebase for pre-typegen tables. Fetched as a
+      // separate query rather than folded into the household select below:
+      // that select embeds kebele via a FK-derived PostgREST join, which is
+      // not guaranteed to resolve through a view the same way it does
+      // through the base table. rent_amount now also has an encrypted
+      // counterpart (00000000000044_task6_household_rent_national_id_pii.sql
+      // closed the scope gap 00000000000023's header comment recorded).
+      const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const [hh, members, contact] = await Promise.all([
         supabase
           .from("household")
           .select(
             `household_id, house_number, house_label, occupancy_status, address_line,
-             sub_woreda, phone_number, house_type, rent_amount, household_head_resident_id,
+             sub_woreda, house_type, rent_amount, household_head_resident_id,
              kebele:kebele_id ( kebele_number, kebele_name_am, kebele_name_en )`,
           )
           .eq("household_id", householdId as string)
@@ -233,10 +243,25 @@ export function HouseholdTab({
           .eq("current_household_id", householdId as string)
           .eq("woreda_id", woredaId as string)
           .order("full_name_am"),
+        db
+          .from("household_decrypted")
+          .select("phone_number_decrypted, rent_amount_decrypted")
+          .eq("household_id", householdId as string)
+          .maybeSingle(),
       ]);
       if (hh.error) throw hh.error;
       if (members.error) throw members.error;
-      return { household: hh.data, members: members.data ?? [] };
+      if (contact.error) throw contact.error;
+      return {
+        household: hh.data
+          ? {
+              ...hh.data,
+              phone_number: contact.data?.phone_number_decrypted,
+              rent_amount: contact.data?.rent_amount_decrypted ?? hh.data.rent_amount,
+            }
+          : null,
+        members: members.data ?? [],
+      };
     },
   });
 

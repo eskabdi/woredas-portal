@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -24,7 +25,14 @@ import { ResidentSearchPicker } from "@/components/forms/ResidentSearchPicker";
 import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/integrations/supabase/client";
 import { P } from "@/config/permissions";
-import { formatEthiopianDate, parseDateOnly } from "@/utils/ethiopianCalendar";
+import { calculateAgeYears, formatEthiopianDate, parseDateOnly } from "@/utils/ethiopianCalendar";
+import { sha256Hex } from "@/utils/fileChecksum";
+import {
+  POLICE_REPORT_REQUIRED_TYPES,
+  CORRECTION_FIELD_OPTIONS,
+} from "@/lib/credentialWorkflowSchemas";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { useOfflineQueue } from "@/hooks/useOfflineQueue";
 
 const searchSchema = z.object({
   residentId: z.string().optional(),
@@ -80,6 +88,9 @@ const formSchema = z
     supporting_document_name: z.string().nullable().optional(),
     supporting_document_content_type: z.string().nullable().optional(),
     notes: z.string().max(2000).optional().nullable(),
+    police_report_number: z.string().max(100).optional().nullable(),
+    correction_fields: z.array(z.string()).optional(),
+    correction_reason: z.string().max(2000).optional().nullable(),
   })
   .refine((v) => v.request_type === "new_issue" || !!v.prior_credential_id, {
     path: ["prior_credential_id"],
@@ -88,6 +99,18 @@ const formSchema = z
   .refine((v) => v.request_type !== "reissue_correction" || !!v.supporting_document_path, {
     path: ["supporting_document_path"],
     message: "Supporting document is required for corrections",
+  })
+  .refine(
+    (v) => !POLICE_REPORT_REQUIRED_TYPES.has(v.request_type) || !!v.police_report_number?.trim(),
+    { path: ["police_report_number"], message: "Police report number is required" },
+  )
+  .refine(
+    (v) => v.request_type !== "reissue_correction" || (v.correction_fields?.length ?? 0) > 0,
+    { path: ["correction_fields"], message: "Select at least one field to correct" },
+  )
+  .refine((v) => v.request_type !== "reissue_correction" || !!v.correction_reason?.trim(), {
+    path: ["correction_reason"],
+    message: "A reason is required for a correction",
   });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -100,7 +123,9 @@ interface ResidentDetail {
   sex: string | null;
   date_of_birth: string | null;
   photo_url: string | null;
+  phone_number: string | null;
   active_flag: boolean;
+  residency_status: string | null;
   current_household_id: string | null;
   household: {
     household_id: string;
@@ -120,15 +145,36 @@ function NewCredentialRequestPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { residentId: presetResidentId } = Route.useSearch();
+  const isOnline = useOnlineStatus();
+  const { enqueue } = useOfflineQueue(woredaId);
 
   const [ackExistingCred, setAckExistingCred] = useState(false);
   const [ackExistingReq, setAckExistingReq] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  // Task 12/11: the actual `attachment` row (checksum, size, mime) can only
+  // be written once the credential_request exists (entity_belongs_to_woreda()
+  // requires the referenced row to already be there) -- these hold the
+  // metadata from the moment of upload until onSubmit inserts the row(s)
+  // right after the request itself is created.
+  const [supportingDocMeta, setSupportingDocMeta] = useState<{
+    checksum: string;
+    size: number;
+    mime: string;
+  } | null>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoAttachment, setPhotoAttachment] = useState<{
+    path: string;
+    name: string;
+    mime: string;
+    checksum: string;
+    size: number;
+  } | null>(null);
 
   const {
     control,
     handleSubmit,
+    register,
     watch,
     setValue,
     formState: { errors },
@@ -143,6 +189,9 @@ function NewCredentialRequestPage() {
       supporting_document_name: null,
       supporting_document_content_type: null,
       notes: "",
+      police_report_number: null,
+      correction_fields: [],
+      correction_reason: null,
     },
   });
 
@@ -151,9 +200,18 @@ function NewCredentialRequestPage() {
   const supportingDocPath = watch("supporting_document_path");
   const supportingDocName = watch("supporting_document_name");
 
-  // Reset prior_credential when going back to new_issue
+  // Reset prior_credential when going back to new_issue, and clear the
+  // other request-type-conditional fields so a stale value from a
+  // previously-selected type can't slip through if the user switches types
+  // after filling them in.
   useEffect(() => {
     if (requestType === "new_issue") setValue("prior_credential_id", null);
+    if (requestType !== "reissue_stolen") setValue("police_report_number", null);
+    if (requestType !== "reissue_correction") {
+      setValue("correction_fields", []);
+      setValue("correction_reason", null);
+    }
+    if (requestType !== "new_issue") setPhotoAttachment(null);
   }, [requestType, setValue]);
 
   const residentQuery = useQuery({
@@ -163,7 +221,7 @@ function NewCredentialRequestPage() {
       const { data, error } = await supabase
         .from("resident")
         .select(
-          "resident_id, resident_number, full_name, full_name_am, sex, date_of_birth, photo_url, active_flag, current_household_id, household:current_household_id(household_id, house_number, kebele:kebele_id(kebele_id, kebele_name_am, kebele_name_en, kebele_number))",
+          "resident_id, resident_number, full_name, full_name_am, sex, date_of_birth, photo_url, phone_number, active_flag, residency_status, current_household_id, household:current_household_id(household_id, house_number, kebele:kebele_id(kebele_id, kebele_name_am, kebele_name_en, kebele_number))",
         )
         .eq("resident_id", residentId)
         .maybeSingle();
@@ -243,19 +301,36 @@ function NewCredentialRequestPage() {
     };
   }, [resident?.photo_url]);
 
-  // Preconditions
+  // Task 12.1 PreConditionCard: the spec's five checks. active/household/
+  // deceased/age are advisory here (the server is the actual authority --
+  // this just gives the officer an early, specific reason instead of a
+  // generic rejection after submit); the conflicting-active-credential rule
+  // is a warning for renewal/reissue (those exist BECAUSE a credential
+  // already exists) but a hard block for new_issue, per spec.
   const notActive = !!resident && !resident.active_flag;
   const notInHousehold = !!resident && !resident.current_household_id;
-  const hardBlocked = notActive || notInHousehold;
+  const isDeceased = resident?.residency_status === "deceased";
+  const age = calculateAgeYears(resident?.date_of_birth ?? null);
+  const isUnder18 = age !== null && age < 18;
+  // Task 8: the server (generate_residence_credential_on_payment(), migration
+  // 00000000000068/69) now fail-closes a mint for a resident with no phone
+  // number or photo on file, matching the age check above -- surfaced here
+  // too so an officer sees the reason at intake, not after a payment has
+  // already been collected and the request stalls at the last step.
+  const noPhone = !!resident && !resident.phone_number;
+  const noPhoto = !!resident && !resident.photo_url;
+  const hardBlocked = notActive || notInHousehold || isDeceased || isUnder18 || noPhone || noPhoto;
 
   const activeCred = activeCredQuery.data ?? null;
   const openReq = openReqQuery.data ?? null;
-  const needsAckCred = !!activeCred;
+  const activeCredBlocksNewIssue = !!activeCred && requestType === "new_issue";
+  const needsAckCred = !!activeCred && requestType !== "new_issue";
   const needsAckReq = !!openReq;
 
   const formEnabled =
     !!resident &&
     !hardBlocked &&
+    !activeCredBlocksNewIssue &&
     (!needsAckCred || ackExistingCred) &&
     (!needsAckReq || ackExistingReq);
 
@@ -280,13 +355,17 @@ function NewCredentialRequestPage() {
     try {
       const ext = file.name.split(".").pop() ?? "pdf";
       const path = `${woredaId}/${crypto.randomUUID()}.${ext}`;
-      const { error } = await supabase.storage
-        .from("credential-request-documents")
-        .upload(path, file, { upsert: false, contentType: file.type });
-      if (error) throw error;
+      const [checksum, uploadResult] = await Promise.all([
+        sha256Hex(file),
+        supabase.storage
+          .from("attachments")
+          .upload(path, file, { upsert: false, contentType: file.type }),
+      ]);
+      if (uploadResult.error) throw uploadResult.error;
       setValue("supporting_document_path", path, { shouldValidate: true });
       setValue("supporting_document_name", file.name);
       setValue("supporting_document_content_type", file.type);
+      setSupportingDocMeta({ checksum, size: file.size, mime: file.type });
       toast.success("ሰነድ ተጭኗል / Document uploaded");
     } catch (e) {
       toast.error(`ፋይል መጫን አልተሳካም / Upload failed: ${(e as Error).message}`);
@@ -295,20 +374,63 @@ function NewCredentialRequestPage() {
     }
   };
 
+  const handlePhotoUpload = async (file: File) => {
+    if (!woredaId) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("ፋይል ከ5MB መብለጥ የለበትም / File must be under 5MB");
+      return;
+    }
+    if (!["image/jpeg", "image/png"].includes(file.type)) {
+      toast.error("JPG ወይም PNG ብቻ / Only JPG or PNG");
+      return;
+    }
+    setPhotoUploading(true);
+    try {
+      const ext = file.name.split(".").pop() ?? "jpg";
+      const path = `${woredaId}/${crypto.randomUUID()}.${ext}`;
+      const [checksum, uploadResult] = await Promise.all([
+        sha256Hex(file),
+        supabase.storage
+          .from("attachments")
+          .upload(path, file, { upsert: false, contentType: file.type }),
+      ]);
+      if (uploadResult.error) throw uploadResult.error;
+      setPhotoAttachment({ path, name: file.name, mime: file.type, checksum, size: file.size });
+      toast.success("ፎቶ ተጭኗል / Photo uploaded");
+    } catch (e) {
+      toast.error(`ፎቶ መጫን አልተሳካም / Photo upload failed: ${(e as Error).message}`);
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
+
   const onSubmit = handleSubmit(async (values) => {
     if (!woredaId || !resident || !actorUserId) return;
-    if (!resident.current_household_id) {
+    if (!resident.current_household_id || !resident.household) {
       toast.error("Resident is not in a household");
       return;
     }
-    // Fetch kebele from household
-    const { data: hh, error: hhErr } = await supabase
-      .from("household")
-      .select("household_id, kebele_id")
-      .eq("household_id", resident.current_household_id)
-      .maybeSingle();
-    if (hhErr || !hh) {
-      toast.error("Could not resolve household");
+    if (!resident.household.kebele?.kebele_id) {
+      // issuing_kebele_id is NOT NULL on credential_request -- fail here with
+      // a clear message rather than let a missing kebele reach the insert as
+      // a raw not-null-violation (which, offline, would only surface at sync
+      // time and discard the queued item as a definitive rejection).
+      toast.error(
+        "የነዋሪው ቤተሰብ ቀበሌ የለውም / This resident's household has no assigned kebele — fix it in Households before submitting",
+      );
+      return;
+    }
+    if (values.request_type === "new_issue" && !photoAttachment) {
+      // Task 12-C: a new-issue credential requires a photo, and uploading
+      // one requires a live network call to Supabase Storage regardless of
+      // queue design -- so this specific request type can never be queued
+      // offline, only online. Every other request type has no such
+      // requirement and can be queued.
+      toast.error(
+        isOnline
+          ? "ፎቶ ይጫኑ / Upload a photo before submitting"
+          : "አዲስ መታወቂያ ጥያቄ ፎቶ ይፈልጋል፣ ከመስመር ውጭ ሆኖ ማስገባት አይቻልም / A new-issue request needs a photo and cannot be queued offline",
+      );
       return;
     }
 
@@ -325,25 +447,47 @@ function NewCredentialRequestPage() {
       }
       const duplicateFlag = dupNotes.length > 0;
 
+      // resident.household is already loaded client-side from the earlier
+      // resident-search query -- no separate live fetch needed for either
+      // the online or the offline path.
       const insertPayload = {
         woreda_id: woredaId,
         resident_id: values.resident_id,
-        household_id: hh.household_id,
-        issuing_kebele_id: hh.kebele_id,
+        household_id: resident.household.household_id,
+        issuing_kebele_id: resident.household.kebele?.kebele_id ?? null,
         request_type: values.request_type,
         credential_type: values.credential_type,
         prior_credential_id: values.prior_credential_id ?? null,
         requested_by_user_id: actorUserId,
         status: "submitted",
         submitted_at: new Date().toISOString(),
-        supporting_document_path: values.supporting_document_path ?? null,
-        supporting_document_name: values.supporting_document_name ?? null,
-        supporting_document_content_type: values.supporting_document_content_type ?? null,
+        // Task 12: uploads now go through the attachment table (inserted
+        // below, once this row exists) instead of these legacy columns --
+        // kept on the table (guardrail 1: no DROP) but no longer written by
+        // new requests. See docs/erd.md.
         duplicate_flag: duplicateFlag,
         duplicate_notes: duplicateFlag ? dupNotes.join("; ") : null,
+        police_report_number: values.police_report_number?.trim() || null,
+        correction_fields:
+          values.request_type === "reissue_correction" ? (values.correction_fields ?? []) : null,
+        correction_reason: values.correction_reason?.trim() || null,
         // request_number auto-assigned by trigger; provide empty to satisfy NOT NULL — trigger overrides
         request_number: "",
       };
+
+      if (!isOnline) {
+        // Task 12-C: no attachment (values.supporting_document_path, if
+        // any, requires the same live upload photoAttachment does, and is
+        // simply omitted here) -- queued exactly as intake, synced by
+        // src/lib/offlineSync.ts once reconnected, with every server-side
+        // guard re-run in full at that point.
+        enqueue("credential_request", "submit_intake", insertPayload, "credential-new");
+        toast.success(
+          "ከመስመር ውጭ ተቀምጧል፣ ሲገናኙ በራስ ሰር ይላካል / Saved offline — will submit automatically once reconnected",
+        );
+        navigate({ to: "/woreda/credentials" });
+        return;
+      }
 
       const { data: inserted, error } = await supabase
         .from("credential_request")
@@ -351,6 +495,68 @@ function NewCredentialRequestPage() {
         .select("credential_request_id, request_number")
         .single();
       if (error) throw error;
+
+      // Task 11/12: attachment rows can only be written once the request
+      // they're about exists (entity_belongs_to_woreda() checks it), so
+      // this happens right after the insert above rather than as part of
+      // the same statement.
+      const attachmentRows: {
+        woreda_id: string;
+        entity: string;
+        entity_id: string;
+        file_name: string;
+        mime: string;
+        size_bytes: number;
+        checksum: string;
+        storage_path: string;
+        attachment_type: string;
+        uploaded_by: string;
+      }[] = [];
+      if (photoAttachment) {
+        attachmentRows.push({
+          woreda_id: woredaId,
+          entity: "credential_request",
+          entity_id: inserted.credential_request_id,
+          file_name: photoAttachment.name,
+          mime: photoAttachment.mime,
+          size_bytes: photoAttachment.size,
+          checksum: photoAttachment.checksum,
+          storage_path: photoAttachment.path,
+          attachment_type: "photo",
+          uploaded_by: actorUserId,
+        });
+      }
+      if (values.supporting_document_path && supportingDocMeta) {
+        attachmentRows.push({
+          woreda_id: woredaId,
+          entity: "credential_request",
+          entity_id: inserted.credential_request_id,
+          file_name: values.supporting_document_name ?? "document",
+          mime: supportingDocMeta.mime,
+          size_bytes: supportingDocMeta.size,
+          checksum: supportingDocMeta.checksum,
+          storage_path: values.supporting_document_path,
+          attachment_type:
+            values.request_type === "reissue_correction" ? "correction_evidence" : "supporting_doc",
+          uploaded_by: actorUserId,
+        });
+      }
+      if (attachmentRows.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error: attErr } = await supabase.from("attachment").insert(attachmentRows as any);
+        if (attErr) {
+          // The credential_request row above already committed and this
+          // officer's role (credential.issue) has no DELETE grant on it
+          // (credential_request_delete requires credential.approve), so
+          // there is no client-side rollback available -- resubmitting the
+          // form would create a duplicate request rather than fixing this
+          // one. Surface the request number so the officer can find and
+          // report the specific row instead of guessing.
+          throw new Error(
+            `ጥያቄ ${inserted.request_number} ተፈጥሯል፤ ፎቶ/ሰነድ ማያያዝ አልተሳካም። እባክዎ ይህን ቁጥር ለሱፐርቫይዘር ያሳውቁ፣ እንደገና አያስገቡ / Request ${inserted.request_number} was created but its attachment failed to save (${attErr.message}). Report this request number to a supervisor — do not resubmit.`,
+          );
+        }
+      }
 
       await supabase.from("credential_request_status_history").insert({
         credential_request_id: inserted.credential_request_id,
@@ -453,7 +659,14 @@ function NewCredentialRequestPage() {
                         : "—"}
                   </dd>
                   <dt className="font-am-body text-slate-500">የልደት ቀን / DOB</dt>
-                  <dd className="font-am-body text-slate-800">{dobDisplay}</dd>
+                  <dd className="font-am-body text-slate-800">
+                    {dobDisplay}
+                    {age !== null && (
+                      <span className={isUnder18 ? "ml-2 text-red-600" : "ml-2 text-slate-500"}>
+                        ({age} ዓመት / {age} yrs)
+                      </span>
+                    )}
+                  </dd>
                   <dt className="font-am-body text-slate-500">ቤተሰብ / Household</dt>
                   <dd className="font-am-body text-slate-800">
                     {resident.household
@@ -469,6 +682,10 @@ function NewCredentialRequestPage() {
             </div>
           )}
 
+          {/* Task 12.1 PreConditionCard: five checks, advisory only -- the
+              server (Task 1/9) is the actual authority. This just gives the
+              officer a specific reason before they hit submit and get a
+              generic rejection instead. */}
           {notActive && (
             <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-red-800">
               <p className="font-am-body font-medium">ይህ ነዋሪ ንቁ አይደለም</p>
@@ -490,8 +707,62 @@ function NewCredentialRequestPage() {
               </Link>
             </div>
           )}
+          {isDeceased && !notActive && !notInHousehold && (
+            <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-red-800">
+              <p className="font-am-body font-medium">ይህ ነዋሪ ሟች ተብሎ ተመዝግቧል</p>
+              <p className="text-sm">This resident is recorded as deceased.</p>
+            </div>
+          )}
+          {isUnder18 && !notActive && !notInHousehold && !isDeceased && (
+            <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-red-800">
+              <p className="font-am-body font-medium">ይህ ነዋሪ ከ18 ዓመት በታች ነው ({age})</p>
+              <p className="text-sm">This resident is under 18 (age {age}).</p>
+            </div>
+          )}
+          {noPhone && !notActive && !notInHousehold && !isDeceased && !isUnder18 && (
+            <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-red-800">
+              <p className="font-am-body font-medium">ይህ ነዋሪ ስልክ ቁጥር የለውም፤ መጀመሪያ ይመዝግቡ</p>
+              <p className="text-sm">This resident has no phone number on file — add one first.</p>
+              <Link
+                to="/woreda/residents/$residentId/edit"
+                params={{ residentId: resident!.resident_id }}
+                className="mt-2 inline-block text-sm font-medium text-red-900 underline"
+              >
+                Edit resident profile →
+              </Link>
+            </div>
+          )}
+          {noPhoto && !notActive && !notInHousehold && !isDeceased && !isUnder18 && !noPhone && (
+            <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-red-800">
+              <p className="font-am-body font-medium">ይህ ነዋሪ ፎቶ የለውም፤ መጀመሪያ ይመዝግቡ</p>
+              <p className="text-sm">This resident has no photo on file — add one first.</p>
+              <Link
+                to="/woreda/residents/$residentId/edit"
+                params={{ residentId: resident!.resident_id }}
+                className="mt-2 inline-block text-sm font-medium text-red-900 underline"
+              >
+                Edit resident profile →
+              </Link>
+            </div>
+          )}
 
-          {activeCred && !hardBlocked && (
+          {activeCredBlocksNewIssue && (
+            <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-red-800">
+              <p className="font-am-body font-medium">
+                ይህ ነዋሪ ቀድሞውኑ ንቁ የመታወቂያ ማስረጃ አለው — “አዲስ አወጣጥ” መጠቀም አይቻልም
+              </p>
+              <p className="text-sm">
+                This resident already has an active credential — a "New Issue" request isn't allowed
+                while one is active. Use Renewal or a Reissue type instead.
+              </p>
+              <p className="mt-1 text-sm">
+                <span className="font-mono">{activeCred?.credential_number}</span> ·{" "}
+                {activeCred?.credential_type} · <StatusChip status={activeCred?.status ?? ""} />
+              </p>
+            </div>
+          )}
+
+          {needsAckCred && !hardBlocked && (
             <div className="rounded-lg border border-amber-300 bg-amber-50 p-4">
               <div className="flex items-start gap-3">
                 <AlertTriangle className="mt-0.5 h-5 w-5 text-amber-600" />
@@ -503,8 +774,8 @@ function NewCredentialRequestPage() {
                     This resident already has an active credential.
                   </p>
                   <p className="mt-1 text-sm text-amber-900">
-                    <span className="font-mono">{activeCred.credential_number}</span> ·{" "}
-                    {activeCred.credential_type} · <StatusChip status={activeCred.status} />
+                    <span className="font-mono">{activeCred?.credential_number}</span> ·{" "}
+                    {activeCred?.credential_type} · <StatusChip status={activeCred?.status ?? ""} />
                   </p>
                   <label className="mt-3 flex items-start gap-2 text-sm text-amber-900">
                     <input
@@ -522,7 +793,7 @@ function NewCredentialRequestPage() {
             </div>
           )}
 
-          {openReq && !hardBlocked && (
+          {openReq && !hardBlocked && !activeCredBlocksNewIssue && (
             <div className="rounded-lg border border-amber-300 bg-amber-50 p-4">
               <div className="flex items-start gap-3">
                 <AlertTriangle className="mt-0.5 h-5 w-5 text-amber-600" />
@@ -664,6 +935,128 @@ function NewCredentialRequestPage() {
             </div>
           )}
 
+          {requestType === "reissue_stolen" && (
+            <div>
+              <Label className="font-am-body" htmlFor="police-report-number">
+                የፖሊስ ሪፖርት ቁጥር / Police Report Number <span className="text-red-600">*</span>
+              </Label>
+              <Input
+                id="police-report-number"
+                className="mt-2"
+                {...register("police_report_number")}
+                placeholder="e.g. PR-2026-00123"
+              />
+              {errors.police_report_number && (
+                <p className="mt-1 text-sm text-red-600">{errors.police_report_number.message}</p>
+              )}
+            </div>
+          )}
+
+          {requestType === "reissue_correction" && (
+            <div className="space-y-3 rounded-md border border-slate-200 p-3">
+              <div>
+                <Label className="font-am-body">
+                  የሚስተካከሉ መስኮች / Fields to Correct <span className="text-red-600">*</span>
+                </Label>
+                <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {CORRECTION_FIELD_OPTIONS.map((opt) => (
+                    <label key={opt.value} className="flex items-center gap-2 text-sm">
+                      <Controller
+                        control={control}
+                        name="correction_fields"
+                        render={({ field }) => (
+                          <Checkbox
+                            checked={(field.value ?? []).includes(opt.value)}
+                            onCheckedChange={(checked) => {
+                              const current = field.value ?? [];
+                              field.onChange(
+                                checked
+                                  ? [...current, opt.value]
+                                  : current.filter((v: string) => v !== opt.value),
+                              );
+                            }}
+                          />
+                        )}
+                      />
+                      <span>
+                        {opt.labelAm} / {opt.labelEn}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                {errors.correction_fields && (
+                  <p className="mt-1 text-sm text-red-600">{errors.correction_fields.message}</p>
+                )}
+              </div>
+              <div>
+                <Label className="font-am-body" htmlFor="correction-reason">
+                  የማስተካከያ ምክንያት / Correction Reason <span className="text-red-600">*</span>
+                </Label>
+                <Textarea
+                  id="correction-reason"
+                  rows={3}
+                  className="mt-2"
+                  {...register("correction_reason")}
+                  placeholder="Explain what's wrong and what it should be"
+                />
+                {errors.correction_reason && (
+                  <p className="mt-1 text-sm text-red-600">{errors.correction_reason.message}</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {requestType === "new_issue" && (
+            <div>
+              <Label className="font-am-body">
+                ፎቶ / Photo <span className="text-red-600">*</span>
+              </Label>
+              <p className="mt-0.5 text-xs text-slate-500">JPG or PNG. Max 5MB.</p>
+              {photoAttachment ? (
+                <div className="mt-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2">
+                  <div className="flex items-center gap-3">
+                    <Upload className="h-5 w-5 text-blue-700" />
+                    <span className="flex-1 truncate text-sm text-slate-800">
+                      {photoAttachment.name}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setPhotoAttachment(null)}
+                      className="rounded p-1 text-slate-500 hover:bg-blue-100 hover:text-red-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <p className="mt-1 truncate font-mono text-[10px] text-slate-500">
+                    SHA-256: {photoAttachment.checksum}
+                  </p>
+                </div>
+              ) : (
+                <label className="mt-2 flex cursor-pointer items-center justify-center gap-2 rounded-md border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-600 hover:border-blue-400 hover:bg-blue-50">
+                  {photoUploading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="h-4 w-4" />
+                  )}
+                  <span className="font-am-body">
+                    {photoUploading ? "በመጫን ላይ… / Uploading…" : "ፎቶ ይምረጡ / Choose photo"}
+                  </span>
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="image/jpeg,image/png"
+                    disabled={photoUploading}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handlePhotoUpload(f);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+          )}
+
           <div>
             <Label className="font-am-body">
               ደጋፊ ሰነድ / Supporting Document{" "}
@@ -671,22 +1064,30 @@ function NewCredentialRequestPage() {
             </Label>
             <p className="mt-0.5 text-xs text-slate-500">PDF, JPG, or PNG. Max 5MB.</p>
             {supportingDocPath ? (
-              <div className="mt-2 flex items-center gap-3 rounded-md border border-blue-200 bg-blue-50 px-3 py-2">
-                <FileText className="h-5 w-5 text-blue-700" />
-                <span className="flex-1 truncate text-sm text-slate-800">
-                  {supportingDocName ?? supportingDocPath}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setValue("supporting_document_path", null, { shouldValidate: true });
-                    setValue("supporting_document_name", null);
-                    setValue("supporting_document_content_type", null);
-                  }}
-                  className="rounded p-1 text-slate-500 hover:bg-blue-100 hover:text-red-600"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+              <div className="mt-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2">
+                <div className="flex items-center gap-3">
+                  <FileText className="h-5 w-5 text-blue-700" />
+                  <span className="flex-1 truncate text-sm text-slate-800">
+                    {supportingDocName ?? supportingDocPath}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setValue("supporting_document_path", null, { shouldValidate: true });
+                      setValue("supporting_document_name", null);
+                      setValue("supporting_document_content_type", null);
+                      setSupportingDocMeta(null);
+                    }}
+                    className="rounded p-1 text-slate-500 hover:bg-blue-100 hover:text-red-600"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                {supportingDocMeta && (
+                  <p className="mt-1 truncate font-mono text-[10px] text-slate-500">
+                    SHA-256: {supportingDocMeta.checksum}
+                  </p>
+                )}
               </div>
             ) : (
               <label className="mt-2 flex cursor-pointer items-center justify-center gap-2 rounded-md border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-600 hover:border-blue-400 hover:bg-blue-50">
@@ -750,7 +1151,13 @@ function NewCredentialRequestPage() {
           <Button
             type="button"
             onClick={onSubmit}
-            disabled={!formEnabled || submitting || uploading}
+            disabled={
+              !formEnabled ||
+              submitting ||
+              uploading ||
+              photoUploading ||
+              (requestType === "new_issue" && !photoAttachment)
+            }
             className="bg-blue-700 text-white hover:bg-blue-800"
           >
             {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

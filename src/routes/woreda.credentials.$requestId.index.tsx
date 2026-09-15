@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
+  AlertTriangle,
   ArrowLeft,
   CheckCircle2,
   FileText,
@@ -22,6 +23,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusChip } from "@/components/common/StatusChip";
+import {
+  HistoryTimeline,
+  useCredentialRequestHistory,
+  useActorNames,
+} from "@/components/workflow/HistoryTimeline";
 import { PermissionGate } from "@/components/common/PermissionGate";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -50,6 +56,15 @@ import {
   formatEthiopianDateOnly,
   parseDateOnly,
 } from "@/utils/ethiopianCalendar";
+import {
+  RETURN_REASONS,
+  formatStructuredReason,
+  type ReturnReasonCode,
+} from "@/lib/credentialWorkflowSchemas";
+import { useFeeSchedule } from "@/hooks/useCredentialRequests";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { useOfflineQueue } from "@/hooks/useOfflineQueue";
+import { useOfflineGuard } from "@/hooks/useOfflineGuard";
 
 export const Route = createFileRoute("/woreda/credentials/$requestId/")({
   ssr: false,
@@ -149,7 +164,12 @@ function CredentialRequestDetailPage() {
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const canAct = hasPermission(P.CREDENTIAL_ISSUE);
   const canApprove = hasPermission(P.CREDENTIAL_APPROVE);
+  const { isOffline, offlineReason } = useOfflineGuard();
   const navigate = useNavigate();
+  const requestHistoryQuery = useCredentialRequestHistory(requestId, !!requestId);
+  const requestHistoryActorNamesQuery = useActorNames(
+    (requestHistoryQuery.data ?? []).map((h) => h.changed_by_user_id),
+  );
   const queryClient = useQueryClient();
 
   const requestQuery = useQuery({
@@ -165,6 +185,7 @@ function CredentialRequestDetailPage() {
            verification_checklist, verified_by_user_id, verified_at,
            return_reason, submitted_at, created_at,
            duplicate_flag, duplicate_notes,
+           police_report_number, correction_fields, correction_reason,
            approved_by_user_id, approval_decision_at, reject_reason, payment_id,
            resident:resident_id (
              resident_id, resident_number, national_id_no, full_name, full_name_am, sex, date_of_birth, photo_url
@@ -269,20 +290,70 @@ function CredentialRequestDetailPage() {
     }
   };
 
+  // Task 11/12: new requests attach through the generic `attachment` table
+  // instead of the legacy supporting_document_path/_name columns above,
+  // which stay populated only for rows created before this shipped.
+  // Additive display alongside the existing document panel rather than a
+  // replacement of it, so older requests keep rendering exactly as before.
+  const attachmentsQuery = useQuery({
+    queryKey: ["credential-request-attachments", requestId],
+    enabled: !!requestId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("attachment")
+        .select(
+          "attachment_id, attachment_type, file_name, mime, size_bytes, checksum, storage_path, uploaded_at",
+        )
+        .eq("entity", "credential_request")
+        .eq("entity_id", requestId)
+        .order("uploaded_at", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  // Rows backfilled by migration 56 (checksum === 'legacy-unchecked') point at
+  // objects that still live in the pre-Task-11 `credential-request-documents`
+  // bucket, since the backfill only copies the path -- it doesn't move the
+  // file. Every attachment written by this app's own upload code afterwards
+  // lands in the `attachments` bucket, so the bucket is derived from the
+  // sentinel rather than stored as its own column.
+  const openAttachment = async (storagePath: string, checksum: string) => {
+    const bucket = checksum === "legacy-unchecked" ? "credential-request-documents" : "attachments";
+    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(storagePath, 600);
+    if (error || !data?.signedUrl) {
+      toast.error("Could not open attachment");
+      return;
+    }
+    window.open(data.signedUrl, "_blank", "noopener");
+  };
+
+  const ATTACHMENT_TYPE_LABEL: Record<string, string> = {
+    photo: "ፎቶ / Photo",
+    supporting_doc: "ደጋፊ ሰነድ / Supporting Document",
+    correction_evidence: "የማስተካከያ ማስረጃ / Correction Evidence",
+    police_report: "የፖሊስ ሪፖርት / Police Report",
+  };
+
   const status = request?.status ?? "";
   const isEditable = status === "submitted" || status === "under_review";
-  const isReturned = status === "returned";
+  // `approval_returned` is retired (migration 25 stopped writing it, and
+  // return-from-approval now lands in `returned`), but a legacy or
+  // hand-written row can still be sitting in it. Migration 26 seeds
+  // `approval_returned -> under_review` so such a row is recoverable at the
+  // database; including it here is what makes that recovery actually reachable
+  // by an operator rather than only by a direct PostgREST call.
+  const isReturned = status === "returned" || status === "approval_returned";
   const workflowException: { am: string; en: string; tone: "danger" | "warning" } | undefined =
     status === "rejected"
       ? { am: "ውድቅ ተደርጓል", en: "Rejected", tone: "danger" }
-      : status === "returned" || status === "approval_returned"
+      : isReturned
         ? { am: "እርማት ተጠይቋል", en: "Returned for correction", tone: "warning" }
         : undefined;
-  const workflowStage = workflowException
-    ? status === "returned"
-      ? "under_review"
-      : "pending_approval"
-    : status;
+  // Both returned states recover into under_review (migration 26's seeded
+  // approval_returned -> under_review edge), so the stepper shows the same
+  // recovery point for either.
+  const workflowStage = workflowException ? "under_review" : status;
 
   // Checklist state
   const savedChecklist = useMemo<Partial<ChecklistState> & Record<string, unknown>>(() => {
@@ -322,7 +393,8 @@ function CredentialRequestDetailPage() {
   }, [checklistInitialized, request, initialChecklist]);
 
   const [returnDialogOpen, setReturnDialogOpen] = useState(false);
-  const [returnReason, setReturnReason] = useState("");
+  const [returnReasonCode, setReturnReasonCode] = useState<ReturnReasonCode | "">("");
+  const [returnNote, setReturnNote] = useState("");
   const [approvalReturnOpen, setApprovalReturnOpen] = useState(false);
   const [approvalReturnReason, setApprovalReturnReason] = useState("");
   const [rejectOpen, setRejectOpen] = useState(false);
@@ -330,8 +402,13 @@ function CredentialRequestDetailPage() {
   const [busy, setBusy] = useState(false);
 
   const allChecked = CHECKLIST_ITEMS.every((i) => checklist[i.key]);
+  const hasCorrectionEvidence = (attachmentsQuery.data ?? []).some(
+    (a) => a.attachment_type === "correction_evidence",
+  );
   const missingCorrectionDoc =
-    request?.request_type === "reissue_correction" && !request?.supporting_document_path;
+    request?.request_type === "reissue_correction" &&
+    !request?.supporting_document_path &&
+    !hasCorrectionEvidence;
 
   const dobDisplay = useMemo(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -354,7 +431,7 @@ function CredentialRequestDetailPage() {
     try {
       const nowIso = new Date().toISOString();
       const payload = {
-        status: "pending_approval",
+        status: "verified",
         verified_by_user_id: actorUserId,
         verified_at: nowIso,
         verification_checklist: {
@@ -372,7 +449,7 @@ function CredentialRequestDetailPage() {
       await supabase.from("credential_request_status_history").insert({
         credential_request_id: request.credential_request_id,
         old_status: status,
-        new_status: "pending_approval",
+        new_status: "verified",
         changed_by_user_id: actorUserId,
         change_reason: "Verification passed — all checklist items confirmed",
       });
@@ -401,11 +478,17 @@ function CredentialRequestDetailPage() {
 
   const handleReturn = async () => {
     if (!request || !actorUserId || !woredaId) return;
-    const reason = returnReason.trim();
-    if (reason.length < 5) {
-      toast.error("Reason must be at least 5 characters");
+    if (!returnReasonCode) {
+      toast.error("ምክንያት ይምረጡ / Select a return reason");
       return;
     }
+    if (returnReasonCode === "other" && returnNote.trim().length < 5) {
+      toast.error(
+        'ምክንያቱ "ሌላ" ሲሆን ማስታወሻ ያስፈልጋል (ቢያንስ 5 ፊደላት) / A note is required when the reason is "Other" (min 5 characters)',
+      );
+      return;
+    }
+    const reason = formatStructuredReason(RETURN_REASONS, returnReasonCode, returnNote);
     setBusy(true);
     try {
       const nowIso = new Date().toISOString();
@@ -429,13 +512,14 @@ function CredentialRequestDetailPage() {
         entity_name: "credential_request",
         entity_id: request.credential_request_id,
         action_type: "REQUEST_RETURNED",
-        new_value_json: { return_reason: reason } as never,
+        new_value_json: { return_reason: reason, return_reason_code: returnReasonCode } as never,
         action_at: nowIso,
       });
 
       toast.success("ጥያቄው ተመልሷል / Request returned");
       setReturnDialogOpen(false);
-      setReturnReason("");
+      setReturnReasonCode("");
+      setReturnNote("");
       queryClient.invalidateQueries({
         queryKey: ["credential-request", request.credential_request_id],
       });
@@ -460,7 +544,9 @@ function CredentialRequestDetailPage() {
 
       await supabase.from("credential_request_status_history").insert({
         credential_request_id: request.credential_request_id,
-        old_status: "returned",
+        // Read the status we actually came from -- hardcoding "returned" wrote
+        // a false history row for a request recovered from `approval_returned`.
+        old_status: status,
         new_status: "under_review",
         changed_by_user_id: actorUserId,
         change_reason: "Resubmitted for review",
@@ -501,10 +587,31 @@ function CredentialRequestDetailPage() {
     setBusy(true);
     try {
       const nowIso = new Date().toISOString();
+      // The FSM routes approval through two stops: `verified` means the
+      // approver has not opened it yet, `pending_approval` means they have.
+      // Claim it first when arriving from `verified`.
+      if (status === "verified") {
+        const { data: claimRow, error: claimErr } = await supabase
+          .from("credential_request")
+          .update({ status: "pending_approval" })
+          .eq("credential_request_id", request.credential_request_id)
+          .select("credential_request_id")
+          .maybeSingle();
+        if (claimErr) throw claimErr;
+        // PostgREST reports error: null whether the WHERE matched one row or
+        // zero, so an RLS-excluded or concurrently-moved row would otherwise
+        // fall through and fail confusingly on the `approved` write instead.
+        if (!claimRow) {
+          throw new Error(
+            "ጥያቄው ሊያዝ አልቻለም / Could not claim this request — it may have been moved by someone else",
+          );
+        }
+      }
+
       const { error } = await supabase
         .from("credential_request")
         .update({
-          status: "awaiting_payment",
+          status: "approved",
           approved_by_user_id: actorUserId,
           approval_decision_at: nowIso,
         })
@@ -514,7 +621,7 @@ function CredentialRequestDetailPage() {
       await supabase.from("credential_request_status_history").insert({
         credential_request_id: request.credential_request_id,
         old_status: status,
-        new_status: "awaiting_payment",
+        new_status: "approved",
         changed_by_user_id: actorUserId,
         change_reason: "Approved",
       });
@@ -549,14 +656,14 @@ function CredentialRequestDetailPage() {
       const nowIso = new Date().toISOString();
       const { error } = await supabase
         .from("credential_request")
-        .update({ status: "approval_returned", return_reason: reason })
+        .update({ status: "returned", return_reason: reason })
         .eq("credential_request_id", request.credential_request_id);
       if (error) throw error;
 
       await supabase.from("credential_request_status_history").insert({
         credential_request_id: request.credential_request_id,
         old_status: status,
-        new_status: "approval_returned",
+        new_status: "returned",
         changed_by_user_id: actorUserId,
         change_reason: reason,
       });
@@ -620,43 +727,6 @@ function CredentialRequestDetailPage() {
       invalidateAll();
     } catch (e) {
       toast.error(`Reject failed: ${(e as Error).message}`);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleResubmitForApproval = async () => {
-    if (!request || !actorUserId || !woredaId) return;
-    setBusy(true);
-    try {
-      const nowIso = new Date().toISOString();
-      const { error } = await supabase
-        .from("credential_request")
-        .update({ status: "pending_approval", return_reason: null })
-        .eq("credential_request_id", request.credential_request_id);
-      if (error) throw error;
-
-      await supabase.from("credential_request_status_history").insert({
-        credential_request_id: request.credential_request_id,
-        old_status: "approval_returned",
-        new_status: "pending_approval",
-        changed_by_user_id: actorUserId,
-        change_reason: "Resubmitted for approval",
-      });
-      await supabase.from("audit_log").insert({
-        woreda_id: woredaId,
-        actor_user_id: actorUserId,
-        entity_name: "credential_request",
-        entity_id: request.credential_request_id,
-        action_type: "REQUEST_RESUBMITTED_FOR_APPROVAL",
-        new_value_json: null,
-        action_at: nowIso,
-      });
-
-      toast.success("ጥያቄው ለማጽደቅ ዳግም ተልኳል / Resubmitted for approval");
-      invalidateAll();
-    } catch (e) {
-      toast.error(`Resubmit failed: ${(e as Error).message}`);
     } finally {
       setBusy(false);
     }
@@ -779,6 +849,26 @@ function CredentialRequestDetailPage() {
                   </dd>
                 </>
               )}
+              {request.request_type === "reissue_stolen" && request.police_report_number && (
+                <>
+                  <dt className="font-am-body text-slate-500">
+                    የፖሊስ ሪፖርት ቁጥር / Police Report Number
+                  </dt>
+                  <dd className="font-mono text-slate-800">{request.police_report_number}</dd>
+                </>
+              )}
+              {request.request_type === "reissue_correction" && (
+                <>
+                  <dt className="font-am-body text-slate-500">የሚስተካከሉ መስኮች / Fields to Correct</dt>
+                  <dd className="text-slate-800">
+                    {(request.correction_fields ?? []).join(", ") || "—"}
+                  </dd>
+                  <dt className="font-am-body text-slate-500">የማስተካከያ ምክንያት / Correction Reason</dt>
+                  <dd className="whitespace-pre-wrap text-slate-800">
+                    {request.correction_reason ?? "—"}
+                  </dd>
+                </>
+              )}
             </dl>
 
             {request.supporting_document_path && (
@@ -803,6 +893,34 @@ function CredentialRequestDetailPage() {
                     reopen
                   </a>
                 )}
+              </div>
+            )}
+            {(attachmentsQuery.data ?? []).length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-slate-500">
+                  <span className="font-am-body">አባሪዎች</span>
+                  <span className="ml-1">/ Attachments</span>
+                </p>
+                {(attachmentsQuery.data ?? []).map((a) => (
+                  <div key={a.attachment_id} className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openAttachment(a.storage_path, a.checksum)}
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      <span>
+                        {ATTACHMENT_TYPE_LABEL[a.attachment_type ?? ""] ?? a.attachment_type}
+                      </span>
+                      <span className="ml-2 text-xs text-slate-500">({a.file_name})</span>
+                    </Button>
+                    {a.checksum && a.checksum !== "legacy-unchecked" && (
+                      <span className="truncate font-mono text-[10px] text-slate-400">
+                        SHA-256: {a.checksum.slice(0, 16)}…
+                      </span>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -854,10 +972,15 @@ function CredentialRequestDetailPage() {
 
                 {canAct ? (
                   <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-4">
+                    {isOffline && (
+                      <p className="font-am-body w-full text-right text-xs text-amber-700">
+                        {offlineReason}
+                      </p>
+                    )}
                     <Button
                       variant="outline"
                       onClick={() => setReturnDialogOpen(true)}
-                      disabled={busy}
+                      disabled={busy || isOffline}
                     >
                       <RotateCcw className="mr-2 h-4 w-4" />
                       <span className="font-am-body">መልስ</span>
@@ -865,7 +988,7 @@ function CredentialRequestDetailPage() {
                     </Button>
                     <Button
                       onClick={handlePass}
-                      disabled={!allChecked || missingCorrectionDoc || busy}
+                      disabled={!allChecked || missingCorrectionDoc || busy || isOffline}
                       className="bg-blue-700 text-white hover:bg-blue-800"
                     >
                       {busy ? (
@@ -885,10 +1008,13 @@ function CredentialRequestDetailPage() {
               </>
             ) : isReturned ? (
               canAct ? (
-                <div className="flex justify-end border-t border-slate-200 pt-4">
+                <div className="flex flex-col items-end gap-2 border-t border-slate-200 pt-4">
+                  {isOffline && (
+                    <p className="font-am-body text-xs text-amber-700">{offlineReason}</p>
+                  )}
                   <Button
                     onClick={handleResubmit}
-                    disabled={busy}
+                    disabled={busy || isOffline}
                     className="bg-blue-700 text-white hover:bg-blue-800"
                   >
                     {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -908,8 +1034,9 @@ function CredentialRequestDetailPage() {
         </section>
 
         {/* Card 3 — Approval */}
-        {(status === "pending_approval" ||
-          status === "approval_returned" ||
+        {(status === "verified" ||
+          status === "pending_approval" ||
+          status === "approved" ||
           status === "rejected" ||
           status === "awaiting_payment" ||
           status === "paid") && (
@@ -924,7 +1051,7 @@ function CredentialRequestDetailPage() {
             </div>
             <div className="space-y-4 p-5">
               {/* Review-scope summary */}
-              {(status === "pending_approval" || status === "approval_returned") && (
+              {(status === "verified" || status === "pending_approval") && (
                 <div className="space-y-3">
                   <div
                     className={`rounded-md border p-3 text-sm ${
@@ -984,13 +1111,34 @@ function CredentialRequestDetailPage() {
                 </div>
               )}
 
-              {status === "pending_approval" &&
+              {(status === "verified" || status === "pending_approval") &&
+                canApprove &&
+                actorUserId &&
+                request.verified_by_user_id === actorUserId && (
+                  <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <div>
+                      <p className="font-am-body font-medium">እርስዎ ራስዎ ያረጋገጡትን ጥያቄ ማጽደቅ አይችሉም</p>
+                      <p className="text-xs">
+                        / You verified this request yourself — the server will reject an approval by
+                        the same person (maker≠checker). A different approver must handle this one.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+              {(status === "verified" || status === "pending_approval") &&
                 (canApprove ? (
                   <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-4">
+                    {isOffline && (
+                      <p className="font-am-body w-full text-right text-xs text-amber-700">
+                        {offlineReason}
+                      </p>
+                    )}
                     <Button
                       variant="destructive"
                       onClick={() => setRejectOpen(true)}
-                      disabled={busy}
+                      disabled={busy || isOffline}
                     >
                       <XCircle className="mr-2 h-4 w-4" />
                       <span className="font-am-body">አትቀበል</span>
@@ -999,7 +1147,7 @@ function CredentialRequestDetailPage() {
                     <Button
                       variant="outline"
                       onClick={() => setApprovalReturnOpen(true)}
-                      disabled={busy}
+                      disabled={busy || isOffline}
                     >
                       <RotateCcw className="mr-2 h-4 w-4" />
                       <span className="font-am-body">መልስ</span>
@@ -1007,7 +1155,7 @@ function CredentialRequestDetailPage() {
                     </Button>
                     <Button
                       onClick={handleApprove}
-                      disabled={busy}
+                      disabled={busy || isOffline}
                       className="bg-emerald-700 text-white hover:bg-emerald-800"
                     >
                       {busy ? (
@@ -1024,35 +1172,6 @@ function CredentialRequestDetailPage() {
                     You don&apos;t have permission to approve this request.
                   </p>
                 ))}
-
-              {status === "approval_returned" && (
-                <>
-                  {request.return_reason && (
-                    <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900">
-                      <div className="font-am-body text-sm font-semibold">
-                        በማጽደቅ ደረጃ የተመለሰበት ምክንያት
-                      </div>
-                      <div className="text-xs opacity-80">
-                        / Returned at Approval Stage — Reason
-                      </div>
-                      <p className="mt-2 whitespace-pre-wrap text-sm">{request.return_reason}</p>
-                    </div>
-                  )}
-                  {canAct && (
-                    <div className="flex justify-end border-t border-slate-200 pt-4">
-                      <Button
-                        onClick={handleResubmitForApproval}
-                        disabled={busy}
-                        className="bg-blue-700 text-white hover:bg-blue-800"
-                      >
-                        {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        <span className="font-am-body">ለማጽደቅ ዳግም አስገባ</span>
-                        <span className="ml-1 text-xs opacity-80">/ Resubmit for Approval</span>
-                      </Button>
-                    </div>
-                  )}
-                </>
-              )}
 
               {status === "rejected" && (
                 <div className="rounded-lg border-2 border-red-300 bg-red-50 p-4 text-red-900">
@@ -1075,7 +1194,7 @@ function CredentialRequestDetailPage() {
                 </div>
               )}
 
-              {(status === "awaiting_payment" || status === "paid") && (
+              {(status === "approved" || status === "awaiting_payment" || status === "paid") && (
                 <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
                   <div className="font-am-body font-semibold">ጥያቄው ጸድቋል</div>
                   <div className="text-xs opacity-80">/ Request approved</div>
@@ -1093,7 +1212,7 @@ function CredentialRequestDetailPage() {
           </section>
         )}
 
-        {(status === "awaiting_payment" || status === "paid") && (
+        {(status === "approved" || status === "awaiting_payment" || status === "paid") && (
           <PaymentCard request={request} status={status} onDone={invalidateAll} />
         )}
 
@@ -1112,7 +1231,7 @@ function CredentialRequestDetailPage() {
           <IssuanceCard
             credentialRowId={request.credential_id}
             requestId={request.credential_request_id}
-            requestType={request.request_type}
+            requestStatus={status}
             priorCredentialId={request.prior_credential_id}
             residentFullNameAm={resident?.full_name_am ?? ""}
             onDone={invalidateAll}
@@ -1122,6 +1241,29 @@ function CredentialRequestDetailPage() {
         {request.credential_id && (
           <RevocationCard credentialRowId={request.credential_id} onDone={invalidateAll} />
         )}
+
+        {request.credential_id && (
+          <SuspendCard credentialRowId={request.credential_id} onDone={invalidateAll} />
+        )}
+
+        {/* Task 14-C: credential requests had no visible history timeline
+            before this -- credential_request_status_history was written on
+            every transition but never rendered. Uses the same shared
+            HistoryTimeline component civil/services now use, reading the
+            request-level table (not credential_status_history, which
+            tracks the physical card's own post-issuance events). */}
+        <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="rounded-t-xl bg-slate-700 px-5 py-3 text-white">
+            <span className="font-am-body text-base font-semibold">የሁኔታ ታሪክ</span>
+            <span className="ml-2 text-sm text-white/80">/ Status History</span>
+          </div>
+          <div className="p-5">
+            <HistoryTimeline
+              rows={requestHistoryQuery.data ?? []}
+              actorNames={requestHistoryActorNamesQuery.data}
+            />
+          </div>
+        </section>
 
         <AlertDialog open={returnDialogOpen} onOpenChange={setReturnDialogOpen}>
           <AlertDialogContent>
@@ -1134,18 +1276,48 @@ function CredentialRequestDetailPage() {
                 Provide a reason. It will be visible to the intake officer.
               </AlertDialogDescription>
             </AlertDialogHeader>
-            <div className="space-y-2">
-              <Label htmlFor="return-reason">
-                <span className="font-am-body">የመመለሻ ምክንያት</span>
-                <span className="ml-2 text-slate-500">/ Return Reason</span>
-              </Label>
-              <Textarea
-                id="return-reason"
-                rows={4}
-                value={returnReason}
-                onChange={(e) => setReturnReason(e.target.value)}
-                placeholder="Min 5 characters"
-              />
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="return-reason-code">
+                  <span className="font-am-body">ተመላሽ የሆነበት ምክንያት</span>
+                  <span className="ml-2 text-slate-500">/ Return Reason</span>
+                </Label>
+                <Select
+                  value={returnReasonCode}
+                  onValueChange={(v) => setReturnReasonCode(v as ReturnReasonCode)}
+                >
+                  <SelectTrigger id="return-reason-code">
+                    <SelectValue placeholder="Select a reason / ምክንያት ይምረጡ" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RETURN_REASONS.map((r) => (
+                      <SelectItem key={r.value} value={r.value}>
+                        {r.labelAm} / {r.labelEn}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="return-note">
+                  <span className="font-am-body">ማስታወሻ</span>
+                  <span className="ml-2 text-slate-500">
+                    / Note
+                    {returnReasonCode === "other" ? " (required, min 5 characters)" : " (optional)"}
+                  </span>
+                </Label>
+                <Textarea
+                  id="return-note"
+                  rows={3}
+                  value={returnNote}
+                  onChange={(e) => setReturnNote(e.target.value)}
+                  placeholder={
+                    returnReasonCode === "other"
+                      ? "Min 5 characters"
+                      : "Additional detail (optional)"
+                  }
+                />
+              </div>
             </div>
             <AlertDialogFooter>
               <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
@@ -1154,7 +1326,11 @@ function CredentialRequestDetailPage() {
                   e.preventDefault();
                   handleReturn();
                 }}
-                disabled={busy || returnReason.trim().length < 5}
+                disabled={
+                  busy ||
+                  !returnReasonCode ||
+                  (returnReasonCode === "other" && returnNote.trim().length < 5)
+                }
               >
                 {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Confirm Return
@@ -1321,6 +1497,7 @@ interface PaymentCardProps {
     household_id: string | null;
     payment_id: string | null;
     request_number: string;
+    request_type: string;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resident: any;
   };
@@ -1333,38 +1510,50 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
   const actorUserId = useAuthStore((s) => s.appUser?.user_id ?? null);
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const canCollect = hasPermission(P.PAYMENT_COLLECT);
+  const isOnline = useOnlineStatus();
+  const { enqueue } = useOfflineQueue(woredaId);
 
-  const feeQuery = useQuery({
-    queryKey: ["woreda-settings-fee", woredaId],
-    enabled: !!woredaId && status === "awaiting_payment",
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("woreda_settings")
-        .select("credential_issuance_fee")
-        .eq("woreda_id", woredaId!)
-        .maybeSingle();
-      if (error) throw error;
-      return Number(data?.credential_issuance_fee ?? 0);
-    },
-  });
+  // Task 12: fee comes from Task 11's per-service-type fee_schedule via the
+  // fail-closed useFeeSchedule hook (resolve_credential_fee() RPC,
+  // 00000000000054), not the old flat woreda_settings.credential_issuance_fee
+  // -- it raises rather than silently falling back if the mapped
+  // fee_schedule row is missing or inactive, so a lookup failure must
+  // surface as an error state here, not resolve to 0 and let a waiver-free
+  // zero fee slip through.
+  const feeQuery = useFeeSchedule(
+    request.request_type,
+    status === "approved" || status === "awaiting_payment",
+  );
 
   const paidQuery = useQuery({
     queryKey: ["credential-request-payment", request.payment_id],
     enabled: status === "paid" && !!request.payment_id,
     queryFn: async () => {
-      const { data: pay, error: payErr } = await supabase
-        .from("payment")
-        .select("payment_id, amount, channel, payment_date, reference_no")
+      // payment_decrypted isn't in the generated types yet (00000000000023_
+      // pii_encryption.sql) -- same untyped-client cast pattern already used
+      // elsewhere in this codebase for pre-typegen tables.
+      const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const { data: pay, error: payErr } = await db
+        .from("payment_decrypted")
+        .select("payment_id, amount, amount_decrypted, channel, payment_date, reference_no")
         .eq("payment_id", request.payment_id!)
         .maybeSingle();
       if (payErr) throw payErr;
+      // amount is NOT NULL on the base table -- a NULL amount_decrypted here
+      // means decrypt_pii_numeric failed (fail-soft by design, see
+      // 00000000000023_pii_encryption.sql), not that the fee is genuinely
+      // zero. Falling through to the still-present plaintext column matches
+      // revenue.index.tsx:138 and useReportsAggregate.ts:373's own fallback
+      // -- without it, a real payment renders as "Waived" below with no
+      // error shown anywhere.
+      const payNormalized = pay ? { ...pay, amount: pay.amount_decrypted ?? pay.amount } : null;
       const { data: rec, error: recErr } = await supabase
         .from("receipt")
         .select("receipt_id, receipt_number, receipt_date, total_amount, cash_bank_channel")
         .eq("payment_id", request.payment_id!)
         .maybeSingle();
       if (recErr) throw recErr;
-      return { payment: pay, receipt: rec };
+      return { payment: payNormalized, receipt: rec };
     },
   });
 
@@ -1380,21 +1569,99 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
   const canSubmit = useMemo(() => {
     if (!canCollect) return false;
     if (busy) return false;
+    // Offline, the fee is never resolved client-side at all -- runSync's
+    // syncRecordPaymentDraft resolves it live from the server at sync time,
+    // exactly like the online path, just later. Gating the button on
+    // feeQuery here would make every offline payment draft unqueueable,
+    // since resolve_credential_fee() can't be called without a network.
+    if (!isOnline) {
+      if (waived) return waiverReason.trim().length >= 5;
+      if (!channel) return false;
+      if ((channel === "bank" || channel === "mobile") && referenceNo.trim().length === 0)
+        return false;
+      return true;
+    }
+    if (feeQuery.isError) return false;
+    // A waiver bypasses the fee entirely, but a non-waived payment must not
+    // be recordable before resolve_credential_fee() has actually resolved --
+    // fee defaulting to 0 while feeQuery is still loading would otherwise
+    // record a zero-amount, unwaived payment (the same failure mode the
+    // fail-closed RPC exists to prevent).
+    if (!waived && (feeQuery.isLoading || feeQuery.data === undefined)) return false;
     if (waived) return waiverReason.trim().length >= 5;
     if (!channel) return false;
     if ((channel === "bank" || channel === "mobile") && referenceNo.trim().length === 0)
       return false;
     return true;
-  }, [canCollect, busy, waived, waiverReason, channel, referenceNo]);
+  }, [
+    canCollect,
+    busy,
+    isOnline,
+    feeQuery.isError,
+    feeQuery.isLoading,
+    feeQuery.data,
+    waived,
+    waiverReason,
+    channel,
+    referenceNo,
+  ]);
 
   const handleRecord = async () => {
     if (!canSubmit || !woredaId || !actorUserId) return;
+
+    const paymentChannel = waived ? "cash" : channel;
+    const refNo =
+      waived || paymentChannel === "cash" ? referenceNo.trim() || null : referenceNo.trim();
+
+    // Task 12-C: a payment DRAFT is queueable offline (never a payment
+    // record itself -- see docs/task12c-mapping-memo.md §2/§4). The fee
+    // raise, the payment insert, the receipt and the paid transition all
+    // happen server-side at sync time (offlineSync.ts's
+    // syncRecordPaymentDraft), re-resolving the fee live rather than
+    // trusting this client's cached `fee` value -- nothing here mutates the
+    // request while offline.
+    if (!isOnline) {
+      enqueue(
+        "credential_request",
+        "record_payment_draft",
+        {
+          credential_request_id: request.credential_request_id,
+          channel: paymentChannel as "cash" | "bank" | "mobile",
+          reference_no: waived ? null : refNo,
+          waived,
+          waiver_reason: waived ? waiverReason.trim() : null,
+        },
+        "credential-payment",
+      );
+      toast.success(
+        "ከመስመር ውጭ ተቀምጧል፣ ሲገናኙ በራስ ሰር ይላካል / Saved offline — will submit automatically once reconnected",
+      );
+      onDone();
+      return;
+    }
+
     setBusy(true);
     try {
       const today = new Date().toISOString().slice(0, 10);
-      const paymentChannel = waived ? "cash" : channel;
-      const refNo =
-        waived || paymentChannel === "cash" ? referenceNo.trim() || null : referenceNo.trim();
+
+      // The fee is raised as its own transition: `approved -> awaiting_payment`
+      // is the moment the amount is fixed, and the FSM requires it before a
+      // request may reach `paid`. Arriving straight from `approved` (the
+      // approver hands off to finance) we do it here.
+      if (status === "approved") {
+        const { data: raiseRow, error: raiseErr } = await supabase
+          .from("credential_request")
+          .update({ status: "awaiting_payment" })
+          .eq("credential_request_id", request.credential_request_id)
+          .select("credential_request_id")
+          .maybeSingle();
+        if (raiseErr) throw raiseErr;
+        if (!raiseRow) {
+          throw new Error(
+            "ክፍያው ሊጠየቅ አልቻለም / Could not raise the fee — the request may have been moved by someone else",
+          );
+        }
+      }
 
       const { data: pay, error: payErr } = await supabase
         .from("payment")
@@ -1409,6 +1676,8 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
           reference_no: waived ? null : refNo,
           status: "confirmed",
           posted_by_user_id: actorUserId,
+          waived,
+          waiver_reason: waived ? waiverReason.trim() : null,
           credential_request_id: request.credential_request_id,
         } as never)
         .select("payment_id")
@@ -1449,8 +1718,10 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
         action_type: waived ? "PAYMENT_WAIVED" : "PAYMENT_COLLECTED",
         new_value_json: {
           amount: effectiveAmount,
+          expected_fee: fee,
           channel: paymentChannel,
           waived,
+          waiver_reason: waived ? waiverReason.trim() : undefined,
         } as never,
         action_at: nowIso,
       });
@@ -1484,10 +1755,30 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
           <span className="ml-2 text-sm text-white/80">/ Payment</span>
         </div>
         <div className="space-y-4 p-5">
-          {status === "awaiting_payment" && (
+          {/* Also renders at `approved`: since the FSM split approval from the
+              fee raise, a request hands off to finance at `approved` and
+              handleRecord performs `approved -> awaiting_payment` itself. Gating
+              this body on `awaiting_payment` alone stranded every approved
+              request with no control able to move it. */}
+          {(status === "approved" || status === "awaiting_payment") && (
             <>
-              {feeQuery.isLoading ? (
+              {!isOnline ? (
+                <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                  <p className="font-am-body font-medium">ክፍያው ሲገናኙ በአገልጋይ በኩል ይሰላል</p>
+                  <p className="text-xs opacity-80">
+                    / The fee will be resolved by the server once you reconnect
+                  </p>
+                </div>
+              ) : feeQuery.isLoading ? (
                 <Skeleton className="h-8 w-40" />
+              ) : feeQuery.isError ? (
+                <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+                  <p className="font-am-body font-medium">ክፍያ መርሃ ግብር አልተገኘም</p>
+                  <p>
+                    {(feeQuery.error as Error).message ||
+                      "No active fee schedule found for this request type — an administrator must add or activate it in Settings."}
+                  </p>
+                </div>
               ) : (
                 <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
                   <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -1750,6 +2041,8 @@ function CredentialReadinessCard({
   const queryClient = useQueryClient();
   const [signing, setSigning] = useState(false);
   const [signError, setSignError] = useState<string | null>(null);
+  const hasPermission = useAuthStore((s) => s.hasPermission);
+  const canSign = hasPermission(P.CREDENTIAL_PRINT);
 
   const credQuery = useQuery({
     queryKey: ["residence-credential-row", credentialRowId],
@@ -1789,7 +2082,13 @@ function CredentialReadinessCard({
   useEffect(() => {
     let cancelled = false;
     async function run() {
-      if (!cred || !wor || !needsSigning || signing) return;
+      // canSign gates this the same way P.CREDENTIAL_PRINT gates the actual
+      // print route -- this card mounts for anyone with CREDENTIAL_READ
+      // (supervisor, finance_clerk, auditor, viewer included), and the sign
+      // call now enforces credential.print server-side, so an unprivileged
+      // viewer must not even attempt it: the credential stays correctly
+      // unsigned until someone who can print opens this page.
+      if (!cred || !wor || !needsSigning || signing || !canSign) return;
       setSigning(true);
       setSignError(null);
       try {
@@ -1814,7 +2113,7 @@ function CredentialReadinessCard({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cred?.credential_id, cred?.qr_payload, wor?.woreda_name_en]);
+  }, [cred?.credential_id, cred?.qr_payload, wor?.woreda_name_en, canSign]);
 
   const retry = () => {
     setSignError(null);
@@ -1888,6 +2187,18 @@ function CredentialReadinessCard({
               </div>
             </div>
           </div>
+        ) : !canSign ? (
+          <div className="flex items-center gap-3 rounded-md border border-amber-200 bg-amber-50 p-4">
+            <ShieldCheck className="h-5 w-5 shrink-0 text-amber-600" />
+            <div>
+              <div className="font-am-body text-sm font-semibold text-amber-900">
+                ማስረጃ ፈራሚ ባለሙያ በመጠበቅ ላይ
+              </div>
+              <div className="text-xs text-amber-800">
+                / Awaiting an operator with credential-print permission to open this request
+              </div>
+            </div>
+          </div>
         ) : (
           <div className="flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 p-4">
             <Loader2 className="h-5 w-5 shrink-0 animate-spin text-indigo-600" />
@@ -1911,7 +2222,8 @@ function CredentialReadinessCard({
 interface IssuanceCardProps {
   credentialRowId: string;
   requestId: string;
-  requestType: string;
+  /** The REQUEST's status, not the credential's -- handover writes both rows. */
+  requestStatus: string;
   priorCredentialId: string | null;
   residentFullNameAm: string;
   onDone: () => void;
@@ -1920,7 +2232,7 @@ interface IssuanceCardProps {
 function IssuanceCard({
   credentialRowId,
   requestId,
-  requestType,
+  requestStatus,
   priorCredentialId,
   residentFullNameAm,
   onDone,
@@ -1929,6 +2241,7 @@ function IssuanceCard({
   const actorUserId = useAuthStore((s) => s.appUser?.user_id ?? null);
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const canPrint = hasPermission(P.CREDENTIAL_PRINT);
+  const { isOffline, offlineReason } = useOfflineGuard();
 
   const [recipientName, setRecipientName] = useState("");
   const [confirmed, setConfirmed] = useState(false);
@@ -2001,9 +2314,24 @@ function IssuanceCard({
   if (credQuery.isLoading || !cred) return null;
   if (cred.status !== "printed" && cred.status !== "active") return null;
 
+  // Also gate on the REQUEST. Handover writes both rows -- the credential
+  // `printed -> active` AND the request `printed -> active` -- and the FSM has
+  // no `paid -> active` on the request. Rendering on the credential alone let
+  // an officer who opened this page (instead of the print page) after a
+  // partially-failed print confirmation drive the credential to `active` while
+  // the request raised, leaving the pair (credential `active`, request `paid`).
+  // That pair is outside the print page's recovery panel, and print.tsx holds
+  // the only writer of `paid -> printed` anywhere in the app -- so the request
+  // froze with no control able to move it, for any role.
+  //
+  // Requiring the request to have reached `printed` means the print step has
+  // completed on BOTH rows before handover is offered; a stalled pair keeps
+  // showing the print page's recovery panel, which is what resolves it.
+  if (requestStatus !== "printed" && requestStatus !== "active") return null;
+
   const isActive = cred.status === "active";
   const nameValid = recipientName.trim().length >= 2;
-  const canSubmit = canPrint && nameValid && confirmed && !submitting;
+  const canSubmit = canPrint && nameValid && confirmed && !submitting && !isOffline;
 
   const handleSubmit = async () => {
     if (!canSubmit || !actorUserId) return;
@@ -2012,16 +2340,27 @@ function IssuanceCard({
       const nowIso = new Date().toISOString();
       const name = recipientName.trim();
 
-      // 1. Activate this credential
-      const { error: credErr } = await supabase
+      // 1. Activate this credential. This is the handover -- the card leaves the
+      // office and enters the resident's hands -- so it must not be inferred
+      // from `error === null`: an RLS-excluded or already-moved row would show a
+      // success toast while the credential silently stayed at `printed`, and
+      // step 4 below would then mark the request `active` on top of it.
+      const { data: credRow, error: credErr } = await supabase
         .from("residence_credential")
         .update({
           status: "active",
           activated_at: nowIso,
           issued_recipient_name: name,
         })
-        .eq("credential_id", credentialRowId);
+        .eq("credential_id", credentialRowId)
+        .select("credential_id")
+        .maybeSingle();
       if (credErr) throw credErr;
+      if (!credRow) {
+        throw new Error(
+          "መታወቂያው ወደ 'ንቁ' አልተቀየረም / The credential was not activated — it may have been changed by someone else",
+        );
+      }
 
       await supabase.from("credential_status_history").insert({
         credential_id: credentialRowId,
@@ -2031,36 +2370,34 @@ function IssuanceCard({
         change_reason: `Issued to ${name}`,
       });
 
-      // 3. Prior credential replacement (non-new_issue with prior)
-      const priorRow = priorCredQuery.data;
-      if (requestType !== "new_issue" && priorCredentialId && priorRow) {
-        const priorOldStatus = priorRow.status;
-        await supabase
-          .from("residence_credential")
-          .update({ status: "replaced", replaced_at: nowIso })
-          .eq("credential_id", priorCredentialId);
-
-        await supabase.from("credential_status_history").insert({
-          credential_id: priorCredentialId,
-          old_status: priorOldStatus,
-          new_status: "replaced",
-          changed_by_user_id: actorUserId,
-          change_reason: `Replaced by ${cred.credential_number}`,
-        });
-
-        await supabase.from("audit_log").insert({
-          actor_user_id: actorUserId,
-          entity_name: "residence_credential",
-          entity_id: priorCredentialId,
-          action_type: "CREDENTIAL_REPLACED",
-        });
-      }
+      // 3. Prior credential replacement is no longer a client step. Task 10's
+      // `enforce_workflow_transition()` now does this atomically, inside the
+      // same `printed -> active` update from step 1: it finds any OTHER
+      // `residence_credential` still `active` for this resident/woreda, sets
+      // it to `replaced` (+ `revoked_at`), and writes its own history + audit
+      // row -- all in the same transaction as the activation, backstopped by
+      // the `residence_credential_one_active_per_resident` partial unique
+      // index. A manual repeat of that update here would now hit the prior
+      // credential already at `replaced` (a terminal state) and raise,
+      // failing the whole handover after the real activation had already
+      // succeeded.
 
       // 4. Sync request to active
-      await supabase
+      const { data: reqActivateRow, error: reqActivateErr } = await supabase
         .from("credential_request")
         .update({ status: "active" })
-        .eq("credential_request_id", requestId);
+        .eq("credential_request_id", requestId)
+        .select("credential_request_id")
+        .maybeSingle();
+      if (reqActivateErr) throw reqActivateErr;
+      // Previously discarded entirely. The FSM can now reject this write (the
+      // request is not at `printed`), and RLS can match zero rows -- either
+      // way the card was handed over while the request stayed behind.
+      if (!reqActivateRow) {
+        throw new Error(
+          "ጥያቄው ወደ 'ገቢር' አልተቀየረም / The card was activated but its request was not — please reopen and retry",
+        );
+      }
 
       await supabase.from("credential_request_status_history").insert({
         credential_request_id: requestId,
@@ -2081,6 +2418,12 @@ function IssuanceCard({
 
       toast.success("ማስረጃው ርክክብ ተደርጓል / Credential issuance confirmed");
       await queryClient.invalidateQueries({ queryKey: ["issuance-cred-row", credentialRowId] });
+      // Refetch so the "prior credential replaced" banner reflects what the
+      // trigger actually did, not a pre-activation cache of this row's
+      // status -- see the status gate on the banner itself below.
+      await queryClient.invalidateQueries({
+        queryKey: ["issuance-prior-cred", priorCredentialId],
+      });
       onDone();
     } catch (e) {
       toast.error((e as Error).message);
@@ -2121,7 +2464,13 @@ function IssuanceCard({
                     {cred.activated_at ? formatEthiopianDate(new Date(cred.activated_at)) : "—"}
                   </dd>
                 </dl>
-                {priorCredQuery.data && (
+                {/* The trigger replaces whichever row is actually `active` for this
+                    resident, not necessarily `request.prior_credential_id` -- that
+                    field can be stale if the true active card changed between the
+                    request being created and this activation running. Gate on the
+                    fetched row's own status rather than its mere existence, so a
+                    stale reference never gets shown as "replaced" when it wasn't. */}
+                {priorCredQuery.data?.status === "replaced" && (
                   <p className="mt-2 text-xs text-slate-700">
                     <span className="font-am-body">
                       ቀዳሚ ማስረጃ {priorCredQuery.data.credential_number} ተተክቷል
@@ -2187,6 +2536,7 @@ function IssuanceCard({
                 You do not have permission to confirm issuance.
               </p>
             )}
+            {isOffline && <p className="font-am-body text-xs text-amber-700">{offlineReason}</p>}
           </div>
         )}
       </div>
@@ -2204,9 +2554,11 @@ function RevocationCard({ credentialRowId, onDone }: RevocationCardProps) {
   const actorUserId = useAuthStore((s) => s.appUser?.user_id ?? null);
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const canRevoke = hasPermission(P.CREDENTIAL_REVOKE);
+  const { isOffline, offlineReason } = useOfflineGuard();
 
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
+  const [reference, setReference] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const credQuery = useQuery({
@@ -2245,14 +2597,15 @@ function RevocationCard({ credentialRowId, onDone }: RevocationCardProps) {
 
   const isRevoked = cred.status === "revoked";
   const reasonValid = reason.trim().length >= 5;
-  const canSubmit = canRevoke && reasonValid && !submitting;
+  const canSubmit = canRevoke && reasonValid && !submitting && !isOffline;
 
   const handleConfirm = async () => {
     if (!canSubmit || !actorUserId) return;
     setSubmitting(true);
     try {
       const nowIso = new Date().toISOString();
-      const r = reason.trim();
+      const ref = reference.trim();
+      const r = ref ? `${reason.trim()} (Ref: ${ref})` : reason.trim();
 
       const { error: credErr } = await supabase
         .from("residence_credential")
@@ -2278,7 +2631,7 @@ function RevocationCard({ credentialRowId, onDone }: RevocationCardProps) {
         entity_name: "residence_credential",
         entity_id: credentialRowId,
         action_type: "CREDENTIAL_REVOKED",
-        new_value_json: { reason: r },
+        new_value_json: { reason: reason.trim(), reference: ref || null },
       });
 
       toast.success("ማስረጃው ተሽሯል / Credential revoked");
@@ -2287,6 +2640,7 @@ function RevocationCard({ credentialRowId, onDone }: RevocationCardProps) {
       });
       setOpen(false);
       setReason("");
+      setReference("");
       onDone();
     } catch (e) {
       toast.error((e as Error).message);
@@ -2328,7 +2682,11 @@ function RevocationCard({ credentialRowId, onDone }: RevocationCardProps) {
               <span className="ml-2 font-mono text-slate-900">{cred.credential_number}</span>
             </p>
             <div className="flex justify-end">
-              <Button variant="destructive" disabled={!canRevoke} onClick={() => setOpen(true)}>
+              <Button
+                variant="destructive"
+                disabled={!canRevoke || isOffline}
+                onClick={() => setOpen(true)}
+              >
                 <ShieldOff className="mr-2 h-4 w-4" />
                 <span className="font-am-body">መሻር</span>
                 <span className="ml-2 text-xs text-white/80">/ Revoke</span>
@@ -2338,6 +2696,9 @@ function RevocationCard({ credentialRowId, onDone }: RevocationCardProps) {
               <p className="text-xs text-amber-700">
                 You do not have permission to revoke credentials.
               </p>
+            )}
+            {canRevoke && isOffline && (
+              <p className="font-am-body text-xs text-amber-700">{offlineReason}</p>
             )}
           </>
         )}
@@ -2357,18 +2718,33 @@ function RevocationCard({ credentialRowId, onDone }: RevocationCardProps) {
               </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="revoke-reason">
-              <span className="font-am-body">የመሻሪያ ምክንያት</span>
-              <span className="ml-2 text-slate-500">/ Revocation Reason</span>
-            </Label>
-            <Textarea
-              id="revoke-reason"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              rows={4}
-              disabled={submitting}
-            />
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="revoke-reason">
+                <span className="font-am-body">የመሻሪያ ምክንያት</span>
+                <span className="ml-2 text-slate-500">/ Revocation Reason</span>
+              </Label>
+              <Textarea
+                id="revoke-reason"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                rows={4}
+                disabled={submitting}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="revoke-reference">
+                <span className="font-am-body">ማጣቀሻ</span>
+                <span className="ml-2 text-slate-500">/ Reference (optional)</span>
+              </Label>
+              <Input
+                id="revoke-reference"
+                value={reference}
+                onChange={(e) => setReference(e.target.value)}
+                disabled={submitting}
+                placeholder="e.g. court order or case number"
+              />
+            </div>
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={submitting}>Cancel</AlertDialogCancel>
@@ -2383,6 +2759,196 @@ function RevocationCard({ credentialRowId, onDone }: RevocationCardProps) {
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               <span className="font-am-body">መሻር አረጋግጥ</span>
               <span className="ml-2 text-xs text-white/80">/ Confirm Revocation</span>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </section>
+  );
+}
+
+interface SuspendCardProps {
+  credentialRowId: string;
+  onDone: () => void;
+}
+
+/** Task 12.1 exception flow: suspend/lift, built from scratch -- the DB
+ * side (suspended_reason required both ways, credential.suspend gating,
+ * reversibility) already existed since Task 10, but no client UI ever
+ * called it. Mirrors RevocationCard's shape, since both are a reason-gated
+ * status change on the same table. */
+function SuspendCard({ credentialRowId, onDone }: SuspendCardProps) {
+  const queryClient = useQueryClient();
+  const actorUserId = useAuthStore((s) => s.appUser?.user_id ?? null);
+  const hasPermission = useAuthStore((s) => s.hasPermission);
+  const canSuspend = hasPermission(P.CREDENTIAL_SUSPEND);
+  const { isOffline, offlineReason } = useOfflineGuard();
+
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const credQuery = useQuery({
+    queryKey: ["suspend-cred-row", credentialRowId],
+    enabled: !!credentialRowId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("residence_credential")
+        .select("credential_id, credential_number, status, suspended_reason")
+        .eq("credential_id", credentialRowId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const cred = credQuery.data;
+  if (credQuery.isLoading || !cred) return null;
+  if (cred.status !== "active" && cred.status !== "suspended") return null;
+
+  const isSuspended = cred.status === "suspended";
+  const targetStatus = isSuspended ? "active" : "suspended";
+  const reasonValid = reason.trim().length >= 5;
+  const canSubmit = canSuspend && reasonValid && !submitting && !isOffline;
+
+  const handleConfirm = async () => {
+    if (!canSubmit || !actorUserId) return;
+    setSubmitting(true);
+    try {
+      const r = reason.trim();
+      const { data: updated, error: credErr } = await supabase
+        .from("residence_credential")
+        .update({ status: targetStatus, suspended_reason: r })
+        .eq("credential_id", credentialRowId)
+        .select("credential_id")
+        .maybeSingle();
+      if (credErr) throw credErr;
+      if (!updated) {
+        throw new Error(
+          "ሁኔታው ሊቀየር አልቻለም / The status was not changed — it may have been moved by someone else",
+        );
+      }
+
+      await supabase.from("credential_status_history").insert({
+        credential_id: credentialRowId,
+        old_status: cred.status,
+        new_status: targetStatus,
+        changed_by_user_id: actorUserId,
+        change_reason: r,
+      });
+
+      await supabase.from("audit_log").insert({
+        actor_user_id: actorUserId,
+        entity_name: "residence_credential",
+        entity_id: credentialRowId,
+        action_type: isSuspended ? "CREDENTIAL_REACTIVATED" : "CREDENTIAL_SUSPENDED",
+        new_value_json: { reason: r },
+      });
+
+      toast.success(
+        isSuspended ? "ማገድ ተነስቷል / Suspension lifted" : "ማስረጃው ታግዷል / Credential suspended",
+      );
+      await queryClient.invalidateQueries({ queryKey: ["suspend-cred-row", credentialRowId] });
+      setOpen(false);
+      setReason("");
+      onDone();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <section className="rounded-xl border-2 border-orange-300 bg-white shadow-sm">
+      <div className="flex items-center gap-2 rounded-t-xl bg-orange-600 px-5 py-3 text-white">
+        <ShieldOff className="h-5 w-5" />
+        <span className="font-am-body text-base font-semibold">{isSuspended ? "ታግዷል" : "ማገድ"}</span>
+        <span className="ml-1 text-sm text-white/80">
+          / {isSuspended ? "Suspended" : "Suspension"}
+        </span>
+      </div>
+      <div className="space-y-4 p-5">
+        {isSuspended && (
+          <div className="rounded-md border border-orange-200 bg-orange-50 p-4 text-sm">
+            <dl className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
+              <dt className="font-am-body text-slate-600">ማስረጃ / Credential</dt>
+              <dd className="font-mono text-slate-900">{cred.credential_number}</dd>
+              <dt className="font-am-body text-slate-600">የማገጃ ምክንያት / Suspension Reason</dt>
+              <dd className="text-slate-900">{cred.suspended_reason ?? "—"}</dd>
+            </dl>
+          </div>
+        )}
+        <p className="text-xs text-slate-500">
+          {isSuspended
+            ? "Suspension is reversible — lifting it requires its own reason."
+            : "Suspension is reversible, unlike revocation — it can be lifted later."}
+        </p>
+        <div className="flex justify-end">
+          <Button
+            variant={isSuspended ? "default" : "outline"}
+            className={isSuspended ? "" : "border-orange-400 text-orange-700 hover:bg-orange-50"}
+            disabled={!canSuspend || isOffline}
+            onClick={() => setOpen(true)}
+          >
+            <ShieldOff className="mr-2 h-4 w-4" />
+            <span className="font-am-body">{isSuspended ? "ማገድ አንሳ" : "አግድ"}</span>
+            <span className="ml-2 text-xs opacity-80">/ {isSuspended ? "Lift" : "Suspend"}</span>
+          </Button>
+        </div>
+        {!canSuspend && (
+          <p className="text-xs text-amber-700">
+            You do not have permission to suspend/lift credentials.
+          </p>
+        )}
+        {canSuspend && isOffline && (
+          <p className="font-am-body text-xs text-amber-700">{offlineReason}</p>
+        )}
+      </div>
+
+      <AlertDialog open={open} onOpenChange={(v) => !submitting && setOpen(v)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              <span className="font-am-body">{isSuspended ? "ማገድ ማንሳት ማረጋገጫ" : "ማገድ ማረጋገጫ"}</span>
+              <span className="ml-2 text-sm text-slate-500">
+                / {isSuspended ? "Confirm Lift Suspension" : "Confirm Suspension"}
+              </span>
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {isSuspended
+                ? "The credential becomes active again."
+                : "The credential becomes invalid until the suspension is lifted."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="suspend-reason">
+              <span className="font-am-body">ምክንያት</span>
+              <span className="ml-2 text-slate-500">/ Reason</span>
+            </Label>
+            <Textarea
+              id="suspend-reason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={4}
+              disabled={submitting}
+              placeholder="Min 5 characters"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={submitting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleConfirm();
+              }}
+              disabled={!canSubmit}
+            >
+              {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <span className="font-am-body">{isSuspended ? "ማንሳት አረጋግጥ" : "ማገድ አረጋግጥ"}</span>
+              <span className="ml-2 text-xs opacity-80">
+                / {isSuspended ? "Confirm Lift" : "Confirm Suspend"}
+              </span>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -1,63 +1,24 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { CreditCard, Plus, FilePlus, ShieldCheck } from "lucide-react";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
+import { useState } from "react";
 import { toast } from "sonner";
+import { CreditCard, Plus, ShieldCheck } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
-import {
-  TablePagination,
-  useUrlPagination,
-  useUrlSearchTerm,
-} from "@/components/common/TablePagination";
-import { StatusChip } from "@/components/common/StatusChip";
 import { PermissionGate } from "@/components/common/PermissionGate";
+import { ExportButtons } from "@/components/common/TableToolbar";
 import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/integrations/supabase/client";
 import { P } from "@/config/permissions";
-import { TableSkeletonRows, TableEmptyRow, TableErrorRow } from "@/components/common/TableStates";
-import {
-  useUrlSort,
-  SortableTh,
-  useClearTableFilters,
-  TableToolbar,
-  FilterGroup,
-} from "@/components/common/TableToolbar";
 import { exportRowsToCsv, exportRowsToPdf, type TableColumn } from "@/utils/tableExport";
 import { useReportBranding } from "@/hooks/useReportBranding";
+import { formatEthiopianDateShort } from "@/utils/ethiopianCalendar";
+import { KpiWidgetRow } from "@/components/credentials/KpiWidgetRow";
+import { CredentialQueueTable } from "@/components/credentials/CredentialQueueTable";
 
-const REQUEST_TYPES: { value: string; label: string }[] = [
-  { value: "all", label: "ሁሉም / All" },
-  { value: "new_issue", label: "አዲስ / New Issue" },
-  { value: "renewal", label: "እድሳት / Renewal" },
-  { value: "reissue_lost", label: "የጠፋ / Lost" },
-  { value: "reissue_damaged", label: "የተበላሸ / Damaged" },
-  { value: "reissue_stolen", label: "የተሰረቀ / Stolen" },
-  { value: "reissue_correction", label: "እርማት / Correction" },
-];
-
-const STATUSES: { value: string; label: string }[] = [
-  { value: "all", label: "ሁሉም / All" },
-  { value: "submitted", label: "ገብቷል / Submitted" },
-  { value: "under_review", label: "በክለሳ ላይ / Under Review" },
-  { value: "verified", label: "ተረጋግጧል / Verified" },
-  { value: "pending_approval", label: "ጸድቆ በሚጠበቅ / Pending Approval" },
-  { value: "approved", label: "ፀድቋል / Approved" },
-  { value: "returned", label: "ተመልሷል / Returned" },
-  { value: "approval_returned", label: "ተመልሷል (ማጽደቅ) / Returned (Approval)" },
-  { value: "rejected", label: "ውድቅ ተደርጓል / Rejected" },
-  { value: "awaiting_payment", label: "ክፍያ በጥበቃ / Awaiting Payment" },
-  { value: "paid", label: "ተከፍሏል / Paid" },
-  { value: "closed", label: "ተዘግቷል / Closed" },
-  { value: "revoked", label: "ተሽሯል / Revoked" },
-];
-
-const CRED_TYPES: { value: string; label: string }[] = [
-  { value: "all", label: "ሁሉም / All" },
-  { value: "card", label: "ካርድ / Card" },
-  { value: "certificate", label: "ሰርተፍኬት / Certificate" },
-  { value: "both", label: "ሁለቱም / Both" },
-];
+export const Route = createFileRoute("/woreda/credentials/")({
+  ssr: false,
+  component: CredentialsListPage,
+});
 
 const REQUEST_TYPE_LABEL: Record<string, string> = {
   new_issue: "አዲስ / New",
@@ -68,182 +29,107 @@ const REQUEST_TYPE_LABEL: Record<string, string> = {
   reissue_correction: "እርማት / Correction",
 };
 
-const CRED_TYPE_LABEL: Record<string, string> = {
-  card: "ካርድ / Card",
-  certificate: "ሰርተፍኬት / Certificate",
-  both: "ሁለቱም / Both",
-};
-
-const SORT_COLUMN: Record<string, string> = {
-  request_number: "request_number",
-  submitted_at: "submitted_at",
-  created_at: "created_at",
-};
-
-export const Route = createFileRoute("/woreda/credentials/")({
-  ssr: false,
-  component: CredentialsListPage,
-});
-
-interface CredentialRow {
-  credential_request_id: string;
+interface ExportRow {
   request_number: string;
   request_type: string;
-  credential_type: string;
   status: string;
   submitted_at: string | null;
   created_at: string;
-  credential_id: string | null;
+  credential: { status: string } | null;
   resident: {
-    resident_id: string;
     full_name: string | null;
     full_name_am: string | null;
     resident_number: string | null;
   } | null;
-  credential: { status: string } | null;
 }
 
 function CredentialsListPage() {
   const woredaId = useAuthStore((s) => s.woredaId);
-  const hasPermission = useAuthStore((s) => s.hasPermission);
   const navigate = useNavigate();
-
-  const { input: searchInput, setInput: setSearchInput, term: search } = useUrlSearchTerm();
-  const [requestType, setRequestType] = useState("all");
-  const [status, setStatus] = useState("all");
-  const [credentialType, setCredentialType] = useState("all");
   const [exporting, setExporting] = useState(false);
   const brandingQuery = useReportBranding();
-  const sort = useUrlSort("created_at", "desc");
-  const { page, setPage, pageSize, setPageSize } = useUrlPagination(
-    [search, requestType, status, credentialType, sort.key].join("|"),
-  );
 
-  const buildQuery = () => {
-    let q = supabase
-      .from("credential_request")
-      .select(
-        "credential_request_id, request_number, request_type, credential_type, status, submitted_at, created_at, credential_id, resident:resident_id(resident_id, full_name, full_name_am, resident_number), credential:residence_credential!credential_request_credential_id_fkey(status)",
-        { count: "exact" },
-      )
-      .eq("woreda_id", woredaId as string);
-
-    if (requestType !== "all") q = q.eq("request_type", requestType);
-    if (status === "revoked") {
-      q = q.eq("credential.status", "revoked").not("credential_id", "is", null);
-    } else if (status !== "all") {
-      q = q.eq("status", status);
-    }
-
-    if (credentialType !== "all") q = q.eq("credential_type", credentialType);
-    if (search) {
-      const escaped = search.replace(/[%,]/g, "");
-      q = q.or(`request_number.ilike.%${escaped}%`);
-    }
-    const dbColumn = SORT_COLUMN[sort.field] ?? "created_at";
-    q = q
-      .order(dbColumn, { ascending: sort.dir === "asc" })
-      .order("created_at", { ascending: false });
-    return q;
+  // Export must reflect exactly what CredentialQueueTable is showing --
+  // reading the same URL params it writes (the same URL-state convention
+  // useUrlSort/useUrlFilter already use) rather than a second, independent
+  // filter state that could drift from what's on screen.
+  const search = useSearch({ strict: false }) as Record<string, unknown>;
+  const strParam = (key: string): string =>
+    typeof search[key] === "string" ? (search[key] as string) : "";
+  const activeFilters = {
+    q: strParam("q"),
+    status: strParam("status") || "all",
+    type: strParam("type") || "all",
+    kebele: strParam("kebele") || "all",
+    officer: strParam("officer") || "all",
+    from: strParam("from"),
+    to: strParam("to"),
   };
-
-  const requestsQuery = useQuery({
-    queryKey: [
-      "credential-requests",
-      woredaId,
-      search,
-      requestType,
-      status,
-      credentialType,
-      sort.key,
-      page,
-      pageSize,
-    ],
-    enabled: !!woredaId && hasPermission(P.CREDENTIAL_READ),
-    queryFn: async () => {
-      const q = buildQuery().range(page * pageSize, page * pageSize + pageSize - 1);
-
-      const { data, error, count } = await q;
-      if (error) throw error;
-
-      let rows = (data ?? []) as unknown as CredentialRow[];
-      // Client-side filter for resident name when searching
-      if (search) {
-        const term = search.toLowerCase();
-        rows = rows.filter((r) => {
-          if (r.request_number?.toLowerCase().includes(term)) return true;
-          return (
-            (r.resident?.full_name ?? "").toLowerCase().includes(term) ||
-            (r.resident?.full_name_am ?? "").includes(search)
-          );
-        });
-      }
-
-      return { rows, count: count ?? 0 };
-    },
-  });
-
-  const resetFilters = () => {
-    setRequestType("all");
-    setStatus("all");
-    setCredentialType("all");
-    setSearchInput("");
-  };
-  const clearFilters = useClearTableFilters([], resetFilters);
-  const filtersActive =
-    !!search ||
-    requestType !== "all" ||
-    status !== "all" ||
-    credentialType !== "all" ||
-    !sort.isDefault;
-
-  const filterLabel = useMemo(() => {
+  const filterLabel = (() => {
     const parts: string[] = [];
-    if (search) parts.push(`Search: "${search}"`);
-    if (requestType !== "all")
-      parts.push(`Type: ${REQUEST_TYPE_LABEL[requestType] ?? requestType}`);
-    if (status !== "all") parts.push(`Status: ${status}`);
-    if (credentialType !== "all")
-      parts.push(`Credential: ${CRED_TYPE_LABEL[credentialType] ?? credentialType}`);
-    if (!sort.isDefault) parts.push(`Sort: ${sort.field} ${sort.dir}`);
-    return parts.length ? parts.join(" • ") : "No filters applied";
-  }, [search, requestType, status, credentialType, sort]);
+    if (activeFilters.q) parts.push(`Search: "${activeFilters.q}"`);
+    if (activeFilters.status !== "all") parts.push(`Status: ${activeFilters.status}`);
+    if (activeFilters.type !== "all")
+      parts.push(`Type: ${REQUEST_TYPE_LABEL[activeFilters.type] ?? activeFilters.type}`);
+    if (activeFilters.kebele !== "all") parts.push(`Kebele: ${activeFilters.kebele}`);
+    if (activeFilters.officer !== "all") parts.push(`Officer: ${activeFilters.officer}`);
+    if (activeFilters.from) parts.push(`From: ${activeFilters.from}`);
+    if (activeFilters.to) parts.push(`To: ${activeFilters.to}`);
+    return parts.length ? parts.join(" • ") : "All credential requests";
+  })();
 
-  const exportColumns: TableColumn<CredentialRow>[] = [
+  const exportColumns: TableColumn<ExportRow>[] = [
     { header: "የጥያቄ ቁጥር / Request #", value: (r) => r.request_number },
     { header: "ስም / Resident (Am)", value: (r) => r.resident?.full_name_am },
     { header: "Resident (En)", value: (r) => r.resident?.full_name },
     { header: "የነዋሪ ቁጥር / Resident #", value: (r) => r.resident?.resident_number },
     { header: "ዓይነት / Type", value: (r) => REQUEST_TYPE_LABEL[r.request_type] ?? r.request_type },
     {
-      header: "የምስክርነት ዓይነት / Credential Type",
-      value: (r) => CRED_TYPE_LABEL[r.credential_type] ?? r.credential_type,
-    },
-    {
       header: "ሁኔታ / Status",
       value: (r) => (r.credential?.status === "revoked" ? "revoked" : r.status),
     },
     {
       header: "የቀረበበት ቀን / Submitted",
-      value: (r) =>
-        r.submitted_at
-          ? new Date(r.submitted_at).toLocaleDateString()
-          : new Date(r.created_at).toLocaleDateString(),
+      value: (r) => formatEthiopianDateShort(new Date(r.submitted_at ?? r.created_at)),
     },
   ];
 
-  const fetchAllForExport = async (): Promise<CredentialRow[]> => {
-    const q = buildQuery().range(0, 4999);
-    const { data, error } = await q;
+  const fetchAllForExport = async (): Promise<ExportRow[]> => {
+    let q = supabase
+      .from("credential_request")
+      .select(
+        "request_number, request_type, status, submitted_at, created_at, issuing_kebele_id, requested_by_user_id, credential_id, credential:residence_credential!credential_request_credential_id_fkey(status), resident:resident_id(full_name, full_name_am, resident_number)",
+      )
+      .eq("woreda_id", woredaId as string);
+
+    if (activeFilters.type !== "all") q = q.eq("request_type", activeFilters.type);
+    // Mirrors CredentialQueueTable's own revoked-status handling exactly
+    // (including its known embedded-resource caveat) so export and the
+    // on-screen queue never disagree on what "revoked" matched.
+    if (activeFilters.status === "revoked") {
+      q = q.eq("credential.status", "revoked").not("credential_id", "is", null);
+    } else if (activeFilters.status !== "all") {
+      q = q.eq("status", activeFilters.status);
+    }
+    if (activeFilters.kebele !== "all") q = q.eq("issuing_kebele_id", activeFilters.kebele);
+    if (activeFilters.officer !== "all") q = q.eq("requested_by_user_id", activeFilters.officer);
+    if (activeFilters.from) q = q.gte("submitted_at", activeFilters.from);
+    if (activeFilters.to) q = q.lte("submitted_at", `${activeFilters.to}T23:59:59`);
+    if (activeFilters.q) {
+      const escaped = activeFilters.q.replace(/[%,]/g, "");
+      q = q.or(`request_number.ilike.%${escaped}%`);
+    }
+
+    const { data, error } = await q.order("created_at", { ascending: false }).range(0, 4999);
     if (error) throw error;
-    let rows = (data ?? []) as unknown as CredentialRow[];
-    if (search) {
-      const term = search.toLowerCase();
+    let rows = (data ?? []) as unknown as ExportRow[];
+    if (activeFilters.q) {
+      const term = activeFilters.q.toLowerCase();
       rows = rows.filter((r) => {
         if (r.request_number?.toLowerCase().includes(term)) return true;
         return (
           (r.resident?.full_name ?? "").toLowerCase().includes(term) ||
-          (r.resident?.full_name_am ?? "").includes(search)
+          (r.resident?.full_name_am ?? "").includes(activeFilters.q)
         );
       });
     }
@@ -298,6 +184,7 @@ function CredentialsListPage() {
         titleEn="Credential Requests"
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            <ExportButtons onCsv={handleExportCsv} onPdf={handleExportPdf} busy={exporting} />
             <PermissionGate permission={P.CREDENTIAL_VERIFY}>
               <Button
                 variant="outline"
@@ -323,154 +210,9 @@ function CredentialsListPage() {
         }
       />
 
-      <TableToolbar
-        searchValue={searchInput}
-        onSearchChange={setSearchInput}
-        searchPlaceholder="የጥያቄ ቁጥር ወይም የነዋሪ ስም / Search by request # or resident name…"
-        clearActive={filtersActive}
-        onClear={clearFilters}
-        onExportCsv={handleExportCsv}
-        onExportPdf={handleExportPdf}
-        exportBusy={exporting}
-        filters={
-          <>
-            <FilterGroup
-              label="Request Type"
-              value={requestType}
-              onChange={(v) => {
-                setRequestType(v);
-                setPage(0);
-              }}
-              options={REQUEST_TYPES}
-            />
-            <FilterGroup
-              label="Status"
-              value={status}
-              onChange={(v) => {
-                setStatus(v);
-                setPage(0);
-              }}
-              options={STATUSES}
-            />
-            <FilterGroup
-              label="Credential"
-              value={credentialType}
-              onChange={(v) => {
-                setCredentialType(v);
-                setPage(0);
-              }}
-              options={CRED_TYPES}
-            />
-          </>
-        }
-      />
+      <KpiWidgetRow />
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-            <tr>
-              <SortableTh field="request_number" sort={sort}>
-                <span className="font-am-body">የጥያቄ ቁጥር</span>
-                <span className="ml-1 text-slate-400 normal-case">/ Request #</span>
-              </SortableTh>
-              <Th am="ነዋሪ" en="Resident" />
-              <Th am="ዓይነት" en="Type" />
-              <Th am="የምስክርነት ዓይነት" en="Credential Type" />
-              <Th am="ሁኔታ" en="Status" />
-              <SortableTh field="submitted_at" sort={sort}>
-                <span className="font-am-body">የቀረበበት ቀን</span>
-                <span className="ml-1 text-slate-400 normal-case">/ Submitted</span>
-              </SortableTh>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {requestsQuery.isLoading && <TableSkeletonRows cols={6} />}
-            {requestsQuery.isError && (
-              <TableErrorRow
-                cols={6}
-                error={requestsQuery.error}
-                onRetry={() => requestsQuery.refetch()}
-              />
-            )}
-            {!requestsQuery.isLoading &&
-              !requestsQuery.isError &&
-              (requestsQuery.data?.rows.length ?? 0) === 0 && (
-                <TableEmptyRow cols={6} filtered={filtersActive} onClearFilters={clearFilters}>
-                  {!filtersActive && (
-                    <PermissionGate permission={P.CREDENTIAL_ISSUE}>
-                      <Link to="/woreda/credentials/new" className="mt-3">
-                        <Button className="bg-blue-700 text-white hover:bg-blue-800">
-                          <FilePlus className="mr-2 h-4 w-4" />
-                          <span className="font-am-body">አዲስ ጥያቄ</span>
-                          <span className="ml-2 opacity-80">/ New Request</span>
-                        </Button>
-                      </Link>
-                    </PermissionGate>
-                  )}
-                </TableEmptyRow>
-              )}
-            {requestsQuery.data?.rows.map((r) => {
-              const person = r.resident;
-              return (
-                <tr
-                  key={r.credential_request_id}
-                  className="cursor-pointer transition hover:bg-blue-50/40"
-                  onClick={() =>
-                    navigate({
-                      to: "/woreda/credentials/$requestId",
-                      params: { requestId: r.credential_request_id },
-                    })
-                  }
-                >
-                  <td className="px-4 py-3 font-mono text-xs text-slate-700">{r.request_number}</td>
-                  <td className="px-4 py-3">
-                    <div className="font-am-body font-medium text-slate-900">
-                      {person?.full_name_am || "—"}
-                    </div>
-                    <div className="text-xs text-slate-500">
-                      {person?.full_name} · {person?.resident_number}
-                    </div>
-                  </td>
-                  <td className="font-am-body px-4 py-3">
-                    {REQUEST_TYPE_LABEL[r.request_type] ?? r.request_type}
-                  </td>
-                  <td className="font-am-body px-4 py-3">
-                    {CRED_TYPE_LABEL[r.credential_type] ?? r.credential_type}
-                  </td>
-                  <td className="px-4 py-3">
-                    <StatusChip
-                      status={r.credential?.status === "revoked" ? "revoked" : r.status}
-                    />
-                  </td>
-                  <td className="px-4 py-3 text-xs text-slate-500">
-                    {r.submitted_at
-                      ? new Date(r.submitted_at).toLocaleDateString()
-                      : new Date(r.created_at).toLocaleDateString()}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      <TablePagination
-        page={page}
-        pageSize={pageSize}
-        total={requestsQuery.data?.count ?? 0}
-        onPageChange={setPage}
-        onPageSizeChange={setPageSize}
-        className="rounded-lg border bg-white"
-      />
+      <CredentialQueueTable />
     </div>
-  );
-}
-
-function Th({ am, en }: { am: string; en: string }) {
-  return (
-    <th className="px-4 py-3">
-      <span className="font-am-body">{am}</span>
-      <span className="ml-1 text-slate-400 normal-case">/ {en}</span>
-    </th>
   );
 }

@@ -6,8 +6,9 @@ import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFunction } from "@/lib/edgeFunction";
 import { useAuthStore } from "@/stores/authStore";
-import { fetchAppUser } from "@/hooks/useAuthBootstrap";
+import { fetchAuthState } from "@/hooks/useAuthBootstrap";
 import { getCurrentEthiopianDate } from "@/utils/ethiopianCalendar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -124,18 +125,25 @@ function SetPasswordPage() {
     // Best-effort: the password is already set regardless of whether this
     // succeeds. Non-fatal on error -- falls through to the existing "contact
     // an administrator" messaging below if activation didn't happen.
-    try {
-      await supabase.functions.invoke("activate-invited-user", { body: {} });
-    } catch {
-      // ignore -- see comment above
-    }
+    await invokeEdgeFunction("activate-invited-user", {});
     // Explicitly refetch rather than trusting the ambient USER_UPDATED
     // listener in useAuthBootstrap.ts, which defers via setTimeout(0) and
     // isn't guaranteed to have landed before the `done` branch below reads
-    // appUser.status.
+    // appUser.status. Uses fetchAuthState (not fetchAppUser alone, as this
+    // used to) so consolePermissions/permissions are populated too --
+    // omitting them made setAuth() fall back to the compiled ROLE_PERMISSIONS
+    // default, which is wrong for anyone with a per-user override (e.g. a
+    // pre-set deny) already sitting on their account before they ever redeem
+    // the invite: the first render after activation would show the compiled
+    // default's permissions until the deferred USER_UPDATED listener won the
+    // race or the page reloaded.
     if (user) {
-      const freshAppUser = await fetchAppUser(user.id);
-      setAuth(user, freshAppUser);
+      const {
+        appUser: freshAppUser,
+        consolePermissions,
+        permissions,
+      } = await fetchAuthState(user.id);
+      setAuth(user, freshAppUser, consolePermissions, permissions);
     }
     setIsSubmitting(false);
     setDone(true);

@@ -1,0 +1,729 @@
+# Entity Relationship Diagram
+
+INSA Enforcer Phase 1.3. Originally built from the migration files under
+`supabase/migrations/`; as of Task 8 (2026-09-14) re-verified against a
+**live, read-only enumeration** of the production schema
+(`information_schema`/`pg_catalog` queries over the Management API — see
+`docs/architecture.md`'s decision record for why that replaces `supabase db
+diff` in this project) rather than the migration files alone, so this
+document now reflects what is actually deployed, not only what was written.
+That live enumeration found **52 tables**, zero drift against the
+migrations (every table `CREATE TABLE`d in `supabase/migrations/*.sql`
+exists live and vice versa) — up from the 36 in the baseline dump alone and
+the 43 recorded the last time this count was taken. The tables added since
+that last count, beyond the ones already listed below in "Superseded" and
+the Task-11 gap-fill table further down, are `workflow_status_history`
+(migration `00000000000058`, Task 14-A) and `tenant_role`/
+`tenant_role_permission` (migration `00000000000038`, Task 13) — both
+documented in their own sections below. `rate_limit_bucket` is an
+infra-support table, not a domain one — see "Sequence / counter tables"
+below for where it's documented. `workflow_transition` (migration
+`00000000000025`) is the platform-level status-machine reference table: it
+deliberately carries **no `woreda_id`**, because which transitions are legal
+is fixed for the platform — a tenant may change who holds a permission but
+can never remove a gate. It is therefore not part of the per-tenant domain
+model below. The client-side offline mutation queue (Task 12-C,
+`src/lib/offlineQueue.ts`) is **not** a database object at all — it is
+`localStorage`-only, per-browser, and never reaches the schema; see
+`docs/task12c-mapping-memo.md` for its design.
+
+**Encrypted companion columns:** migration `00000000000023` (INSA remediation
+Phase C) adds a `*_enc bytea` column beside each PII/financial column in scope
+— `resident.phone_number`/`.email`, `household.phone_number`/`.email`,
+`service_request.applicant_phone`, `payment.amount`,
+`rental_occupancy.rent_amount`, `rental_occupancy_request.rent_amount` — plus
+`resident.phone_number_blind_index` for exact-match phone lookup, and a
+`*_decrypted` view per table. They are omitted from the per-domain tables below
+to keep them readable; the plaintext columns shown remain authoritative until
+that migration's stage 4 retires them. See
+[`docs/security-functionality.md`](./security-functionality.md#encryption-at-rest)
+for the key model, the rollout stages and the phone-search tradeoff.
+
+**Freshness:** this is a snapshot as of migration `00000000000023`, hand-built
+from the migrations, with no CI check behind it (unlike
+[`docs/permissions-matrix.md`](./permissions-matrix.md), which regenerates
+itself). Regenerate by re-reading `supabase/migrations/*.sql` after any schema
+change that adds, drops, or re-keys a table — don't assume this page tracks
+itself.
+
+`woreda_id` is the tenant-partition key present on nearly every table below;
+it is omitted from the compact diagrams to keep them legible and called out
+once here instead. RLS scopes almost every policy to
+`woreda_id = get_user_woreda_id()` (or `is_super_admin()`), per
+[`docs/architecture.md`](./architecture.md).
+
+## Domain map
+
+```mermaid
+flowchart TB
+    subgraph Tenancy["Tenancy & RBAC"]
+        woreda[(woreda)]
+    end
+    subgraph RH["Residents & Households"]
+        resident[(resident)]
+        household[(household)]
+    end
+    subgraph Cred["Credentials"]
+        residence_credential[(residence_credential)]
+    end
+    subgraph Civil["Civil Registration"]
+        vital_event[(vital_event)]
+    end
+    subgraph Svc["Service Requests"]
+        service_request[(service_request)]
+    end
+    subgraph Rental["Rental Houses"]
+        rental_occupancy[(rental_occupancy)]
+    end
+    subgraph Rev["Revenue"]
+        payment[(payment)]
+    end
+
+    Tenancy --> RH
+    RH --> Cred
+    RH --> Civil
+    RH --> Svc
+    RH --> Rental
+    Cred -.payment_id.-> Rev
+    Svc -.payment_id.-> Rev
+    Rental -.payment_id.-> Rev
+```
+
+Every domain hangs off `woreda` (the tenant root) and, within a tenant,
+almost everything hangs off `resident`/`household`. Credentials, service
+requests, and rental requests each optionally link to one `payment` row
+(never more than one — see the constraint note at the bottom).
+
+---
+
+## Tenancy & RBAC
+
+```mermaid
+erDiagram
+    woreda ||--o{ kebele : has
+    woreda ||--o{ app_user : employs
+    woreda ||--|| woreda_settings : configures
+    woreda ||--o{ role_permission : "default matrix"
+    woreda ||--o{ tenant_module_config : "module flags"
+    app_user ||--o{ user_permission_override : "per-user grant/deny"
+    app_user }o--o| console_role : "assigned (super_admin only)"
+    console_role ||--o{ console_role_permission : grants
+    woreda ||--o{ tenant_role : "custom roles (A1-A7)"
+    tenant_role ||--o{ tenant_role_permission : grants
+    app_user }o--o| tenant_role : "assigned (role='custom' only)"
+
+    woreda {
+        uuid woreda_id PK
+        text woreda_code UK
+        smallint woreda_numeric_code UK
+        text status
+    }
+    app_user {
+        uuid user_id PK "= auth.users.id"
+        uuid woreda_id FK
+        text role
+        text status
+        uuid console_role_id FK "nullable, super_admin only"
+    }
+    console_role {
+        uuid console_role_id PK
+        text name UK
+        boolean is_active
+    }
+    role_permission {
+        uuid woreda_id PK_FK
+        text role_name PK
+        text permission_key PK
+        boolean is_granted
+    }
+    user_permission_override {
+        uuid user_id PK_FK
+        text permission_key PK
+        boolean is_granted
+        uuid woreda_id FK "denormalized, trigger-derived"
+    }
+```
+
+| Table                      | Purpose                                                                                                                                                                                     | Key constraints                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `woreda`                   | Tenant root                                                                                                                                                                                 | `status` enum (`active`/`inactive`/`suspended`); `woreda_code` and `woreda_numeric_code` both unique                                                                                                                                                                                                                                                                                                                                           |
+| `woreda_settings`          | Per-tenant config: fees, branding, `contact_phone`/`contact_email` 🔒, resident-number format string                                                                                        | 1:1 with `woreda`                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `kebele`                   | Sub-woreda geographic unit, reference data                                                                                                                                                  | unique `(woreda_id, kebele_number)`                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `tenant_module_config`     | Per-tenant module on/off (`credentials`, `revenue`, `services`, …) — **absence of a row means enabled**                                                                                     | PK `(woreda_id, module_key)`                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `app_user`                 | Staff account, 1:1 with `auth.users`                                                                                                                                                        | `role` enum (8 values); `status` enum incl. `pending`; `console_role_id` nullable FK, `CHECK` restricts it to `role = 'super_admin'`                                                                                                                                                                                                                                                                                                           |
+| `role_permission`          | Per-tenant override of the compiled default permission matrix                                                                                                                               | PK `(woreda_id, role_name, permission_key)`; `role_name` CHECK excludes `super_admin`/`tenant_admin`                                                                                                                                                                                                                                                                                                                                           |
+| `console_role`             | Named, admin-defined roles scoping what an individual `super_admin` can do under `/admin` (2nd permission axis)                                                                             | `console_role_id IS NULL` on `app_user` means **unrestricted** super admin — the load-bearing default                                                                                                                                                                                                                                                                                                                                          |
+| `console_role_permission`  | Grants for a `console_role`, keyed against a fixed 5-value `CHECK`, not a lookup table                                                                                                      | PK `(console_role_id, permission_key)`                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `user_permission_override` | Per-_user_ grant/deny, wins in both directions over `role_permission`                                                                                                                       | `CHECK` locks 3 keys (`credential.approve`, `civil.approve`, `tenant.manage`) from ever being overridden; `woreda_id` is trigger-derived, never client-supplied                                                                                                                                                                                                                                                                                |
+| `audit_log`                | Generic before/after audit trail, polymorphic `(entity_name, entity_id)`                                                                                                                    | insert-only by convention (not DB-enforced); `source_ip` populated by 5 of 6 Edge Functions since INSA remediation Phase B (best-effort, request-header-derived — see `supabase/functions/_shared/clientIp.ts`, never a security control)                                                                                                                                                                                                      |
+| `tenant_role`              | Custom (tenant-defined) roles — Task 13, migration `00000000000038`. A per-woreda alternative to the 7 built-in editable roles for tenants that need a role shape the built-ins don't cover | `UNIQUE (woreda_id, name)`; `is_active` soft-disable (deactivating never breaks the FK on `app_user.custom_role_id`, but a resolver treats an inactive role as granting nothing — same pattern as `console_role.is_active`)                                                                                                                                                                                                                    |
+| `tenant_role_permission`   | Grants for a `tenant_role`, mirroring `console_role_permission`'s shape scoped per-tenant instead of platform-wide                                                                          | PK `(tenant_role_id, permission_key)`; `CHECK` excludes the same reserved keys `role_permission`/`user_permission_override` already lock out (`credential.approve`, `civil.approve`, `tenant.manage`, `platform.manage`, `tenant.create`, `credential.configure_policy`, `user.manage`, `credential.revoke`) — a custom role can never be handed an administrative or approval power the ordinary matrix and override paths can't grant either |
+
+`role_permission` cannot represent a custom role: its `role_name` column is a
+fixed `CHECK`-enumerated set of the built-in editable roles, and a custom
+role has no stable name to key on across tenants (two woredas could each name
+a role "Cashier" with entirely different grants) — `tenant_role` gives each
+custom role its own `uuid` identity instead. `app_user.custom_role_id` is
+`NULL` for every built-in-role user; a trigger (migration `00000000000039`)
+enforces "set iff `role = 'custom'`, and only to an active `tenant_role` in
+the caller's own woreda" — a plain `CHECK` can't express that cross-table,
+same-tenant, `is_active` condition. As of this document's live enumeration
+(2026-09-14), **zero rows exist in `tenant_role`/`tenant_role_permission` in
+production** — the capability has shipped and is RLS/trigger-enforced, but
+no tenant has actually created a custom role yet. See
+`docs/go-live-declaration.md` for how that affects this feature's
+verification class (code/schema-level PASS, no REAL-USERS evidence for
+custom-role behavior specifically, since there is no live custom role to
+probe against).
+
+🔒 = PII field. No 🔒 fields in this domain are encrypted at rest; RLS
+tenant-scoping is the current control (see `docs/security-functionality.md`).
+
+---
+
+## Workflow engine
+
+`workflow_transition` and `workflow_status_history` are the shared,
+entity-generic state-machine infrastructure every workflow module (credential
+requests, civil registration, service requests, and rental occupancy
+requests) is built on. Added by migration `00000000000025` (Task 1,
+`enforce_workflow_transition()`) to close F-01 — the review's one Critical
+finding — and extended by `00000000000058` (Task 14-A) when civil
+registration's own FSM was seeded into the same engine.
+
+```mermaid
+erDiagram
+    workflow_transition {
+        uuid workflow_transition_id PK
+        text entity "credential_request | residence_credential | vital_event | service_request | rental_occupancy_request"
+        text from_status
+        text to_status
+        text required_permission "NULL only if is_system"
+        boolean is_system "true = engine-only, never user-driven"
+        text note
+    }
+    workflow_status_history {
+        uuid id PK
+        uuid woreda_id FK
+        text entity
+        uuid entity_id "polymorphic, no FK -- entity says which table"
+        text old_status
+        text new_status
+        uuid changed_by_user_id FK
+        text change_reason
+    }
+```
+
+| Table                     | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | Key constraints                                                                                                                                                                                                                                                                                                                                                                              |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `workflow_transition`     | Platform reference data: every legal `(entity, from_status, to_status)` pair and the permission it requires. `enforce_workflow_transition()`, a `BEFORE UPDATE` trigger, rejects any status change absent from this table, checks the transition's specific permission (not just a coarse module permission), enforces maker≠checker (the verifier and approver of one row can never be the same `user_id`), and blocks a `is_system` transition from a live user session (only the engine's own triggers, e.g. the payment-driven credential-minting trigger, may drive one) | **No `woreda_id` column, by design** — which transitions are legal is fixed for the whole platform; a tenant may change _who_ holds a permission (`role_permission`) but can never remove a verification/approval/payment gate. `UNIQUE (entity, from_status, to_status)`; a non-system row's `required_permission` is `NOT NULL` (a seed typo can't produce a transition anybody may drive) |
+| `workflow_status_history` | Append-only log of every status change the engine actually allowed, generic across all four entities via `(entity, entity_id)` — the shared counterpart to each entity's own historically bespoke `*_status_history` table (`credential_request_status_history`, `service_request_status_history`), which stayed in place rather than being replaced (see `docs/task14c-mapping-memo.md` for which UI surfaces read which table)                                                                                                                                              | `entity_id` carries no FK (polymorphic across four different PK types); RLS scopes by `woreda_id`, populated by the same trigger that writes the row, never client-supplied                                                                                                                                                                                                                  |
+
+Two decisions worth carrying forward, both recorded in the migration's own
+header comment and `docs/fix-task-v3-execution-notes.md`:
+
+- **The workflow verification permission is `credential.review`, not
+  `credential.verify`.** `credential.verify` already gates the public
+  ID-lookup screen and is deliberately held by `viewer` and `auditor` — two
+  read-only roles; reusing the same key for "may verify a credential request"
+  would have handed that power to both of them.
+- **`ready_to_print` is a `residence_credential` state, not a
+  `credential_request` state.** The request's own FSM runs
+  `… → paid → printed → active`; the credential's FSM runs
+  `ready_to_print → printed → active`. Both match the shipped UI exactly, so
+  no `CHECK` constraint needed to change to land this engine.
+
+---
+
+## Residents & Households
+
+```mermaid
+erDiagram
+    household ||--o{ resident : "current_household_id"
+    resident ||--o| household : "head of"
+    resident ||--o| household : "spouse of"
+    resident ||--o| household : "alternate head of"
+    household ||--o{ household_change_log : logs
+    resident ||--o{ resident_document : "PDF attachments"
+    household ||--o{ resident_document : "denormalized snapshot"
+
+    household {
+        uuid household_id PK
+        uuid woreda_id FK
+        uuid kebele_id FK
+        uuid household_head_resident_id FK
+        uuid spouse_resident_id FK
+        uuid alternate_head_resident_id FK
+        text phone_number "🔒 searched"
+        text email "🔒 display-only"
+        numeric rent_amount "💰"
+    }
+    resident {
+        uuid resident_id PK
+        uuid woreda_id FK
+        text resident_number UK
+        uuid current_household_id FK
+        text phone_number "🔒 searched (ilike)"
+        text email "🔒 display-only"
+        text national_id_no "🔒"
+        jsonb birth_place
+        jsonb former_residence
+    }
+    resident_document {
+        uuid document_id PK
+        uuid resident_id FK
+        uuid household_id FK "nullable snapshot, not live join"
+        text storage_path
+    }
+```
+
+| Table                      | Purpose                                                                                                                 | Key constraints                                                                                                                                                                                                                                                |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `household`                | Dwelling unit. `household_head_resident_id`/`spouse_resident_id`/`alternate_head_resident_id` all FK back to `resident` | unique `(kebele_id, house_number)`; `house_type` enum                                                                                                                                                                                                          |
+| `resident`                 | Person record — the hub of almost every other domain                                                                    | `sex`, `marital_status`, `residency_status` enums; `resident_email_format` regex `CHECK`; `resident_number` globally unique                                                                                                                                    |
+| `household_change_log`     | Append-style history of household edits                                                                                 | —                                                                                                                                                                                                                                                              |
+| `resident_number_sequence` | Per-woreda counter feeding `assign_resident_number()`                                                                   | PK `(woreda_id)`                                                                                                                                                                                                                                               |
+| `resident_document`        | PDF-only attachments on a resident, `household_id` is a **snapshot at upload time**, not a live join                    | `content_type` CHECK pins `application/pdf`; dedicated private storage bucket (`resident-documents`) with server-side MIME + 10 MB size limits — the one bucket in this app that validates upload constraints at the bucket level rather than client-side only |
+
+Both `phone_number` and `email` are duplicated on `resident` _and_
+`household` — the two are independently editable, not a foreign key to one
+canonical value.
+
+---
+
+## Credentials
+
+```mermaid
+erDiagram
+    resident ||--o{ credential_request : requests
+    credential_request ||--o| residence_credential : produces
+    residence_credential ||--o{ credential_status_history : logs
+    credential_request ||--o{ credential_request_status_history : logs
+    residence_credential ||--o{ credential_print_log : logs
+    id_card_template ||--o{ id_card_template_field : "published layout"
+    id_card_template_field_draft }o..o{ id_card_template_field : "reconciled by publish_id_card_template()"
+
+    credential_request {
+        uuid credential_request_id PK
+        uuid woreda_id FK
+        uuid resident_id FK
+        uuid household_id FK
+        uuid payment_id FK
+        uuid credential_id FK "set once issued"
+        text status "13-value workflow enum"
+    }
+    residence_credential {
+        uuid credential_id PK
+        uuid resident_id FK
+        uuid credential_request_id FK
+        text credential_number UK "13-digit + Luhn check digit"
+        text serial_number UK
+        text status "7-value lifecycle enum"
+        text qr_payload "ES256-signed compact token"
+    }
+```
+
+| Table                                                        | Purpose                                                                                                                 | Key constraints                                                                                                                             |
+| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `credential_request`                                         | Issuance workflow (draft → … → active)                                                                                  | `request_type`/`status`/`credential_type` enums; unique `(woreda_id, request_number)`                                                       |
+| `residence_credential`                                       | The issued card/certificate itself                                                                                      | `status` enum incl. `ready_to_print`/`printed`/`active`/`revoked`; unique `(woreda_id, credential_number)` and `(woreda_id, serial_number)` |
+| `credential_request_status_history`                          | Append log of `credential_request.status` transitions                                                                   | —                                                                                                                                           |
+| `credential_status_history`                                  | Append log of `residence_credential.status` transitions                                                                 | —                                                                                                                                           |
+| `credential_print_log`                                       | Every print/reprint, with reprint authorization                                                                         | `print_type` enum                                                                                                                           |
+| `credential_number_sequence` / `credential_request_sequence` | Per-woreda, per-year counters                                                                                           | composite PK `(woreda_id, seq_year)`                                                                                                        |
+| `id_card_template` / `id_card_template_field`                | **Published/live** card layout — what `PrintableCard` actually renders                                                  | `id_card_template_field` positions fields as percentages of a canvas                                                                        |
+| `id_card_template_field_draft`                               | Unpublished editor working copy, separate PK space from the live table, reconciled only by `publish_id_card_template()` | unique `(template_type, field_key)`                                                                                                         |
+
+The signing pipeline (`sign-credential` Edge Function) reads every payload
+field from the database itself, never the request — see
+[`docs/api-security.md`](./api-security.md).
+
+**Task 12 intake-conditional columns** (`00000000000055`): `credential_request`
+gained `police_report_number text` (required by the intake form's Zod schema
+iff `request_type = 'reissue_stolen'`), `correction_fields text[]` and
+`correction_reason text` (both required iff `request_type =
+'reissue_correction'`) — the fields-to-correct multi-select and its reason,
+per the spec's stage-1 conditional rules. All three are nullable at the
+schema level; the client-side `intakeConditionalSchema`
+(`src/lib/credentialWorkflowSchemas.ts`) enforces the actual requiredness.
+
+**`supporting_document_path`/`_name`/`_content_type` are deprecated, not
+dropped** (`00000000000056`): Stage 1 intake now writes uploads through
+Task 11's generic `attachment` table (`entity = 'credential_request'`) as
+`photo` (new, required for `new_issue`), `supporting_doc`, or
+`correction_evidence` (for `reissue_correction`), each with a client-computed
+SHA-256 checksum (Web Crypto, `src/utils/fileChecksum.ts`) shown to the
+officer at confirmation. The three legacy columns stay on the table
+(guardrail 1: no `DROP`) as the historical record for requests created
+before this shipped; `00000000000056` also added `attachment.attachment_type`
+and backfilled every pre-existing `supporting_document_path` into an
+equivalent `attachment` row, with a `legacy-unchecked` checksum sentinel
+(not a valid hex digest — deliberately visually distinct from a real one)
+since there is no real checksum to compute for a file uploaded before this
+migration existed. The detail view renders both the legacy single-document
+panel and the new attachment list, since either can be populated depending
+on when a given request was created.
+
+---
+
+## Civil Registration
+
+```mermaid
+erDiagram
+    resident ||--o{ vital_event : subject
+    household ||--o{ vital_event : "linked"
+
+    vital_event {
+        uuid vital_event_id PK
+        uuid woreda_id FK
+        uuid resident_id FK
+        uuid household_id FK
+        text event_type "birth/death/marriage/divorce"
+        text status "10-value workflow enum"
+    }
+```
+
+| Table                  | Purpose                                                         | Key constraints                                |
+| ---------------------- | --------------------------------------------------------------- | ---------------------------------------------- |
+| `vital_event`          | Birth/death/marriage/divorce registration and approval workflow | unique `(woreda_id, event_type, event_number)` |
+| `vital_event_sequence` | Per-woreda, per-event-type, per-year counter                    | PK `(woreda_id, event_type, seq_year)`         |
+
+A `death` event reaching `status = 'approved'` fires
+`apply_death_on_approval()`, which flips the resident's
+`residency_status` to `deceased` and **revokes** any active
+`residence_credential` for them in the same transaction — a cross-domain
+side effect worth knowing about before assuming civil registration and
+credentials are independent.
+
+---
+
+## Service Requests
+
+```mermaid
+erDiagram
+    service_type ||--o{ service_request : categorizes
+    resident ||--o{ service_request : requests
+    service_request ||--o{ service_request_attachment : has
+    service_request ||--o{ service_request_status_history : logs
+
+    service_request {
+        uuid service_request_id PK
+        uuid woreda_id FK
+        uuid service_type_id FK
+        uuid resident_id FK
+        uuid payment_id FK
+        text category "letter | complaint"
+        text applicant_phone "🔒 display-only"
+        text status "14-value workflow enum"
+        text verification_token UK
+    }
+    service_type {
+        uuid service_type_id PK
+        text code
+        boolean requires_payment
+        boolean requires_approval
+        text letter_body_html "operator-authored, sanitized on render"
+    }
+```
+
+| Table                            | Purpose                                                             | Key constraints                                                                                            |
+| -------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `service_type`                   | **Configurable data, not hardcoded** — the letter/complaint catalog | unique `(woreda_id, code)`                                                                                 |
+| `service_request`                | A letter or complaint, `category` distinguishes the two             | `category`, `priority`, `status` enums; `verification_token` globally unique (public verification surface) |
+| `service_request_attachment`     | Uploaded supporting documents                                       | —                                                                                                          |
+| `service_request_status_history` | Append log of status transitions                                    | —                                                                                                          |
+| `service_request_sequence`       | Per-woreda, per-year counter                                        | composite PK                                                                                               |
+
+`service_request.applicant_phone` 🔒 is inserted and displayed but never
+used in a search/filter query — the request list's search only covers
+`request_number`/`applicant_name`/`subject`.
+
+---
+
+## Rental Houses
+
+```mermaid
+erDiagram
+    kebele_rental_house ||--o{ rental_occupancy : "currently houses"
+    kebele_rental_house ||--o{ rental_occupancy_request : "requested against"
+    resident ||--o{ rental_occupancy : occupies
+    rental_occupancy_request ||--o| rental_occupancy : "produces (new_registration)"
+    rental_occupancy_request ||--o{ rental_request_document : has
+
+    kebele_rental_house {
+        uuid rental_house_id PK
+        uuid woreda_id FK
+        uuid kebele_id FK
+        numeric monthly_rent_standard "💰 NOT in Phase C scope"
+        text occupancy_status
+    }
+    rental_occupancy {
+        uuid occupancy_id PK
+        uuid rental_house_id FK
+        uuid resident_id FK
+        numeric rent_amount "💰"
+        text status "active | terminated"
+    }
+    rental_occupancy_request {
+        uuid rental_request_id PK
+        uuid rental_house_id FK
+        uuid resident_id FK
+        numeric rent_amount "💰"
+        text request_type "new_registration | termination"
+        text status "9-value workflow enum"
+    }
+```
+
+| Table                      | Purpose                                  | Key constraints                                                                           |
+| -------------------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `kebele_rental_house`      | Government-owned rental unit inventory   | unique `(woreda_id, kebele_id, house_number)`                                             |
+| `rental_occupancy`         | Active/terminated tenancy record         | `rent_amount > 0` CHECK; **only one `active` occupancy per house** (partial unique index) |
+| `rental_occupancy_request` | New-registration or termination workflow | unique `(woreda_id, request_number)`                                                      |
+| `rental_request_document`  | Uploaded contract/clearance/ID documents | —                                                                                         |
+| `rental_request_sequence`  | Per-woreda, per-year counter             | composite PK                                                                              |
+
+`apply_rental_occupancy_on_approval()` is the trigger that turns an
+`approved` `rental_occupancy_request` into (or out of) a live
+`rental_occupancy` row and flips `kebele_rental_house.occupancy_status` —
+another cross-table side effect encoded as a trigger, not application code.
+
+---
+
+## Revenue
+
+```mermaid
+erDiagram
+    payment ||--o| credential_request : funds
+    payment ||--o| rental_occupancy_request : funds
+    payment ||--o| service_request : funds
+    payment ||--o| receipt : produces
+    woreda ||--o{ fee_schedule : prices
+
+    payment {
+        uuid payment_id PK
+        uuid woreda_id FK
+        uuid household_id FK
+        uuid resident_id FK
+        uuid credential_request_id FK "mutually exclusive w/ rental_request_id"
+        uuid rental_request_id FK
+        uuid service_request_id FK
+        numeric amount "💰, CHECK > 0"
+        text payment_type "5-value enum"
+        text channel "cash | bank | mobile"
+        text status "pending | confirmed | reversed"
+    }
+    receipt {
+        uuid receipt_id PK
+        uuid payment_id FK
+        text receipt_number UK
+        numeric total_amount "💰"
+    }
+```
+
+| Table              | Purpose                                                                                               | Key constraints                                                                                           |
+| ------------------ | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `payment`          | The revenue ledger. One row can fund a credential request, a rental request, **or** a service request | `payment_amount_check (amount > 0)`; `payment_source_exclusive_check` — see note below                    |
+| `receipt`          | Printed receipt for a confirmed payment                                                               | unique `(woreda_id, receipt_number)`; carries its own `verification_token` (added in `00000000000013`)    |
+| `receipt_sequence` | Per-woreda, per-year counter                                                                          | composite PK                                                                                              |
+| `fee_schedule`     | Per-woreda, per-service-type standard fee + penalty rate                                              | unique `(woreda_id, service_type)`; `effective_from date` added in Task 11 (`00000000000048`) — see below |
+
+**Document as it actually is, not as it should be:** `payment_source_exclusive_check`
+reads `CHECK (NOT (credential_request_id IS NOT NULL AND rental_request_id IS NOT NULL))`
+— it only excludes those _two_ columns being set together. `service_request_id`
+is not part of that check, so a `payment` row can technically reference both
+a `service_request_id` and one of the other two simultaneously. No known
+call site does this, but the constraint does not prevent it.
+
+### Credential fee resolution (Task 12, `00000000000054`)
+
+Stage 4's `PaymentForm` used to read a single flat
+`woreda_settings.credential_issuance_fee` regardless of what kind of
+credential request it was. It now calls `resolve_credential_fee(_request_type)`
+(a `SECURITY DEFINER` RPC, tenant-scoped internally by `get_user_woreda_id()`
+— it takes no `woreda_id` parameter at all, so there is nothing for a caller
+to spoof), which maps `credential_request.request_type` onto the
+per-service-type `fee_schedule` rows Task 11 built:
+
+| `request_type`                                                               | `fee_schedule.service_type` |
+| ---------------------------------------------------------------------------- | --------------------------- |
+| `new_issue`                                                                  | `New ID Issuance`           |
+| `renewal`                                                                    | `ID Renewal`                |
+| `reissue_lost` / `reissue_damaged` / `reissue_stolen` / `reissue_correction` | `Lost ID Replacement`       |
+| _(the reprint exception flow, separately — not a `request_type` value)_      | `Internal Re-Print`         |
+
+The function is **strictly fail-closed**: it raises (naming the missing
+`service_type`, bilingually) unless exactly one **active** row exists for the
+caller's own woreda and the mapped `service_type` — no fallback to the old
+flat fee, and a `status = 'review_required'` row does not count as usable.
+
+That fail-closed design surfaced a real data gap before it ever shipped:
+5 of 6 woredas had `Lost ID Replacement` stuck at `review_required` and were
+missing `Internal Re-Print` entirely, and no woreda had a `New ID Issuance`
+row at all. `00000000000054` is a **data repair**, not a policy change —
+pre-production (D2: nothing issued yet), and every repaired/added row's
+amount matches what `woreda_settings.credential_issuance_fee` already
+charged, so no tenant's actual fee changed. `supabase/seed.sql` was fixed
+the same way (its `Lost ID Replacement` rows now seed as `active`, and the
+missing `Internal Re-Print`/`New ID Issuance` rows were added), and
+`bun run check:fee-catalog` (`scripts/check-fee-catalog.ts`, wired into CI)
+statically parses `seed.sql` to assert every woreda has exactly one active
+row per mapped `service_type` — the same "check the source, not a live DB"
+shape as `check-role-perms-drift`, and for the identical reason: there is no
+staging project and CI has no live database credentials.
+
+### Credential KPI counting (Task 12-B, `00000000000057`)
+
+The credential queue's 10 dashboard widgets (`KpiWidgetRow`) are backed by
+`get_credential_kpis()`, a single `SECURITY DEFINER` RPC returning all 10
+counts as one `jsonb` object — one round trip, one consistent read snapshot,
+tenant-scoped internally by `get_user_woreda_id()` exactly like
+`resolve_credential_fee()` above (no `woreda_id` parameter at all, so there
+is nothing for a client to spoof; a `super_admin`, whose `get_user_woreda_id()`
+is `NULL`, gets the same "no woreda context" raise `resolve_credential_fee()`
+gives it, deliberately). The client never derives any of these 10 numbers
+from a list page's own paginated query result.
+
+`avg_turnaround_days` reads `residence_credential.activated_at` and
+`credential_request.submitted_at` directly (both already written atomically
+by Task 10's activation trigger) rather than joining
+`credential_request_status_history` and `credential_status_history` — the
+two tables track two different entities' status changes, and a join across
+both for one number would add a maintenance surface without adding accuracy
+the columns don't already give directly.
+
+---
+
+## Cross-domain views
+
+| View                      | Purpose                                                                                                                                                                 | Notable history                                                                                                                                                                                                                                                                              |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `approval_queue_v`        | Unions `service_request` + `credential_request` + `vital_event` + `rental_occupancy_request` into one inbox, filtered to in-flight statuses — backs `/woreda/approvals` | Originally created **without** `security_invoker`, which (owned by `postgres`, `rolbypassrls`) let RLS on all four underlying tables be silently bypassed for anyone selecting through it. Fixed in `00000000000006_view_security_invoker.sql`.                                              |
+| `household_member_roster` | Flattened resident roster with computed `age`, filtered to `current_household_id IS NOT NULL AND active_flag = true`                                                    | Same defect, and the **actually-exploited** one: it was `GRANT`ed to `anon` in the baseline, so the exposure was live — verified against the deployed project (`anon` role: 0 rows from `resident` directly, but the un-fixed view still returned rows) before the same migration closed it. |
+
+**This is the precedent any future decrypting view (Phase C of the
+remediation plan) must follow from the start** — `security_invoker = on` is
+not optional for a view meant to sit behind RLS.
+
+---
+
+## Sequence / counter tables (not diagrammed individually)
+
+`credential_number_sequence`, `credential_request_sequence`,
+`receipt_sequence`, `rental_request_sequence`, `resident_number_sequence`,
+`service_request_sequence`, `vital_event_sequence` — all the same shape,
+`(woreda_id [, event_type], seq_year) -> last_value`, incremented via
+`INSERT ... ON CONFLICT DO UPDATE ... RETURNING` inside each domain's
+`assign_*_number()` trigger. Listed once here rather than repeated in every
+domain table above.
+
+`rate_limit_bucket` (`00000000000022_rate_limit.sql`, INSA remediation
+Phase B) is the same fixed-window-counter shape —
+`(bucket_key, window_start) -> request_count`, incremented the same
+`INSERT ... ON CONFLICT DO UPDATE ... RETURNING` way inside
+`rate_limit_hit()` — but is platform infrastructure, not tenant data: no
+`woreda_id`, deny-all RLS, `EXECUTE` on its one function granted only to
+`service_role`. Not part of any domain group above.
+
+---
+
+## Task 11 — schema gap-fill (`00000000000048`–`00000000000053`)
+
+Task 11 of `fix-task-production-readiness-v3.md` (D1) required every object
+in its gap-fill table to exist, following its own reconciliation addendum:
+enumerate the live schema first, and never create a duplicate of a table
+that already covers the same capability. This section is the classification
+and column mapping the addendum requires be recorded here.
+
+`00000000000048` is the gap-fill migration itself; `00000000000049`–`053`
+are same-day hardening on top of it, in order:
+
+- **049** (`tenant-isolation-review` findings): `household_location`'s
+  `woreda_id` was client-supplied and only checked against the caller's own
+  woreda, never against the `household_id` it was attached to — a
+  `household.create`/`update` holder in one tenant could attach a
+  `household_location` row to another tenant's household, and the
+  `SECURITY DEFINER` mirror trigger into `household` had no `woreda_id`
+  guard, so the write reached the wrong tenant's row with RLS fully
+  bypassed. Fixed by deriving `woreda_id` from the household itself in a
+  `BEFORE INSERT/UPDATE` trigger rather than trusting the client value —
+  the existing RLS `WITH CHECK` then rejects the cross-tenant attempt on
+  its own once the corrected value doesn't match the caller. Also locked
+  down `entity_belongs_to_woreda()`'s `EXECUTE` grant (it was `SECURITY
+DEFINER` and callable by `anon` as a bare PostgREST RPC — a cross-tenant
+  existence oracle) and added same-woreda UPDATE/DELETE storage policies to
+  the `attachments` bucket (it only had SELECT/INSERT + a super-admin-only
+  DELETE, unlike every other bucket).
+- **050** (hotfix for a bug introduced in 049): 049's own
+  `assert_office_woreda_consistency()` used one shared trigger function for
+  both `residence_credential` and `credential_request`, branching on
+  `TG_TABLE_NAME`. PL/pgSQL does not short-circuit `NEW.<column>` field
+  access around the branch, so firing it on `credential_request` (no
+  `issuing_office_id` column) raised on every `credential_request` INSERT —
+  caught by testing the exact cross-tenant case live before pushing, not by
+  a user report. Fixed by splitting into two functions, each touching only
+  its own table's columns.
+- **051** (spec conformance gap found during the same testing pass): the
+  gap-fill table's own text says `credential_request.office_id (default:
+the woreda's main office)`. `048` only backfilled _existing_ rows; a
+  brand-new insert left `office_id`/`issuing_office_id` `NULL` since a
+  plain column `DEFAULT` can't reference another table. Added a `BEFORE
+INSERT` trigger per table that fills the column from the row's own
+  woreda when the caller leaves it `NULL`. Ordering matters here: this
+  default must run before `050`'s consistency check or an omitted
+  `office_id` gets rejected before ever being filled in — Postgres fires
+  same-timing `BEFORE` triggers on one table in name order, so the two
+  check triggers were renamed with a `zz_` prefix (the same convention
+  `00000000000025`/`026` use to order `enforce_workflow_transition` after
+  `trg_force_actor`) rather than relying on alphabetical luck.
+- **053** (`/code-review` + `/security-review` on the PR, both run before
+  merge): `052`'s own fix for the household-transfer staleness bug didn't
+  actually work — its `ON CONFLICT DO UPDATE` guard only compared GPS
+  columns, so a `woreda_id`-only transfer still left `household_location`
+  pointing at the old tenant; the `WHERE` clause now compares `woreda_id`
+  too. `entity_belongs_to_woreda()` was still callable by any authenticated
+  user as a bare RPC with an arbitrary `_woreda_id` (a cross-tenant
+  existence oracle) — `/security-review` initially suggested revoking
+  `authenticated`'s `EXECUTE` grant, which would have been wrong (Postgres
+  checks `EXECUTE` for the _invoking_ role even on a `SECURITY DEFINER`
+  function, and both approval/attachment `WITH CHECK` clauses call it, so
+  that would have broken every insert into those tables); fixed instead
+  with an internal guard that only answers for the caller's own woreda,
+  which every real RLS call site already passes anyway.
+  `household_location_insert` accepted `household.create` OR
+  `household.update`, but its `SECURITY DEFINER` mirror into `household`
+  bypasses `household`'s own RLS (which requires `.update`) — narrowed to
+  `.update` only. `approval`/`attachment`'s INSERT (and `attachment`'s
+  SELECT) policies OR'd every module's permission together regardless of
+  the row's own `entity`, so e.g. a `service.create`-only holder could
+  attach a file to a `resident` row — three new per-entity permission
+  functions (`entity_read_perm_ok`, `entity_attach_perm_ok`,
+  `entity_approve_perm_ok`) now gate the check against the specific
+  entity type, the same shape `entity_belongs_to_woreda()` already used
+  for tenancy.
+
+| Object                              | Classification         | Notes / column mapping                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ----------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `office`                            | **Created**            | `office_id PK, woreda_id FK UNIQUE, office_code, office_name, is_main, is_active`. Seeded 6 rows (one per existing woreda) plus a trigger on `woreda` insert (`seed_office_for_new_woreda`) so a future woreda always gets one — mirrors `seed_role_permission_for_new_woreda()` (`00000000000015`) rather than relying on a provisioning-wizard insert. `residence_credential.issuing_office_id` and `credential_request.office_id` were added and backfilled to each row's woreda's office, gated by a same-woreda consistency trigger (`00000000000050`) and defaulted to the woreda's main office on every future insert (`00000000000051`).                                                                                                                                                                                                                                                                                                                       |
+| `household_location`                | **Created**            | `household_location_id PK, household_id FK UNIQUE, woreda_id, gps_lat, gps_lng, map_reference, captured_at, captured_by`. Backfilled from `household.gps_lat`/`gps_lng`. Kept in sync **both ways** by triggers on each table (`mirror_household_gps_to_location`, `mirror_location_gps_to_household`), each guarded by a value-changed check so the mirror settles in one hop — the legacy write path (writing `household.gps_*` directly) keeps working, and a future write straight to `household_location` doesn't go stale on old readers.                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `approval`                          | **Created**            | Generic stage-level decision trail: `approval_id PK, woreda_id, entity, entity_id, approver_user_id (forced), decision, decision_at, stage_no, reason`. **Not** a duplicate of a workflow row's own `approved_by_user_id`/decision columns — those stay the source the FSM and maker≠checker checks read directly (Task 1/14); this table is the audit-grade record of the decision itself. A shared `entity_belongs_to_woreda()` function (its `EXECUTE` grant locked to `authenticated`/`service_role` in `00000000000049`) gates INSERT so a decision can't be attached to another tenant's row. Insert-only by convention, like `audit_log`.                                                                                                                                                                                                                                                                                                                       |
+| `attachment`                        | **Created**            | Generic entity-bound upload: `attachment_id PK, woreda_id, entity, entity_id, file_name, mime, size_bytes, checksum, storage_path, uploaded_by (forced), uploaded_at`. `resident_document`, `service_request_attachment` and `rental_request_document` are module-local/entity-specific (each FKs to one entity type), not a generic `entity`+`entity_id` table — this is a new capability for the credential and (Task 14) civil workflows, which today have no multi-document table of their own. The module-local tables are untouched; nothing is consolidated by deletion. Storage bucket `attachments` (private), path-prefix-isolated via `storage_path_woreda_id()` and, since `00000000000049`, same-woreda UPDATE/DELETE like every other bucket (an upload can be replaced or cleaned up even though the `attachment` _row_ itself is insert-only — that immutability is about the row being audit-grade evidence, not about orphaning the storage object). |
+| `fee_schedule`                      | **Extended, mapped**   | Already existed: `fee_schedule_id, woreda_id, service_type, standard_fee, penalty_rate, status, created_at, updated_at`. The gap-fill table's `amount` maps to the existing `standard_fee` column; `is_active` maps to `status = 'active'` — neither is duplicated as a new column. Only `effective_from date` (nullable; `NULL` = always effective) was added, since no existing column captured that.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `credential_policy`                 | **Created**            | `credential_policy_id PK, woreda_id UNIQUE, expiry_months, renewal_window_days, max_reissue_count, enabled_request_types text[], updated_by (forced), created_at, updated_at`. Read by any staff in the woreda; write gated by `credential.configure_policy` (already `RESERVED_PERMISSION_KEYS`-locked to tenant_admin/super_admin since Task 4). Starts empty per woreda — a missing row means "no override, use the compiled default," the same convention as `tenant_module_config` and `role_permission`, not a gap for this migration to close.                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `audit_log` columns                 | **Already satisfied**  | `old_value_json`, `new_value_json`, `source_ip` have existed since the baseline migration (`00000000000000`). No change needed.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `credential_verification_log`       | **Already satisfied**  | Created in Task 3 (`00000000000034_task3_harden_credential_verification.sql`). No change needed.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `user` / `service_request` bindings | **Documentation only** | `user` in the spec's vocabulary is this schema's `app_user`, keyed by `auth.uid()`. This module's "requests" are the existing `credential_request` table (IC-4). No schema change.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+
+Every new table above follows the house pattern used throughout this
+schema: `woreda_id` + RLS with `get_user_woreda_id()` in both `USING` and
+`WITH CHECK`, actor columns forced by `force_actor_columns()`, and an
+`updated_at` trigger wherever the table is ever updated in place (not
+`approval` or `attachment`, which are insert-only).
+
+---
+
+## Superseded
+
+`README.md`'s "SUPABASE DATABASE SCHEMA" section (the Phase 1 scaffold spec,
+9 tables) is stale — compare its `payment` table (no `service_request_id`
+FK, no `payment_source_exclusive_check`) against the `payment` table
+documented above. Treat it as historical intent; this document is current.

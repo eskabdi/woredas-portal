@@ -1,0 +1,845 @@
+
+==============================================================
+LOVABLE.DEV MODULE PROMPT
+Module: Residence Credential Issuance — ID Card Workflow
+Portal: Woreda Administration Operating System
+Version: 1.0
+==============================================================
+
+---
+
+SYSTEM CONTEXT
+--------------
+You are building a module inside a multi-tenant Woreda Administration ERP
+for the Harari People's National Regional State of Ethiopia.
+
+Portal: Woreda Administration Operating System
+Default language: Amharic
+Default calendar: Ethiopian (Ge'ez) — Gregorian shown as secondary reference only
+Tenant isolation: All queries, components, and API calls must be scoped by tenant_id
+UI stack: React 18, TypeScript (strict), Vite 5, Tailwind CSS, shadcn/ui,
+          TanStack Query, Zustand, React Hook Form, Zod, react-to-print,
+          react-i18next, PWA/Workbox
+
+
+---
+
+MODULE IDENTITY
+---------------
+Module name (Amharic): የመኖሪያ መታወቂያ አውጪ
+Module name (English reference): Residence Credential Issuance
+Route base: /credentials/issue
+Navigation group: Residence Credentials
+Icon: IdCard (lucide-react)
+
+
+---
+
+MODULE PURPOSE
+--------------
+This module manages the full lifecycle of a Residence Credential request from
+initial intake through physical printing and activation. It implements a strict
+eight-stage maker-checker workflow with gated status transitions, payment
+confirmation, credential generation, print logging, and audit trail writing at
+every stage.
+
+The Woreda Administration Office is the sole operational authority. Kebele is
+a reference/location attribute only — not a workflow actor.
+
+
+---
+
+RBAC — PERMITTED ROLES AND ACTIONS
+------------------------------------
+Define all access using the permission constants object P with
+dot-separated resource.action format.
+
+Role                | Permitted Actions
+--------------------|--------------------------------------------------------------
+registry_clerk      | credential.create_request, credential.submit,
+                    | credential.verify, credential.resubmit
+supervisor          | credential.approve, credential.return, credential.reject,
+                    | credential.authorize_reprint
+finance_clerk       | credential.record_payment
+print_officer       | credential.preview_print, credential.confirm_print
+tenant_admin        | all of the above plus credential.revoke,
+                    | credential.configure_policy
+auditor             | credential.view (read-only across all stages)
+viewer              | credential.view (read-only, own kebele scope)
+
+Enforce permissions at component render level (hide or disable unavailable
+actions) and at API call level (return 403 on unauthorized access).
+Never show a broken or unauthorized action to a user.
+
+
+---
+
+DATABASE TABLES — BINDING REFERENCE
+-------------------------------------
+Bind all data to these exact tables. Do not use mock or hardcoded data.
+
+Primary tables:
+  service_request       — request record, status, type, timestamps
+  residence_credential  — credential record, numbers, QR, dates, status
+  credential_status_history — every status transition logged
+  credential_print_log  — every print event logged
+  credential_verification_log — every verification event logged
+  payment               — fee payment record
+  receipt               — receipt linked to payment
+  resident              — resident identity data
+  household             — household and house number
+  household_location    — GPS and map reference
+  kebele                — kebele reference (location only)
+  woreda                — woreda/tenant context
+  audit_log             — immutable action log
+  user                  — actor identity for all workflow steps
+  attachment            — uploaded supporting documents
+  approval              — approval decision records
+
+Key foreign key relationships to enforce:
+  service_request.resident_id → resident.resident_id
+  service_request.office_id → office.office_id
+  residence_credential.resident_id → resident.resident_id
+  residence_credential.issuing_office_id → office.office_id
+  residence_credential.issuing_kebele_id → kebele.kebele_id
+  approval.service_request_id → service_request.service_request_id
+  payment.service_request_id → service_request.service_request_id
+  receipt.payment_id → payment.payment_id
+  credential_print_log.credential_id → residence_credential.credential_id
+  audit_log.actor_user_id → user.user_id
+
+
+---
+
+CREDENTIAL STATUS LIFECYCLE
+-----------------------------
+Implement as a strict finite state machine. No transition outside defined paths.
+
+  Draft
+    ↓ (clerk submits)
+  Submitted
+    ↓ (clerk/senior clerk reviews documents)
+  Under Review
+    ↓ pass verification         ↓ fail verification
+  Verified                    Returned  ──→ back to Under Review on resubmit
+    ↓ (supervisor reviews)
+  Pending Approval
+    ↓ approved    ↓ returned   ↓ rejected
+  Approved       Returned     Rejected (terminal — closed)
+    ↓ (cashier records payment)
+  Awaiting Payment
+    ↓
+  Paid
+    ↓ (system auto-generates credential record)
+  Ready to Print
+    ↓ (officer previews and confirms print)
+  Printing
+    ↓ (print job confirmed)
+  Printed
+    ↓ (resident collects — officer records acknowledgment)
+  Active
+    ↓ (event-based or manual)
+  Expired | Suspended | Revoked | Replaced  (terminal states)
+
+Store every transition in credential_status_history with:
+  old_status, new_status, changed_at, changed_by_user_id, change_reason
+
+Write a corresponding audit_log entry for every status change.
+
+
+---
+
+PRE-CONDITIONS — ENFORCED BEFORE REQUEST IS ACCEPTED
+------------------------------------------------------
+Before Stage 1 intake form is rendered or submitted, the system must validate:
+
+1. resident.active_flag = true
+   Failure: show error — "ነዋሪው ንቁ አይደለም። ወደ ነዋሪ መዝገብ ይሂዱ።"
+   Block the request.
+
+2. resident.current_household_id is not null AND household.active_flag = true
+   Failure: show error — "ነዋሪው ከቤት ቁጥር ጋር አልተያያዘም። የቤት ዝርዝር ያስተካክሉ።"
+   Block the request.
+
+3. resident.residency_status ≠ 'Deceased'
+   Failure: show error — block the request.
+
+4. No active residence_credential record for this resident
+   (residence_credential.status = 'Active' AND resident_id matches)
+   If active credential found: show warning panel with the active credential
+   details. Require clerk to explicitly select "Reissue" or "Renewal" type
+   before proceeding. Do not silently override.
+
+Run all pre-condition checks on resident_id entry before rendering the
+intake form. Display a pre-condition summary card showing pass/fail for
+each check.
+
+
+---
+
+STAGE 1 — INTAKE AND REQUEST SUBMISSION
+-----------------------------------------
+Route: /credentials/issue/new
+Actor: registry_clerk
+Status transition: (none) → Draft → Submitted
+
+LAYOUT:
+  Page title: የምስክር ወረቀት ጥያቄ — አዲስ ማስገቢያ
+  Two-column layout:
+    Left column (60%): intake form
+    Right column (40%): resident summary card (read-only, auto-populated)
+
+RESIDENT SEARCH (top of left column):
+  Input: search by resident_number, full_name, or phone_number
+  Show instant suggestions from resident table scoped to tenant_id
+  On selection: run all four pre-conditions, show results, populate form
+
+REQUEST TYPE SELECTOR (required):
+  Radio group — select exactly one:
+    አዲስ ማስረጃ (New Issue)
+    ታደሰ (Renewal)
+    እንደገና ማውጣት — የጠፋ (Reissue — Lost)
+    እንደገና ማውጣት — የተጎዳ (Reissue — Damaged)
+    እንደገና ማውጣት — ስርቆት (Reissue — Stolen)
+    ማስተካከያ (Correction)
+  Show/hide conditional fields based on selection:
+    Renewal: show expiry date of existing credential
+    Reissue (Lost/Stolen): show field for police report reference number
+    Correction: show textarea for correction details
+
+AUTO-POPULATED FIELDS (from resident and household tables, read-only):
+  ሙሉ ስም (full_name)
+  ጾታ (sex)
+  የትውልድ ቀን — Ethiopian calendar primary, Gregorian secondary (date_of_birth)
+  ቤት ቁጥር (house_number from household)
+  ቀበሌ (kebele_name from kebele)
+  ወረዳ (woreda_name from woreda)
+  ፎቶ (photo_attachment_id — show thumbnail if exists)
+
+ATTACHMENT UPLOAD SECTION:
+  Fields:
+    የፊት ፎቶ (portrait photo) — required for new issue
+    ደጋፊ ሰነድ (supporting document) — conditionally required
+  Use the attachment table for all uploads
+  Show checksum on upload confirmation
+  Support PDF and image files
+
+DUPLICATE DETECTION:
+  On form load and on submit, query residence_credential where
+  resident_id matches and status IN ('Active','Printed','Ready to Print')
+  If found: render a yellow warning card showing the existing credential
+  number, issue date, expiry date, and current status
+  Require clerk to acknowledge before submit is enabled
+
+SUBMIT BUTTON:
+  Label: ጥያቄ አስገባ
+  On click: validate all required fields with Zod schema
+  On success: create service_request record, set status = 'Submitted',
+  write audit_log entry, show toast: "ጥያቄው ተልኳል። ቁጥር: {request_number}"
+
+RESIDENT SUMMARY CARD (right column, read-only):
+  Show: name, photo, resident_number, household, kebele,
+  active credential status chip, household GPS status badge
+
+
+---
+
+STAGE 2 — DOCUMENT AND DATA VERIFICATION
+------------------------------------------
+Route: /credentials/issue/:requestId/verify
+Actor: registry_clerk, senior_clerk
+Status transition: Submitted → Under Review → Verified | Returned
+
+LAYOUT:
+  Page title: ሰነድ ማረጋገጫ
+  Split view:
+    Left: verification checklist panel
+    Right: resident data and attachments preview panel
+
+VERIFICATION CHECKLIST (each item is a checkbox + status chip):
+  □ የነዋሪ መታወቂያ ውሂብ ሙሉ ነው (identity data complete)
+  □ ፎቶ ተቀባይነት ያለው (photo acceptable quality)
+  □ የቤት ቁጥር ትስስር ንቁ ነው (household link active)
+  □ ጥያቄ አይነት ትክክለኛ ነው (request type valid for this resident's state)
+  □ ደጋፊ ሰነዶች ተያይዘዋል (supporting documents attached and legible)
+  □ የድጋሚ ምዝገባ ውጤት ታይቷል (duplicate detection result reviewed)
+
+All items must be checked to enable the advance action.
+
+RETURN FIELDS (shown when clerk selects Return):
+  Checklist of return reasons (multi-select):
+    ፎቶ ጥራት የለውም
+    ሰነድ ይጎድላል
+    የቤት ቁጥር ትስስር ያልተረጋገጠ
+    ጥያቄ አይነት ትክክል አይደለም
+    ሌላ (free text field)
+  Return reason stored on service_request record
+
+ACTIONS:
+  ተረጋግጧል → Advance to Pending Approval, status = 'Verified'
+  ወደ ጸሐፊ መልስ → Return, status = 'Returned', reason required
+  Write audit_log on either action.
+
+
+---
+
+STAGE 3 — SUPERVISOR APPROVAL
+-------------------------------
+Route: /credentials/approvals/:requestId
+Actor: supervisor, tenant_admin
+Status transition: Verified → Pending Approval → Approved | Returned | Rejected
+
+LAYOUT:
+  Page title: የጥያቄ ማፅደቂያ
+  Full-width three-section layout:
+    Section 1: Submission summary (resident, request type, dates, request_number)
+    Section 2: Document and attachment viewer (tabbed: resident data / attachments)
+    Section 3: Approval action panel (fixed at bottom)
+
+CONTENT TO DISPLAY:
+  Resident full name, photo, resident_number
+  Request type chip
+  Verification checklist result (from Stage 2)
+  Duplicate detection result
+  Submission date and verifying clerk name
+  Attachment list with preview links
+  Prior credential history table (if any) — from credential_status_history
+
+APPROVAL ACTION PANEL:
+  Three action buttons:
+    ፍቃድ ስጥ (Approve) — green, primary
+    ለማስተካከያ መልስ (Return for Correction) — amber, secondary
+    አትቀበል (Reject) — red, destructive
+
+  On Approve:
+    Create approval record: approver_user_id, decision='Approved',
+    decision_at, stage_no
+    Update service_request.status = 'Approved'
+    Update residence_credential record if pre-generated, or flag for
+    payment stage
+    Write audit_log
+
+  On Return:
+    Require structured return reason (dropdown + optional free text)
+    Update service_request.status = 'Returned'
+    Write audit_log
+
+  On Reject:
+    Require rejection reason (required free text)
+    Update service_request.status = 'Rejected' (terminal)
+    Write audit_log
+    Show confirmation modal: "ይህ ጥያቄ ተቋርጧል። ሊቀለበስ አይችልም።"
+
+
+---
+
+STAGE 4 — FEE PAYMENT
+-----------------------
+Route: /credentials/issue/:requestId/payment
+Actor: finance_clerk
+Status transition: Approved → Awaiting Payment → Paid
+
+LAYOUT:
+  Page title: የክፍያ ምዝገባ
+  Two-column:
+    Left: request context card (resident, request type, approval timestamp)
+    Right: payment entry form
+
+PAYMENT FORM FIELDS:
+  የክፍያ መጠን (amount) — auto-populated from woreda fee schedule
+    (query from service_catalog or fee_schedule table by service_type)
+  የክፍያ ዘዴ (payment_channel) — select: ጥሬ ገንዘብ | ባንክ | ሌላ
+  የማጣቀሻ ቁጥር (reference_no) — optional for cash, required for bank
+  የቀን ፍሬ (payment_date) — Ethiopian calendar picker, defaults to today
+
+ZERO-FEE / WAIVER HANDLING:
+  If fee = 0 or waiver applies: show waiver reason field (required)
+  Still create payment record with amount = 0 and receipt record
+  This is mandatory for audit completeness
+
+ON CONFIRM PAYMENT:
+  Create payment record linked to service_request_id and resident_id
+  Create receipt record: receipt_number (system-generated), receipt_date,
+  total_amount, cash_bank_channel, office_id
+  Update service_request.status = 'Paid'
+  Show receipt preview modal with Print Receipt button
+  Write audit_log entry
+  Toast: "ክፍያ ተመዝግቧል። 영수증 ቁጥር: {receipt_number}"
+
+
+---
+
+STAGE 5 — CREDENTIAL RECORD GENERATION
+-----------------------------------------
+Trigger: Automated on service_request.status transition to 'Paid'
+Actor: System (background job or on-transition hook)
+Status transition: Paid → Ready to Print
+
+SYSTEM ACTIONS (no UI interaction required, but show progress to user):
+
+Generate and commit to residence_credential table:
+  credential_number     — system-generated, tenant-scoped, UNIQUE
+  serial_number         — sequential per tenant, formatted per woreda policy
+  qr_payload            — signed token containing:
+                            credential_number,
+                            resident_id (resident_number),
+                            issuing_office_id,
+                            issue_date (ISO 8601),
+                            expiry_date (ISO 8601),
+                            checksum (HMAC or equivalent)
+                          Store as signed string, never plain text
+  issue_date            — today (Ethiopian calendar stored as Gregorian ISO
+                          internally, displayed as Ethiopian in UI)
+  expiry_date           — issue_date + configured expiry period
+                          (read from woreda credential_policy config table)
+  credential_type       — Card | Certificate | Both (from request)
+  issuing_office_id     — current woreda office
+  issuing_kebele_id     — resident's current kebele
+  status                — 'Ready to Print'
+  reissue_count         — 0 for new issue; increment for reissue/renewal
+  reason_for_issue      — from request type
+
+Create initial credential_status_history entry.
+Write audit_log entry.
+
+ON COMPLETION: Update service_request.status = 'Ready to Print'
+Show status chip update to print officer's queue automatically.
+
+
+---
+
+STAGE 6 — PRINT PREVIEW AND AUTHORIZATION
+-------------------------------------------
+Route: /credentials/print/:credentialId/preview
+Actor: print_officer, registry_clerk (with credential.preview_print permission)
+Status transition: Ready to Print → Printing
+
+PRINT AUTHORIZATION GATE:
+  Before rendering the print preview, system must verify:
+    service_request.status = 'Approved'
+    payment.status = 'Paid' (receipt exists)
+    residence_credential.status = 'Ready to Print'
+    resident.active_flag = true
+    no active revocation or suspension event in credential_status_history
+  If any check fails: block preview, show specific reason, do not render
+  the print button.
+
+PRINT PREVIEW LAYOUT:
+  Full-screen preview modal or dedicated preview route
+  Show exact card layout at 85.6mm × 54mm (ID card) or A4 (certificate)
+    ID Card side A:
+      Official header / woreda name
+      ፎቶ (resident photo)
+      ሙሉ ስም
+      ቤት ቁጥር / ቀበሌ
+      serial_number
+      issue_date (Ethiopian calendar)
+      expiry_date (Ethiopian calendar)
+      QR code (from qr_payload)
+    ID Card side B:
+      resident_number
+      sex / date_of_birth
+      issuing_office_name
+      official footer / signature line
+
+  For certificate layout: A4 formal letterhead with all fields
+
+PREVIEW ACTIONS:
+  ወደ ህትመት ቀጥል (Confirm and Print) — advance to Stage 7
+  ለማስተካከያ ተመለስ (Return for Correction) — requires supervisor override,
+    reason required, status reverts to Pending Approval
+
+Update residence_credential.status = 'Printing' on confirmation.
+Write audit_log entry.
+
+
+---
+
+STAGE 7 — PHYSICAL PRINTING
+-----------------------------
+Route: /credentials/print/:credentialId/confirm
+Actor: print_officer
+Status transition: Printing → Printed
+
+ON PRINT CONFIRMATION:
+  Execute react-to-print for the previewed layout
+  Create credential_print_log entry:
+    credential_id
+    printed_by_user_id
+    print_type          (Card | Certificate | Both)
+    print_reason        (New Issue | Renewal | Reissue | Reprint)
+    printed_at          (timestamp)
+    printer_name        (input field — required)
+    copies_count        (default 1, adjustable for certificate)
+  Update residence_credential.printed_at = now()
+  Update residence_credential.status = 'Printed'
+  Write audit_log entry
+  Toast: "ህትመት ተጠናቋል። ማረጋገጫ ቁጥር: {credential_number}"
+
+REPRINT RULE:
+  If a credential is already in 'Printed' or 'Active' status and a reprint
+  is requested:
+    Require supervisor.authorize_reprint permission
+    Require stated reason (dropdown: ህትመት ስህተት | ቆሻሻ ቅጂ | ሌላ)
+    Create a new credential_print_log entry with print_reason = 'Reprint'
+    Do NOT create a new credential record
+    Write audit_log entry
+
+
+---
+
+STAGE 8 — ISSUANCE AND ACTIVATION
+------------------------------------
+Route: /credentials/issue/:credentialId/activate
+Actor: registry_clerk, print_officer
+Status transition: Printed → Active
+
+COLLECTION ACKNOWLEDGMENT FORM:
+  ነዋሪው ወስዷል checkbox — required
+  የተሰጠበት ቀን (collection_date) — Ethiopian calendar picker, defaults today
+  Optional: collector name if different from resident (authorized representative)
+
+ON CONFIRM:
+  Update residence_credential.status = 'Active'
+  If prior credential existed for same resident:
+    Update prior credential: status = 'Replaced', revoked_at = now()
+    Write credential_status_history for old credential
+  Write credential_status_history for new credential (Printed → Active)
+  Write audit_log entry
+  Show success panel: credential number, issue date, expiry date, QR preview
+  Offer: Print Confirmation Slip button
+
+
+---
+
+EXCEPTION WORKFLOW — REVOCATION
+---------------------------------
+Route: /credentials/:credentialId/revoke
+Actor: tenant_admin (credential.revoke permission required)
+Available from: resident profile, credential detail screen
+
+FLOW:
+  Show revocation confirmation modal
+  Required fields:
+    Revocation reason (dropdown: ሐሰት ምዝገባ | ነዋሪ ሞቷል | ቤት ቁጥር ለውጥ |
+                                  ፍርድ ቤት ትዕዛዝ | ሌላ)
+    Supporting reference number (optional)
+  On confirm:
+    Update residence_credential.status = 'Revoked'
+    Set residence_credential.revoked_at = now()
+    Write credential_status_history
+    Write audit_log
+    Verification endpoint for this credential must now return: INVALID
+
+
+---
+
+EXCEPTION WORKFLOW — SUSPENSION
+---------------------------------
+Actor: supervisor, tenant_admin
+
+Same pattern as revocation but status = 'Suspended'.
+Suspension is reversible — add a Lift Suspension action that transitions
+status back to 'Active' with audit trail.
+
+
+---
+
+REQUESTS QUEUE — LIST VIEW
+----------------------------
+Route: /credentials/issue
+Actor: all permitted roles (filtered by role scope)
+
+TABLE COLUMNS:
+  ቁጥር (request_number)
+  ነዋሪ (full_name)
+  ቀበሌ (kebele_name)
+  ጥያቄ አይነት (request_type chip)
+  ደረጃ (status chip — color-coded per lifecycle)
+  የቀረበበት ቀን (submitted_at — Ethiopian calendar)
+  የሚጠባበቅ ጊዜ (waiting_duration — computed, show in days)
+  ተመድቦ (assigned officer)
+  ፈጣን እርምጃ (action button — context-sensitive per status)
+
+FILTER CHIPS (above table):
+  By status, by request_type, by kebele, by assigned officer, date range
+
+EMPTY STATE:
+  "ምንም ያልተጠናቀቁ ጥያቄዎች የሉም። አዲስ ጥያቄ ለመጀመር ጠቅ ያድርጉ።"
+  Show "አዲስ ጥያቄ" button
+
+ROW QUICK ACTIONS (context-sensitive, show only what current role can do):
+  registry_clerk: ተረጋግጥ | ዝርዝር ተመልከት
+  supervisor: ፍቃድ ስጥ | ተመለስ | አትቀበል
+  finance_clerk: ክፍያ ምዝገባ
+  print_officer: አስቀድሞ ተመልከት | አትም
+
+
+---
+
+STATUS CHIPS — COLOR MAPPING
+------------------------------
+Use shadcn/ui Badge component with these semantic colors:
+
+  Draft             — slate/gray (neutral)
+  Submitted         — blue (info)
+  Under Review      — blue (info)
+  Verified          — teal (info-positive)
+  Returned          — amber (warning)
+  Pending Approval  — amber (warning)
+  Approved          — green (success-light)
+  Awaiting Payment  — amber (warning)
+  Paid              — green (success-light)
+  Ready to Print    — indigo (action-ready)
+  Printing          — indigo (in-progress)
+  Printed           — indigo (complete)
+  Active            — green (success-strong)
+  Expired           — gray (neutral-terminal)
+  Suspended         — orange (warning-terminal)
+  Revoked           — red (danger-terminal)
+  Replaced          — gray (neutral-terminal)
+  Rejected          — red (danger-terminal)
+
+Status color must be consistent between list view, detail view, audit
+timeline, and print log. Never use different colors for the same status
+in different screens.
+
+
+---
+
+AUDIT TRAIL — REQUIREMENTS
+----------------------------
+Every action in every stage must write to audit_log with:
+  entity_name = 'residence_credential' or 'service_request'
+  entity_id = relevant ID
+  action_type = descriptive string (e.g., 'CREDENTIAL_APPROVED',
+                'PAYMENT_RECORDED', 'CREDENTIAL_PRINTED', 'CREDENTIAL_REVOKED')
+  old_value_json = prior state snapshot
+  new_value_json = new state snapshot
+  actor_user_id = authenticated user
+  action_at = UTC timestamp
+  source_ip = client IP where available
+
+The audit log is immutable. Provide no UI to edit or delete audit entries.
+The audit trail tab on the credential detail screen must display entries
+in chronological timeline format with actor, action, timestamp, and
+changed fields visible.
+
+
+---
+
+ETHIOPIAN CALENDAR RULES
+--------------------------
+All date fields in this module must use Ethiopian calendar as the primary
+input and display format. Apply this to:
+  date_of_birth display
+  submitted_at display
+  issue_date (credential)
+  expiry_date (credential)
+  printed_at display
+  payment_date
+  collection_date
+
+Gregorian equivalent must be shown as lighter secondary text beneath or
+beside the Ethiopian date in all form fields and read-only displays.
+
+Use the project's shared EthiopianDatePicker component.
+Never show a Gregorian-only date in the Woreda portal.
+Store dates internally as ISO 8601 Gregorian UTC. Convert for display only.
+
+
+---
+
+VALIDATION RULES — ZOD SCHEMA REQUIREMENTS
+--------------------------------------------
+Enforce these rules in React Hook Form + Zod at field level:
+
+  resident_id         required, must resolve to active resident
+  request_type        required, must be one of defined enum values
+  photo_attachment    required for New Issue; optional for Renewal/Reissue
+  police_reference    required when request_type = 'Reissue — Stolen'
+  correction_details  required when request_type = 'Correction'
+  payment_channel     required
+  reference_no        required when payment_channel = 'Bank'
+  printer_name        required at print confirmation
+  collection_date     required at activation, must not be before issue_date
+  revocation_reason   required when revoking
+
+Show validation errors inline beneath each field, not as a summary block.
+Preserve entered data on validation failure. Never clear form on error.
+
+
+---
+
+PRINT LAYOUT SPECIFICATION
+----------------------------
+ID Card:
+  Size: 85.6mm × 54mm (ISO/IEC 7810 ID-1)
+  Front face:
+    Top bar: official woreda header, regional emblem placeholder
+    Left: resident photo (25mm × 32mm)
+    Right: ሙሉ ስም, ቤት ቁጥር, ቀበሌ, serial_number,
+           issue_date (Ethiopian), expiry_date (Ethiopian)
+    Bottom right: QR code (18mm × 18mm) from qr_payload
+  Back face:
+    resident_number, sex, date_of_birth (Ethiopian)
+    issuing_office_name, official footer, signature line
+
+Certificate (A4):
+  Official letterhead with woreda name and regional identity
+  Formal paragraph body confirming residency
+  All credential fields in structured table format
+  QR code bottom-right
+  Signature and stamp box
+  Footer: document serial number, print date, issuing officer
+
+Apply @media print CSS to remove all navigation, sidebars, action buttons,
+and status chips from printed output.
+Use react-to-print for triggering. Never use browser print dialog directly.
+
+
+---
+
+COMPONENT ARCHITECTURE
+------------------------
+Build these components for this module:
+
+  CredentialRequestForm       — Stage 1 intake form
+  ResidentSearchInput         — live search with suggestion dropdown
+  PreConditionCheckCard       — pre-condition results panel
+  DuplicateCredentialWarning  — warning card for existing active credentials
+  DocumentVerificationPanel   — Stage 2 checklist
+  ApprovalReviewPanel         — Stage 3 full review layout
+  PaymentEntryForm            — Stage 4 payment form
+  ReceiptPreviewModal         — receipt display with print action
+  CredentialPrintPreview      — Stage 6 print preview (card + certificate)
+  PrintConfirmationForm       — Stage 7 printer name, copies, log
+  ActivationForm              — Stage 8 collection acknowledgment
+  CredentialStatusChip        — consistent status badge
+  CredentialAuditTimeline     — chronological audit log display
+  CredentialQueueTable        — requests list with filters and quick actions
+  RevocationModal             — revocation confirmation and reason capture
+  SuspensionModal             — suspension and lift-suspension actions
+
+All components must be:
+  - fully typed in TypeScript (strict)
+  - Amharic-first labels via react-i18next
+  - role-aware (hide/disable unauthorized actions)
+  - tenant-scoped in all data queries
+
+
+---
+
+API LAYER — TANSTACK QUERY HOOKS
+----------------------------------
+Implement typed query and mutation hooks:
+
+  useResidentSearch(query, tenantId)
+  usePreConditionCheck(residentId, tenantId)
+  useCreateCredentialRequest(tenantId)
+  useVerifyRequest(requestId)
+  useReturnRequest(requestId, reason)
+  useApproveRequest(requestId)
+  useRejectRequest(requestId, reason)
+  useRecordPayment(requestId, paymentData)
+  useGenerateCredential(serviceRequestId)
+  useCredentialPrintPreview(credentialId)
+  useConfirmPrint(credentialId, printLogData)
+  useActivateCredential(credentialId, activationData)
+  useRevokeCredential(credentialId, revocationData)
+  useSuspendCredential(credentialId, reason)
+  useLiftSuspension(credentialId, reason)
+  useCredentialQueue(filters, tenantId)
+  useCredentialAuditTrail(credentialId)
+
+All hooks must:
+  - include tenantId in every request
+  - show loading skeleton during fetch
+  - handle error states gracefully with actionable messages
+  - invalidate relevant query cache on mutation success
+  - never swallow save failures silently
+
+
+---
+
+KPI SURFACE — DASHBOARD WIDGETS
+---------------------------------
+Expose these metrics from this module to the main dashboard:
+
+  Total active credentials (this woreda)
+  New requests today
+  Pending approval count
+  Awaiting payment count
+  Ready to print count
+  Credentials expiring in 30 days
+  Credentials expiring in 60 days
+  Average days — submission to activation (rolling 30 day)
+  Rejection rate (rolling 30 day)
+  Reprint count (rolling 30 day)
+
+Each metric rendered as a compact KPI tile with label, number, and trend
+indicator. Use TanStack Query with appropriate stale time for each metric.
+
+
+---
+
+OFFLINE BEHAVIOR
+-----------------
+This module must function in offline or low-connectivity environments per
+the PWA/Workbox configuration.
+
+Offline-safe actions (queue for sync):
+  Request submission (Stage 1)
+  Verification checklist save (Stage 2)
+  Payment entry draft (Stage 4)
+
+Offline-blocked actions (require connectivity):
+  Approval (Stage 3) — requires server-side permission check
+  Credential generation (Stage 5) — requires server-side number generation
+  Print confirmation (Stage 7) — requires audit commit
+
+Show offline badge in top bar when offline.
+Show queued-changes count.
+Show sync status indicator.
+Show last sync timestamp.
+On reconnection, auto-sync queued changes and notify the user of result.
+
+
+---
+
+IMPLEMENTATION NOTES
+---------------------
+1. The QR payload must be a signed token, not plain text. Never expose
+   raw resident data in the QR string.
+
+2. credential_number and serial_number are immutable once generated.
+   Never allow updates to these fields after Stage 5.
+
+3. Old credential records must be retained with full history. Never
+   delete or overwrite a credential record. Set status = 'Replaced'
+   or 'Revoked' and create a new record for the replacement.
+
+4. The system must enforce one active credential per resident at all times.
+   Enforce this as a database constraint AND at application layer.
+
+5. Verification endpoint (used for QR scan) must return INVALID for any
+   credential in status: Expired, Suspended, Revoked, or Replaced.
+
+6. All date storage is ISO 8601 Gregorian UTC. Ethiopian calendar is
+   presentation-layer only.
+
+7. Tenant_id must be included in every database query in this module.
+   No exceptions.
+
+8. The audit_log table is append-only. No update or delete operations
+   are permitted on audit records under any role.
+
+9. Print layout must use @media print CSS isolation. Navigation,
+   sidebars, chips, and action buttons must not appear in print output.
+
+10. Fee waiver still requires a zero-value payment record and receipt.
+    This is an audit requirement, not optional.
+
+==============================================================
+END OF MODULE PROMPT
+==============================================================

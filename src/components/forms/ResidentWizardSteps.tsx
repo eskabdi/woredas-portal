@@ -22,6 +22,7 @@ import { EthiopianDateInput } from "@/components/common/EthiopianDateInput";
 import { Section, Grid, FieldWrap, Select } from "@/components/forms/FormSection";
 import { Stepper } from "@/components/forms/Stepper";
 import { SquircleUpload } from "@/components/forms/SquircleUpload";
+import { PhoneDigitsInput } from "@/components/forms/PhoneDigitsInput";
 import { supabase } from "@/integrations/supabase/client";
 import { toWebp, storageExtension, PHOTO_WEBP } from "@/utils/imageCompression";
 import { useWoredaInfo } from "@/hooks/useWoredaInfo";
@@ -133,11 +134,37 @@ export function ResidentWizardSteps({
       return;
     }
     idCheckTimer.current = setTimeout(async () => {
+      // national_id_no is encrypted at rest
+      // (00000000000044_task6_household_rent_national_id_pii.sql) -- the
+      // duplicate check now matches on the deterministic blind index instead
+      // of the plaintext column, same cutover shape as the phone/email
+      // blind-index reads elsewhere in this codebase. my_national_id_blind_index
+      // isn't in the generated types yet, hence the untyped rpc cast.
+      const db = supabase as unknown as {
+        rpc: (
+          fn: string,
+          params: Record<string, unknown>,
+        ) => Promise<{ data: unknown; error: { message: string } | null }>;
+      };
+      const { data: blindIndex, error: rpcError } = await db.rpc("my_national_id_blind_index", {
+        _id: nationalId.trim(),
+      });
+      // An RPC error is not "no duplicate" -- clearing the warning on a
+      // transient failure would tell the operator it's safe to proceed when
+      // the check simply never ran.
+      if (rpcError) return;
+      if (!blindIndex) {
+        setDuplicateIdWarning(null);
+        return;
+      }
+      // national_id_no_blind_index isn't in the generated types yet either --
+      // .or() takes a raw filter string, sidestepping the typed-column check
+      // .eq() would otherwise fail on the same way rpc(...) above does.
       let q = supabase
         .from("resident")
         .select("resident_id, resident_number")
         .eq("woreda_id", woredaId)
-        .eq("national_id_no", nationalId.trim())
+        .or(`national_id_no_blind_index.eq.${blindIndex}`)
         .limit(1);
       if (excludeResidentId) q = q.neq("resident_id", excludeResidentId);
       const { data } = await q;
@@ -285,11 +312,14 @@ export function ResidentWizardSteps({
 
   // ----- Phone -----
   const phoneDigits = watch("phone_digits");
-  const handlePhoneChange = (raw: string) => {
-    let v = raw.replace(/\D/g, "");
-    if (v.startsWith("0")) v = v.slice(1);
-    if (v.length > 9) v = v.slice(0, 9);
-    setValue("phone_digits", v, { shouldDirty: true, shouldValidate: false });
+  const handlePhoneChange = (digits: string) => {
+    setValue("phone_digits", digits, { shouldDirty: true });
+  };
+  // Validate on blur, not on every keystroke -- an in-progress 9-digit
+  // number is legitimately "too short" for all but its last character, so
+  // live-validating it would flash an error on the very first digit typed.
+  const handlePhoneBlur = () => {
+    setValue("phone_digits", phoneDigits ?? "", { shouldValidate: true });
   };
 
   // ----- Birth-place "same as current" autofill -----
@@ -433,20 +463,11 @@ export function ResidentWizardSteps({
                 labelEn="Phone Number"
                 error={errors.phone_digits?.message}
               >
-                <div className="flex">
-                  <span className="inline-flex items-center rounded-l-md border border-r-0 border-input bg-slate-100 px-3 text-sm text-slate-700">
-                    +251
-                  </span>
-                  <Input
-                    type="tel"
-                    inputMode="numeric"
-                    className="rounded-l-none"
-                    placeholder="9XXXXXXXX"
-                    value={phoneDigits ?? ""}
-                    onChange={(e) => handlePhoneChange(e.target.value)}
-                    onBlur={(e) => handlePhoneChange(e.target.value)}
-                  />
-                </div>
+                <PhoneDigitsInput
+                  value={phoneDigits ?? ""}
+                  onChange={handlePhoneChange}
+                  onBlur={handlePhoneBlur}
+                />
               </FieldWrap>
               <FieldWrap
                 labelAm="ብሔር"

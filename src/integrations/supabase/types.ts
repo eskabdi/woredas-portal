@@ -10,13 +10,40 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.15"
+    PostgrestVersion: "14.5"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
       app_user: {
         Row: {
+          console_role_id: string | null
           created_at: string
+          custom_role_id: string | null
           department: string | null
           full_name: string
           invited_at: string | null
@@ -34,7 +61,9 @@ export type Database = {
           woreda_id: string | null
         }
         Insert: {
+          console_role_id?: string | null
           created_at?: string
+          custom_role_id?: string | null
           department?: string | null
           full_name: string
           invited_at?: string | null
@@ -52,7 +81,9 @@ export type Database = {
           woreda_id?: string | null
         }
         Update: {
+          console_role_id?: string | null
           created_at?: string
+          custom_role_id?: string | null
           department?: string | null
           full_name?: string
           invited_at?: string | null
@@ -71,6 +102,20 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "app_user_console_role_id_fkey"
+            columns: ["console_role_id"]
+            isOneToOne: false
+            referencedRelation: "console_role"
+            referencedColumns: ["console_role_id"]
+          },
+          {
+            foreignKeyName: "app_user_custom_role_id_fkey"
+            columns: ["custom_role_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_role"
+            referencedColumns: ["tenant_role_id"]
+          },
+          {
             foreignKeyName: "app_user_invited_by_user_id_fkey"
             columns: ["invited_by_user_id"]
             isOneToOne: false
@@ -86,6 +131,117 @@ export type Database = {
           },
           {
             foreignKeyName: "app_user_woreda_id_fkey"
+            columns: ["woreda_id"]
+            isOneToOne: false
+            referencedRelation: "woreda"
+            referencedColumns: ["woreda_id"]
+          },
+        ]
+      }
+      approval: {
+        Row: {
+          approval_id: string
+          approver_user_id: string | null
+          decision: string
+          decision_at: string
+          entity: string
+          entity_id: string
+          reason: string | null
+          stage_no: number
+          woreda_id: string
+        }
+        Insert: {
+          approval_id?: string
+          approver_user_id?: string | null
+          decision: string
+          decision_at?: string
+          entity: string
+          entity_id: string
+          reason?: string | null
+          stage_no: number
+          woreda_id: string
+        }
+        Update: {
+          approval_id?: string
+          approver_user_id?: string | null
+          decision?: string
+          decision_at?: string
+          entity?: string
+          entity_id?: string
+          reason?: string | null
+          stage_no?: number
+          woreda_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "approval_approver_user_id_fkey"
+            columns: ["approver_user_id"]
+            isOneToOne: false
+            referencedRelation: "app_user"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "approval_woreda_id_fkey"
+            columns: ["woreda_id"]
+            isOneToOne: false
+            referencedRelation: "woreda"
+            referencedColumns: ["woreda_id"]
+          },
+        ]
+      }
+      attachment: {
+        Row: {
+          attachment_id: string
+          attachment_type: string | null
+          checksum: string
+          entity: string
+          entity_id: string
+          file_name: string
+          mime: string
+          size_bytes: number
+          storage_path: string
+          uploaded_at: string
+          uploaded_by: string | null
+          woreda_id: string
+        }
+        Insert: {
+          attachment_id?: string
+          attachment_type?: string | null
+          checksum: string
+          entity: string
+          entity_id: string
+          file_name: string
+          mime: string
+          size_bytes: number
+          storage_path: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          woreda_id: string
+        }
+        Update: {
+          attachment_id?: string
+          attachment_type?: string | null
+          checksum?: string
+          entity?: string
+          entity_id?: string
+          file_name?: string
+          mime?: string
+          size_bytes?: number
+          storage_path?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          woreda_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attachment_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "app_user"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "attachment_woreda_id_fkey"
             columns: ["woreda_id"]
             isOneToOne: false
             referencedRelation: "woreda"
@@ -147,6 +303,73 @@ export type Database = {
           },
         ]
       }
+      console_role: {
+        Row: {
+          console_role_id: string
+          created_at: string
+          description: string | null
+          is_active: boolean
+          name: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          console_role_id?: string
+          created_at?: string
+          description?: string | null
+          is_active?: boolean
+          name: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          console_role_id?: string
+          created_at?: string
+          description?: string | null
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "console_role_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "app_user"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      console_role_permission: {
+        Row: {
+          console_role_id: string
+          is_granted: boolean
+          permission_key: string
+          updated_at: string
+        }
+        Insert: {
+          console_role_id: string
+          is_granted?: boolean
+          permission_key: string
+          updated_at?: string
+        }
+        Update: {
+          console_role_id?: string
+          is_granted?: boolean
+          permission_key?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "console_role_permission_console_role_id_fkey"
+            columns: ["console_role_id"]
+            isOneToOne: false
+            referencedRelation: "console_role"
+            referencedColumns: ["console_role_id"]
+          },
+        ]
+      }
       credential_number_sequence: {
         Row: {
           last_value: number
@@ -168,6 +391,57 @@ export type Database = {
             foreignKeyName: "credential_number_sequence_woreda_id_fkey"
             columns: ["woreda_id"]
             isOneToOne: false
+            referencedRelation: "woreda"
+            referencedColumns: ["woreda_id"]
+          },
+        ]
+      }
+      credential_policy: {
+        Row: {
+          created_at: string
+          credential_policy_id: string
+          enabled_request_types: string[]
+          expiry_months: number | null
+          max_reissue_count: number | null
+          renewal_window_days: number | null
+          updated_at: string
+          updated_by: string | null
+          woreda_id: string
+        }
+        Insert: {
+          created_at?: string
+          credential_policy_id?: string
+          enabled_request_types?: string[]
+          expiry_months?: number | null
+          max_reissue_count?: number | null
+          renewal_window_days?: number | null
+          updated_at?: string
+          updated_by?: string | null
+          woreda_id: string
+        }
+        Update: {
+          created_at?: string
+          credential_policy_id?: string
+          enabled_request_types?: string[]
+          expiry_months?: number | null
+          max_reissue_count?: number | null
+          renewal_window_days?: number | null
+          updated_at?: string
+          updated_by?: string | null
+          woreda_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credential_policy_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "app_user"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "credential_policy_woreda_id_fkey"
+            columns: ["woreda_id"]
+            isOneToOne: true
             referencedRelation: "woreda"
             referencedColumns: ["woreda_id"]
           },
@@ -252,6 +526,8 @@ export type Database = {
           approval_decision_at: string | null
           approved_by_user_id: string | null
           closed_at: string | null
+          correction_fields: string[] | null
+          correction_reason: string | null
           created_at: string
           credential_id: string | null
           credential_request_id: string
@@ -261,7 +537,9 @@ export type Database = {
           household_id: string | null
           issuing_kebele_id: string
           notes: string | null
+          office_id: string | null
           payment_id: string | null
+          police_report_number: string | null
           prior_credential_id: string | null
           reject_reason: string | null
           request_number: string
@@ -284,6 +562,8 @@ export type Database = {
           approval_decision_at?: string | null
           approved_by_user_id?: string | null
           closed_at?: string | null
+          correction_fields?: string[] | null
+          correction_reason?: string | null
           created_at?: string
           credential_id?: string | null
           credential_request_id?: string
@@ -293,7 +573,9 @@ export type Database = {
           household_id?: string | null
           issuing_kebele_id: string
           notes?: string | null
+          office_id?: string | null
           payment_id?: string | null
+          police_report_number?: string | null
           prior_credential_id?: string | null
           reject_reason?: string | null
           request_number: string
@@ -316,6 +598,8 @@ export type Database = {
           approval_decision_at?: string | null
           approved_by_user_id?: string | null
           closed_at?: string | null
+          correction_fields?: string[] | null
+          correction_reason?: string | null
           created_at?: string
           credential_id?: string | null
           credential_request_id?: string
@@ -325,7 +609,9 @@ export type Database = {
           household_id?: string | null
           issuing_kebele_id?: string
           notes?: string | null
+          office_id?: string | null
           payment_id?: string | null
+          police_report_number?: string | null
           prior_credential_id?: string | null
           reject_reason?: string | null
           request_number?: string
@@ -367,6 +653,13 @@ export type Database = {
             referencedColumns: ["household_id"]
           },
           {
+            foreignKeyName: "credential_request_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "household_decrypted"
+            referencedColumns: ["household_id"]
+          },
+          {
             foreignKeyName: "credential_request_issuing_kebele_id_fkey"
             columns: ["issuing_kebele_id"]
             isOneToOne: false
@@ -374,10 +667,24 @@ export type Database = {
             referencedColumns: ["kebele_id"]
           },
           {
+            foreignKeyName: "credential_request_office_id_fkey"
+            columns: ["office_id"]
+            isOneToOne: false
+            referencedRelation: "office"
+            referencedColumns: ["office_id"]
+          },
+          {
             foreignKeyName: "credential_request_payment_fk"
             columns: ["payment_id"]
             isOneToOne: false
             referencedRelation: "payment"
+            referencedColumns: ["payment_id"]
+          },
+          {
+            foreignKeyName: "credential_request_payment_fk"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payment_decrypted"
             referencedColumns: ["payment_id"]
           },
           {
@@ -406,6 +713,13 @@ export type Database = {
             columns: ["resident_id"]
             isOneToOne: false
             referencedRelation: "resident"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "credential_request_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "resident_decrypted"
             referencedColumns: ["resident_id"]
           },
           {
@@ -540,9 +854,61 @@ export type Database = {
           },
         ]
       }
+      credential_verification_log: {
+        Row: {
+          attempted_value: string
+          attempted_value_kind: string
+          created_at: string
+          id: string
+          is_staff_caller: boolean
+          matched_credential_id: string | null
+          result: string
+          source_ip: string | null
+          woreda_id: string | null
+        }
+        Insert: {
+          attempted_value: string
+          attempted_value_kind: string
+          created_at?: string
+          id?: string
+          is_staff_caller?: boolean
+          matched_credential_id?: string | null
+          result: string
+          source_ip?: string | null
+          woreda_id?: string | null
+        }
+        Update: {
+          attempted_value?: string
+          attempted_value_kind?: string
+          created_at?: string
+          id?: string
+          is_staff_caller?: boolean
+          matched_credential_id?: string | null
+          result?: string
+          source_ip?: string | null
+          woreda_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credential_verification_log_matched_credential_id_fkey"
+            columns: ["matched_credential_id"]
+            isOneToOne: false
+            referencedRelation: "residence_credential"
+            referencedColumns: ["credential_id"]
+          },
+          {
+            foreignKeyName: "credential_verification_log_woreda_id_fkey"
+            columns: ["woreda_id"]
+            isOneToOne: false
+            referencedRelation: "woreda"
+            referencedColumns: ["woreda_id"]
+          },
+        ]
+      }
       fee_schedule: {
         Row: {
           created_at: string
+          effective_from: string | null
           fee_schedule_id: string
           penalty_rate: number
           service_type: string
@@ -553,6 +919,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          effective_from?: string | null
           fee_schedule_id?: string
           penalty_rate?: number
           service_type: string
@@ -563,6 +930,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          effective_from?: string | null
           fee_schedule_id?: string
           penalty_rate?: number
           service_type?: string
@@ -588,6 +956,7 @@ export type Database = {
           alternate_head_resident_id: string | null
           created_at: string
           email: string | null
+          email_enc: string | null
           gps_lat: number | null
           gps_lng: number | null
           house_label: string | null
@@ -599,8 +968,10 @@ export type Database = {
           kebele_id: string
           occupancy_status: string
           phone_number: string | null
+          phone_number_enc: string | null
           po_box: string | null
           rent_amount: number | null
+          rent_amount_enc: string | null
           spouse_resident_id: string | null
           sub_woreda: string | null
           updated_at: string
@@ -612,6 +983,7 @@ export type Database = {
           alternate_head_resident_id?: string | null
           created_at?: string
           email?: string | null
+          email_enc?: string | null
           gps_lat?: number | null
           gps_lng?: number | null
           house_label?: string | null
@@ -623,8 +995,10 @@ export type Database = {
           kebele_id: string
           occupancy_status?: string
           phone_number?: string | null
+          phone_number_enc?: string | null
           po_box?: string | null
           rent_amount?: number | null
+          rent_amount_enc?: string | null
           spouse_resident_id?: string | null
           sub_woreda?: string | null
           updated_at?: string
@@ -636,6 +1010,7 @@ export type Database = {
           alternate_head_resident_id?: string | null
           created_at?: string
           email?: string | null
+          email_enc?: string | null
           gps_lat?: number | null
           gps_lng?: number | null
           house_label?: string | null
@@ -647,8 +1022,10 @@ export type Database = {
           kebele_id?: string
           occupancy_status?: string
           phone_number?: string | null
+          phone_number_enc?: string | null
           po_box?: string | null
           rent_amount?: number | null
+          rent_amount_enc?: string | null
           spouse_resident_id?: string | null
           sub_woreda?: string | null
           updated_at?: string
@@ -670,6 +1047,13 @@ export type Database = {
             referencedColumns: ["resident_id"]
           },
           {
+            foreignKeyName: "household_alternate_head_resident_id_fkey"
+            columns: ["alternate_head_resident_id"]
+            isOneToOne: false
+            referencedRelation: "resident_decrypted"
+            referencedColumns: ["resident_id"]
+          },
+          {
             foreignKeyName: "household_household_head_resident_id_fkey"
             columns: ["household_head_resident_id"]
             isOneToOne: false
@@ -681,6 +1065,13 @@ export type Database = {
             columns: ["household_head_resident_id"]
             isOneToOne: false
             referencedRelation: "resident"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "household_household_head_resident_id_fkey"
+            columns: ["household_head_resident_id"]
+            isOneToOne: false
+            referencedRelation: "resident_decrypted"
             referencedColumns: ["resident_id"]
           },
           {
@@ -702,6 +1093,13 @@ export type Database = {
             columns: ["spouse_resident_id"]
             isOneToOne: false
             referencedRelation: "resident"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "household_spouse_resident_id_fkey"
+            columns: ["spouse_resident_id"]
+            isOneToOne: false
+            referencedRelation: "resident_decrypted"
             referencedColumns: ["resident_id"]
           },
           {
@@ -765,6 +1163,13 @@ export type Database = {
             referencedColumns: ["household_id"]
           },
           {
+            foreignKeyName: "household_change_log_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "household_decrypted"
+            referencedColumns: ["household_id"]
+          },
+          {
             foreignKeyName: "household_change_log_registered_by_user_id_fkey"
             columns: ["registered_by_user_id"]
             isOneToOne: false
@@ -780,24 +1185,86 @@ export type Database = {
           },
         ]
       }
+      household_location: {
+        Row: {
+          captured_at: string
+          captured_by: string | null
+          gps_lat: number | null
+          gps_lng: number | null
+          household_id: string
+          household_location_id: string
+          map_reference: string | null
+          woreda_id: string
+        }
+        Insert: {
+          captured_at?: string
+          captured_by?: string | null
+          gps_lat?: number | null
+          gps_lng?: number | null
+          household_id: string
+          household_location_id?: string
+          map_reference?: string | null
+          woreda_id: string
+        }
+        Update: {
+          captured_at?: string
+          captured_by?: string | null
+          gps_lat?: number | null
+          gps_lng?: number | null
+          household_id?: string
+          household_location_id?: string
+          map_reference?: string | null
+          woreda_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "household_location_captured_by_fkey"
+            columns: ["captured_by"]
+            isOneToOne: false
+            referencedRelation: "app_user"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "household_location_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: true
+            referencedRelation: "household"
+            referencedColumns: ["household_id"]
+          },
+          {
+            foreignKeyName: "household_location_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: true
+            referencedRelation: "household_decrypted"
+            referencedColumns: ["household_id"]
+          },
+          {
+            foreignKeyName: "household_location_woreda_id_fkey"
+            columns: ["woreda_id"]
+            isOneToOne: false
+            referencedRelation: "woreda"
+            referencedColumns: ["woreda_id"]
+          },
+        ]
+      }
       id_card_template: {
         Row: {
           background_image_url: string | null
-          status: string
+          is_published: boolean
           template_type: string
           updated_at: string
           updated_by: string | null
         }
         Insert: {
           background_image_url?: string | null
-          status?: string
+          is_published?: boolean
           template_type: string
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
           background_image_url?: string | null
-          status?: string
+          is_published?: boolean
           template_type?: string
           updated_at?: string
           updated_by?: string | null
@@ -813,6 +1280,75 @@ export type Database = {
         ]
       }
       id_card_template_field: {
+        Row: {
+          binding_mode: string
+          canvas_height: number
+          canvas_width: number
+          color: string
+          field_key: string
+          field_type: string
+          font_family: string
+          font_size: number | null
+          font_style: string
+          font_weight: string | null
+          height: number
+          static_value: string | null
+          template_field_id: string
+          template_type: string
+          text_align: string
+          text_decoration: string
+          width: number
+          x: number
+          y: number
+          z_index: number
+        }
+        Insert: {
+          binding_mode?: string
+          canvas_height?: number
+          canvas_width?: number
+          color?: string
+          field_key: string
+          field_type?: string
+          font_family?: string
+          font_size?: number | null
+          font_style?: string
+          font_weight?: string | null
+          height: number
+          static_value?: string | null
+          template_field_id?: string
+          template_type: string
+          text_align?: string
+          text_decoration?: string
+          width: number
+          x: number
+          y: number
+          z_index?: number
+        }
+        Update: {
+          binding_mode?: string
+          canvas_height?: number
+          canvas_width?: number
+          color?: string
+          field_key?: string
+          field_type?: string
+          font_family?: string
+          font_size?: number | null
+          font_style?: string
+          font_weight?: string | null
+          height?: number
+          static_value?: string | null
+          template_field_id?: string
+          template_type?: string
+          text_align?: string
+          text_decoration?: string
+          width?: number
+          x?: number
+          y?: number
+          z_index?: number
+        }
+        Relationships: []
+      }
+      id_card_template_field_draft: {
         Row: {
           binding_mode: string
           canvas_height: number
@@ -973,9 +1509,51 @@ export type Database = {
           },
         ]
       }
+      office: {
+        Row: {
+          created_at: string
+          is_active: boolean
+          is_main: boolean
+          office_code: string
+          office_id: string
+          office_name: string
+          updated_at: string
+          woreda_id: string
+        }
+        Insert: {
+          created_at?: string
+          is_active?: boolean
+          is_main?: boolean
+          office_code: string
+          office_id?: string
+          office_name: string
+          updated_at?: string
+          woreda_id: string
+        }
+        Update: {
+          created_at?: string
+          is_active?: boolean
+          is_main?: boolean
+          office_code?: string
+          office_id?: string
+          office_name?: string
+          updated_at?: string
+          woreda_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "office_woreda_id_fkey"
+            columns: ["woreda_id"]
+            isOneToOne: true
+            referencedRelation: "woreda"
+            referencedColumns: ["woreda_id"]
+          },
+        ]
+      }
       payment: {
         Row: {
           amount: number
+          amount_enc: string | null
           channel: string
           created_at: string
           credential_request_id: string | null
@@ -989,10 +1567,14 @@ export type Database = {
           resident_id: string | null
           service_request_id: string | null
           status: string
+          vital_event_id: string | null
+          waived: boolean
+          waiver_reason: string | null
           woreda_id: string
         }
         Insert: {
           amount: number
+          amount_enc?: string | null
           channel?: string
           created_at?: string
           credential_request_id?: string | null
@@ -1006,10 +1588,14 @@ export type Database = {
           resident_id?: string | null
           service_request_id?: string | null
           status?: string
+          vital_event_id?: string | null
+          waived?: boolean
+          waiver_reason?: string | null
           woreda_id: string
         }
         Update: {
           amount?: number
+          amount_enc?: string | null
           channel?: string
           created_at?: string
           credential_request_id?: string | null
@@ -1023,6 +1609,9 @@ export type Database = {
           resident_id?: string | null
           service_request_id?: string | null
           status?: string
+          vital_event_id?: string | null
+          waived?: boolean
+          waiver_reason?: string | null
           woreda_id?: string
         }
         Relationships: [
@@ -1041,6 +1630,13 @@ export type Database = {
             referencedColumns: ["household_id"]
           },
           {
+            foreignKeyName: "payment_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "household_decrypted"
+            referencedColumns: ["household_id"]
+          },
+          {
             foreignKeyName: "payment_posted_by_user_id_fkey"
             columns: ["posted_by_user_id"]
             isOneToOne: false
@@ -1052,6 +1648,13 @@ export type Database = {
             columns: ["rental_request_id"]
             isOneToOne: false
             referencedRelation: "rental_occupancy_request"
+            referencedColumns: ["rental_request_id"]
+          },
+          {
+            foreignKeyName: "payment_rental_request_id_fkey"
+            columns: ["rental_request_id"]
+            isOneToOne: false
+            referencedRelation: "rental_occupancy_request_decrypted"
             referencedColumns: ["rental_request_id"]
           },
           {
@@ -1069,11 +1672,32 @@ export type Database = {
             referencedColumns: ["resident_id"]
           },
           {
+            foreignKeyName: "payment_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "resident_decrypted"
+            referencedColumns: ["resident_id"]
+          },
+          {
             foreignKeyName: "payment_service_request_id_fkey"
             columns: ["service_request_id"]
             isOneToOne: false
             referencedRelation: "service_request"
             referencedColumns: ["service_request_id"]
+          },
+          {
+            foreignKeyName: "payment_service_request_id_fkey"
+            columns: ["service_request_id"]
+            isOneToOne: false
+            referencedRelation: "service_request_decrypted"
+            referencedColumns: ["service_request_id"]
+          },
+          {
+            foreignKeyName: "payment_vital_event_id_fkey"
+            columns: ["vital_event_id"]
+            isOneToOne: false
+            referencedRelation: "vital_event"
+            referencedColumns: ["vital_event_id"]
           },
           {
             foreignKeyName: "payment_woreda_id_fkey"
@@ -1083,6 +1707,24 @@ export type Database = {
             referencedColumns: ["woreda_id"]
           },
         ]
+      }
+      rate_limit_bucket: {
+        Row: {
+          bucket_key: string
+          request_count: number
+          window_start: string
+        }
+        Insert: {
+          bucket_key: string
+          request_count?: number
+          window_start: string
+        }
+        Update: {
+          bucket_key?: string
+          request_count?: number
+          window_start?: string
+        }
+        Relationships: []
       }
       receipt: {
         Row: {
@@ -1094,6 +1736,7 @@ export type Database = {
           receipt_id: string
           receipt_number: string
           total_amount: number
+          verification_token: string | null
           woreda_id: string
         }
         Insert: {
@@ -1105,6 +1748,7 @@ export type Database = {
           receipt_id?: string
           receipt_number: string
           total_amount: number
+          verification_token?: string | null
           woreda_id: string
         }
         Update: {
@@ -1116,6 +1760,7 @@ export type Database = {
           receipt_id?: string
           receipt_number?: string
           total_amount?: number
+          verification_token?: string | null
           woreda_id?: string
         }
         Relationships: [
@@ -1124,6 +1769,13 @@ export type Database = {
             columns: ["payment_id"]
             isOneToOne: false
             referencedRelation: "payment"
+            referencedColumns: ["payment_id"]
+          },
+          {
+            foreignKeyName: "receipt_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payment_decrypted"
             referencedColumns: ["payment_id"]
           },
           {
@@ -1168,6 +1820,7 @@ export type Database = {
           occupancy_id: string
           originating_request_id: string | null
           rent_amount: number
+          rent_amount_enc: string | null
           rent_start_date: string
           rental_house_id: string
           resident_id: string
@@ -1183,6 +1836,7 @@ export type Database = {
           occupancy_id?: string
           originating_request_id?: string | null
           rent_amount: number
+          rent_amount_enc?: string | null
           rent_start_date: string
           rental_house_id: string
           resident_id: string
@@ -1198,6 +1852,7 @@ export type Database = {
           occupancy_id?: string
           originating_request_id?: string | null
           rent_amount?: number
+          rent_amount_enc?: string | null
           rent_start_date?: string
           rental_house_id?: string
           resident_id?: string
@@ -1216,10 +1871,24 @@ export type Database = {
             referencedColumns: ["household_id"]
           },
           {
+            foreignKeyName: "rental_occupancy_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "household_decrypted"
+            referencedColumns: ["household_id"]
+          },
+          {
             foreignKeyName: "rental_occupancy_originating_request_id_fkey"
             columns: ["originating_request_id"]
             isOneToOne: false
             referencedRelation: "rental_occupancy_request"
+            referencedColumns: ["rental_request_id"]
+          },
+          {
+            foreignKeyName: "rental_occupancy_originating_request_id_fkey"
+            columns: ["originating_request_id"]
+            isOneToOne: false
+            referencedRelation: "rental_occupancy_request_decrypted"
             referencedColumns: ["rental_request_id"]
           },
           {
@@ -1244,6 +1913,13 @@ export type Database = {
             referencedColumns: ["resident_id"]
           },
           {
+            foreignKeyName: "rental_occupancy_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "resident_decrypted"
+            referencedColumns: ["resident_id"]
+          },
+          {
             foreignKeyName: "rental_occupancy_woreda_id_fkey"
             columns: ["woreda_id"]
             isOneToOne: false
@@ -1261,6 +1937,7 @@ export type Database = {
           household_id: string | null
           reject_reason: string | null
           rent_amount: number | null
+          rent_amount_enc: string | null
           rent_start_date: string | null
           rental_house_id: string
           rental_request_id: string
@@ -1287,6 +1964,7 @@ export type Database = {
           household_id?: string | null
           reject_reason?: string | null
           rent_amount?: number | null
+          rent_amount_enc?: string | null
           rent_start_date?: string | null
           rental_house_id: string
           rental_request_id?: string
@@ -1313,6 +1991,7 @@ export type Database = {
           household_id?: string | null
           reject_reason?: string | null
           rent_amount?: number | null
+          rent_amount_enc?: string | null
           rent_start_date?: string | null
           rental_house_id?: string
           rental_request_id?: string
@@ -1347,10 +2026,24 @@ export type Database = {
             referencedColumns: ["occupancy_id"]
           },
           {
+            foreignKeyName: "rental_occupancy_request_existing_fk"
+            columns: ["existing_occupancy_id"]
+            isOneToOne: false
+            referencedRelation: "rental_occupancy_decrypted"
+            referencedColumns: ["occupancy_id"]
+          },
+          {
             foreignKeyName: "rental_occupancy_request_household_id_fkey"
             columns: ["household_id"]
             isOneToOne: false
             referencedRelation: "household"
+            referencedColumns: ["household_id"]
+          },
+          {
+            foreignKeyName: "rental_occupancy_request_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "household_decrypted"
             referencedColumns: ["household_id"]
           },
           {
@@ -1382,10 +2075,24 @@ export type Database = {
             referencedColumns: ["resident_id"]
           },
           {
+            foreignKeyName: "rental_occupancy_request_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "resident_decrypted"
+            referencedColumns: ["resident_id"]
+          },
+          {
             foreignKeyName: "rental_occupancy_request_resulting_fk"
             columns: ["resulting_occupancy_id"]
             isOneToOne: false
             referencedRelation: "rental_occupancy"
+            referencedColumns: ["occupancy_id"]
+          },
+          {
+            foreignKeyName: "rental_occupancy_request_resulting_fk"
+            columns: ["resulting_occupancy_id"]
+            isOneToOne: false
+            referencedRelation: "rental_occupancy_decrypted"
             referencedColumns: ["occupancy_id"]
           },
           {
@@ -1453,6 +2160,13 @@ export type Database = {
             referencedColumns: ["rental_request_id"]
           },
           {
+            foreignKeyName: "rental_request_document_rental_request_id_fkey"
+            columns: ["rental_request_id"]
+            isOneToOne: false
+            referencedRelation: "rental_occupancy_request_decrypted"
+            referencedColumns: ["rental_request_id"]
+          },
+          {
             foreignKeyName: "rental_request_document_uploaded_by_user_id_fkey"
             columns: ["uploaded_by_user_id"]
             isOneToOne: false
@@ -1506,6 +2220,7 @@ export type Database = {
           issue_date: string | null
           issued_recipient_name: string | null
           issuing_kebele_id: string
+          issuing_office_id: string | null
           printed_at: string | null
           qr_payload: string | null
           reason_for_issue: string | null
@@ -1519,6 +2234,7 @@ export type Database = {
           revoked_reason: string | null
           serial_number: string
           status: string
+          suspended_reason: string | null
           updated_at: string
           woreda_id: string
         }
@@ -1533,6 +2249,7 @@ export type Database = {
           issue_date?: string | null
           issued_recipient_name?: string | null
           issuing_kebele_id: string
+          issuing_office_id?: string | null
           printed_at?: string | null
           qr_payload?: string | null
           reason_for_issue?: string | null
@@ -1546,6 +2263,7 @@ export type Database = {
           revoked_reason?: string | null
           serial_number: string
           status?: string
+          suspended_reason?: string | null
           updated_at?: string
           woreda_id: string
         }
@@ -1560,6 +2278,7 @@ export type Database = {
           issue_date?: string | null
           issued_recipient_name?: string | null
           issuing_kebele_id?: string
+          issuing_office_id?: string | null
           printed_at?: string | null
           qr_payload?: string | null
           reason_for_issue?: string | null
@@ -1573,6 +2292,7 @@ export type Database = {
           revoked_reason?: string | null
           serial_number?: string
           status?: string
+          suspended_reason?: string | null
           updated_at?: string
           woreda_id?: string
         }
@@ -1590,6 +2310,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "kebele"
             referencedColumns: ["kebele_id"]
+          },
+          {
+            foreignKeyName: "residence_credential_issuing_office_id_fkey"
+            columns: ["issuing_office_id"]
+            isOneToOne: false
+            referencedRelation: "office"
+            referencedColumns: ["office_id"]
           },
           {
             foreignKeyName: "residence_credential_requested_by_user_id_fkey"
@@ -1610,6 +2337,13 @@ export type Database = {
             columns: ["resident_id"]
             isOneToOne: false
             referencedRelation: "resident"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "residence_credential_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "resident_decrypted"
             referencedColumns: ["resident_id"]
           },
           {
@@ -1637,6 +2371,7 @@ export type Database = {
           current_residence_extra: Json | null
           date_of_birth: string
           email: string | null
+          email_enc: string | null
           ethnicity: string | null
           father_name: string | null
           first_name: string | null
@@ -1647,7 +2382,11 @@ export type Database = {
           marital_status: string
           mother_full_name: string | null
           national_id_no: string | null
+          national_id_no_blind_index: string | null
+          national_id_no_enc: string | null
           phone_number: string | null
+          phone_number_blind_index: string | null
+          phone_number_enc: string | null
           photo_url: string | null
           relation_to_head: string | null
           religion: string | null
@@ -1668,6 +2407,7 @@ export type Database = {
           current_residence_extra?: Json | null
           date_of_birth: string
           email?: string | null
+          email_enc?: string | null
           ethnicity?: string | null
           father_name?: string | null
           first_name?: string | null
@@ -1678,7 +2418,11 @@ export type Database = {
           marital_status: string
           mother_full_name?: string | null
           national_id_no?: string | null
+          national_id_no_blind_index?: string | null
+          national_id_no_enc?: string | null
           phone_number?: string | null
+          phone_number_blind_index?: string | null
+          phone_number_enc?: string | null
           photo_url?: string | null
           relation_to_head?: string | null
           religion?: string | null
@@ -1699,6 +2443,7 @@ export type Database = {
           current_residence_extra?: Json | null
           date_of_birth?: string
           email?: string | null
+          email_enc?: string | null
           ethnicity?: string | null
           father_name?: string | null
           first_name?: string | null
@@ -1709,7 +2454,11 @@ export type Database = {
           marital_status?: string
           mother_full_name?: string | null
           national_id_no?: string | null
+          national_id_no_blind_index?: string | null
+          national_id_no_enc?: string | null
           phone_number?: string | null
+          phone_number_blind_index?: string | null
+          phone_number_enc?: string | null
           photo_url?: string | null
           relation_to_head?: string | null
           religion?: string | null
@@ -1728,6 +2477,13 @@ export type Database = {
             columns: ["current_household_id"]
             isOneToOne: false
             referencedRelation: "household"
+            referencedColumns: ["household_id"]
+          },
+          {
+            foreignKeyName: "resident_current_household_id_fkey"
+            columns: ["current_household_id"]
+            isOneToOne: false
+            referencedRelation: "household_decrypted"
             referencedColumns: ["household_id"]
           },
           {
@@ -1791,6 +2547,13 @@ export type Database = {
             referencedColumns: ["household_id"]
           },
           {
+            foreignKeyName: "resident_document_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "household_decrypted"
+            referencedColumns: ["household_id"]
+          },
+          {
             foreignKeyName: "resident_document_resident_id_fkey"
             columns: ["resident_id"]
             isOneToOne: false
@@ -1802,6 +2565,13 @@ export type Database = {
             columns: ["resident_id"]
             isOneToOne: false
             referencedRelation: "resident"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "resident_document_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "resident_decrypted"
             referencedColumns: ["resident_id"]
           },
           {
@@ -1850,6 +2620,7 @@ export type Database = {
           permission_key: string
           role_name: string
           updated_at: string
+          updated_by: string | null
           woreda_id: string
         }
         Insert: {
@@ -1858,6 +2629,7 @@ export type Database = {
           permission_key: string
           role_name: string
           updated_at?: string
+          updated_by?: string | null
           woreda_id: string
         }
         Update: {
@@ -1866,9 +2638,17 @@ export type Database = {
           permission_key?: string
           role_name?: string
           updated_at?: string
+          updated_by?: string | null
           woreda_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "role_permission_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "app_user"
+            referencedColumns: ["user_id"]
+          },
           {
             foreignKeyName: "role_permission_woreda_id_fkey"
             columns: ["woreda_id"]
@@ -1883,6 +2663,7 @@ export type Database = {
           addressed_to: string | null
           applicant_name: string | null
           applicant_phone: string | null
+          applicant_phone_enc: string | null
           approval_decision_at: string | null
           approved_by_user_id: string | null
           category: string
@@ -1924,6 +2705,7 @@ export type Database = {
           addressed_to?: string | null
           applicant_name?: string | null
           applicant_phone?: string | null
+          applicant_phone_enc?: string | null
           approval_decision_at?: string | null
           approved_by_user_id?: string | null
           category?: string
@@ -1965,6 +2747,7 @@ export type Database = {
           addressed_to?: string | null
           applicant_name?: string | null
           applicant_phone?: string | null
+          applicant_phone_enc?: string | null
           approval_decision_at?: string | null
           approved_by_user_id?: string | null
           category?: string
@@ -2018,6 +2801,13 @@ export type Database = {
             referencedColumns: ["household_id"]
           },
           {
+            foreignKeyName: "service_request_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "household_decrypted"
+            referencedColumns: ["household_id"]
+          },
+          {
             foreignKeyName: "service_request_issued_by_user_id_fkey"
             columns: ["issued_by_user_id"]
             isOneToOne: false
@@ -2039,6 +2829,13 @@ export type Database = {
             referencedColumns: ["payment_id"]
           },
           {
+            foreignKeyName: "service_request_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payment_decrypted"
+            referencedColumns: ["payment_id"]
+          },
+          {
             foreignKeyName: "service_request_requested_by_user_id_fkey"
             columns: ["requested_by_user_id"]
             isOneToOne: false
@@ -2057,6 +2854,13 @@ export type Database = {
             columns: ["resident_id"]
             isOneToOne: false
             referencedRelation: "resident"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "service_request_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "resident_decrypted"
             referencedColumns: ["resident_id"]
           },
           {
@@ -2128,6 +2932,13 @@ export type Database = {
             columns: ["service_request_id"]
             isOneToOne: false
             referencedRelation: "service_request"
+            referencedColumns: ["service_request_id"]
+          },
+          {
+            foreignKeyName: "service_request_attachment_service_request_id_fkey"
+            columns: ["service_request_id"]
+            isOneToOne: false
+            referencedRelation: "service_request_decrypted"
             referencedColumns: ["service_request_id"]
           },
           {
@@ -2213,6 +3024,13 @@ export type Database = {
             columns: ["service_request_id"]
             isOneToOne: false
             referencedRelation: "service_request"
+            referencedColumns: ["service_request_id"]
+          },
+          {
+            foreignKeyName: "service_request_status_history_service_request_id_fkey"
+            columns: ["service_request_id"]
+            isOneToOne: false
+            referencedRelation: "service_request_decrypted"
             referencedColumns: ["service_request_id"]
           },
         ]
@@ -2321,6 +3139,155 @@ export type Database = {
           },
         ]
       }
+      tenant_role: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          is_active: boolean
+          name: string
+          tenant_role_id: string
+          updated_at: string
+          updated_by: string | null
+          woreda_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          is_active?: boolean
+          name: string
+          tenant_role_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          woreda_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          is_active?: boolean
+          name?: string
+          tenant_role_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          woreda_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_role_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "app_user"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "tenant_role_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "app_user"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "tenant_role_woreda_id_fkey"
+            columns: ["woreda_id"]
+            isOneToOne: false
+            referencedRelation: "woreda"
+            referencedColumns: ["woreda_id"]
+          },
+        ]
+      }
+      tenant_role_permission: {
+        Row: {
+          is_granted: boolean
+          permission_key: string
+          tenant_role_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          is_granted?: boolean
+          permission_key: string
+          tenant_role_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          is_granted?: boolean
+          permission_key?: string
+          tenant_role_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_role_permission_tenant_role_id_fkey"
+            columns: ["tenant_role_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_role"
+            referencedColumns: ["tenant_role_id"]
+          },
+          {
+            foreignKeyName: "tenant_role_permission_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "app_user"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      user_permission_override: {
+        Row: {
+          created_at: string
+          is_granted: boolean
+          permission_key: string
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+          woreda_id: string
+        }
+        Insert: {
+          created_at?: string
+          is_granted: boolean
+          permission_key: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+          woreda_id: string
+        }
+        Update: {
+          created_at?: string
+          is_granted?: boolean
+          permission_key?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+          woreda_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_permission_override_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "app_user"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "user_permission_override_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "app_user"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "user_permission_override_woreda_id_fkey"
+            columns: ["woreda_id"]
+            isOneToOne: false
+            referencedRelation: "woreda"
+            referencedColumns: ["woreda_id"]
+          },
+        ]
+      }
       vital_event: {
         Row: {
           approval_decision_at: string | null
@@ -2334,6 +3301,7 @@ export type Database = {
           issued_at: string | null
           issued_by_user_id: string | null
           notes: string | null
+          payment_id: string | null
           registration_date: string | null
           reject_reason: string | null
           requested_by_user_id: string | null
@@ -2360,6 +3328,7 @@ export type Database = {
           issued_at?: string | null
           issued_by_user_id?: string | null
           notes?: string | null
+          payment_id?: string | null
           registration_date?: string | null
           reject_reason?: string | null
           requested_by_user_id?: string | null
@@ -2386,6 +3355,7 @@ export type Database = {
           issued_at?: string | null
           issued_by_user_id?: string | null
           notes?: string | null
+          payment_id?: string | null
           registration_date?: string | null
           reject_reason?: string | null
           requested_by_user_id?: string | null
@@ -2416,11 +3386,32 @@ export type Database = {
             referencedColumns: ["household_id"]
           },
           {
+            foreignKeyName: "vital_event_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "household_decrypted"
+            referencedColumns: ["household_id"]
+          },
+          {
             foreignKeyName: "vital_event_issued_by_user_id_fkey"
             columns: ["issued_by_user_id"]
             isOneToOne: false
             referencedRelation: "app_user"
             referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "vital_event_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payment"
+            referencedColumns: ["payment_id"]
+          },
+          {
+            foreignKeyName: "vital_event_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payment_decrypted"
+            referencedColumns: ["payment_id"]
           },
           {
             foreignKeyName: "vital_event_requested_by_user_id_fkey"
@@ -2441,6 +3432,13 @@ export type Database = {
             columns: ["resident_id"]
             isOneToOne: false
             referencedRelation: "resident"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "vital_event_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "resident_decrypted"
             referencedColumns: ["resident_id"]
           },
           {
@@ -2538,6 +3536,8 @@ export type Database = {
           woreda_name_display_en: string | null
           woreda_name_display_har: string | null
           woreda_name_display_om: string | null
+          woreda_name_short: string | null
+          woreda_name_short_en: string | null
         }
         Insert: {
           address_line?: string | null
@@ -2555,6 +3555,8 @@ export type Database = {
           woreda_name_display_en?: string | null
           woreda_name_display_har?: string | null
           woreda_name_display_om?: string | null
+          woreda_name_short?: string | null
+          woreda_name_short_en?: string | null
         }
         Update: {
           address_line?: string | null
@@ -2572,6 +3574,8 @@ export type Database = {
           woreda_name_display_en?: string | null
           woreda_name_display_har?: string | null
           woreda_name_display_om?: string | null
+          woreda_name_short?: string | null
+          woreda_name_short_en?: string | null
         }
         Relationships: [
           {
@@ -2589,6 +3593,90 @@ export type Database = {
             referencedColumns: ["woreda_id"]
           },
         ]
+      }
+      workflow_status_history: {
+        Row: {
+          change_reason: string | null
+          changed_at: string
+          changed_by_user_id: string | null
+          entity: string
+          entity_id: string
+          id: string
+          new_status: string
+          old_status: string | null
+          woreda_id: string
+        }
+        Insert: {
+          change_reason?: string | null
+          changed_at?: string
+          changed_by_user_id?: string | null
+          entity: string
+          entity_id: string
+          id?: string
+          new_status: string
+          old_status?: string | null
+          woreda_id: string
+        }
+        Update: {
+          change_reason?: string | null
+          changed_at?: string
+          changed_by_user_id?: string | null
+          entity?: string
+          entity_id?: string
+          id?: string
+          new_status?: string
+          old_status?: string | null
+          woreda_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_status_history_changed_by_user_id_fkey"
+            columns: ["changed_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "app_user"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "workflow_status_history_woreda_id_fkey"
+            columns: ["woreda_id"]
+            isOneToOne: false
+            referencedRelation: "woreda"
+            referencedColumns: ["woreda_id"]
+          },
+        ]
+      }
+      workflow_transition: {
+        Row: {
+          created_at: string
+          entity: string
+          from_status: string
+          is_system: boolean
+          note: string | null
+          required_permission: string | null
+          to_status: string
+          workflow_transition_id: string
+        }
+        Insert: {
+          created_at?: string
+          entity: string
+          from_status: string
+          is_system?: boolean
+          note?: string | null
+          required_permission?: string | null
+          to_status: string
+          workflow_transition_id?: string
+        }
+        Update: {
+          created_at?: string
+          entity?: string
+          from_status?: string
+          is_system?: boolean
+          note?: string | null
+          required_permission?: string | null
+          to_status?: string
+          workflow_transition_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {
@@ -2609,6 +3697,177 @@ export type Database = {
           work_type: string | null
         }
         Relationships: []
+      }
+      household_decrypted: {
+        Row: {
+          active_flag: boolean | null
+          address_line: string | null
+          alternate_head_resident_id: string | null
+          created_at: string | null
+          email: string | null
+          email_decrypted: string | null
+          email_enc: string | null
+          gps_lat: number | null
+          gps_lng: number | null
+          house_label: string | null
+          house_number: string | null
+          house_type: string | null
+          house_type_other: string | null
+          household_head_resident_id: string | null
+          household_id: string | null
+          kebele_id: string | null
+          occupancy_status: string | null
+          phone_number: string | null
+          phone_number_decrypted: string | null
+          phone_number_enc: string | null
+          po_box: string | null
+          rent_amount: number | null
+          rent_amount_decrypted: number | null
+          rent_amount_enc: string | null
+          spouse_resident_id: string | null
+          sub_woreda: string | null
+          updated_at: string | null
+          woreda_id: string | null
+        }
+        Insert: {
+          active_flag?: boolean | null
+          address_line?: string | null
+          alternate_head_resident_id?: string | null
+          created_at?: string | null
+          email?: string | null
+          email_decrypted?: never
+          email_enc?: string | null
+          gps_lat?: number | null
+          gps_lng?: number | null
+          house_label?: string | null
+          house_number?: string | null
+          house_type?: string | null
+          house_type_other?: string | null
+          household_head_resident_id?: string | null
+          household_id?: string | null
+          kebele_id?: string | null
+          occupancy_status?: string | null
+          phone_number?: string | null
+          phone_number_decrypted?: never
+          phone_number_enc?: string | null
+          po_box?: string | null
+          rent_amount?: number | null
+          rent_amount_decrypted?: never
+          rent_amount_enc?: string | null
+          spouse_resident_id?: string | null
+          sub_woreda?: string | null
+          updated_at?: string | null
+          woreda_id?: string | null
+        }
+        Update: {
+          active_flag?: boolean | null
+          address_line?: string | null
+          alternate_head_resident_id?: string | null
+          created_at?: string | null
+          email?: string | null
+          email_decrypted?: never
+          email_enc?: string | null
+          gps_lat?: number | null
+          gps_lng?: number | null
+          house_label?: string | null
+          house_number?: string | null
+          house_type?: string | null
+          house_type_other?: string | null
+          household_head_resident_id?: string | null
+          household_id?: string | null
+          kebele_id?: string | null
+          occupancy_status?: string | null
+          phone_number?: string | null
+          phone_number_decrypted?: never
+          phone_number_enc?: string | null
+          po_box?: string | null
+          rent_amount?: number | null
+          rent_amount_decrypted?: never
+          rent_amount_enc?: string | null
+          spouse_resident_id?: string | null
+          sub_woreda?: string | null
+          updated_at?: string | null
+          woreda_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "household_alternate_head_resident_id_fkey"
+            columns: ["alternate_head_resident_id"]
+            isOneToOne: false
+            referencedRelation: "household_member_roster"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "household_alternate_head_resident_id_fkey"
+            columns: ["alternate_head_resident_id"]
+            isOneToOne: false
+            referencedRelation: "resident"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "household_alternate_head_resident_id_fkey"
+            columns: ["alternate_head_resident_id"]
+            isOneToOne: false
+            referencedRelation: "resident_decrypted"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "household_household_head_resident_id_fkey"
+            columns: ["household_head_resident_id"]
+            isOneToOne: false
+            referencedRelation: "household_member_roster"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "household_household_head_resident_id_fkey"
+            columns: ["household_head_resident_id"]
+            isOneToOne: false
+            referencedRelation: "resident"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "household_household_head_resident_id_fkey"
+            columns: ["household_head_resident_id"]
+            isOneToOne: false
+            referencedRelation: "resident_decrypted"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "household_kebele_id_fkey"
+            columns: ["kebele_id"]
+            isOneToOne: false
+            referencedRelation: "kebele"
+            referencedColumns: ["kebele_id"]
+          },
+          {
+            foreignKeyName: "household_spouse_resident_id_fkey"
+            columns: ["spouse_resident_id"]
+            isOneToOne: false
+            referencedRelation: "household_member_roster"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "household_spouse_resident_id_fkey"
+            columns: ["spouse_resident_id"]
+            isOneToOne: false
+            referencedRelation: "resident"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "household_spouse_resident_id_fkey"
+            columns: ["spouse_resident_id"]
+            isOneToOne: false
+            referencedRelation: "resident_decrypted"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "household_woreda_id_fkey"
+            columns: ["woreda_id"]
+            isOneToOne: false
+            referencedRelation: "woreda"
+            referencedColumns: ["woreda_id"]
+          },
+        ]
       }
       household_member_roster: {
         Row: {
@@ -2655,26 +3914,938 @@ export type Database = {
             referencedRelation: "household"
             referencedColumns: ["household_id"]
           },
+          {
+            foreignKeyName: "resident_current_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "household_decrypted"
+            referencedColumns: ["household_id"]
+          },
+        ]
+      }
+      payment_decrypted: {
+        Row: {
+          amount: number | null
+          amount_decrypted: number | null
+          amount_enc: string | null
+          channel: string | null
+          created_at: string | null
+          credential_request_id: string | null
+          household_id: string | null
+          payment_date: string | null
+          payment_id: string | null
+          payment_type: string | null
+          posted_by_user_id: string | null
+          reference_no: string | null
+          rental_request_id: string | null
+          resident_id: string | null
+          service_request_id: string | null
+          status: string | null
+          woreda_id: string | null
+        }
+        Insert: {
+          amount?: number | null
+          amount_decrypted?: never
+          amount_enc?: string | null
+          channel?: string | null
+          created_at?: string | null
+          credential_request_id?: string | null
+          household_id?: string | null
+          payment_date?: string | null
+          payment_id?: string | null
+          payment_type?: string | null
+          posted_by_user_id?: string | null
+          reference_no?: string | null
+          rental_request_id?: string | null
+          resident_id?: string | null
+          service_request_id?: string | null
+          status?: string | null
+          woreda_id?: string | null
+        }
+        Update: {
+          amount?: number | null
+          amount_decrypted?: never
+          amount_enc?: string | null
+          channel?: string | null
+          created_at?: string | null
+          credential_request_id?: string | null
+          household_id?: string | null
+          payment_date?: string | null
+          payment_id?: string | null
+          payment_type?: string | null
+          posted_by_user_id?: string | null
+          reference_no?: string | null
+          rental_request_id?: string | null
+          resident_id?: string | null
+          service_request_id?: string | null
+          status?: string | null
+          woreda_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_credential_request_id_fkey"
+            columns: ["credential_request_id"]
+            isOneToOne: false
+            referencedRelation: "credential_request"
+            referencedColumns: ["credential_request_id"]
+          },
+          {
+            foreignKeyName: "payment_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "household"
+            referencedColumns: ["household_id"]
+          },
+          {
+            foreignKeyName: "payment_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "household_decrypted"
+            referencedColumns: ["household_id"]
+          },
+          {
+            foreignKeyName: "payment_posted_by_user_id_fkey"
+            columns: ["posted_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "app_user"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "payment_rental_request_id_fkey"
+            columns: ["rental_request_id"]
+            isOneToOne: false
+            referencedRelation: "rental_occupancy_request"
+            referencedColumns: ["rental_request_id"]
+          },
+          {
+            foreignKeyName: "payment_rental_request_id_fkey"
+            columns: ["rental_request_id"]
+            isOneToOne: false
+            referencedRelation: "rental_occupancy_request_decrypted"
+            referencedColumns: ["rental_request_id"]
+          },
+          {
+            foreignKeyName: "payment_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "household_member_roster"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "payment_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "resident"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "payment_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "resident_decrypted"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "payment_service_request_id_fkey"
+            columns: ["service_request_id"]
+            isOneToOne: false
+            referencedRelation: "service_request"
+            referencedColumns: ["service_request_id"]
+          },
+          {
+            foreignKeyName: "payment_service_request_id_fkey"
+            columns: ["service_request_id"]
+            isOneToOne: false
+            referencedRelation: "service_request_decrypted"
+            referencedColumns: ["service_request_id"]
+          },
+          {
+            foreignKeyName: "payment_woreda_id_fkey"
+            columns: ["woreda_id"]
+            isOneToOne: false
+            referencedRelation: "woreda"
+            referencedColumns: ["woreda_id"]
+          },
+        ]
+      }
+      rental_occupancy_decrypted: {
+        Row: {
+          created_at: string | null
+          household_id: string | null
+          occupancy_id: string | null
+          originating_request_id: string | null
+          rent_amount: number | null
+          rent_amount_decrypted: number | null
+          rent_amount_enc: string | null
+          rent_start_date: string | null
+          rental_house_id: string | null
+          resident_id: string | null
+          status: string | null
+          termination_date: string | null
+          termination_reason: string | null
+          updated_at: string | null
+          woreda_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          household_id?: string | null
+          occupancy_id?: string | null
+          originating_request_id?: string | null
+          rent_amount?: number | null
+          rent_amount_decrypted?: never
+          rent_amount_enc?: string | null
+          rent_start_date?: string | null
+          rental_house_id?: string | null
+          resident_id?: string | null
+          status?: string | null
+          termination_date?: string | null
+          termination_reason?: string | null
+          updated_at?: string | null
+          woreda_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          household_id?: string | null
+          occupancy_id?: string | null
+          originating_request_id?: string | null
+          rent_amount?: number | null
+          rent_amount_decrypted?: never
+          rent_amount_enc?: string | null
+          rent_start_date?: string | null
+          rental_house_id?: string | null
+          resident_id?: string | null
+          status?: string | null
+          termination_date?: string | null
+          termination_reason?: string | null
+          updated_at?: string | null
+          woreda_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_occupancy_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "household"
+            referencedColumns: ["household_id"]
+          },
+          {
+            foreignKeyName: "rental_occupancy_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "household_decrypted"
+            referencedColumns: ["household_id"]
+          },
+          {
+            foreignKeyName: "rental_occupancy_originating_request_id_fkey"
+            columns: ["originating_request_id"]
+            isOneToOne: false
+            referencedRelation: "rental_occupancy_request"
+            referencedColumns: ["rental_request_id"]
+          },
+          {
+            foreignKeyName: "rental_occupancy_originating_request_id_fkey"
+            columns: ["originating_request_id"]
+            isOneToOne: false
+            referencedRelation: "rental_occupancy_request_decrypted"
+            referencedColumns: ["rental_request_id"]
+          },
+          {
+            foreignKeyName: "rental_occupancy_rental_house_id_fkey"
+            columns: ["rental_house_id"]
+            isOneToOne: false
+            referencedRelation: "kebele_rental_house"
+            referencedColumns: ["rental_house_id"]
+          },
+          {
+            foreignKeyName: "rental_occupancy_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "household_member_roster"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "rental_occupancy_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "resident"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "rental_occupancy_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "resident_decrypted"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "rental_occupancy_woreda_id_fkey"
+            columns: ["woreda_id"]
+            isOneToOne: false
+            referencedRelation: "woreda"
+            referencedColumns: ["woreda_id"]
+          },
+        ]
+      }
+      rental_occupancy_request_decrypted: {
+        Row: {
+          approval_decision_at: string | null
+          approved_by_user_id: string | null
+          created_at: string | null
+          existing_occupancy_id: string | null
+          household_id: string | null
+          reject_reason: string | null
+          rent_amount: number | null
+          rent_amount_decrypted: number | null
+          rent_amount_enc: string | null
+          rent_start_date: string | null
+          rental_house_id: string | null
+          rental_request_id: string | null
+          request_number: string | null
+          request_type: string | null
+          requested_by_user_id: string | null
+          resident_id: string | null
+          resulting_occupancy_id: string | null
+          return_reason: string | null
+          status: string | null
+          termination_date: string | null
+          termination_reason: string | null
+          updated_at: string | null
+          verification_checklist: Json | null
+          verified_at: string | null
+          verified_by_user_id: string | null
+          woreda_id: string | null
+        }
+        Insert: {
+          approval_decision_at?: string | null
+          approved_by_user_id?: string | null
+          created_at?: string | null
+          existing_occupancy_id?: string | null
+          household_id?: string | null
+          reject_reason?: string | null
+          rent_amount?: number | null
+          rent_amount_decrypted?: never
+          rent_amount_enc?: string | null
+          rent_start_date?: string | null
+          rental_house_id?: string | null
+          rental_request_id?: string | null
+          request_number?: string | null
+          request_type?: string | null
+          requested_by_user_id?: string | null
+          resident_id?: string | null
+          resulting_occupancy_id?: string | null
+          return_reason?: string | null
+          status?: string | null
+          termination_date?: string | null
+          termination_reason?: string | null
+          updated_at?: string | null
+          verification_checklist?: Json | null
+          verified_at?: string | null
+          verified_by_user_id?: string | null
+          woreda_id?: string | null
+        }
+        Update: {
+          approval_decision_at?: string | null
+          approved_by_user_id?: string | null
+          created_at?: string | null
+          existing_occupancy_id?: string | null
+          household_id?: string | null
+          reject_reason?: string | null
+          rent_amount?: number | null
+          rent_amount_decrypted?: never
+          rent_amount_enc?: string | null
+          rent_start_date?: string | null
+          rental_house_id?: string | null
+          rental_request_id?: string | null
+          request_number?: string | null
+          request_type?: string | null
+          requested_by_user_id?: string | null
+          resident_id?: string | null
+          resulting_occupancy_id?: string | null
+          return_reason?: string | null
+          status?: string | null
+          termination_date?: string | null
+          termination_reason?: string | null
+          updated_at?: string | null
+          verification_checklist?: Json | null
+          verified_at?: string | null
+          verified_by_user_id?: string | null
+          woreda_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_occupancy_request_approved_by_user_id_fkey"
+            columns: ["approved_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "app_user"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "rental_occupancy_request_existing_fk"
+            columns: ["existing_occupancy_id"]
+            isOneToOne: false
+            referencedRelation: "rental_occupancy"
+            referencedColumns: ["occupancy_id"]
+          },
+          {
+            foreignKeyName: "rental_occupancy_request_existing_fk"
+            columns: ["existing_occupancy_id"]
+            isOneToOne: false
+            referencedRelation: "rental_occupancy_decrypted"
+            referencedColumns: ["occupancy_id"]
+          },
+          {
+            foreignKeyName: "rental_occupancy_request_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "household"
+            referencedColumns: ["household_id"]
+          },
+          {
+            foreignKeyName: "rental_occupancy_request_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "household_decrypted"
+            referencedColumns: ["household_id"]
+          },
+          {
+            foreignKeyName: "rental_occupancy_request_rental_house_id_fkey"
+            columns: ["rental_house_id"]
+            isOneToOne: false
+            referencedRelation: "kebele_rental_house"
+            referencedColumns: ["rental_house_id"]
+          },
+          {
+            foreignKeyName: "rental_occupancy_request_requested_by_user_id_fkey"
+            columns: ["requested_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "app_user"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "rental_occupancy_request_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "household_member_roster"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "rental_occupancy_request_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "resident"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "rental_occupancy_request_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "resident_decrypted"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "rental_occupancy_request_resulting_fk"
+            columns: ["resulting_occupancy_id"]
+            isOneToOne: false
+            referencedRelation: "rental_occupancy"
+            referencedColumns: ["occupancy_id"]
+          },
+          {
+            foreignKeyName: "rental_occupancy_request_resulting_fk"
+            columns: ["resulting_occupancy_id"]
+            isOneToOne: false
+            referencedRelation: "rental_occupancy_decrypted"
+            referencedColumns: ["occupancy_id"]
+          },
+          {
+            foreignKeyName: "rental_occupancy_request_verified_by_user_id_fkey"
+            columns: ["verified_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "app_user"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "rental_occupancy_request_woreda_id_fkey"
+            columns: ["woreda_id"]
+            isOneToOne: false
+            referencedRelation: "woreda"
+            referencedColumns: ["woreda_id"]
+          },
+        ]
+      }
+      resident_decrypted: {
+        Row: {
+          active_flag: boolean | null
+          birth_place: Json | null
+          created_at: string | null
+          current_household_id: string | null
+          current_residence_extra: Json | null
+          date_of_birth: string | null
+          email: string | null
+          email_decrypted: string | null
+          email_enc: string | null
+          ethnicity: string | null
+          father_name: string | null
+          first_name: string | null
+          former_residence: Json | null
+          full_name: string | null
+          full_name_am: string | null
+          grandfather_name: string | null
+          marital_status: string | null
+          mother_full_name: string | null
+          national_id_no: string | null
+          national_id_no_blind_index: string | null
+          national_id_no_decrypted: string | null
+          national_id_no_enc: string | null
+          phone_number: string | null
+          phone_number_blind_index: string | null
+          phone_number_decrypted: string | null
+          phone_number_enc: string | null
+          photo_url: string | null
+          relation_to_head: string | null
+          religion: string | null
+          residency_start_date: string | null
+          residency_status: string | null
+          resident_id: string | null
+          resident_number: string | null
+          sex: string | null
+          updated_at: string | null
+          woreda_id: string | null
+          work_info: Json | null
+        }
+        Insert: {
+          active_flag?: boolean | null
+          birth_place?: Json | null
+          created_at?: string | null
+          current_household_id?: string | null
+          current_residence_extra?: Json | null
+          date_of_birth?: string | null
+          email?: string | null
+          email_decrypted?: never
+          email_enc?: string | null
+          ethnicity?: string | null
+          father_name?: string | null
+          first_name?: string | null
+          former_residence?: Json | null
+          full_name?: string | null
+          full_name_am?: string | null
+          grandfather_name?: string | null
+          marital_status?: string | null
+          mother_full_name?: string | null
+          national_id_no?: string | null
+          national_id_no_blind_index?: string | null
+          national_id_no_decrypted?: never
+          national_id_no_enc?: string | null
+          phone_number?: string | null
+          phone_number_blind_index?: string | null
+          phone_number_decrypted?: never
+          phone_number_enc?: string | null
+          photo_url?: string | null
+          relation_to_head?: string | null
+          religion?: string | null
+          residency_start_date?: string | null
+          residency_status?: string | null
+          resident_id?: string | null
+          resident_number?: string | null
+          sex?: string | null
+          updated_at?: string | null
+          woreda_id?: string | null
+          work_info?: Json | null
+        }
+        Update: {
+          active_flag?: boolean | null
+          birth_place?: Json | null
+          created_at?: string | null
+          current_household_id?: string | null
+          current_residence_extra?: Json | null
+          date_of_birth?: string | null
+          email?: string | null
+          email_decrypted?: never
+          email_enc?: string | null
+          ethnicity?: string | null
+          father_name?: string | null
+          first_name?: string | null
+          former_residence?: Json | null
+          full_name?: string | null
+          full_name_am?: string | null
+          grandfather_name?: string | null
+          marital_status?: string | null
+          mother_full_name?: string | null
+          national_id_no?: string | null
+          national_id_no_blind_index?: string | null
+          national_id_no_decrypted?: never
+          national_id_no_enc?: string | null
+          phone_number?: string | null
+          phone_number_blind_index?: string | null
+          phone_number_decrypted?: never
+          phone_number_enc?: string | null
+          photo_url?: string | null
+          relation_to_head?: string | null
+          religion?: string | null
+          residency_start_date?: string | null
+          residency_status?: string | null
+          resident_id?: string | null
+          resident_number?: string | null
+          sex?: string | null
+          updated_at?: string | null
+          woreda_id?: string | null
+          work_info?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resident_current_household_id_fkey"
+            columns: ["current_household_id"]
+            isOneToOne: false
+            referencedRelation: "household"
+            referencedColumns: ["household_id"]
+          },
+          {
+            foreignKeyName: "resident_current_household_id_fkey"
+            columns: ["current_household_id"]
+            isOneToOne: false
+            referencedRelation: "household_decrypted"
+            referencedColumns: ["household_id"]
+          },
+          {
+            foreignKeyName: "resident_woreda_id_fkey"
+            columns: ["woreda_id"]
+            isOneToOne: false
+            referencedRelation: "woreda"
+            referencedColumns: ["woreda_id"]
+          },
+        ]
+      }
+      service_request_decrypted: {
+        Row: {
+          addressed_to: string | null
+          applicant_name: string | null
+          applicant_phone: string | null
+          applicant_phone_decrypted: string | null
+          applicant_phone_enc: string | null
+          approval_decision_at: string | null
+          approved_by_user_id: string | null
+          category: string | null
+          closed_at: string | null
+          created_at: string | null
+          details: string | null
+          fee_amount: number | null
+          household_id: string | null
+          incident_date: string | null
+          incident_place: string | null
+          issued_at: string | null
+          issued_by_user_id: string | null
+          issued_letter_html: string | null
+          kebele_id: string | null
+          letter_summary: string | null
+          payment_id: string | null
+          priority: string | null
+          purpose: string | null
+          reject_reason: string | null
+          request_number: string | null
+          requested_by_user_id: string | null
+          resident_id: string | null
+          resolution_notes: string | null
+          respondent_name: string | null
+          return_reason: string | null
+          service_request_id: string | null
+          service_type_id: string | null
+          status: string | null
+          subject: string | null
+          submitted_at: string | null
+          updated_at: string | null
+          verification_checklist: Json | null
+          verification_token: string | null
+          verified_at: string | null
+          verified_by_user_id: string | null
+          woreda_id: string | null
+        }
+        Insert: {
+          addressed_to?: string | null
+          applicant_name?: string | null
+          applicant_phone?: string | null
+          applicant_phone_decrypted?: never
+          applicant_phone_enc?: string | null
+          approval_decision_at?: string | null
+          approved_by_user_id?: string | null
+          category?: string | null
+          closed_at?: string | null
+          created_at?: string | null
+          details?: string | null
+          fee_amount?: number | null
+          household_id?: string | null
+          incident_date?: string | null
+          incident_place?: string | null
+          issued_at?: string | null
+          issued_by_user_id?: string | null
+          issued_letter_html?: string | null
+          kebele_id?: string | null
+          letter_summary?: string | null
+          payment_id?: string | null
+          priority?: string | null
+          purpose?: string | null
+          reject_reason?: string | null
+          request_number?: string | null
+          requested_by_user_id?: string | null
+          resident_id?: string | null
+          resolution_notes?: string | null
+          respondent_name?: string | null
+          return_reason?: string | null
+          service_request_id?: string | null
+          service_type_id?: string | null
+          status?: string | null
+          subject?: string | null
+          submitted_at?: string | null
+          updated_at?: string | null
+          verification_checklist?: Json | null
+          verification_token?: string | null
+          verified_at?: string | null
+          verified_by_user_id?: string | null
+          woreda_id?: string | null
+        }
+        Update: {
+          addressed_to?: string | null
+          applicant_name?: string | null
+          applicant_phone?: string | null
+          applicant_phone_decrypted?: never
+          applicant_phone_enc?: string | null
+          approval_decision_at?: string | null
+          approved_by_user_id?: string | null
+          category?: string | null
+          closed_at?: string | null
+          created_at?: string | null
+          details?: string | null
+          fee_amount?: number | null
+          household_id?: string | null
+          incident_date?: string | null
+          incident_place?: string | null
+          issued_at?: string | null
+          issued_by_user_id?: string | null
+          issued_letter_html?: string | null
+          kebele_id?: string | null
+          letter_summary?: string | null
+          payment_id?: string | null
+          priority?: string | null
+          purpose?: string | null
+          reject_reason?: string | null
+          request_number?: string | null
+          requested_by_user_id?: string | null
+          resident_id?: string | null
+          resolution_notes?: string | null
+          respondent_name?: string | null
+          return_reason?: string | null
+          service_request_id?: string | null
+          service_type_id?: string | null
+          status?: string | null
+          subject?: string | null
+          submitted_at?: string | null
+          updated_at?: string | null
+          verification_checklist?: Json | null
+          verification_token?: string | null
+          verified_at?: string | null
+          verified_by_user_id?: string | null
+          woreda_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_request_approved_by_user_id_fkey"
+            columns: ["approved_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "app_user"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "service_request_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "household"
+            referencedColumns: ["household_id"]
+          },
+          {
+            foreignKeyName: "service_request_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "household_decrypted"
+            referencedColumns: ["household_id"]
+          },
+          {
+            foreignKeyName: "service_request_issued_by_user_id_fkey"
+            columns: ["issued_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "app_user"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "service_request_kebele_id_fkey"
+            columns: ["kebele_id"]
+            isOneToOne: false
+            referencedRelation: "kebele"
+            referencedColumns: ["kebele_id"]
+          },
+          {
+            foreignKeyName: "service_request_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payment"
+            referencedColumns: ["payment_id"]
+          },
+          {
+            foreignKeyName: "service_request_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payment_decrypted"
+            referencedColumns: ["payment_id"]
+          },
+          {
+            foreignKeyName: "service_request_requested_by_user_id_fkey"
+            columns: ["requested_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "app_user"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "service_request_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "household_member_roster"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "service_request_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "resident"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "service_request_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "resident_decrypted"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "service_request_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_type"
+            referencedColumns: ["service_type_id"]
+          },
+          {
+            foreignKeyName: "service_request_verified_by_user_id_fkey"
+            columns: ["verified_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "app_user"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "service_request_woreda_id_fkey"
+            columns: ["woreda_id"]
+            isOneToOne: false
+            referencedRelation: "woreda"
+            referencedColumns: ["woreda_id"]
+          },
         ]
       }
     }
     Functions: {
+      check_credential_print_eligibility: {
+        Args: { _credential_id: string }
+        Returns: undefined
+      }
+      current_console_permissions: { Args: never; Returns: string[] }
+      current_permissions: { Args: never; Returns: string[] }
+      decrypt_pii_numeric: {
+        Args: { _cipher: string; _woreda_id: string }
+        Returns: number
+      }
+      decrypt_pii_text: {
+        Args: { _cipher: string; _woreda_id: string }
+        Returns: string
+      }
       default_role_perms: { Args: { _role: string }; Returns: string[] }
+      derive_woreda_key: { Args: { _woreda_id: string }; Returns: string }
+      discard_id_card_template_draft: { Args: never; Returns: undefined }
+      encrypt_pii_numeric: {
+        Args: { _value: number; _woreda_id: string }
+        Returns: string
+      }
+      encrypt_pii_text: {
+        Args: { _plain: string; _woreda_id: string }
+        Returns: string
+      }
+      entity_approve_perm_ok: { Args: { _entity: string }; Returns: boolean }
+      entity_attach_perm_ok: { Args: { _entity: string }; Returns: boolean }
+      entity_belongs_to_woreda: {
+        Args: { _entity: string; _entity_id: string; _woreda_id: string }
+        Returns: boolean
+      }
+      entity_read_perm_ok: { Args: { _entity: string }; Returns: boolean }
       gen_letter_verification_token: { Args: never; Returns: string }
+      gen_receipt_verification_token: { Args: never; Returns: string }
+      get_civil_kpis: { Args: never; Returns: Json }
+      get_credential_kpis: { Args: never; Returns: Json }
       get_credential_live_status: {
         Args: { _credential_number: string }
         Returns: string
       }
+      get_service_kpis: { Args: never; Returns: Json }
       get_user_woreda_id: { Args: never; Returns: string }
       is_active_app_user: { Args: never; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
       is_tenant_admin: { Args: never; Returns: boolean }
       luhn_check_digit: { Args: { _digits: string }; Returns: number }
+      my_national_id_blind_index: { Args: { _id: string }; Returns: string }
+      my_phone_blind_index: { Args: { _phone: string }; Returns: string }
+      national_id_blind_index: {
+        Args: { _id: string; _woreda_id: string }
+        Returns: string
+      }
+      normalize_phone: { Args: { _phone: string }; Returns: string }
+      phone_blind_index: {
+        Args: { _phone: string; _woreda_id: string }
+        Returns: string
+      }
+      pii_encryption_status: {
+        Args: never
+        Returns: {
+          column_label: string
+          key_present: boolean
+          rows_encrypted: number
+          rows_with_plaintext: number
+        }[]
+      }
+      pii_root_key: { Args: never; Returns: string }
+      publish_id_card_template: { Args: never; Returns: undefined }
+      rate_limit_hit: {
+        Args: { _bucket_key: string; _window_seconds: number }
+        Returns: number
+      }
+      rental_eligibility: {
+        Args: {
+          _rental_house_id: string
+          _request_type: string
+          _resident_id: string
+        }
+        Returns: Json
+      }
+      resolve_civil_fee: { Args: { _event_type: string }; Returns: number }
+      resolve_credential_fee: {
+        Args: { _request_type: string }
+        Returns: number
+      }
+      resolve_service_fee: {
+        Args: { _service_type_id: string }
+        Returns: number
+      }
       storage_path_woreda_id: { Args: { object_name: string }; Returns: string }
       user_has_any_perm: { Args: { _perms: string[] }; Returns: boolean }
+      user_has_console_perm: { Args: { _perm: string }; Returns: boolean }
       user_has_perm: { Args: { _perm: string }; Returns: boolean }
+      user_permission_override_target_role_ok: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
       verify_credential_token: {
-        Args: { _credential_digits: string }
+        Args: { _token: string }
         Returns: {
           credential_number: string
           date_of_birth: string
@@ -2685,6 +4856,23 @@ export type Database = {
           photo_path: string
           resident_full_name: string
           status: string
+          woreda_name_am: string
+          woreda_name_en: string
+        }[]
+      }
+      verify_receipt: {
+        Args: { _token: string }
+        Returns: {
+          channel: string
+          kebele_name_am: string
+          kebele_name_en: string
+          paid_by_full_name: string
+          paid_by_full_name_am: string
+          payment_type: string
+          printed_at: string
+          receipt_date: string
+          receipt_number: string
+          total_amount: number
           woreda_name_am: string
           woreda_name_en: string
         }[]
@@ -2723,12 +4911,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2752,11 +4940,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2777,11 +4965,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2802,11 +4990,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2819,11 +5007,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2833,6 +5021,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },

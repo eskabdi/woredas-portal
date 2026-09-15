@@ -11,6 +11,7 @@ import { type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { useAuthBootstrap } from "@/hooks/useAuthBootstrap";
+import { useServiceWorker } from "@/hooks/useServiceWorker";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
@@ -157,5 +158,6 @@ function RootComponent() {
 
 function AuthBootstrapper() {
   useAuthBootstrap();
+  useServiceWorker();
   return null;
 }

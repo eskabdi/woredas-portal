@@ -151,6 +151,32 @@ function ResidentProfilePage() {
     },
   });
 
+  // resident_decrypted isn't in the generated types yet (00000000000023_
+  // pii_encryption.sql) -- same untyped-client cast pattern already used
+  // elsewhere in this codebase for pre-typegen tables. Queried separately
+  // from residentQuery above rather than swapping that query's `.from()`
+  // in place: residentQuery embeds household/kebele via a FK-derived
+  // PostgREST join, which is not guaranteed to resolve through a view the
+  // same way it does through the base table.
+  const residentContactQuery = useQuery({
+    queryKey: ["resident-contact-decrypted", residentId, woredaId],
+    enabled: !!woredaId && hasPermission(P.RESIDENT_READ),
+    queryFn: async () => {
+      const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const { data, error } = await db
+        .from("resident_decrypted")
+        .select("phone_number_decrypted, email_decrypted")
+        .eq("resident_id", residentId)
+        .eq("woreda_id", woredaId as string)
+        .maybeSingle();
+      if (error) throw error;
+      return data as {
+        phone_number_decrypted: string | null;
+        email_decrypted: string | null;
+      } | null;
+    },
+  });
+
   const householdId = residentQuery.data?.current_household_id ?? null;
 
   const householdMembersQuery = useQuery({
@@ -310,6 +336,10 @@ function ResidentProfilePage() {
     queryClient.invalidateQueries({ queryKey: ["residents"] });
     queryClient.invalidateQueries({ queryKey: ["resident-household-members"] });
     queryClient.invalidateQueries({ queryKey: ["resident-recent-activity", residentId] });
+    // Decrypted contact queries -- otherwise a stale phone/email value could
+    // flash for a beat after an action that touches this resident's household.
+    queryClient.invalidateQueries({ queryKey: ["resident-contact-decrypted", residentId] });
+    queryClient.invalidateQueries({ queryKey: ["resident-tab-household"] });
   };
 
   const handleShare = async () => {
@@ -461,14 +491,14 @@ function ResidentProfilePage() {
                     labelAm="ስልክ"
                     labelEn="Phone"
                     icon={Phone}
-                    value={r.phone_number || notRecorded()}
+                    value={residentContactQuery.data?.phone_number_decrypted || notRecorded()}
                     mono
                   />
                   <Field
                     labelAm="ኢሜይል"
                     labelEn="Email"
                     icon={Mail}
-                    value={r.email || notRecorded()}
+                    value={residentContactQuery.data?.email_decrypted || notRecorded()}
                   />
                   <Field labelAm="ስራ" labelEn="Occupation" value={formatOccupation(workInfo)} />
                   <Field labelAm="ትምህርት" labelEn="Education" value={formatEducation(workInfo)} />
@@ -656,31 +686,38 @@ function ResidentProfilePage() {
                   <QuickAction
                     permission={P.CREDENTIAL_ISSUE}
                     icon={CreditCard}
-                    am="የመታወቂያ መስጫ"
-                    en="Issue ID"
+                    am="የመታወቂያ ጥያቄ"
+                    en="ID Request"
                     onClick={() =>
                       navigate({
-                        to: "/woreda/credentials",
-                        search: { new: 1, residentId } as never,
+                        to: "/woreda/credentials/new",
+                        search: { residentId },
+                      })
+                    }
+                  />
+                  <QuickAction
+                    permission={P.SERVICE_CREATE}
+                    icon={FileText}
+                    am="አገልግሎት ጥያቄ"
+                    en="Service Request"
+                    onClick={() =>
+                      navigate({
+                        to: "/woreda/services/new",
+                        search: { residentId },
                       })
                     }
                   />
                   <QuickAction
                     permission={P.CIVIL_REGISTER}
-                    icon={FileText}
-                    am="ልደት መዝግብ"
-                    en="Register Birth"
-                    onClick={() =>
-                      navigate({
-                        to: "/woreda/civil",
-                        search: { new: 1, residentId, eventType: "birth" } as never,
-                      })
-                    }
+                    icon={CalendarClock}
+                    am="የኩነት ምዝገባ"
+                    en="Civil Event"
+                    onClick={() => navigate({ to: "/woreda/civil" })}
                   />
                   <QuickAction
                     permission={P.RESIDENT_UPDATE}
                     icon={Edit3}
-                    am="መረጃ አሻሽል"
+                    am="የነዋሪው መረጃ አሻሽል"
                     en="Update Profile"
                     onClick={() =>
                       navigate({
@@ -690,21 +727,9 @@ function ResidentProfilePage() {
                     }
                   />
                   <QuickAction
-                    permission={P.CIVIL_READ}
-                    icon={Printer}
-                    am="ማስረጃ አትም"
-                    en="Print Extract"
-                    onClick={() =>
-                      navigate({
-                        to: "/woreda/civil",
-                        search: { extract: 1, residentId } as never,
-                      })
-                    }
-                  />
-                  <QuickAction
                     permission={P.RESIDENT_READ}
                     icon={Printer}
-                    am="የግል መገለጫ አትም"
+                    am="የነዋሪው ማህደር አትም"
                     en="Print Profile"
                     onClick={() =>
                       navigate({

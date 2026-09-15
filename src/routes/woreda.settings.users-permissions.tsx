@@ -6,6 +6,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { P } from "@/config/permissions";
 import { RolesPermissionsTab } from "@/components/settings/RolesPermissionsTab";
 import { UsersRolesTab } from "@/components/settings/UsersRolesTab";
+import { CustomRolesTab } from "@/components/settings/CustomRolesTab";
 import { UserCog } from "lucide-react";
 
 export const Route = createFileRoute("/woreda/settings/users-permissions")({
@@ -38,11 +39,16 @@ function UsersPermissionsPage() {
       <Tabs defaultValue="roles" className="w-full">
         <TabsList className="h-auto w-full justify-start gap-1 rounded-none border-b border-slate-200 bg-transparent p-0">
           <SettingsTab value="roles" labelAm="የተጠቃሚ ሚናዎች" labelEn="Roles & Permissions" />
+          <SettingsTab value="custom-roles" labelAm="ብጁ ሚናዎች" labelEn="Custom Roles" />
           <SettingsTab value="users" labelAm="ተጠቃሚዎች እና የስራ ድርሻ" labelEn="Users & Roles" />
         </TabsList>
 
         <TabsContent value="roles" className="mt-6">
           <RolesPermissionsTab />
+        </TabsContent>
+
+        <TabsContent value="custom-roles" className="mt-6">
+          <CustomRolesTab />
         </TabsContent>
 
         <TabsContent value="users" className="mt-6">

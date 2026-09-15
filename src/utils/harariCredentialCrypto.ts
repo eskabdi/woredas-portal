@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFunction } from "@/lib/edgeFunction";
 import {
   CREDENTIAL_PUBLIC_KEY_PEM,
   CREDENTIAL_KEY_IMPORT_PARAMS,
@@ -84,16 +84,13 @@ export async function signCredentialPayload(
   credentialId: string,
   woredaId: string,
 ): Promise<string> {
-  const { data, error } = await supabase.functions.invoke<{
+  const { data, friendlyError } = await invokeEdgeFunction<{
     success?: boolean;
     token?: string;
-    error?: string;
-  }>("sign-credential", {
-    body: { credentialId, woredaId },
-  });
-  if (error) throw new Error(error.message || "sign-credential invocation failed");
+  }>("sign-credential", { credentialId, woredaId });
+  if (friendlyError) throw new Error(friendlyError);
   if (!data || data.success !== true) {
-    throw new Error(data?.error || "sign-credential returned unsuccessful response");
+    throw new Error("sign-credential returned an unsuccessful response");
   }
   return data.token ?? "";
 }

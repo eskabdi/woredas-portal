@@ -14,9 +14,15 @@ export interface ReportBranding {
   logoDataUrl?: string | null;
 }
 
+// Same CSV-formula-injection guard as tableExport.ts's rowsToCsv -- see that
+// file's comment. Independently implemented here (this module predates the
+// shared helper), so the fix has to land in both.
+const FORMULA_PREFIX = /^[=+\-@\t\r]/;
+
 export function sectionsToCsv(sections: ReportSection[]): string {
   const esc = (v: string | number) => {
-    const s = String(v ?? "");
+    const raw = String(v ?? "");
+    const s = FORMULA_PREFIX.test(raw) ? `'${raw}` : raw;
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   const lines: string[] = [];

@@ -61,7 +61,6 @@ interface KebeleRef {
 interface ReceiptData {
   payment_id: string;
   payment_type: string;
-  amount: number;
   payment_date: string;
   channel: string;
   reference_no: string | null;
@@ -104,10 +103,15 @@ function ReceiptPrintPage() {
     queryKey: ["receipt-print", paymentId],
     enabled: !!paymentId,
     queryFn: async (): Promise<ReceiptData> => {
+      // amount deliberately not selected -- unused in this receipt (it prints
+      // receipt.total_amount, that table's own stored total, not
+      // payment.amount directly; see amountWordsAm/amountWordsEn below). The
+      // decrypted value lives in payment_decrypted, not this base table, so
+      // there's no reason to pull it for a field nothing here renders.
       const { data, error } = await supabase
         .from("payment")
         .select(
-          `payment_id, payment_type, amount, payment_date, channel, reference_no, status,
+          `payment_id, payment_type, payment_date, channel, reference_no, status,
            resident:resident_id ( resident_id, resident_number, full_name, full_name_am ),
            household:household_id ( house_number, kebele:kebele_id ( kebele_name_am, kebele_name_en, kebele_number ) ),
            rental_request:rental_request_id (

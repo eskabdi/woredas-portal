@@ -18,6 +18,10 @@ import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/integrations/supabase/client";
 import { P } from "@/config/permissions";
 import { ETHNICITY_OPTIONS, RELIGION_OPTIONS } from "@/lib/residentConstants";
+import { phoneDigitsSchema, phoneDigitsToE164 } from "@/lib/phoneNumber";
+import { PhoneDigitsInput } from "@/components/forms/PhoneDigitsInput";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { useOfflineQueue } from "@/hooks/useOfflineQueue";
 
 const nameRegex = /^[\p{L}\p{M}\s]+$/u;
 const nameRule = (label: string) =>
@@ -56,16 +60,50 @@ const birthSchema = z.object({
 
   informant_name: z.string().trim().min(1, "የመረጃ ሰጪ ስም ያስፈልጋል / Informant name required").max(200),
   informant_relation: z.string().trim().max(100).optional().default(""),
-  informant_phone: z
-    .string()
-    .trim()
-    .optional()
-    .default("")
-    .refine((v) => !v || /^\d{9}$/.test(v), "9 አሃዝ / 9 digits"),
+  informant_phone: phoneDigitsSchema(),
 });
 
 type BirthInput = z.input<typeof birthSchema>;
 type BirthValues = z.output<typeof birthSchema>;
+
+function buildBirthEventDetails(v: BirthValues) {
+  return {
+    child_first_name: v.child_first_name,
+    child_father_name: v.child_father_name,
+    child_grandfather_name: v.child_grandfather_name,
+    child_full_name_en: v.child_full_name_en || null,
+    sex: v.sex,
+    ethnicity: v.ethnicity || null,
+    religion: v.religion || null,
+    mother_resident_id: v.mother_resident_id || null,
+    mother_name: v.mother_name || null,
+    father_resident_id: v.father_resident_id || null,
+    father_name: v.father_name || null,
+    place_of_birth: v.place_of_birth || null,
+    facility_name: v.facility_name || null,
+    attended_by: v.attended_by || null,
+    weight_kg: v.weight_kg ? Number(v.weight_kg) : null,
+    informant: {
+      name: v.informant_name,
+      relation: v.informant_relation || null,
+      phone: phoneDigitsToE164(v.informant_phone ?? ""),
+    },
+  };
+}
+
+function buildBirthInsertPayload(woredaId: string, actorUserId: string, v: BirthValues) {
+  return {
+    woreda_id: woredaId,
+    event_type: "birth" as const,
+    event_number: "",
+    event_date: v.date_of_birth,
+    registration_date: todayIso(),
+    status: "submitted" as const,
+    requested_by_user_id: actorUserId,
+    notes: v.notes || null,
+    event_details: buildBirthEventDetails(v),
+  };
+}
 
 export const Route = createFileRoute("/woreda/civil/birth/new")({
   ssr: false,
@@ -88,6 +126,8 @@ function BirthNewPage() {
   const navigate = useNavigate();
   const woredaId = useAuthStore((s) => s.woredaId);
   const actorUserId = useAuthStore((s) => s.appUser?.user_id ?? null);
+  const isOnline = useOnlineStatus();
+  const { enqueue } = useOfflineQueue(woredaId);
 
   const form = useForm<BirthInput>({
     resolver: zodResolver(birthSchema),
@@ -169,42 +209,11 @@ function BirthNewPage() {
       if (!v.mother_resident_id && !v.mother_name.trim()) {
         throw new Error("Provide mother (linked resident or manual name)");
       }
-      const event_details = {
-        child_first_name: v.child_first_name,
-        child_father_name: v.child_father_name,
-        child_grandfather_name: v.child_grandfather_name,
-        child_full_name_en: v.child_full_name_en || null,
-        sex: v.sex,
-        ethnicity: v.ethnicity || null,
-        religion: v.religion || null,
-        mother_resident_id: v.mother_resident_id || null,
-        mother_name: v.mother_name || null,
-        father_resident_id: v.father_resident_id || null,
-        father_name: v.father_name || null,
-        place_of_birth: v.place_of_birth || null,
-        facility_name: v.facility_name || null,
-        attended_by: v.attended_by || null,
-        weight_kg: v.weight_kg ? Number(v.weight_kg) : null,
-        informant: {
-          name: v.informant_name,
-          relation: v.informant_relation || null,
-          phone: v.informant_phone ? `+251${v.informant_phone}` : null,
-        },
-      };
+      const insertPayload = buildBirthInsertPayload(woredaId, actorUserId, v);
 
       const { data, error } = await supabase
         .from("vital_event")
-        .insert({
-          woreda_id: woredaId,
-          event_type: "birth",
-          event_number: "",
-          event_date: v.date_of_birth,
-          registration_date: todayIso(),
-          status: "submitted",
-          requested_by_user_id: actorUserId,
-          notes: v.notes || null,
-          event_details,
-        })
+        .insert(insertPayload)
         .select("vital_event_id")
         .single();
       if (error) throw error;
@@ -215,7 +224,7 @@ function BirthNewPage() {
         entity_name: "vital_event",
         entity_id: data.vital_event_id,
         action_type: "BIRTH_REGISTERED",
-        new_value_json: event_details as never,
+        new_value_json: insertPayload.event_details as never,
         action_at: new Date().toISOString(),
       });
 
@@ -230,6 +239,27 @@ function BirthNewPage() {
 
   const onSubmit = handleSubmit((raw) => {
     const parsed = birthSchema.parse(raw);
+    if (!parsed.mother_resident_id && !parsed.mother_name.trim()) {
+      toast.error("የእናት መረጃ ያስፈልጋል / Provide mother (linked resident or manual name)");
+      return;
+    }
+    if (!isOnline) {
+      if (!woredaId || !actorUserId) {
+        toast.error("ክፍለ ጊዜ ጠፍቷል / Missing session");
+        return;
+      }
+      enqueue(
+        "vital_event",
+        "submit_intake",
+        buildBirthInsertPayload(woredaId, actorUserId, parsed),
+        "civil-birth-new",
+      );
+      toast.success(
+        "ከመስመር ውጭ ተቀምጧል፣ ሲገናኙ በራስ ሰር ይላካል / Saved offline — will submit automatically once reconnected",
+      );
+      navigate({ to: "/woreda/civil" });
+      return;
+    }
     mutation.mutate(parsed);
   });
 
@@ -393,17 +423,15 @@ function BirthNewPage() {
               labelEn="Phone (9 digits after +251)"
               error={errors.informant_phone?.message}
             >
-              <div className="flex">
-                <span className="inline-flex items-center rounded-l-md border border-r-0 border-input bg-slate-50 px-3 text-sm text-slate-600">
-                  +251
-                </span>
-                <Input
-                  className="rounded-l-none"
-                  inputMode="numeric"
-                  maxLength={9}
-                  {...register("informant_phone")}
-                />
-              </div>
+              <PhoneDigitsInput
+                value={watch("informant_phone") ?? ""}
+                onChange={(digits) => setValue("informant_phone", digits, { shouldDirty: true })}
+                onBlur={() =>
+                  setValue("informant_phone", watch("informant_phone") ?? "", {
+                    shouldValidate: true,
+                  })
+                }
+              />
             </FieldWrap>
           </Grid>
         </Section>

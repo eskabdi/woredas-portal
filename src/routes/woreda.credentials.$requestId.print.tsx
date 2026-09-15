@@ -45,6 +45,12 @@ import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/integrations/supabase/client";
 import { P } from "@/config/permissions";
 import { formatEthiopianDateOnly } from "@/utils/ethiopianCalendar";
+import { resolveDecryptedField } from "@/lib/decryptedFieldGuard";
+import {
+  REPRINT_REASONS,
+  formatStructuredReason,
+  type ReprintReasonCode,
+} from "@/lib/credentialWorkflowSchemas";
 
 export const Route = createFileRoute("/woreda/credentials/$requestId/print")({
   ssr: false,
@@ -103,6 +109,8 @@ interface CardWoredaSettings {
   woreda_name_display_en?: string | null;
   woreda_name_display_har?: string | null;
   woreda_name_display_om?: string | null;
+  woreda_name_short?: string | null;
+  woreda_name_short_en?: string | null;
 }
 
 interface CardKebele {
@@ -193,6 +201,10 @@ function PrintPage() {
     queryKey: ["credential-print-request", requestId, woredaId],
     enabled: !!woredaId,
     queryFn: async () => {
+      // resident.phone_number deliberately not selected in the embed below --
+      // it's overwritten by residentContactQuery's phone_number_decrypted
+      // further down, so the raw plaintext value is dead here, and once
+      // stage 4 drops the column this would 400.
       const { data, error } = await supabase
         .from("credential_request")
         .select(
@@ -200,7 +212,7 @@ function PrintPage() {
            approved_by_user_id, payment_id,
            resident:resident_id (
              resident_id, resident_number, national_id_no, full_name, full_name_am,
-             sex, date_of_birth, photo_url, residency_status, active_flag, phone_number
+             sex, date_of_birth, photo_url, residency_status, active_flag
            ),
            household:household_id (
              household_id, house_number,
@@ -216,6 +228,34 @@ function PrintPage() {
   });
 
   const request = reqQuery.data;
+
+  // resident_decrypted isn't in the generated types yet (00000000000023_
+  // pii_encryption.sql) -- same untyped-client cast pattern already used
+  // elsewhere in this codebase for pre-typegen tables. Queried separately
+  // from reqQuery above rather than swapping that query's `.from()` in
+  // place: that query embeds resident/household/kebele via FK-derived
+  // PostgREST joins, which are not guaranteed to resolve through a view the
+  // same way they do through the base table. phone_number is a real
+  // template-placeable field on the printed card (buildCardValues below), so
+  // this has to resolve to the decrypted value, not the raw ciphertext-
+  // adjacent column.
+  const residentContactQuery = useQuery({
+    queryKey: ["credential-print-resident-contact-decrypted", request?.resident_id],
+    enabled: !!request?.resident_id,
+    queryFn: async () => {
+      const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const { data, error } = await db
+        .from("resident_decrypted")
+        .select("phone_number_decrypted, national_id_no_decrypted")
+        .eq("resident_id", request!.resident_id!)
+        .maybeSingle();
+      if (error) throw error;
+      return data as {
+        phone_number_decrypted: string | null;
+        national_id_no_decrypted: string | null;
+      } | null;
+    },
+  });
 
   const credQuery = useQuery({
     queryKey: ["credential-for-print", request?.credential_id],
@@ -256,7 +296,7 @@ function PrintPage() {
       const { data, error } = await supabase
         .from("woreda_settings")
         .select(
-          "logo_url, stamp_url, supervisor_signature_url, woreda_name_display, woreda_name_display_en, woreda_name_display_har, woreda_name_display_om",
+          "logo_url, stamp_url, supervisor_signature_url, woreda_name_display, woreda_name_display_en, woreda_name_display_har, woreda_name_display_om, woreda_name_short, woreda_name_short_en",
         )
         .eq("woreda_id", woredaId!)
         .maybeSingle();
@@ -325,8 +365,9 @@ function PrintPage() {
     };
   }, [residentPhotoPath]);
 
-  // Signed URLs for tenant-assets (logo + signature) and credential-templates
+  // Signed URLs for tenant-assets (logo + stamp + signature) and credential-templates
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [stampUrl, setStampUrl] = useState<string | null>(null);
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -338,6 +379,19 @@ function PrintPage() {
           .createSignedUrl(s.logo_url, 900);
         if (!cancelled) setLogoUrl(data?.signedUrl ?? null);
       } else if (!cancelled) setLogoUrl(null);
+      // stamp_url ("የወረዳ ማህተም / Woreda Seal", set in Settings > Official
+      // Images) is a separate image from supervisor_signature_url below
+      // ("የፈራሚ ማህተም / Signature Stamp" -- despite the English label, that
+      // one is the signature) -- easy to conflate since both settings-page
+      // labels use "stamp". woreda.revenue.$paymentId.receipt.tsx already
+      // renders this same field on receipts; this route was fetching it
+      // into settingsQuery without ever resolving or rendering it.
+      if (s?.stamp_url) {
+        const { data } = await supabase.storage
+          .from("tenant-assets")
+          .createSignedUrl(s.stamp_url, 900);
+        if (!cancelled) setStampUrl(data?.signedUrl ?? null);
+      } else if (!cancelled) setStampUrl(null);
       if (s?.supervisor_signature_url) {
         const { data } = await supabase.storage
           .from("tenant-assets")
@@ -353,11 +407,22 @@ function PrintPage() {
 
   const [frontBgUrl, setFrontBgUrl] = useState<string | null>(null);
   const [backBgUrl, setBackBgUrl] = useState<string | null>(null);
+  // frontBgUrl/backBgUrl start out null the same way whether a background is
+  // still being signed or genuinely isn't configured for this template side
+  // -- rendering (the Preview pane and the "I verify..."/Print gate) used to
+  // key off that null and fall back to CardFront/CardBack's small, padded
+  // QR before the real signed URL arrived, then swap to PrintableCard's
+  // template-sized QR a moment later. Two people opening this page and
+  // screenshotting a beat apart would see two different QR sizes on what is
+  // otherwise the identical card. bgUrlsResolved distinguishes "haven't
+  // checked yet" from "checked, no background" so callers can wait for the
+  // real answer instead of racing it.
+  const [bgUrlsResolved, setBgUrlsResolved] = useState(false);
   useEffect(() => {
+    if (!templateBgQuery.data) return; // id_card_template itself still loading
     let cancelled = false;
     async function load() {
-      const rows = templateBgQuery.data ?? [];
-      for (const r of rows) {
+      for (const r of templateBgQuery.data!) {
         if (!r.background_image_url) continue;
         const { data } = await supabase.storage
           .from("credential-templates")
@@ -366,6 +431,7 @@ function PrintPage() {
         if (r.template_type === "card_front") setFrontBgUrl(data?.signedUrl ?? null);
         if (r.template_type === "card_back") setBackBgUrl(data?.signedUrl ?? null);
       }
+      if (!cancelled) setBgUrlsResolved(true);
     }
     load();
     return () => {
@@ -373,8 +439,39 @@ function PrintPage() {
     };
   }, [templateBgQuery.data]);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const resident = request?.resident as any;
+  // phone_number here is overwritten with the decrypted value from
+  // residentContactQuery above (request.resident.phone_number came through
+  // an embed on the credential_request query, not resident_decrypted) so
+  // every downstream consumer of this single `resident` object -- the
+  // template-driven PrintableCard, the CardFront/CardBack preview, and the
+  // checks useMemo below -- gets the real value without threading a second
+  // field through all three. Memoized (not a plain const) because the
+  // object-spread below would otherwise create a new reference every
+  // render, which defeated the checks useMemo's own memoization.
+  // national_id_no, unlike phone_number, IS still selected plaintext in the
+  // embed above (it wasn't dropped from that select), so this falls back to
+  // it rather than blanking a physical card's printed ID on a transient
+  // decrypt failure -- same resolveDecryptedField fail-soft policy as the
+  // resident/household edit forms.
+  const resident = useMemo(() => {
+    if (!request?.resident) return null;
+    /* eslint-disable @typescript-eslint/no-explicit-any -- merging decrypted
+       fields onto an already-untyped (pre-typegen embed) row */
+    const r = request.resident as any;
+    return {
+      ...r,
+      phone_number: residentContactQuery.data?.phone_number_decrypted ?? null,
+      national_id_no: resolveDecryptedField(
+        residentContactQuery.data?.national_id_no_decrypted ?? null,
+        r.national_id_no ?? null,
+      ).value,
+    } as any;
+    /* eslint-enable @typescript-eslint/no-explicit-any */
+  }, [
+    request?.resident,
+    residentContactQuery.data?.phone_number_decrypted,
+    residentContactQuery.data?.national_id_no_decrypted,
+  ]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const household = request?.household as any;
   const kebele = household?.kebele;
@@ -416,7 +513,8 @@ function PrintPage() {
   );
   const allAuthorized = checks.every((c) => c.ok);
 
-  const [reprintReason, setReprintReason] = useState("");
+  const [reprintReasonCode, setReprintReasonCode] = useState<ReprintReasonCode | "">("");
+  const [reprintNote, setReprintNote] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -430,59 +528,191 @@ function PrintPage() {
   const doPrint = useReactToPrint({
     contentRef: cardsRef,
     documentTitle: cred?.credential_number ? `credential-${cred.credential_number}` : "credential",
-    pageStyle: `@page { size: ${orientation === "portrait" ? "54mm 85.6mm" : "85.6mm 54mm"}; margin: 0; } @media print { html, body { margin: 0 !important; padding: 0 !important; width: ${orientation === "portrait" ? "54mm" : "85.6mm"}; height: ${orientation === "portrait" ? "85.6mm" : "54mm"}; } }`,
+    // print-color-adjust here (not just in the page's own <style> block) is
+    // load-bearing: react-to-print prints from its own iframe, and copied
+    // stylesheets aren't guaranteed to carry every rule, so the one style
+    // that keeps the template background from being dropped has to be
+    // injected directly into pageStyle to be certain it lands.
+    pageStyle: `@page { size: ${orientation === "portrait" ? "54mm 85.6mm" : "85.6mm 54mm"}; margin: 0; } @media print { html, body { margin: 0 !important; padding: 0 !important; width: ${orientation === "portrait" ? "54mm" : "85.6mm"}; height: ${orientation === "portrait" ? "85.6mm" : "54mm"}; } * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; } }`,
   });
 
-  const handlePrint = async () => {
-    if (!request || !cred || !actorUserId || !woredaId) return;
-    if (!allAuthorized || !verified) return;
-    if (isReprint && reprintReason.trim().length < 5) {
-      toast.error("Reprint reason must be at least 5 characters");
-      return;
-    }
+  // The officer confirms a good card came out of the printer. Only this makes
+  // the credential `printed` and advances the request. Amharic first, per the
+  // woreda portal's convention.
+  const handleConfirmPrinted = async () => {
+    if (!cred || !request || !actorUserId) return;
     setBusy(true);
     try {
       const nowIso = new Date().toISOString();
-      const { error: logErr } = await supabase.from("credential_print_log").insert({
-        woreda_id: woredaId,
-        credential_id: cred.credential_id,
-        printed_by_user_id: actorUserId,
-        print_type: cred.credential_type ?? "card",
-        print_reason: isReprint ? "reprint" : "initial_issue",
-        is_reprint: isReprint,
-        reprint_reason: isReprint ? reprintReason.trim() : null,
-        copies_count: 1,
-        printer_name: printerName,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any);
-      if (logErr) throw logErr;
 
-      if (!isReprint && cred.status === "ready_to_print") {
-        const { error: credErr } = await supabase
+      // Two independent writes with no shared transaction: if the second one
+      // fails the step must stay resumable, so each is skipped when its row is
+      // already at the target. Without this a partial success left the
+      // credential `printed` and the request `paid`, which hid the confirm
+      // panel and stranded the request with no path forward.
+      if (cred.status === "printing") {
+        const { data: credRow, error: credErr } = await supabase
           .from("residence_credential")
           .update({ status: "printed", printed_at: nowIso })
-          .eq("credential_id", cred.credential_id);
+          .eq("credential_id", cred.credential_id)
+          .select("credential_id")
+          .maybeSingle();
         if (credErr) throw credErr;
+        if (!credRow) throw new Error("Credential not updated");
 
         await supabase.from("credential_status_history").insert({
           credential_id: cred.credential_id,
-          old_status: "ready_to_print",
+          old_status: "printing",
           new_status: "printed",
           changed_by_user_id: actorUserId,
-          change_reason: "Credential printed",
+          change_reason: "Officer confirmed the card printed correctly",
         });
+      }
 
-        await supabase
+      if (request.status === "paid") {
+        const { data: reqRow, error: reqErr } = await supabase
           .from("credential_request")
           .update({ status: "printed" })
-          .eq("credential_request_id", request.credential_request_id);
+          .eq("credential_request_id", request.credential_request_id)
+          .select("credential_request_id")
+          .maybeSingle();
+        if (reqErr) throw reqErr;
+        if (!reqRow) throw new Error("Request not updated");
 
         await supabase.from("credential_request_status_history").insert({
           credential_request_id: request.credential_request_id,
           old_status: "paid",
           new_status: "printed",
           changed_by_user_id: actorUserId,
-          change_reason: "Credential printed",
+          change_reason: "Officer confirmed the card printed correctly",
+        });
+      }
+
+      toast.success("ህትመቱ ተረጋግጧል / Print confirmed");
+      queryClient.invalidateQueries({ queryKey: ["credential-for-print", cred.credential_id] });
+      queryClient.invalidateQueries({
+        queryKey: ["credential-request", request.credential_request_id],
+      });
+    } catch (e) {
+      toast.error(`Confirm failed: ${(e as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // The print failed. The credential goes back to `ready_to_print` and is
+  // printed again on the SAME record -- no new request, no new credential.
+  const handlePrintFailed = async () => {
+    if (!cred || !request || !actorUserId) return;
+    // Only meaningful while the card is still at the printer. In the recovery
+    // state the panel also covers (credential already `printed`, request still
+    // `paid`) the card physically exists, so `printed -> ready_to_print` is
+    // both wrong and not an FSM-legal transition.
+    if (cred.status !== "printing") {
+      toast.error("ካርዱ አስቀድሞ ታትሟል / This card is already printed — confirm it instead");
+      return;
+    }
+    setBusy(true);
+    try {
+      const { data: credRow, error: credErr } = await supabase
+        .from("residence_credential")
+        .update({ status: "ready_to_print" })
+        .eq("credential_id", cred.credential_id)
+        .select("credential_id")
+        .maybeSingle();
+      if (credErr) throw credErr;
+      if (!credRow) throw new Error("Credential not updated");
+
+      await supabase.from("credential_status_history").insert({
+        credential_id: cred.credential_id,
+        old_status: "printing",
+        new_status: "ready_to_print",
+        changed_by_user_id: actorUserId,
+        change_reason: "Officer reported a failed print; ready to print again",
+      });
+
+      toast.success("ህትመቱ አልተሳካም፤ እንደገና ማተም ይችላሉ / Print failed — you can print again");
+      queryClient.invalidateQueries({ queryKey: ["credential-for-print", cred.credential_id] });
+      queryClient.invalidateQueries({
+        queryKey: ["credential-request", request.credential_request_id],
+      });
+    } catch (e) {
+      toast.error(`Retry failed: ${(e as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handlePrint = async () => {
+    if (!request || !cred || !actorUserId || !woredaId) return;
+    if (!allAuthorized || !verified) return;
+    if (isReprint && !reprintReasonCode) {
+      toast.error("ምክንያት ይምረጡ / Select a reprint reason");
+      return;
+    }
+    if (isReprint && reprintReasonCode === "other" && reprintNote.trim().length < 5) {
+      toast.error(
+        'ምክንያቱ "ሌላ" ሲሆን ማስታወሻ ያስፈልጋል (ቢያንስ 5 ፊደላት) / A note is required when the reason is "Other" (min 5 characters)',
+      );
+      return;
+    }
+    const reprintReasonText = isReprint
+      ? formatStructuredReason(REPRINT_REASONS, reprintReasonCode, reprintNote)
+      : "";
+    setBusy(true);
+    try {
+      const nowIso = new Date().toISOString();
+      // A reprint logs itself here, since the guaranteed row for an initial
+      // print is now written by `enforce_workflow_transition()` on the
+      // confirmed `printing -> printed` transition (Task 10) -- this insert
+      // would otherwise race that trigger's own row. The RLS policy on
+      // `credential_print_log` was narrowed to match: it now accepts only
+      // `is_reprint = true` inserts from a client, so an initial-issue
+      // attempt here would be rejected rather than double-logged.
+      if (isReprint) {
+        const { error: logErr } = await supabase.from("credential_print_log").insert({
+          woreda_id: woredaId,
+          credential_id: cred.credential_id,
+          printed_by_user_id: actorUserId,
+          print_type: cred.credential_type ?? "card",
+          print_reason: "reprint",
+          is_reprint: true,
+          reprint_reason: reprintReasonText,
+          copies_count: 1,
+          printer_name: printerName,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any);
+        if (logErr) throw logErr;
+      }
+
+      // Sending the card to the printer moves it to `printing`, NOT `printed`.
+      // A jammed or misfed printer used to leave the credential at `printed`
+      // anyway, spending it and forcing the resident to start a new request.
+      // An officer now confirms the physical card before it counts as printed.
+      // Gate on the credential's own status, NOT on `!isReprint`. A retry
+      // after a failed print (`priorCount > 0`) sets `isReprint`, but the
+      // credential is still sitting at `ready_to_print` -- gating on
+      // `!isReprint` skipped the move to `printing` on exactly the attempt
+      // the confirmation step exists for, stranding the card there with the
+      // confirm panel never rendering again. `ready_to_print` is the only
+      // FSM-legal source for `printing`, so this check is sufficient on its
+      // own: a genuine reprint of an already-`active`/`printed` card does not
+      // move (and logs a `credential_print_log` row above, unlike a first
+      // attempt or a retry of one, whose guaranteed row instead comes from
+      // the DB trigger on the later `printing -> printed` confirmation).
+      if (cred.status === "ready_to_print") {
+        const { error: credErr } = await supabase
+          .from("residence_credential")
+          .update({ status: "printing" })
+          .eq("credential_id", cred.credential_id);
+        if (credErr) throw credErr;
+
+        await supabase.from("credential_status_history").insert({
+          credential_id: cred.credential_id,
+          old_status: "ready_to_print",
+          new_status: "printing",
+          changed_by_user_id: actorUserId,
+          change_reason: "Card sent to the printer; awaiting confirmation",
         });
       }
 
@@ -497,7 +727,7 @@ function PrintPage() {
           credential_number: cred.credential_number,
           credential_request_id: request.credential_request_id,
           request_number: request.request_number,
-          reprint_reason: isReprint ? reprintReason.trim() : null,
+          reprint_reason: isReprint ? reprintReasonText : null,
           reprint_index: isReprint ? priorCount + 1 : 0,
           printer_name: printerName,
           orientation,
@@ -510,7 +740,8 @@ function PrintPage() {
       doPrint?.();
       toast.success(`ህትመት ተጀምሯል / Printing job sent to ${printerName}`);
       setConfirmOpen(false);
-      setReprintReason("");
+      setReprintReasonCode("");
+      setReprintNote("");
       queryClient.invalidateQueries({ queryKey: ["credential-print-log", cred.credential_id] });
       queryClient.invalidateQueries({ queryKey: ["credential-for-print", cred.credential_id] });
       queryClient.invalidateQueries({
@@ -523,7 +754,13 @@ function PrintPage() {
     }
   };
 
-  const queryError = reqQuery.error || credQuery.error || templateQuery.error || woredaQuery.error;
+  const queryError =
+    reqQuery.error ||
+    credQuery.error ||
+    templateQuery.error ||
+    woredaQuery.error ||
+    templateBgQuery.error ||
+    residentContactQuery.error;
   if (queryError) {
     return (
       <ErrorPanel
@@ -536,7 +773,14 @@ function PrintPage() {
     );
   }
 
-  if (reqQuery.isLoading || credQuery.isLoading || templateQuery.isLoading) {
+  if (
+    reqQuery.isLoading ||
+    credQuery.isLoading ||
+    templateQuery.isLoading ||
+    templateBgQuery.isLoading ||
+    residentContactQuery.isLoading ||
+    !bgUrlsResolved
+  ) {
     return (
       <div className="space-y-4 p-6">
         <Skeleton className="h-10 w-96" />
@@ -642,7 +886,11 @@ function PrintPage() {
   const expiryEth = cred.expiry_date ? formatEthiopianDateOnly(cred.expiry_date) : "";
 
   const canPrint =
-    allAuthorized && verified && !busy && (!isReprint || reprintReason.trim().length >= 5);
+    allAuthorized &&
+    verified &&
+    !busy &&
+    (!isReprint ||
+      (!!reprintReasonCode && (reprintReasonCode !== "other" || reprintNote.trim().length >= 5)));
 
   // Shared by the on-screen preview and the hidden print surface, so both
   // read the same field layout and the same resolved values -- previously
@@ -673,11 +921,21 @@ function PrintPage() {
           titleAm="የመታወቂያ ህትመት"
           titleEn="Credential Printing"
           actions={
-            <Button asChild variant="outline">
-              <Link to="/woreda/credentials/$requestId" params={{ requestId }}>
-                <ArrowLeft className="mr-2 h-4 w-4" /> Back to request
-              </Link>
-            </Button>
+            <div className="flex items-center gap-2">
+              {request?.credential_id && (
+                <Button asChild variant="outline">
+                  <Link to="/woreda/credentials/$requestId/certificate" params={{ requestId }}>
+                    <span className="font-am-body">A4 ሰርተፍኬት</span>
+                    <span className="ml-1.5 opacity-70">/ A4 Certificate</span>
+                  </Link>
+                </Button>
+              )}
+              <Button asChild variant="outline">
+                <Link to="/woreda/credentials/$requestId" params={{ requestId }}>
+                  <ArrowLeft className="mr-2 h-4 w-4" /> Back to request
+                </Link>
+              </Button>
+            </div>
           }
         />
       </div>
@@ -778,6 +1036,66 @@ function PrintPage() {
                 </span>
               </label>
 
+              {/* The card has been sent to the printer. Nothing counts as
+                  printed until an officer confirms a good card came out --
+                  a jam or misfeed must not spend the credential. */}
+              {/* Also renders on the inconsistent pair a partially-failed
+                  confirmation leaves behind (credential `printed`, request
+                  still `paid`) so the officer can finish the step. */}
+              {(cred.status === "printing" ||
+                (cred.status === "printed" && request?.status === "paid")) && (
+                <div className="mb-4 rounded-lg border-2 border-indigo-300 bg-indigo-50 p-4">
+                  <div className="font-am-body text-sm font-semibold text-indigo-900">
+                    ካርዱ በትክክል ታትሟል?
+                  </div>
+                  <div className="text-xs text-indigo-800/80">/ Did the card print correctly?</div>
+                  <p className="mt-2 text-xs text-indigo-900/80">
+                    <span className="font-am-body">
+                      ካርዱ በአግባቡ ካልታተመ &quot;አልታተመም&quot; ይምረጡ፤ በተመሳሳይ መታወቂያ እንደገና ማተም ይችላሉ።
+                    </span>
+                    <span className="mt-1 block">
+                      / If the card did not come out properly, choose “Not printed”. You can print
+                      again on the same credential — the resident does not start over.
+                    </span>
+                    {/* A reprint carries the SAME signed QR and credential number
+                        as the misfeed -- verification reads the credential's
+                        status, not which physical card was scanned. So once the
+                        good card is issued, a surviving reject verifies as
+                        genuine too. Only physical destruction closes that, and
+                        no code here can enforce it. */}
+                    <span className="mt-2 block font-semibold text-indigo-900">
+                      <span className="font-am-body">
+                        በአግባቡ ያልታተመውን ካርድ ወዲያውኑ ያጥፉ። ተመሳሳይ የQR ኮድ ስላለው በኋላ እንደ ትክክለኛ ሊታይ ይችላል።
+                      </span>
+                      <span className="mt-1 block">
+                        / Destroy the misprinted card now. It carries the same QR code as the
+                        reprint, so once the good card is issued this one would verify as genuine
+                        too.
+                      </span>
+                    </span>
+                  </p>
+                  <div className="mt-3 flex gap-2">
+                    <Button
+                      className="flex-1 bg-emerald-700 hover:bg-emerald-800"
+                      disabled={busy || !canPrint}
+                      onClick={handleConfirmPrinted}
+                    >
+                      <span className="font-am-body">በትክክል ታትሟል</span>
+                      <span className="ml-1 text-xs opacity-80">/ Printed correctly</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="flex-1 border-amber-400 text-amber-800 hover:bg-amber-50"
+                      disabled={busy || !canPrint}
+                      onClick={handlePrintFailed}
+                    >
+                      <span className="font-am-body">አልታተመም</span>
+                      <span className="ml-1 text-xs opacity-80">/ Not printed</span>
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Button
                   className="w-full bg-blue-700 hover:bg-blue-800"
@@ -845,18 +1163,35 @@ function PrintPage() {
                     / Reprint — previously printed {priorCount}{" "}
                     {priorCount === 1 ? "time" : "times"}
                   </div>
-                  <Label htmlFor="reprint-reason" className="mt-3 block text-[10px]">
+                  <Label htmlFor="reprint-reason-code" className="mt-3 block text-[10px]">
                     <span className="font-am-body">የተደጋጋሚ ህትመት ምክንያት</span>
                     <span className="ml-1 text-slate-500">/ Reprint reason</span>
                   </Label>
-                  <Textarea
-                    id="reprint-reason"
-                    value={reprintReason}
-                    onChange={(e) => setReprintReason(e.target.value)}
-                    rows={3}
-                    className="mt-1"
-                    placeholder="Lost / damaged / reissue…"
-                  />
+                  <Select
+                    value={reprintReasonCode}
+                    onValueChange={(v) => setReprintReasonCode(v as ReprintReasonCode)}
+                  >
+                    <SelectTrigger id="reprint-reason-code" className="mt-1">
+                      <SelectValue placeholder="Select a reason" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {REPRINT_REASONS.map((r) => (
+                        <SelectItem key={r.value} value={r.value}>
+                          {r.labelAm} / {r.labelEn}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {reprintReasonCode === "other" && (
+                    <Textarea
+                      id="reprint-note"
+                      value={reprintNote}
+                      onChange={(e) => setReprintNote(e.target.value)}
+                      rows={2}
+                      className="mt-2"
+                      placeholder="Min 5 characters (required)"
+                    />
+                  )}
                 </div>
               )}
             </div>
@@ -883,6 +1218,7 @@ function PrintPage() {
                 fields={frontFields}
                 values={fieldValues}
                 photoUrl={photoUrl}
+                stampUrl={stampUrl}
                 signatureUrl={signatureUrl}
                 qrPayload={null}
                 credentialNumber={cred?.credential_number ?? null}
@@ -910,6 +1246,7 @@ function PrintPage() {
                 fields={backFields}
                 values={fieldValues}
                 photoUrl={photoUrl}
+                stampUrl={stampUrl}
                 signatureUrl={signatureUrl}
                 qrPayload={cred.qr_payload as string | null}
                 credentialNumber={cred?.credential_number ?? null}
@@ -940,6 +1277,7 @@ function PrintPage() {
               fields={frontFields}
               values={fieldValues}
               photoUrl={photoUrl}
+              stampUrl={stampUrl}
               signatureUrl={signatureUrl}
               qrPayload={null}
               credentialNumber={cred?.credential_number ?? null}
@@ -952,6 +1290,7 @@ function PrintPage() {
               fields={backFields}
               values={fieldValues}
               photoUrl={photoUrl}
+              stampUrl={stampUrl}
               signatureUrl={signatureUrl}
               qrPayload={cred.qr_payload as string | null}
               credentialNumber={cred?.credential_number ?? null}
@@ -1004,6 +1343,20 @@ function PrintPage() {
             width: 85.6mm !important;
             height: 54mm !important;
             display: block !important;
+          }
+          /* Chrome/Edge/Firefox drop CSS background-image and background-color
+             by default when printing, regardless of what the on-screen preview
+             shows — this is the browser's own "background graphics" setting,
+             not something react-to-print controls. The card's template
+             background is a background-image (see PrintableCard's bgUrl
+             style), so without forcing this it prints with every field value
+             but no artwork behind them, even when the preview pane (identical
+             background CSS, just never sent to the print pipeline) looks
+             correct. */
+          #printable-card-frame, #printable-card-frame * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
           }
           .no-print { display: none !important; }
         }
@@ -1305,6 +1658,11 @@ function buildFieldValues(
     // value just renders blank rather than falling back to anything.
     woreda_name_har: settings?.woreda_name_display_har ?? "",
     woreda_name_om: settings?.woreda_name_display_om ?? "",
+    // Same settings-only-override pattern as har/om above: short-form names
+    // (Settings > Woreda Profile > "Short Name of Woreda") have no raw
+    // registry counterpart to fall back to either.
+    woreda_name_short: settings?.woreda_name_short ?? "",
+    woreda_name_short_en: settings?.woreda_name_short_en ?? "",
     // Kebeles are identified on the printed card by their 2-digit number,
     // not their name -- kebele_name_am/en still exist for other UI, but the
     // card field intentionally prints only the number.
@@ -1324,6 +1682,7 @@ function PrintableCard({
   fields,
   values,
   photoUrl,
+  stampUrl,
   signatureUrl,
   qrPayload,
   credentialNumber,
@@ -1334,6 +1693,7 @@ function PrintableCard({
   fields: TemplateField[];
   values: Record<string, string>;
   photoUrl: string | null;
+  stampUrl: string | null;
   signatureUrl: string | null;
   qrPayload: string | null;
   credentialNumber: string | null;
@@ -1458,16 +1818,64 @@ function PrintableCard({
               </div>
             );
           }
+          if (f.field_key === "stamp") {
+            // Sourced from woreda_settings.stamp_url -- "የወረዳ ማህተም / Woreda
+            // Seal" in Settings > Official Images. Distinct from signatureUrl
+            // above despite that field's own "Signature Stamp" English
+            // label -- that one is the supervisor's signature, this is the
+            // official round seal. Same rendering woreda.revenue.$paymentId.receipt.tsx
+            // already uses for the seal on printed receipts.
+            return (
+              <div
+                key={f.field_key}
+                style={{
+                  ...common,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {stampUrl && (
+                  <img
+                    src={stampUrl}
+                    alt=""
+                    style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                  />
+                )}
+              </div>
+            );
+          }
           if (f.field_key === "qr_code") {
             // f.width/f.height are canvas-design units, not CSS pixels — the
             // container itself is now sized to the card's true physical width
             // (see PrintableCard), so the QR has to be computed in the same
             // physical units or it re-creates the same oversize-and-clip bug
             // that "5.63in" caused for the whole card.
+            //
+            // qrSizePx sets the canvas's *intrinsic* bitmap resolution only —
+            // it deliberately does NOT also decide the QR's on-screen size.
+            // A <canvas> displays at its width/height attributes unless CSS
+            // overrides them, and every other field here is percentage-sized
+            // against the same physical-mm-based parent (see `common`
+            // above); a QR canvas left at a fixed pixel size was the one
+            // exception, so it held a constant CSS size while its box scaled
+            // with the container. On the true print surface the box is
+            // ~98.7px physical CSS pixels wide and the fixed bitmap covered
+            // ~90% of it as intended, but previewMode's box is capped at
+            // "min(100%, 640px)" — whatever width that resolves to on a
+            // given screen, from ~195px up to 640px-equivalent — so the same
+            // fixed bitmap could look like a small QR adrift in whitespace
+            // on one viewport and nearly fill its box on a narrower one.
+            // Two people opening this same page on different window widths
+            // would see two different QR sizes on an otherwise identical
+            // card. Sizing the canvas at 90% via CSS instead keeps the same
+            // visual margin the print surface already has, but makes it
+            // track the box's actual rendered size everywhere, matching the
+            // print output at any preview width instead of racing it.
             const mmPerCanvasUnit = CARD_WIDTH_MM / canvasW;
             const fieldWidthMm = Number(f.width) * mmPerCanvasUnit;
             const fieldHeightMm = Number(f.height) * mmPerCanvasUnit;
-            const qrSizePx = mmToPx(Math.min(fieldWidthMm, fieldHeightMm) * 0.9);
+            const qrSizePx = mmToPx(Math.min(fieldWidthMm, fieldHeightMm));
             return (
               <div
                 key={f.field_key}
@@ -1485,6 +1893,7 @@ function PrintableCard({
                       value={credentialVerifyUrl(qrPayload)}
                       size={qrSizePx}
                       level="L"
+                      style={{ width: "90%", height: "90%" }}
                     />
                   </QRBoundary>
                 ) : null}

@@ -1,5 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+import { corsHeaders, json, safeError } from "../_shared/response.ts";
+import { getClientIp } from "../_shared/clientIp.ts";
+
 /**
  * Compact signed credential payload.
  *
@@ -27,19 +30,6 @@ interface CompactPayload {
 interface RequestBody {
   credentialId: string;
   woredaId: string;
-}
-
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-
-function json(status: number, body: unknown): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-  });
 }
 
 function base64UrlEncodeBytes(bytes: Uint8Array): string {
@@ -71,42 +61,69 @@ function compactDate(d: string | null | undefined): string {
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS });
-  if (req.method !== "POST") return json(405, { error: "Method not allowed" });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(req) });
+  if (req.method !== "POST") return json(req, 405, { error: "Method not allowed" });
 
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
     const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const PRIVATE_KEY_PEM = Deno.env.get("HARARI_EC_PRIVATE_KEY");
-    if (!PRIVATE_KEY_PEM) return json(500, { error: "Signing key not configured" });
+    if (!PRIVATE_KEY_PEM) return json(req, 500, { error: "Signing key not configured" });
 
     const authHeader = req.headers.get("Authorization") ?? "";
     const jwt = authHeader.replace(/^Bearer\s+/i, "").trim();
-    if (!jwt) return json(401, { error: "Missing authorization" });
+    if (!jwt) return json(req, 401, { error: "Missing authorization" });
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
+    // Carries the caller's own JWT so auth.uid() inside user_has_perm()
+    // resolves to the actual caller, not this function's service-role
+    // identity -- same pattern as invite-platform-admin's
+    // user_has_console_perm() check.
+    const userClient = createClient(SUPABASE_URL, ANON_KEY, {
+      global: { headers: { Authorization: authHeader } },
+    });
 
     const { data: userData, error: userErr } = await admin.auth.getUser(jwt);
-    if (userErr || !userData?.user) return json(401, { error: "Invalid session" });
+    if (userErr || !userData?.user) return json(req, 401, { error: "Invalid session" });
     const callerId = userData.user.id;
 
     const body = (await req.json()) as RequestBody;
     if (!body?.credentialId || !body.woredaId) {
-      return json(400, { error: "Missing fields" });
+      return json(req, 400, { error: "Missing fields" });
     }
 
-    // Woreda match check
+    // This function runs as service-role and bypasses RLS entirely, so
+    // user_has_perm()'s usual RLS backstop does not apply here -- status and
+    // permission both have to be checked by hand, same as every other
+    // privileged Edge Function in this repo (invite-tenant-user,
+    // invite-platform-admin, resend-platform-invite). A suspended or pending
+    // account's JWT is still live, and signing is a state-mutating action
+    // that finalizes a legally significant credential.
     const { data: appUser, error: auErr } = await admin
       .from("app_user")
-      .select("woreda_id, role")
+      .select("woreda_id, role, status")
       .eq("user_id", callerId)
       .maybeSingle();
-    if (auErr) return json(500, { error: "User lookup failed" });
-    if (!appUser) return json(403, { error: "User not registered" });
+    if (auErr)
+      return safeError(req, "sign-credential: app_user lookup", auErr, "User lookup failed", 500);
+    if (!appUser) return json(req, 403, { error: "User not registered" });
+    // Kept distinct from "not registered": a pending/suspended account is a
+    // status problem, not a permission problem, and errorMessages.ts's
+    // "Forbidden" copy tells the user the wrong thing if the two collapse.
+    if (appUser.status !== "active") return json(req, 403, { error: "Account is not active" });
     if (appUser.role !== "super_admin" && appUser.woreda_id !== body.woredaId) {
-      return json(403, { error: "Woreda mismatch" });
+      return json(req, 403, { error: "Woreda mismatch" });
+    }
+    if (appUser.role !== "super_admin") {
+      const { data: canPrint, error: permErr } = await userClient.rpc("user_has_perm", {
+        _perm: "credential.print",
+      });
+      if (permErr || !canPrint) {
+        return json(req, 403, { error: "Forbidden: requires credential.print" });
+      }
     }
 
     // Fetch credential, verify preconditions
@@ -117,13 +134,25 @@ Deno.serve(async (req: Request) => {
       )
       .eq("credential_id", body.credentialId)
       .maybeSingle();
-    if (credErr) return json(500, { error: "Credential lookup failed" });
-    if (!cred) return json(404, { error: "Credential not found" });
-    if (cred.woreda_id !== body.woredaId) return json(403, { error: "Credential woreda mismatch" });
+    if (credErr)
+      return safeError(
+        req,
+        "sign-credential: credential lookup",
+        credErr,
+        "Credential lookup failed",
+        500,
+      );
+    if (!cred) return json(req, 404, { error: "Credential not found" });
+    if (cred.woreda_id !== body.woredaId)
+      return json(req, 403, { error: "Credential woreda mismatch" });
     if (cred.status !== "ready_to_print") {
-      return json(409, { error: `Credential status is ${cred.status}, expected ready_to_print` });
+      // Fixed string on purpose -- the response used to echo the row's own
+      // status enum value, a (mild) internal-state disclosure to any direct
+      // caller (INSA 3.6's borderline case). The specific status is still
+      // visible to authorized users in the UI itself.
+      return json(req, 409, { error: "Credential is not ready to print" });
     }
-    if (cred.qr_payload) return json(409, { error: "Credential already signed" });
+    if (cred.qr_payload) return json(req, 409, { error: "Credential already signed" });
 
     // SECURITY: every field in the signed payload is read from the database.
     // The request supplies only which credential to sign.
@@ -132,8 +161,15 @@ Deno.serve(async (req: Request) => {
       .select("resident_number, full_name, sex, date_of_birth, current_household_id")
       .eq("resident_id", cred.resident_id)
       .maybeSingle();
-    if (resErr) return json(500, { error: "Resident lookup failed" });
-    if (!resident) return json(404, { error: "Resident not found" });
+    if (resErr)
+      return safeError(
+        req,
+        "sign-credential: resident lookup",
+        resErr,
+        "Resident lookup failed",
+        500,
+      );
+    if (!resident) return json(req, 404, { error: "Resident not found" });
 
     const { data: kebeleRow } = await admin
       .from("kebele")
@@ -208,25 +244,42 @@ Deno.serve(async (req: Request) => {
     );
     const token = `${payloadB64}.${base64UrlEncodeBytes(sig)}`;
 
-    // Persist token
-    const { error: updErr } = await admin
+    // Persist token. The qr_payload IS NULL guard here (not just the earlier
+    // read at line ~168) makes this a compare-and-swap: two concurrent calls
+    // for the same credential (two tabs, a client double-invoke) can both
+    // pass the earlier check, but only the first write matches zero rows for
+    // the second, so it doesn't silently clobber an already-signed token or
+    // write a duplicate audit row.
+    const { data: updated, error: updErr } = await admin
       .from("residence_credential")
       .update({ qr_payload: token })
-      .eq("credential_id", body.credentialId);
-    if (updErr) return json(500, { error: `Failed to store token: ${updErr.message}` });
+      .eq("credential_id", body.credentialId)
+      .is("qr_payload", null)
+      .select("credential_id")
+      .maybeSingle();
+    if (updErr)
+      return safeError(
+        req,
+        "sign-credential: store token",
+        updErr,
+        "Failed to save the signed credential",
+        500,
+      );
+    if (!updated) return json(req, 409, { error: "Credential already signed" });
 
     await admin.from("audit_log").insert({
-      woreda_id: body.woredaId,
+      woreda_id: cred.woreda_id,
       actor_user_id: callerId,
       entity_name: "residence_credential",
       entity_id: body.credentialId,
       action_type: "QR_SIGNED",
       new_value_json: { credential_number: cred.credential_number },
       action_at: new Date().toISOString(),
+      source_ip: getClientIp(req),
     });
 
-    return json(200, { success: true, token });
+    return json(req, 200, { success: true, token });
   } catch (e) {
-    return json(500, { error: (e as Error).message });
+    return safeError(req, "sign-credential: unhandled", e, "Credential signing failed", 500);
   }
 });

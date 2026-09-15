@@ -28,6 +28,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { ROLE_ROW_VERIFICATION_FAILURE_MESSAGE } from "@/lib/rowVerification";
 import { useAuthStore } from "@/stores/authStore";
 import { CP, type ConsolePermission } from "@/config/permissions";
 import {
@@ -146,11 +147,14 @@ function ConsoleRolesPage() {
   }
 
   async function toggleActive(role: ConsoleRoleRow, next: boolean) {
-    const { error } = await db
+    const { data: updated, error } = await db
       .from("console_role")
       .update({ is_active: next, updated_by: callerId ?? null })
-      .eq("console_role_id", role.console_role_id);
+      .eq("console_role_id", role.console_role_id)
+      .select("console_role_id")
+      .maybeSingle();
     if (error) return toast.error(error.message);
+    if (!updated) return toast.error(ROLE_ROW_VERIFICATION_FAILURE_MESSAGE);
     await supabase.from("audit_log").insert({
       actor_user_id: callerId ?? null,
       entity_name: "console_role",
@@ -448,16 +452,19 @@ function EditConsoleRoleDialog({
       return;
     }
     setSaving(true);
-    const { error } = await db
+    const { data: updated, error } = await db
       .from("console_role")
       .update({
         name: name.trim(),
         description: description.trim() || null,
         updated_by: callerId ?? null,
       })
-      .eq("console_role_id", role.console_role_id);
+      .eq("console_role_id", role.console_role_id)
+      .select("console_role_id")
+      .maybeSingle();
     setSaving(false);
     if (error) return toast.error(error.message);
+    if (!updated) return toast.error(ROLE_ROW_VERIFICATION_FAILURE_MESSAGE);
     await supabase.from("audit_log").insert({
       actor_user_id: callerId ?? null,
       entity_name: "console_role",

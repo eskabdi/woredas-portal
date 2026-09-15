@@ -5,7 +5,6 @@ import {
   ArrowLeft,
   Banknote,
   Check,
-  CheckCircle2,
   Download,
   FileText,
   Paperclip,
@@ -23,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/forms/FormSection";
+import { PermissionGate } from "@/components/common/PermissionGate";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
 import { formatEthiopianDate } from "@/utils/ethiopianCalendar";
@@ -34,6 +34,11 @@ import {
 } from "@/lib/letterTemplate";
 import { P } from "@/config/permissions";
 import { PriorityBadge, StatusBadge } from "@/components/services/ServiceRequestList";
+import {
+  HistoryTimeline,
+  useWorkflowHistory,
+  useActorNames,
+} from "@/components/workflow/HistoryTimeline";
 import {
   DOCUMENT_TYPES,
   MAX_UPLOAD_BYTES,
@@ -57,6 +62,7 @@ interface Detail {
   category: string;
   status: string;
   priority: string;
+  service_type_id: string;
   subject: string | null;
   purpose: string | null;
   addressed_to: string | null;
@@ -135,28 +141,40 @@ function ServiceRequestDetailPage() {
       const { data, error } = await supabase
         .from("service_request")
         .select(
-          "service_request_id, request_number, category, status, priority, subject, purpose, addressed_to, details, applicant_name, applicant_phone, respondent_name, incident_date, incident_place, resolution_notes, return_reason, reject_reason, fee_amount, payment_id, submitted_at, verified_at, approval_decision_at, issued_at, closed_at, resident_id, kebele_id, resident:resident_id(resident_id, resident_number, full_name_am, full_name), kebele:kebele_id(kebele_name_am, kebele_name_en), service_type:service_type_id(name_am, name_en, requires_approval, requires_payment, fee_amount)",
+          "service_request_id, request_number, category, status, priority, service_type_id, subject, purpose, addressed_to, details, applicant_name, respondent_name, incident_date, incident_place, resolution_notes, return_reason, reject_reason, fee_amount, payment_id, submitted_at, verified_at, approval_decision_at, issued_at, closed_at, resident_id, kebele_id, resident:resident_id(resident_id, resident_number, full_name_am, full_name), kebele:kebele_id(kebele_name_am, kebele_name_en), service_type:service_type_id(name_am, name_en, requires_approval, requires_payment, fee_amount)",
         )
         .eq("service_request_id", requestId)
         .maybeSingle();
       if (error) throw error;
-      return data as unknown as Detail | null;
+      if (!data) return null;
+
+      // service_request_decrypted isn't in the generated types yet
+      // (00000000000023_pii_encryption.sql) -- same untyped-client cast
+      // pattern already used elsewhere in this codebase for pre-typegen
+      // tables. Queried separately: the select above embeds resident/kebele/
+      // service_type via FK-derived PostgREST joins, which are not
+      // guaranteed to resolve through a view the same way they do through
+      // the base table. Merged back onto the same `applicant_phone` key so
+      // Detail and every render site below stay unchanged.
+      const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const { data: contact, error: contactError } = await db
+        .from("service_request_decrypted")
+        .select("applicant_phone_decrypted")
+        .eq("service_request_id", requestId)
+        .maybeSingle();
+      if (contactError) throw contactError;
+
+      return {
+        ...data,
+        applicant_phone: contact?.applicant_phone_decrypted ?? null,
+      } as unknown as Detail;
     },
   });
 
-  const historyQuery = useQuery({
-    queryKey: ["service-request-history", requestId],
-    enabled: !!requestId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("service_request_status_history")
-        .select("id, old_status, new_status, change_reason, changed_at")
-        .eq("service_request_id", requestId)
-        .order("changed_at", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
+  const workflowHistoryQuery = useWorkflowHistory("service_request", requestId, !!requestId);
+  const actorNamesQuery = useActorNames(
+    (workflowHistoryQuery.data ?? []).map((h) => h.changed_by_user_id),
+  );
 
   const attachmentsQuery = useQuery({
     queryKey: ["service-request-attachments", requestId],
@@ -179,6 +197,7 @@ function ServiceRequestDetailPage() {
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["service-request", requestId] });
     queryClient.invalidateQueries({ queryKey: ["service-request-history", requestId] });
+    queryClient.invalidateQueries({ queryKey: ["service-request-workflow-history", requestId] });
     queryClient.invalidateQueries({ queryKey: ["service-requests"] });
     queryClient.invalidateQueries({ queryKey: ["approval-queue"] });
   };
@@ -418,8 +437,9 @@ function ServiceRequestDetailPage() {
   }
 
   const category = (req.category === "complaint" ? "complaint" : "letter") as ServiceCategory;
+  const isLetter = category === "letter";
   const { flow, index } = stageIndex(req.status, category);
-  const isTerminal = ["rejected", "closed"].includes(req.status);
+  const isTerminal = ["rejected", "closed", "completed"].includes(req.status);
   const workflowStages: WorkflowStage[] = flow.map((s) => {
     const [am, en] = (SERVICE_STATUS_LABEL[s] ?? s).split(" / ");
     return { key: s, am, en: en ?? am };
@@ -434,9 +454,18 @@ function ServiceRequestDetailPage() {
           : undefined;
   const workflowStage = index >= 0 ? flow[index] : "pending_approval";
   const canVerify = hasPermission(P.SERVICE_VERIFY);
+  const canResubmit = hasPermission(P.SERVICE_RESUBMIT);
   const canApprove = hasPermission(P.SERVICE_APPROVE);
   const canIssue = hasPermission(P.SERVICE_ISSUE);
   const canCollect = hasPermission(P.PAYMENT_COLLECT);
+  // Task 14-B: granular verbs used only on the letter path (still civil.*-
+  // style additive to the coarse verbs above, which keep gating complaints
+  // exactly as before -- see docs/task14b-mapping-memo.md §7).
+  const canReturn = hasPermission(P.SERVICE_RETURN);
+  const canReject = hasPermission(P.SERVICE_REJECT);
+  const canRecordPayment = hasPermission(P.SERVICE_RECORD_PAYMENT);
+  const canIssueLetter = hasPermission(P.SERVICE_ISSUE_LETTER);
+  const canComplete = hasPermission(P.SERVICE_COMPLETE);
 
   return (
     <>
@@ -464,7 +493,7 @@ function ServiceRequestDetailPage() {
                 </Button>
               </Link>
               {category === "letter" &&
-                ["approved", "paid", "issued", "closed"].includes(req.status) && (
+                ["approved", "paid", "issued", "completed"].includes(req.status) && (
                   <Link to="/woreda/services/$requestId/print" params={{ requestId }}>
                     <Button size="sm">
                       <Printer className="mr-1 h-4 w-4" /> ደብዳቤ አትም / Print letter
@@ -650,31 +679,31 @@ function ServiceRequestDetailPage() {
               )}
             </Card>
 
-            {/* History */}
+            {/* History -- Task 14-C: unified onto workflow_status_history
+                (the engine's own DB-trigger-written table, covering both
+                categories since 14-B attached the engine to service_request
+                generally) via the shared HistoryTimeline component, instead
+                of this route's previous two separate cards. The older
+                service_request_status_history table is unchanged and still
+                written by transition(), but was a client-side duplicate of
+                the same transitions for anything post-14-B; no longer read
+                here. */}
             <Card className="p-5">
               <h3 className="font-am-heading mb-3 text-base font-semibold">
                 የሂደት ታሪክ / Status history
               </h3>
-              <ol className="space-y-3">
-                {(historyQuery.data ?? []).map((h) => (
-                  <li key={h.id} className="flex gap-3">
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
-                    <div>
-                      <div className="font-am-body text-sm">
-                        {h.old_status ? `${serviceStatusLabel(h.old_status)} → ` : ""}
-                        {serviceStatusLabel(h.new_status)}
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        {new Date(h.changed_at).toLocaleString("en-GB", { hour12: false })}
-                        {h.change_reason ? ` — ${h.change_reason}` : ""}
-                      </div>
-                    </div>
-                  </li>
-                ))}
-                {(historyQuery.data ?? []).length === 0 && (
-                  <li className="text-sm text-slate-500">—</li>
-                )}
-              </ol>
+              {workflowHistoryQuery.isLoading && (
+                <p className="text-sm text-slate-500">በመጫን ላይ... / Loading…</p>
+              )}
+              {workflowHistoryQuery.isError && (
+                <p className="text-sm text-rose-600">ታሪኩን መጫን አልተቻለም / Could not load history</p>
+              )}
+              {!workflowHistoryQuery.isLoading && !workflowHistoryQuery.isError && (
+                <HistoryTimeline
+                  rows={workflowHistoryQuery.data ?? []}
+                  actorNames={actorNamesQuery.data}
+                />
+              )}
             </Card>
           </div>
 
@@ -706,16 +735,38 @@ function ServiceRequestDetailPage() {
                 </Button>
               )}
 
-              {!isTerminal && ["under_review", "returned"].includes(req.status) && canVerify && (
+              {/* "returned" only has one legal outbound edge in the seeded
+                  FSM (returned -> under_review, service.resubmit) -- it must
+                  not reuse the under_review-stage Verify button below, which
+                  jumps straight to the post-verify target and would raise a
+                  workflow-transition error from this status. */}
+              {!isTerminal && req.status === "returned" && canResubmit && (
+                <Button
+                  className="w-full"
+                  disabled={busy}
+                  onClick={() =>
+                    transition("under_review", {
+                      reason: "Resubmitted after return",
+                      action: "SERVICE_REQUEST_RESUBMITTED",
+                    })
+                  }
+                >
+                  <Undo2 className="mr-1 h-4 w-4" /> እንደገና አቅርብ / Resubmit
+                </Button>
+              )}
+
+              {!isTerminal && req.status === "under_review" && canVerify && (
                 <div className="space-y-3">
                   <Button
                     className="w-full"
                     disabled={busy}
                     onClick={() =>
                       transition(
-                        req.service_type?.requires_approval
-                          ? "pending_approval"
-                          : nextAfterApproval(req),
+                        isLetter
+                          ? "verified"
+                          : req.service_type?.requires_approval
+                            ? "pending_approval"
+                            : nextAfterApproval(req),
                         {
                           extra: {
                             verified_by_user_id: actorUserId,
@@ -754,6 +805,35 @@ function ServiceRequestDetailPage() {
                 </div>
               )}
 
+              {/* Letter stage 3a: verified -> pending_approval. The
+                  supervisor pulls the item into their own approval queue
+                  before deciding on it -- same shape as civil's Task 14-A
+                  "Send for Approval" step. */}
+              {!isTerminal && isLetter && req.status === "verified" && (
+                <PermissionGate
+                  permission={P.SERVICE_APPROVE}
+                  fallback={
+                    <p className="font-am-body text-sm text-slate-500">
+                      ተረጋግጧል፤ ለማጽደቅ በመጠባበቅ ላይ / Verified — awaiting a supervisor to accept it into
+                      the approval queue.
+                    </p>
+                  }
+                >
+                  <Button
+                    className="w-full"
+                    disabled={busy}
+                    onClick={() =>
+                      transition("pending_approval", {
+                        reason: "Sent for approval",
+                        action: "SERVICE_REQUEST_SENT_FOR_APPROVAL",
+                      })
+                    }
+                  >
+                    ለማጽደቅ ላክ / Send for Approval
+                  </Button>
+                </PermissionGate>
+              )}
+
               {!isTerminal &&
                 ["pending_approval", "approval_returned"].includes(req.status) &&
                 canApprove && (
@@ -762,7 +842,7 @@ function ServiceRequestDetailPage() {
                       className="w-full"
                       disabled={busy}
                       onClick={() =>
-                        transition(nextAfterApproval(req), {
+                        transition(isLetter ? "approved" : nextAfterApproval(req), {
                           extra: {
                             approved_by_user_id: actorUserId,
                             approval_decision_at: new Date().toISOString(),
@@ -783,40 +863,61 @@ function ServiceRequestDetailPage() {
                       />
                     </div>
                     <div className="grid gap-2">
-                      <Button
-                        variant="outline"
-                        disabled={busy || reason.trim().length < 5}
-                        onClick={() =>
-                          transition("approval_returned", {
-                            extra: { return_reason: reason.trim() },
-                            reason: reason.trim(),
-                            action: "SERVICE_REQUEST_APPROVAL_RETURNED",
-                          })
-                        }
-                      >
-                        <Undo2 className="mr-1 h-4 w-4" /> መልስ / Return
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        disabled={busy || reason.trim().length < 5}
-                        onClick={() =>
-                          transition("rejected", {
-                            extra: {
-                              reject_reason: reason.trim(),
-                              closed_at: new Date().toISOString(),
-                            },
-                            reason: reason.trim(),
-                            action: "SERVICE_REQUEST_REJECTED",
-                          })
-                        }
-                      >
-                        <X className="mr-1 h-4 w-4" /> ውድቅ አድርግ / Reject
-                      </Button>
+                      {(!isLetter || canReturn) && (
+                        <Button
+                          variant="outline"
+                          disabled={busy || reason.trim().length < 5}
+                          onClick={() =>
+                            transition(isLetter ? "returned" : "approval_returned", {
+                              extra: { return_reason: reason.trim() },
+                              reason: reason.trim(),
+                              action: "SERVICE_REQUEST_APPROVAL_RETURNED",
+                            })
+                          }
+                        >
+                          <Undo2 className="mr-1 h-4 w-4" /> መልስ / Return
+                        </Button>
+                      )}
+                      {(!isLetter || canReject) && (
+                        <Button
+                          variant="destructive"
+                          disabled={busy || reason.trim().length < 5}
+                          onClick={() =>
+                            transition("rejected", {
+                              extra: {
+                                reject_reason: reason.trim(),
+                                closed_at: new Date().toISOString(),
+                              },
+                              reason: reason.trim(),
+                              action: "SERVICE_REQUEST_REJECTED",
+                            })
+                          }
+                        >
+                          <X className="mr-1 h-4 w-4" /> ውድቅ አድርግ / Reject
+                        </Button>
+                      )}
                     </div>
                   </div>
                 )}
 
-              {!isTerminal && req.status === "awaiting_payment" && canCollect && (
+              {/* Letter stage 4: payment card, mirrors civil's PaymentCard
+                  (Task 14-A) -- always records a real payment + receipt,
+                  amount may be 0 (B3's universal zero-fee rule). Replaces
+                  the old fee>0-only collectPayment() block for letters. */}
+              {!isTerminal && isLetter && ["approved", "awaiting_payment"].includes(req.status) && (
+                <ServiceLetterPaymentCard
+                  requestId={req.service_request_id}
+                  serviceTypeId={req.service_type_id}
+                  status={req.status}
+                  residentId={req.resident_id}
+                  woredaId={woredaId!}
+                  actorUserId={actorUserId}
+                  canRecordPayment={canRecordPayment}
+                  onDone={invalidate}
+                />
+              )}
+
+              {!isTerminal && !isLetter && req.status === "awaiting_payment" && canCollect && (
                 <div className="space-y-3">
                   <div className="rounded-md border border-orange-200 bg-orange-50 p-3">
                     <div className="font-am-body text-xs text-orange-900">የሚከፈል / Amount due</div>
@@ -852,34 +953,56 @@ function ServiceRequestDetailPage() {
                 </div>
               )}
 
-              {!isTerminal && ["approved", "paid"].includes(req.status) && canIssue && (
+              {/* Letters can only issue from 'paid' (server-enforced by
+                  enforce_service_request_issuance_gate() -- see mapping
+                  memo §2/§3, this task's own core security fix). Complaints
+                  keep 'Start handling' visible at approved/paid unchanged. */}
+              {!isTerminal && isLetter && req.status === "paid" && canIssueLetter && (
                 <div className="space-y-3">
-                  {category === "letter" ? (
-                    <>
-                      <Link to="/woreda/services/$requestId/print" params={{ requestId }}>
-                        <Button variant="outline" className="w-full">
-                          <Printer className="mr-1 h-4 w-4" /> ደብዳቤ አትም / Print letter
-                        </Button>
-                      </Link>
-                      <Button className="w-full" disabled={busy} onClick={() => void issueLetter()}>
-                        <Check className="mr-1 h-4 w-4" /> ተሰጥቷል ብለው መዝግቡ / Mark issued
-                      </Button>
-                    </>
-                  ) : (
-                    <Button
-                      className="w-full"
-                      disabled={busy}
-                      onClick={() =>
-                        transition("in_progress", {
-                          reason: "Case handling started",
-                          action: "SERVICE_REQUEST_IN_PROGRESS",
-                        })
-                      }
-                    >
-                      ሂደት ጀምር / Start handling
+                  <Link to="/woreda/services/$requestId/print" params={{ requestId }}>
+                    <Button variant="outline" className="w-full">
+                      <Printer className="mr-1 h-4 w-4" /> ደብዳቤ አትም / Print letter
                     </Button>
-                  )}
+                  </Link>
+                  <Button className="w-full" disabled={busy} onClick={() => void issueLetter()}>
+                    <Check className="mr-1 h-4 w-4" /> ተሰጥቷል ብለው መዝግቡ / Mark issued
+                  </Button>
                 </div>
+              )}
+
+              {!isTerminal &&
+                !isLetter &&
+                ["approved", "paid"].includes(req.status) &&
+                canIssue && (
+                  <Button
+                    className="w-full"
+                    disabled={busy}
+                    onClick={() =>
+                      transition("in_progress", {
+                        reason: "Case handling started",
+                        action: "SERVICE_REQUEST_IN_PROGRESS",
+                      })
+                    }
+                  >
+                    ሂደት ጀምር / Start handling
+                  </Button>
+                )}
+
+              {/* Letter stage 6: issued -> completed (terminal), replacing
+                  the old "Close file" button for the letter path only. */}
+              {!isTerminal && isLetter && req.status === "issued" && canComplete && (
+                <Button
+                  className="w-full"
+                  disabled={busy}
+                  onClick={() =>
+                    transition("completed", {
+                      reason: "Request completed",
+                      action: "SERVICE_REQUEST_COMPLETED",
+                    })
+                  }
+                >
+                  <Check className="mr-1 h-4 w-4" /> አጠናቅቅ / Complete
+                </Button>
               )}
 
               {!isTerminal && req.status === "in_progress" && canIssue && (
@@ -908,28 +1031,40 @@ function ServiceRequestDetailPage() {
                 </div>
               )}
 
-              {!isTerminal && ["issued", "resolved"].includes(req.status) && canIssue && (
-                <Button
-                  variant="outline"
-                  className="mt-3 w-full"
-                  disabled={busy}
-                  onClick={() =>
-                    transition("closed", {
-                      extra: { closed_at: new Date().toISOString() },
-                      reason: "File closed",
-                      action: "SERVICE_REQUEST_CLOSED",
-                    })
-                  }
-                >
-                  መዝገቡን ዘጋ / Close file
-                </Button>
-              )}
+              {!isTerminal &&
+                !isLetter &&
+                ["issued", "resolved"].includes(req.status) &&
+                canIssue && (
+                  <Button
+                    variant="outline"
+                    className="mt-3 w-full"
+                    disabled={busy}
+                    onClick={() =>
+                      transition("closed", {
+                        extra: { closed_at: new Date().toISOString() },
+                        reason: "File closed",
+                        action: "SERVICE_REQUEST_CLOSED",
+                      })
+                    }
+                  >
+                    መዝገቡን ዘጋ / Close file
+                  </Button>
+                )}
 
-              {!isTerminal && !canVerify && !canApprove && !canIssue && !canCollect && (
-                <p className="font-am-body text-sm text-slate-500">
-                  በዚህ ደረጃ እርምጃ ለመውሰድ ፈቃድ አልተሰጠዎትም / You do not have permission to act at this stage.
-                </p>
-              )}
+              {!isTerminal &&
+                !canVerify &&
+                !canResubmit &&
+                !canApprove &&
+                !canIssue &&
+                !canCollect &&
+                !canRecordPayment &&
+                !canIssueLetter &&
+                !canComplete && (
+                  <p className="font-am-body text-sm text-slate-500">
+                    በዚህ ደረጃ እርምጃ ለመውሰድ ፈቃድ አልተሰጠዎትም / You do not have permission to act at this
+                    stage.
+                  </p>
+                )}
             </Card>
           </div>
         </div>
@@ -945,5 +1080,235 @@ function ServiceRequestDetailPage() {
         </Suspense>
       )}
     </>
+  );
+}
+
+// Task 14-B: resolve_service_fee() (00000000000062) -- same fail-closed,
+// tenant-internal RPC shape as civil's useCivilFee()/credential's
+// useFeeSchedule(), but the source of truth stays service_type.fee_amount
+// (mapping memo §0.4), not fee_schedule.
+function useServiceFee(serviceTypeId: string | undefined, enabled: boolean) {
+  const woredaId = useAuthStore((s) => s.woredaId);
+  return useQuery({
+    queryKey: ["service-fee", woredaId, serviceTypeId],
+    enabled: enabled && !!woredaId && !!serviceTypeId,
+    queryFn: async (): Promise<number> => {
+      const { data, error } = await supabase.rpc("resolve_service_fee", {
+        _service_type_id: serviceTypeId!,
+      });
+      if (error) throw error;
+      return Number(data ?? 0);
+    },
+  });
+}
+
+interface ServiceLetterPaymentCardProps {
+  requestId: string;
+  serviceTypeId: string;
+  status: string;
+  residentId: string | null;
+  woredaId: string;
+  actorUserId: string | null;
+  canRecordPayment: boolean;
+  onDone: () => void;
+}
+
+// Mirrors civil's PaymentCard (Task 14-A) exactly in shape: raise the fee at
+// `approved` (-> awaiting_payment), then record a payment + receipt to reach
+// `paid`. Always records a real payment + receipt, amount possibly 0 (B3's
+// universal zero-fee rule) -- replaces the old collectPayment()'s hard
+// fee>0 refusal for the letter path.
+function ServiceLetterPaymentCard({
+  requestId,
+  serviceTypeId,
+  status,
+  residentId,
+  woredaId,
+  actorUserId,
+  canRecordPayment,
+  onDone,
+}: ServiceLetterPaymentCardProps) {
+  const feeQuery = useServiceFee(
+    serviceTypeId,
+    status === "approved" || status === "awaiting_payment",
+  );
+
+  const [channel, setChannel] = useState<"cash" | "bank" | "mobile">("cash");
+  const [referenceNo, setReferenceNo] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const fee = feeQuery.data ?? 0;
+
+  const canSubmit =
+    canRecordPayment &&
+    !busy &&
+    !feeQuery.isError &&
+    !feeQuery.isLoading &&
+    feeQuery.data !== undefined &&
+    (channel === "cash" || referenceNo.trim().length >= 3);
+
+  const handleRecord = async () => {
+    if (!canSubmit) return;
+    setBusy(true);
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+
+      if (status === "approved") {
+        const { data: raiseRow, error: raiseErr } = await supabase
+          .from("service_request")
+          .update({ status: "awaiting_payment" })
+          .eq("service_request_id", requestId)
+          .select("service_request_id")
+          .maybeSingle();
+        if (raiseErr) throw raiseErr;
+        if (!raiseRow) {
+          throw new Error(
+            "ክፍያው ሊጠየቅ አልቻለም / Could not raise the fee — the request may have been moved by someone else",
+          );
+        }
+
+        await supabase.from("service_request_status_history").insert({
+          service_request_id: requestId,
+          old_status: "approved",
+          new_status: "awaiting_payment",
+          changed_by_user_id: actorUserId,
+          change_reason: "Fee raised for payment",
+        } as never);
+
+        await supabase.from("audit_log").insert({
+          woreda_id: woredaId,
+          actor_user_id: actorUserId,
+          entity_name: "service_request",
+          entity_id: requestId,
+          action_type: "SERVICE_REQUEST_AWAITING_PAYMENT",
+          new_value_json: { status: "awaiting_payment", fee } as never,
+          action_at: new Date().toISOString(),
+        });
+      }
+
+      const { data: pay, error: payErr } = await supabase
+        .from("payment")
+        .insert({
+          woreda_id: woredaId,
+          resident_id: residentId,
+          payment_type: "service_fee",
+          amount: fee,
+          payment_date: today,
+          channel,
+          reference_no: channel === "cash" ? null : referenceNo.trim(),
+          status: "confirmed",
+          posted_by_user_id: actorUserId,
+          service_request_id: requestId,
+        } as never)
+        .select("payment_id")
+        .single();
+      if (payErr) throw payErr;
+      const paymentId = (pay as { payment_id: string }).payment_id;
+
+      const { data: receiptRow, error: recErr } = await supabase
+        .from("receipt")
+        .insert({
+          woreda_id: woredaId,
+          payment_id: paymentId,
+          receipt_date: today,
+          total_amount: fee,
+          cash_bank_channel: channel,
+          receipt_number: "",
+        } as never)
+        .select("receipt_id")
+        .single();
+      if (recErr) throw recErr;
+      if (!receiptRow) {
+        throw new Error("ደረሰኝ ሊፈጠር አልቻለም / The payment was recorded but no receipt was created");
+      }
+
+      const { data: paidRow, error: updErr } = await supabase
+        .from("service_request")
+        .update({ status: "paid", payment_id: paymentId })
+        .eq("service_request_id", requestId)
+        .select("service_request_id")
+        .maybeSingle();
+      if (updErr) throw updErr;
+      if (!paidRow) {
+        throw new Error(
+          "ክፍያው ሊመዘገብ አልቻለም / Payment was collected but the request could not be marked paid — the request may have been moved by someone else. Contact an administrator before recording another payment.",
+        );
+      }
+
+      await supabase.from("service_request_status_history").insert({
+        service_request_id: requestId,
+        old_status: "awaiting_payment",
+        new_status: "paid",
+        changed_by_user_id: actorUserId,
+        change_reason: "Payment recorded",
+      } as never);
+
+      await supabase.from("audit_log").insert({
+        woreda_id: woredaId,
+        actor_user_id: actorUserId,
+        entity_name: "service_request",
+        entity_id: requestId,
+        action_type: "SERVICE_REQUEST_PAID",
+        new_value_json: { status: "paid", payment_id: paymentId, amount: fee } as never,
+        action_at: new Date().toISOString(),
+      });
+
+      toast.success("ክፍያው ተመዝግቧል / Payment recorded");
+      onDone();
+    } catch (e) {
+      toast.error(`Payment failed: ${(e as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3 border-t pt-4">
+      <h4 className="font-am-body text-sm font-semibold">ክፍያ / Payment</h4>
+      {feeQuery.isError ? (
+        <p className="text-sm text-red-700">{(feeQuery.error as Error).message}</p>
+      ) : (
+        <div className="rounded-md border border-orange-200 bg-orange-50 p-3">
+          <div className="font-am-body text-xs text-orange-900">የሚከፈል / Amount due</div>
+          <div className="font-mono text-lg font-semibold text-orange-900">
+            {feeQuery.isLoading ? "…" : `${fee.toFixed(2)} ETB`}
+          </div>
+        </div>
+      )}
+      <PermissionGate
+        permission={P.SERVICE_RECORD_PAYMENT}
+        fallback={
+          <p className="font-am-body text-sm text-slate-500">
+            ክፍያ ለመመዝገብ ፈቃድ የለዎትም / You do not have permission to record payment for this request.
+          </p>
+        }
+      >
+        <div>
+          <Label className="font-am-body text-xs">የክፍያ መንገድ / Channel</Label>
+          <Select
+            className="mt-1"
+            value={channel}
+            onChange={(e) => setChannel(e.target.value as "cash" | "bank" | "mobile")}
+          >
+            <option value="cash">ጥሬ ገንዘብ / Cash</option>
+            <option value="bank">ባንክ / Bank</option>
+            <option value="mobile">ሞባይል / Mobile</option>
+          </Select>
+        </div>
+        {channel !== "cash" && (
+          <div>
+            <Label className="font-am-body text-xs">ማጣቀሻ / Reference</Label>
+            <Input
+              className="mt-1"
+              value={referenceNo}
+              onChange={(e) => setReferenceNo(e.target.value)}
+            />
+          </div>
+        )}
+        <Button className="w-full" disabled={!canSubmit} onClick={handleRecord}>
+          <Banknote className="mr-1 h-4 w-4" /> ክፍያ ተቀበል / Collect payment
+        </Button>
+      </PermissionGate>
+    </div>
   );
 }

@@ -1,17 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-
-function json(status: number, body: unknown): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-  });
-}
+import { corsHeaders, json, safeError } from "../_shared/response.ts";
+import { getClientIp } from "../_shared/clientIp.ts";
 
 // Called from set-password.tsx right after a successful password set. app_user
 // has no self-write RLS policy at all (by design -- see CLAUDE.md), so a
@@ -25,12 +15,12 @@ function json(status: number, body: unknown): Response {
 // deliberately left untouched, since reactivating those stays an
 // administrator action by design.
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: CORS_HEADERS });
-  if (req.method !== "POST") return json(405, { error: "Method not allowed" });
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders(req) });
+  if (req.method !== "POST") return json(req, 405, { error: "Method not allowed" });
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) return json(401, { error: "Missing authorization header" });
+    if (!authHeader) return json(req, 401, { error: "Missing authorization header" });
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -42,7 +32,7 @@ Deno.serve(async (req) => {
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
     const { data: userData, error: userErr } = await userClient.auth.getUser();
-    if (userErr || !userData.user) return json(401, { error: "Unauthorized" });
+    if (userErr || !userData.user) return json(req, 401, { error: "Unauthorized" });
     const callerId = userData.user.id;
 
     const { data: caller, error: callerErr } = await admin
@@ -50,20 +40,49 @@ Deno.serve(async (req) => {
       .select("status, woreda_id")
       .eq("user_id", callerId)
       .maybeSingle();
-    if (callerErr || !caller) return json(404, { error: "No app_user profile found" });
+    if (callerErr)
+      return safeError(
+        req,
+        "activate-invited-user: caller lookup",
+        callerErr,
+        "No app_user profile found",
+        404,
+      );
+    if (!caller) return json(req, 404, { error: "No app_user profile found" });
 
     if (caller.status !== "pending") {
       // Nothing to do -- already active, or suspended/inactive (which this
       // function must never touch). Report the true status either way.
-      return json(200, { success: true, status: caller.status });
+      return json(req, 200, { success: true, status: caller.status });
     }
 
-    const { error: updateErr } = await admin
+    // Row-verified per the CLAUDE.md house rule (record-login is the
+    // canonical example): two concurrent calls for the same user (a
+    // double-submitted form, a retried request, the same invite link open
+    // in two tabs) would otherwise both see `error === null` from the
+    // `.update()` even though only the first one actually matched a row --
+    // the second's WHERE clause (status = 'pending') matches zero rows once
+    // the first has already flipped it to active, and PostgREST doesn't
+    // distinguish that from a real update. Without this check the second
+    // call falls straight through to the audit_log insert below, recording
+    // a second, false "ACTIVATED" event for a state change that didn't
+    // happen.
+    const { data: updated, error: updateErr } = await admin
       .from("app_user")
       .update({ status: "active" })
       .eq("user_id", callerId)
-      .eq("status", "pending");
-    if (updateErr) return json(500, { error: updateErr.message });
+      .eq("status", "pending")
+      .select("user_id")
+      .maybeSingle();
+    if (updateErr)
+      return safeError(
+        req,
+        "activate-invited-user: status update",
+        updateErr,
+        "Failed to activate account",
+        500,
+      );
+    if (!updated) return json(req, 200, { success: true, status: "active" });
 
     await admin.from("audit_log").insert({
       actor_user_id: callerId,
@@ -72,10 +91,11 @@ Deno.serve(async (req) => {
       entity_id: callerId,
       action_type: "ACTIVATED",
       new_value_json: { status: "active", method: "self_service_password_set" },
+      source_ip: getClientIp(req),
     });
 
-    return json(200, { success: true, status: "active" });
+    return json(req, 200, { success: true, status: "active" });
   } catch (e) {
-    return json(500, { error: e instanceof Error ? e.message : "Internal error" });
+    return safeError(req, "activate-invited-user: unhandled", e, "Internal error", 500);
   }
 });

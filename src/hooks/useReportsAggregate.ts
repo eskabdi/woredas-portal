@@ -2,9 +2,127 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { ReportSection } from "@/utils/reportExport";
+import { serviceStatusLabel } from "@/lib/serviceConstants";
+import {
+  ETHNICITY_OPTIONS,
+  RELIGION_OPTIONS,
+  EDUCATION_OPTIONS,
+  OCCUPATION_OPTIONS,
+} from "@/lib/residentConstants";
+
+/** Bilingual labels for report breakdown rows -- mirrors labels that already
+ * exist elsewhere in the app for the same real column values (so a printed
+ * report's row names never disagree with the equivalent on-screen filter),
+ * rather than inventing new Amharic copy. Sources: sex/residency_status from
+ * woreda.residents.index.tsx's filter options, event_type from
+ * woreda.civil.index.tsx's EVENT_TYPE_LABEL, occupancy_status and channel
+ * from the Rental/Revenue report designs (Modernist .dc.html export), and
+ * credential_type from woreda.credentials.index.tsx's CRED_TYPE_LABEL. Each
+ * `?? raw` fallback matches serviceStatusLabel's pattern above. */
+const SEX_LABEL: Record<string, string> = {
+  male: "ወንድ / Male",
+  female: "ሴት / Female",
+};
+const RESIDENCY_STATUS_LABEL: Record<string, string> = {
+  active: "ንቁ / Active",
+  inactive: "ኢ-ንቁ / Inactive",
+  moved_out: "ወጥቷል / Moved Out",
+  // resident.residency_status's own DB CHECK only allows active/suspended/
+  // deceased (00000000000000_baseline.sql) -- a resident can be suspended
+  // (woreda.residents.index.tsx sets residency_status='suspended' without
+  // touching active_flag) while still active_flag=true, so 'suspended' is a
+  // real, reachable value here, not a hypothetical one.
+  suspended: "ታግዷል / Suspended",
+  deceased: "ሞቷል / Deceased",
+};
+const EVENT_TYPE_LABEL: Record<string, string> = {
+  birth: "ልደት / Birth",
+  death: "ሞት / Death",
+  marriage: "ጋብቻ / Marriage",
+  divorce: "ፍቺ / Divorce",
+};
+const OCCUPANCY_STATUS_LABEL: Record<string, string> = {
+  vacant: "ክፍት / Vacant",
+  occupied: "ተይዟል / Occupied",
+  under_maintenance: "በጥገና ላይ / Under Maintenance",
+};
+const CHANNEL_LABEL: Record<string, string> = {
+  cash: "ጥሬ ገንዘብ / Cash",
+  bank: "የባንክ ዝውውር / Bank Transfer",
+  mobile: "የሞባይል ገንዘብ / Mobile Money",
+};
+const CREDENTIAL_TYPE_LABEL: Record<string, string> = {
+  card: "ካርድ / Card",
+  certificate: "ሰርተፍኬት / Certificate",
+  both: "ሁለቱም / Both",
+};
+/** Mirrors HOUSE_TYPE_LABEL already duplicated identically in
+ * woreda.households.$householdId.print.tsx and
+ * woreda.residents.$residentId.print.tsx. */
+const HOUSE_TYPE_LABEL: Record<string, string> = {
+  private: "የግል / Private",
+  kebele: "የቀበሌ / Kebele",
+  rental: "የኪራይ / Rental",
+  government: "የመንግስት / Government",
+  rented_by_private: "ኪራይ በግለሰብ / Rented by Private",
+  other: "ሌላ / Other",
+};
+/** ETHNICITY_OPTIONS/RELIGION_OPTIONS/EDUCATION_OPTIONS store am/en pairs
+ * keyed by the same `value` written to resident.ethnicity/religion and
+ * resident.work_info.education_level -- same optionLabel lookup pattern
+ * already used in woreda.residents.$residentId.print.tsx, built once here
+ * as plain Record maps instead of a find() per row. */
+function labelMap(options: readonly { value: string; am: string; en: string }[]) {
+  const m: Record<string, string> = {};
+  for (const o of options) m[o.value] = `${o.am} / ${o.en}`;
+  return m;
+}
+const ETHNICITY_LABEL = labelMap(ETHNICITY_OPTIONS);
+const RELIGION_LABEL = labelMap(RELIGION_OPTIONS);
+const EDUCATION_LABEL = labelMap(EDUCATION_OPTIONS);
+const OCCUPATION_LABEL = labelMap(OCCUPATION_OPTIONS);
+
+/** Fixed chronological order for the age-group breakdown -- count() sorts by
+ * descending value, which would otherwise shuffle brackets out of age order. */
+const AGE_GROUPS = [
+  "0–17 ዓመት / 0–17 years",
+  "18–35 ዓመት / 18–35 years",
+  "36–60 ዓመት / 36–60 years",
+  "60+ ዓመት / 60+ years",
+];
+// Every other breakdown added alongside this one (ethnicity/religion/
+// education/occupation/houseType) falls back to a visible "—" bucket for a
+// missing value; a missing date_of_birth silently dropped the resident from
+// this chart entirely instead, so the bars summed to less than the report's
+// own totalResidents with nothing to explain the gap.
+const AGE_GROUP_UNKNOWN = "ያልታወቀ / Unknown";
+function ageGroup(dob: string | null | undefined): string {
+  if (!dob) return AGE_GROUP_UNKNOWN;
+  const birth = new Date(dob);
+  if (Number.isNaN(birth.getTime())) return AGE_GROUP_UNKNOWN;
+  const now = new Date();
+  let age = now.getFullYear() - birth.getFullYear();
+  const m = now.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
+  if (age < 18) return AGE_GROUPS[0];
+  if (age < 36) return AGE_GROUPS[1];
+  if (age < 61) return AGE_GROUPS[2];
+  return AGE_GROUPS[3];
+}
 
 export interface ReportData {
-  residents: { kebele: string; sex: string; status: string; created_at: string }[];
+  residents: {
+    kebele: string;
+    sex: string;
+    status: string;
+    ethnicity: string;
+    religion: string;
+    education: string;
+    occupation: string;
+    houseType: string;
+    dateOfBirth: string | null;
+    created_at: string;
+  }[];
   households: { kebele: string; occupancy: string }[];
   credentials: { status: string; type: string; created_at: string }[];
   events: { type: string; status: string; event_date: string }[];
@@ -48,11 +166,23 @@ export function useReportsAggregate({
       const from = `${start}T00:00:00.000Z`;
       const to = `${end}T23:59:59.999Z`;
 
-      const [res, hh, cred, ev, pay, rent, svc] = await Promise.all([
+      // payment_decrypted isn't in the generated types yet (00000000000023_
+      // pii_encryption.sql) -- same untyped-client cast pattern already used
+      // elsewhere in this codebase for pre-typegen tables. Fetched as a
+      // separate query rather than swapping the payment query below's
+      // `.from()` in place: that query embeds household and a two-level
+      // rental_request -> rental_house join via FK-derived PostgREST joins,
+      // which are not guaranteed to resolve through a view the same way they
+      // do through the base table. Same woreda_id/date-range filter as the
+      // payment query so the two row sets line up; merged client-side by
+      // payment_id below.
+      const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+      const [res, hh, cred, ev, pay, rent, svc, payAmt] = await Promise.all([
         supabase
           .from("resident")
           .select(
-            "sex, residency_status, active_flag, created_at, household:current_household_id ( kebele_id, kebele:kebele_id ( kebele_name_am, kebele_number ) )",
+            "sex, residency_status, active_flag, created_at, ethnicity, religion, date_of_birth, work_info, household:current_household_id ( kebele_id, house_type, kebele:kebele_id ( kebele_name_am, kebele_number ) )",
           )
           .eq("woreda_id", woredaId!)
           .limit(5000),
@@ -78,11 +208,15 @@ export function useReportsAggregate({
         supabase
           .from("payment")
           .select(
-            "payment_type, amount, channel, payment_date, status, household:household_id ( kebele_id ), rental_request:rental_request_id ( rental_house:rental_house_id ( kebele_id, rental_house_id ) )",
+            "payment_id, payment_type, amount, channel, payment_date, status, household:household_id ( kebele_id ), rental_request:rental_request_id ( rental_house:rental_house_id ( kebele_id, rental_house_id ) )",
           )
           .eq("woreda_id", woredaId!)
           .gte("payment_date", start)
           .lte("payment_date", end)
+          // Stable order (not just a limit) -- above 5000 payments in range,
+          // this and the payment_decrypted query below need to return the
+          // SAME 5000 rows or the merge below silently pairs them wrong.
+          .order("payment_id")
           .limit(5000),
         supabase
           .from("kebele_rental_house")
@@ -99,11 +233,32 @@ export function useReportsAggregate({
           .gte("submitted_at", from)
           .lte("submitted_at", to)
           .limit(5000),
+        db
+          .from("payment_decrypted")
+          .select("payment_id, amount_decrypted")
+          .eq("woreda_id", woredaId!)
+          .gte("payment_date", start)
+          .lte("payment_date", end)
+          .order("payment_id")
+          .limit(5000),
       ]);
 
       const firstError =
-        res.error || hh.error || cred.error || ev.error || pay.error || rent.error || svc.error;
+        res.error ||
+        hh.error ||
+        cred.error ||
+        ev.error ||
+        pay.error ||
+        rent.error ||
+        svc.error ||
+        payAmt.error;
       if (firstError) throw firstError;
+
+      const decryptedAmountByPaymentId = new Map<string, number>(
+        ((payAmt.data ?? []) as { payment_id: string; amount_decrypted: number | null }[])
+          .filter((r) => r.amount_decrypted != null)
+          .map((r) => [r.payment_id, r.amount_decrypted as number]),
+      );
 
       const kebeleLabel = (
         k: { kebele_name_am?: string | null; kebele_number?: number | null } | null,
@@ -120,8 +275,13 @@ export function useReportsAggregate({
               residency_status: string;
               active_flag: boolean;
               created_at: string;
+              ethnicity: string | null;
+              religion: string | null;
+              date_of_birth: string | null;
+              work_info: { education_level?: string; occupation_status?: string } | null;
               household: {
                 kebele_id: string | null;
+                house_type: string | null;
                 kebele: { kebele_name_am: string | null; kebele_number: number | null } | null;
               } | null;
             };
@@ -130,6 +290,12 @@ export function useReportsAggregate({
               kebele: kebeleLabel(row.household?.kebele ?? null),
               sex: row.sex ?? "—",
               status: row.active_flag ? row.residency_status : "inactive",
+              ethnicity: row.ethnicity ?? "—",
+              religion: row.religion ?? "—",
+              education: row.work_info?.education_level ?? "—",
+              occupation: row.work_info?.occupation_status ?? "—",
+              houseType: row.household?.house_type ?? "—",
+              dateOfBirth: row.date_of_birth,
               created_at: row.created_at,
             };
           }),
@@ -189,6 +355,7 @@ export function useReportsAggregate({
             .map(
               (p) =>
                 p as unknown as {
+                  payment_id: string;
                   payment_type: string;
                   amount: number;
                   channel: string;
@@ -208,7 +375,7 @@ export function useReportsAggregate({
               _kebeleId:
                 p.household?.kebele_id ?? p.rental_request?.rental_house?.kebele_id ?? null,
               type: p.payment_type,
-              amount: Number(p.amount ?? 0),
+              amount: Number(decryptedAmountByPaymentId.get(p.payment_id) ?? p.amount ?? 0),
               channel: p.channel,
               date: p.payment_date,
               rentalHouseId: p.rental_request?.rental_house?.rental_house_id ?? null,
@@ -270,6 +437,12 @@ export function useReportsAggregate({
         residentsByKebele: [],
         residentsBySex: [],
         residentsByStatus: [],
+        residentsByEthnicity: [],
+        residentsByReligion: [],
+        residentsByEducation: [],
+        residentsByOccupation: [],
+        residentsByHouseType: [],
+        residentsByAgeGroup: [],
         householdsByKebele: [],
         credentialsByStatus: [],
         credentialsByType: [],
@@ -320,20 +493,52 @@ export function useReportsAggregate({
 
     return {
       residentsByKebele: count(d.residents, (r) => r.kebele),
-      residentsBySex: count(d.residents, (r) => r.sex),
-      residentsByStatus: count(d.residents, (r) => r.status),
+      residentsBySex: count(d.residents, (r) => SEX_LABEL[r.sex] ?? r.sex),
+      residentsByStatus: count(d.residents, (r) => RESIDENCY_STATUS_LABEL[r.status] ?? r.status),
+      residentsByEthnicity: count(d.residents, (r) => ETHNICITY_LABEL[r.ethnicity] ?? r.ethnicity),
+      residentsByReligion: count(d.residents, (r) => RELIGION_LABEL[r.religion] ?? r.religion),
+      residentsByEducation: count(d.residents, (r) => EDUCATION_LABEL[r.education] ?? r.education),
+      residentsByOccupation: count(
+        d.residents,
+        (r) => OCCUPATION_LABEL[r.occupation] ?? r.occupation,
+      ),
+      residentsByHouseType: count(d.residents, (r) => HOUSE_TYPE_LABEL[r.houseType] ?? r.houseType),
+      // Fixed chronological order (not count()'s descending-by-value sort) --
+      // every bracket is shown even at zero, so the report always has all 4.
+      // The Unknown bucket (missing/unparseable date_of_birth) is appended
+      // only when non-empty, so a woreda with complete DOB data doesn't grow
+      // a permanent zero-count row.
+      residentsByAgeGroup: (() => {
+        const counts = new Map<string, number>();
+        d.residents.forEach((r) => {
+          const g = ageGroup(r.dateOfBirth);
+          counts.set(g, (counts.get(g) ?? 0) + 1);
+        });
+        const rows = AGE_GROUPS.map((name) => ({ name, value: counts.get(name) ?? 0 }));
+        const unknown = counts.get(AGE_GROUP_UNKNOWN) ?? 0;
+        if (unknown > 0) rows.push({ name: AGE_GROUP_UNKNOWN, value: unknown });
+        return rows;
+      })(),
       householdsByKebele: count(d.households, (h) => h.kebele),
+      // credentialsByStatus and paymentsByType are intentionally left as raw
+      // values below -- residence_credential.status (ready_to_print/printed/
+      // active/expired/revoked/replaced) and payment_type (service_fee/
+      // house_rent/penalty/credential_fee/rental_rent) have no existing
+      // bilingual label anywhere in the app to safely reuse, and the design
+      // export's categories for both don't correspond to these real enum
+      // values -- inventing Amharic financial/legal terminology here risks
+      // being wrong on a printed government document.
       credentialsByStatus: count(d.credentials, (c) => c.status),
-      credentialsByType: count(d.credentials, (c) => c.type),
-      eventsByType: count(d.events, (e) => e.type),
+      credentialsByType: count(d.credentials, (c) => CREDENTIAL_TYPE_LABEL[c.type] ?? c.type),
+      eventsByType: count(d.events, (e) => EVENT_TYPE_LABEL[e.type] ?? e.type),
       paymentsByType: sumBy((p) => p.type),
-      paymentsByChannel: sumBy((p) => p.channel),
-      rentalByStatus: count(d.rental, (r) => r.status),
+      paymentsByChannel: sumBy((p) => CHANNEL_LABEL[p.channel] ?? p.channel),
+      rentalByStatus: count(d.rental, (r) => OCCUPANCY_STATUS_LABEL[r.status] ?? r.status),
       rentalByPaymentStatus: [
         { name: "የተከፈለ / Paid", value: rentalPaid },
         { name: "ያልተከፈለ / Due (Uncollected)", value: rentalDue },
       ],
-      serviceByStatus: count(d.services, (s) => s.status),
+      serviceByStatus: count(d.services, (s) => serviceStatusLabel(s.status)),
       serviceByType: count(d.services, (s) => s.type),
       totalRevenue: d.payments.reduce((s, p) => s + p.amount, 0),
       newResidents: d.residents.filter((r) => r.created_at >= `${start}T00:00:00`).length,
@@ -366,6 +571,36 @@ export function useReportsAggregate({
             titleAm: "ነዋሪዎች በሁኔታ",
             titleEn: "Residents by residency status",
             rows: agg.residentsByStatus,
+          },
+          {
+            titleAm: "ነዋሪዎች በብሔር",
+            titleEn: "Residents by ethnicity",
+            rows: agg.residentsByEthnicity,
+          },
+          {
+            titleAm: "ነዋሪዎች በሃይማኖት",
+            titleEn: "Residents by religion",
+            rows: agg.residentsByReligion,
+          },
+          {
+            titleAm: "ነዋሪዎች በዕድሜ ክልል",
+            titleEn: "Residents by age group",
+            rows: agg.residentsByAgeGroup,
+          },
+          {
+            titleAm: "ነዋሪዎች በትምህርት ደረጃ",
+            titleEn: "Residents by education",
+            rows: agg.residentsByEducation,
+          },
+          {
+            titleAm: "ነዋሪዎች በሙያ",
+            titleEn: "Residents by occupation",
+            rows: agg.residentsByOccupation,
+          },
+          {
+            titleAm: "ነዋሪዎች በቤት ዓይነት",
+            titleEn: "Residents by house type",
+            rows: agg.residentsByHouseType,
           },
           { titleAm: "ቤተሰቦች በቀበሌ", titleEn: "Households by kebele", rows: agg.householdsByKebele },
         ],

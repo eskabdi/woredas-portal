@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -45,6 +46,14 @@ import {
   useUrlSearchTerm,
 } from "@/components/common/TablePagination";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFunction } from "@/lib/edgeFunction";
+import { ROW_VERIFICATION_FAILURE_MESSAGE } from "@/lib/rowVerification";
+import {
+  clearAllUserOverrides,
+  clearUserOverride,
+  fetchUserOverrides,
+  upsertUserOverride,
+} from "@/lib/userPermissionOverrides";
 import { useAuthStore } from "@/stores/authStore";
 import {
   toWebp,
@@ -53,6 +62,9 @@ import {
   BRANDING_WEBP,
   type WebpOptions,
 } from "@/utils/imageCompression";
+import { GROUP_LABELS, LOCKED_KEYS, PERMISSION_LABELS } from "./RolesPermissionsTab";
+import { PERMISSION_ACTION_LABELS } from "@/config/permissionLabels";
+import { fetchTenantRoles, type TenantRoleRow } from "@/lib/tenantRoles";
 
 const EDITABLE_ROLES = [
   { key: "registry_clerk", am: "የመዝገብ ሰራተኛ", en: "Registry Clerk" },
@@ -69,10 +81,26 @@ const ROLE_LABEL_MAP: Record<string, { am: string; en: string }> = Object.fromEn
 ROLE_LABEL_MAP.tenant_admin = { am: "ወረዳ አስተዳዳሪ", en: "Tenant Admin" };
 ROLE_LABEL_MAP.super_admin = { am: "ሁሉ አስተዳዳሪ", en: "Super Admin" };
 
+/** Resolves a user's display role label, including a custom role's own name
+ * -- every ROLE_LABEL_MAP[u.role] call site must go through this once a
+ * user can have role === "custom", or it falls back to the literal string
+ * "custom" instead of the tenant's chosen name. */
+function roleLabel(
+  u: { role: string; custom_role_id: string | null },
+  tenantRolesById: Map<string, TenantRoleRow>,
+): { am: string; en: string } {
+  if (u.role === "custom") {
+    const name = (u.custom_role_id && tenantRolesById.get(u.custom_role_id)?.name) || "Custom";
+    return { am: name, en: name };
+  }
+  return ROLE_LABEL_MAP[u.role] ?? { am: u.role, en: u.role };
+}
+
 interface AppUserRow {
   user_id: string;
   full_name: string;
   role: string;
+  custom_role_id: string | null;
   status: string;
   invited_at: string | null;
   department: string | null;
@@ -94,14 +122,29 @@ export function UsersRolesTab() {
       const { data, error } = await supabase
         .from("app_user")
         .select(
-          "user_id, full_name, role, status, invited_at, department, job_title, reports_to_user_id, signature_path, photo_path",
+          "user_id, full_name, role, custom_role_id, status, invited_at, department, job_title, reports_to_user_id, signature_path, photo_path",
         )
         .eq("woreda_id", woredaId as string)
         .order("full_name");
       if (error) throw error;
-      return (data ?? []) as AppUserRow[];
+      // custom_role_id (00000000000038_task13_tenant_role_schema.sql) isn't in
+      // the generated types yet -- same temporary cast pattern as this
+      // codebase's other pre-typegen columns.
+      return (data ?? []) as unknown as AppUserRow[];
     },
   });
+
+  const { data: tenantRoles = [] } = useQuery({
+    queryKey: ["tenant_role", woredaId],
+    enabled: !!woredaId,
+    queryFn: () => fetchTenantRoles(woredaId as string),
+  });
+
+  const tenantRolesById = useMemo(() => {
+    const m = new Map<string, TenantRoleRow>();
+    for (const r of tenantRoles) m.set(r.tenant_role_id, r);
+    return m;
+  }, [tenantRoles]);
 
   const { input: q, setInput: setQ, term: qTerm } = useUrlSearchTerm("uq");
 
@@ -152,42 +195,70 @@ export function UsersRolesTab() {
   const [changeUser, setChangeUser] = useState<AppUserRow | null>(null);
   const [suspendUser, setSuspendUser] = useState<AppUserRow | null>(null);
   const [assignRoleOpen, setAssignRoleOpen] = useState(false);
+  const [permissionsUser, setPermissionsUser] = useState<AppUserRow | null>(null);
+  const [resetLinkSendingId, setResetLinkSendingId] = useState<string | null>(null);
 
   async function refresh() {
     qc.invalidateQueries({ queryKey: ["app_user_list", woredaId] });
   }
 
-  async function changeRole(user: AppUserRow, newRole: string): Promise<void> {
-    if (!EDITABLE_ROLES.find((r) => r.key === newRole)) {
+  // Returns whether the role actually changed -- ChangeRoleDialog's "clear
+  // all overrides" checkbox must not fire when this update was rejected or
+  // RLS-filtered, or a failed role change and a successful override wipe
+  // would compound into the opposite of both things the admin asked for.
+  //
+  // An audit_log row for USER_ROLE_CHANGED is no longer inserted here --
+  // app_user_role_audit (00000000000040_task13_role_audit_logging.sql) now
+  // logs it server-side on every actual role/custom_role_id change, which
+  // also catches changes this UI doesn't make (a direct PostgREST call, a
+  // future admin tool). Logging it here too would double every entry.
+  async function changeRole(
+    user: AppUserRow,
+    newRole: string,
+    customRoleId: string | null = null,
+  ): Promise<boolean> {
+    const isBuiltIn = EDITABLE_ROLES.find((r) => r.key === newRole);
+    if (!isBuiltIn && newRole !== "custom") {
       toast.error("Invalid role");
-      return;
+      return false;
     }
-    const { error } = await supabase
+    if (newRole === "custom" && !customRoleId) {
+      toast.error("Select a custom role");
+      return false;
+    }
+    // custom_role_id isn't in the generated types yet (same pre-typegen cast
+    // pattern as elsewhere in this file).
+    const { data: updated, error } = await supabase
       .from("app_user")
-      .update({ role: newRole })
-      .eq("user_id", user.user_id);
+      .update({
+        role: newRole,
+        custom_role_id: newRole === "custom" ? customRoleId : null,
+      } as never)
+      .eq("user_id", user.user_id)
+      .select("user_id")
+      .maybeSingle();
     if (error) {
       toast.error(error.message);
-      return;
+      return false;
     }
-    await supabase.from("audit_log").insert({
-      actor_user_id: callerId ?? null,
-      woreda_id: woredaId,
-      entity_name: "app_user",
-      entity_id: user.user_id,
-      action_type: "USER_ROLE_CHANGED",
-      new_value_json: { from: user.role, to: newRole },
-    });
+    if (!updated) {
+      toast.error(ROW_VERIFICATION_FAILURE_MESSAGE);
+      return false;
+    }
     toast.success("ሚና ተቀይሯል / Role updated");
     await refresh();
+    return true;
   }
 
   async function suspendUserAction(user: AppUserRow) {
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from("app_user")
       .update({ status: "suspended" })
-      .eq("user_id", user.user_id);
+      .eq("user_id", user.user_id)
+      .select("user_id")
+      .maybeSingle();
     if (error) return toast.error(error.message);
+    if (!updated) return toast.error(ROW_VERIFICATION_FAILURE_MESSAGE);
     await supabase.from("audit_log").insert({
       actor_user_id: callerId ?? null,
       woreda_id: woredaId,
@@ -198,6 +269,26 @@ export function UsersRolesTab() {
     });
     toast.success("ተጠቃሚው ታግዷል / User suspended");
     await refresh();
+  }
+
+  // The Edge Function does the real authorization and tenant-isolation check
+  // server-side (caller must be an active tenant admin of the target's own
+  // woreda); this is just the UI's call site and its own no-op-avoidance --
+  // not a security boundary.
+  async function sendPasswordResetLink(user: AppUserRow) {
+    setResetLinkSendingId(user.user_id);
+    try {
+      const { friendlyError } = await invokeEdgeFunction("send-password-reset-link", {
+        user_id: user.user_id,
+      });
+      if (friendlyError) {
+        toast.error(friendlyError);
+        return;
+      }
+      toast.success("የይለፍ ቃል መልሶ ማስጀመሪያ አገናኝ ተልኳል / Reset link sent");
+    } finally {
+      setResetLinkSendingId(null);
+    }
   }
 
   return (
@@ -272,12 +363,21 @@ export function UsersRolesTab() {
                         </td>
                         <td className="px-4 py-3 text-slate-800">{u.full_name}</td>
                         <td className="px-4 py-3">
-                          <span className="font-am-body">
-                            {ROLE_LABEL_MAP[u.role]?.am ?? u.role}
-                          </span>
-                          <span className="ml-1 text-xs text-slate-500">
-                            / {ROLE_LABEL_MAP[u.role]?.en ?? u.role}
-                          </span>
+                          {u.role === "custom" ? (
+                            <span className="text-slate-800">
+                              {(u.custom_role_id && tenantRolesById.get(u.custom_role_id)?.name) ??
+                                "Custom"}
+                            </span>
+                          ) : (
+                            <>
+                              <span className="font-am-body">
+                                {ROLE_LABEL_MAP[u.role]?.am ?? u.role}
+                              </span>
+                              <span className="ml-1 text-xs text-slate-500">
+                                / {ROLE_LABEL_MAP[u.role]?.en ?? u.role}
+                              </span>
+                            </>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-slate-600">{u.department || "—"}</td>
                         <td className="px-4 py-3 text-slate-600">{u.job_title || "—"}</td>
@@ -313,6 +413,33 @@ export function UsersRolesTab() {
                               >
                                 <span className="font-am-body text-red-600">አግድ</span>
                                 <span className="ml-2 text-xs text-slate-500">/ Suspend</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                // Server-side re-checks all of this (role,
+                                // status, tenant boundary); disabling here
+                                // only spares the admin a doomed request --
+                                // see sendPasswordResetLink and
+                                // send-password-reset-link/index.ts.
+                                disabled={
+                                  u.role === "tenant_admin" ||
+                                  u.role === "super_admin" ||
+                                  u.status !== "active" ||
+                                  u.user_id === callerId ||
+                                  resetLinkSendingId === u.user_id
+                                }
+                                onClick={() => sendPasswordResetLink(u)}
+                              >
+                                <span className="font-am-body">የይለፍ ቃል መልሶ ማስጀመሪያ አገናኝ ላክ</span>
+                                <span className="ml-2 text-xs text-slate-500">
+                                  / Send Password Reset Link
+                                </span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                disabled={u.role === "tenant_admin" || u.role === "super_admin"}
+                                onClick={() => setPermissionsUser(u)}
+                              >
+                                <span className="font-am-body">የግል ፈቃድ</span>
+                                <span className="ml-2 text-xs text-slate-500">/ Permissions</span>
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -368,13 +495,25 @@ export function UsersRolesTab() {
         onOpenChange={setInviteOpen}
         woredaId={woredaId}
         users={users}
+        tenantRolesById={tenantRolesById}
         onDone={refresh}
       />
 
       <ChangeRoleDialog
         user={changeUser}
+        woredaId={woredaId}
+        callerId={callerId ?? null}
+        tenantRoles={tenantRoles}
         onClose={() => setChangeUser(null)}
         onConfirm={changeRole}
+      />
+
+      <UserPermissionOverridesDialog
+        user={permissionsUser}
+        woredaId={woredaId}
+        callerId={callerId ?? null}
+        tenantRolesById={tenantRolesById}
+        onClose={() => setPermissionsUser(null)}
       />
 
       <AlertDialog open={!!suspendUser} onOpenChange={(o) => !o && setSuspendUser(null)}>
@@ -405,6 +544,8 @@ export function UsersRolesTab() {
         open={assignRoleOpen}
         onOpenChange={setAssignRoleOpen}
         users={users}
+        tenantRoles={tenantRoles.filter((r) => r.is_active)}
+        tenantRolesById={tenantRolesById}
         onConfirm={changeRole}
       />
     </div>
@@ -568,12 +709,14 @@ function InviteDialog({
   onOpenChange,
   woredaId,
   users,
+  tenantRolesById,
   onDone,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   woredaId: string | null;
   users: AppUserRow[];
+  tenantRolesById: Map<string, TenantRoleRow>;
   onDone: () => void;
 }) {
   const [email, setEmail] = useState("");
@@ -603,25 +746,20 @@ function InviteDialog({
       return;
     }
     setSubmitting(true);
-    const { data, error } = await supabase.functions.invoke<{ error?: string }>(
-      "invite-tenant-user",
-      {
-        body: {
-          email,
-          full_name: fullName,
-          role,
-          woredaId,
-          department: department || null,
-          job_title: jobTitle || null,
-          reports_to_user_id: reportsTo === "none" ? null : reportsTo,
-          photo_path: photoPath,
-          signature_path: signaturePath,
-        },
-      },
-    );
+    const { friendlyError } = await invokeEdgeFunction("invite-tenant-user", {
+      email,
+      full_name: fullName,
+      role,
+      woredaId,
+      department: department || null,
+      job_title: jobTitle || null,
+      reports_to_user_id: reportsTo === "none" ? null : reportsTo,
+      photo_path: photoPath,
+      signature_path: signaturePath,
+    });
     setSubmitting(false);
-    if (error || data?.error) {
-      toast.error(data?.error ?? error?.message ?? "Failed to send invitation");
+    if (friendlyError) {
+      toast.error(friendlyError);
       return;
     }
     toast.success("ግብዣ ተልኳል / Invitation sent");
@@ -696,7 +834,7 @@ function InviteDialog({
                   <SelectItem key={u.user_id} value={u.user_id}>
                     {u.full_name}
                     <span className="ml-2 text-xs text-slate-500">
-                      ({ROLE_LABEL_MAP[u.role]?.en ?? u.role})
+                      ({roleLabel(u, tenantRolesById).en})
                     </span>
                   </SelectItem>
                 ))}
@@ -735,21 +873,82 @@ function InviteDialog({
   );
 }
 
+// The Select's value is either a built-in role key, or "custom:<tenant_role_id>"
+// for a custom role -- one flat string keeps the picker a single control
+// instead of two coupled ones (a role select plus a conditionally-shown
+// custom-role select that could disagree about which is "active").
+function encodeRoleValue(role: string, customRoleId: string | null): string {
+  return role === "custom" && customRoleId ? `custom:${customRoleId}` : role;
+}
+function decodeRoleValue(value: string): { role: string; customRoleId: string | null } {
+  if (value.startsWith("custom:")) return { role: "custom", customRoleId: value.slice(7) };
+  return { role: value, customRoleId: null };
+}
+
 function ChangeRoleDialog({
   user,
+  woredaId,
+  callerId,
+  tenantRoles,
   onClose,
   onConfirm,
 }: {
   user: AppUserRow | null;
+  woredaId: string | null;
+  callerId: string | null;
+  tenantRoles: TenantRoleRow[];
   onClose: () => void;
-  onConfirm: (u: AppUserRow, role: string) => Promise<void>;
+  onConfirm: (u: AppUserRow, role: string, customRoleId?: string | null) => Promise<boolean>;
 }) {
-  const [role, setRole] = useState<string>(user?.role ?? "registry_clerk");
+  const [roleValue, setRoleValue] = useState<string>(
+    encodeRoleValue(user?.role ?? "registry_clerk", user?.custom_role_id ?? null),
+  );
+  const [clearOverrides, setClearOverrides] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const current = user;
+  const qc = useQueryClient();
+
+  // Active roles, plus the user's own current custom role even if it was
+  // since deactivated -- otherwise reopening this dialog for someone on a
+  // deactivated role shows no matching <SelectItem> for their actual role
+  // and the Select renders blank instead of what they're currently on.
+  const selectableRoles = useMemo(
+    () => tenantRoles.filter((r) => r.is_active || r.tenant_role_id === current?.custom_role_id),
+    [tenantRoles, current],
+  );
+
+  // The dialog is mounted unconditionally by the parent (open/close is
+  // `open={!!current}` below, not a conditional render), so useState's
+  // initializer above only ever runs once, on the very first mount when
+  // `user` was still null. Without this effect, every subsequent "Change
+  // Role" open reuses whatever `role` was left over from the previous
+  // person's dialog instead of the newly-selected user's actual role.
+  useEffect(() => {
+    if (current) {
+      setRoleValue(encodeRoleValue(current.role, current.custom_role_id));
+      setClearOverrides(false);
+    }
+  }, [current]);
+
+  // D2(c) (docs/rbac-security-forensic-review.md, "Open Decisions"): overrides
+  // persist across a role change by default -- surfaced here so the admin
+  // making the change explicitly confirms or clears them, rather than a
+  // per-person restriction ("this person is not to issue credentials") going
+  // silently stale under a new role, or silently surviving one it shouldn't.
+  const { data: overrides = [] } = useQuery({
+    queryKey: ["user_permission_override", current?.user_id],
+    enabled: !!current,
+    queryFn: () => fetchUserOverrides(current!.user_id),
+  });
 
   return (
-    <Dialog open={!!current} onOpenChange={(o) => !o && onClose()}>
+    <Dialog
+      open={!!current}
+      onOpenChange={(o) => {
+        if (!o) setClearOverrides(false);
+        if (!o) onClose();
+      }}
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
@@ -761,7 +960,7 @@ function ChangeRoleDialog({
         </DialogHeader>
         <div>
           <Label>Role</Label>
-          <Select value={role} onValueChange={setRole}>
+          <Select value={roleValue} onValueChange={setRoleValue}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -772,11 +971,41 @@ function ChangeRoleDialog({
                   <span className="ml-2 text-xs text-slate-500">/ {r.en}</span>
                 </SelectItem>
               ))}
+              {selectableRoles.map((r) => (
+                <SelectItem key={r.tenant_role_id} value={`custom:${r.tenant_role_id}`}>
+                  {r.name}
+                  <span className="ml-2 text-xs text-slate-500">
+                    / Custom{!r.is_active ? " (inactive)" : ""}
+                  </span>
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
+        {overrides.length > 0 && (
+          <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            <p>
+              This person has {overrides.length} permission override
+              {overrides.length === 1 ? "" : "s"} set independent of their role. By default they
+              carry over unchanged after this role change.
+            </p>
+            <label className="mt-2 flex items-center gap-2 text-xs">
+              <Checkbox
+                checked={clearOverrides}
+                onCheckedChange={(v) => setClearOverrides(Boolean(v))}
+              />
+              Clear all overrides for this person as part of this change
+            </label>
+          </div>
+        )}
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setClearOverrides(false);
+              onClose();
+            }}
+          >
             Cancel
           </Button>
           <Button
@@ -785,8 +1014,31 @@ function ChangeRoleDialog({
             onClick={async () => {
               if (!current) return;
               setSubmitting(true);
-              await onConfirm(current, role);
+              const { role: newRole, customRoleId } = decodeRoleValue(roleValue);
+              const roleChanged = await onConfirm(current, newRole, customRoleId);
+              if (roleChanged && clearOverrides) {
+                const { data, error } = await clearAllUserOverrides(current.user_id);
+                if (error || !data?.length) {
+                  toast.error(
+                    error
+                      ? "Role changed, but clearing overrides failed. Try again."
+                      : ROW_VERIFICATION_FAILURE_MESSAGE,
+                  );
+                } else {
+                  qc.invalidateQueries({ queryKey: ["user_permission_override", current.user_id] });
+                  if (woredaId) {
+                    await supabase.from("audit_log").insert({
+                      actor_user_id: callerId,
+                      woreda_id: woredaId,
+                      entity_name: "user_permission_override",
+                      action_type: "USER_PERMISSION_OVERRIDES_CLEARED",
+                      new_value_json: { user_id: current.user_id, count: data.length },
+                    });
+                  }
+                }
+              }
               setSubmitting(false);
+              setClearOverrides(false);
               onClose();
             }}
           >
@@ -798,20 +1050,219 @@ function ChangeRoleDialog({
   );
 }
 
+function UserPermissionOverridesDialog({
+  user,
+  woredaId,
+  callerId,
+  tenantRolesById,
+  onClose,
+}: {
+  user: AppUserRow | null;
+  woredaId: string | null;
+  callerId: string | null;
+  tenantRolesById: Map<string, TenantRoleRow>;
+  onClose: () => void;
+}) {
+  const qc = useQueryClient();
+  const [pending, setPending] = useState<Set<string>>(new Set());
+
+  const { data: roleDefaults = new Map<string, boolean>(), isLoading: loadingDefaults } = useQuery({
+    queryKey: ["role_permission_defaults", woredaId, user?.role],
+    enabled: !!user && !!woredaId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("role_permission")
+        .select("permission_key, is_granted")
+        .eq("woreda_id", woredaId as string)
+        .eq("role_name", user!.role);
+      if (error) throw error;
+      const map = new Map<string, boolean>();
+      for (const r of data ?? []) map.set(r.permission_key, r.is_granted);
+      return map;
+    },
+  });
+
+  const { data: overrides = [], isLoading: loadingOverrides } = useQuery({
+    queryKey: ["user_permission_override", user?.user_id],
+    enabled: !!user,
+    queryFn: () => fetchUserOverrides(user!.user_id),
+  });
+
+  const overrideMap = useMemo(() => {
+    const m = new Map<string, boolean>();
+    for (const o of overrides) m.set(o.permission_key, o.is_granted);
+    return m;
+  }, [overrides]);
+
+  const grouped = useMemo(() => {
+    const keys = Array.from(roleDefaults.keys()).sort();
+    const g = new Map<string, string[]>();
+    for (const k of keys) {
+      const prefix = k.split(".")[0];
+      if (!g.has(prefix)) g.set(prefix, []);
+      g.get(prefix)!.push(k);
+    }
+    return Array.from(g.entries());
+  }, [roleDefaults]);
+
+  async function setOverride(key: string, value: "default" | "grant" | "deny") {
+    if (!user) return;
+    setPending((p) => new Set(p).add(key));
+    if (value === "default") {
+      const { data, error } = await clearUserOverride(user.user_id, key);
+      if (error) toast.error("Failed to clear override");
+      else if (!data) toast.error(ROW_VERIFICATION_FAILURE_MESSAGE);
+      else if (woredaId) {
+        await supabase.from("audit_log").insert({
+          actor_user_id: callerId,
+          woreda_id: woredaId,
+          entity_name: "user_permission_override",
+          action_type: "USER_PERMISSION_OVERRIDE_CLEARED",
+          new_value_json: { user_id: user.user_id, permission_key: key },
+        });
+      }
+    } else {
+      const { data, error } = await upsertUserOverride(
+        user.user_id,
+        key,
+        value === "grant",
+        callerId ?? null,
+      );
+      if (error) toast.error("Failed to save override");
+      else if (!data) toast.error(ROW_VERIFICATION_FAILURE_MESSAGE);
+      else if (woredaId) {
+        await supabase.from("audit_log").insert({
+          actor_user_id: callerId,
+          woreda_id: woredaId,
+          entity_name: "user_permission_override",
+          action_type: "USER_PERMISSION_OVERRIDE_SET",
+          new_value_json: {
+            user_id: user.user_id,
+            permission_key: key,
+            is_granted: value === "grant",
+          },
+        });
+      }
+    }
+    await qc.invalidateQueries({ queryKey: ["user_permission_override", user.user_id] });
+    setPending((p) => {
+      const n = new Set(p);
+      n.delete(key);
+      return n;
+    });
+  }
+
+  if (!user) return null;
+
+  return (
+    <Dialog open={!!user} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>
+            <span className="font-am-body">የግል ፈቃድ ማስተካከያ</span>
+            <span className="ml-2 text-sm text-slate-500">
+              / Permission Overrides — {user.full_name}
+            </span>
+          </DialogTitle>
+        </DialogHeader>
+        <p className="text-xs text-slate-500">
+          Overrides this person&apos;s permissions independent of their role (
+          {roleLabel(user, tenantRolesById).en}). &quot;Default&quot; means this person gets exactly
+          what their role grants.
+        </p>
+        {loadingDefaults || loadingOverrides ? (
+          <div className="p-4 text-sm text-slate-500">Loading…</div>
+        ) : (
+          <div className="space-y-4">
+            {grouped.map(([prefix, keys]) => (
+              <div key={prefix}>
+                <div className="mb-1 text-xs font-semibold text-slate-600">
+                  <span className="font-am-body">{GROUP_LABELS[prefix]?.am ?? prefix}</span>
+                  <span className="ml-1 text-slate-400">
+                    / {GROUP_LABELS[prefix]?.en ?? prefix}
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  {keys.map((key) => {
+                    const locked = LOCKED_KEYS.has(key);
+                    const defaultGranted = roleDefaults.get(key) ?? false;
+                    const overrideValue = overrideMap.has(key)
+                      ? overrideMap.get(key)
+                        ? "grant"
+                        : "deny"
+                      : "default";
+                    return (
+                      <div
+                        key={key}
+                        className="flex items-center justify-between gap-2 rounded border border-slate-100 px-2 py-1.5 text-sm"
+                      >
+                        <div className="font-mono text-xs text-slate-700">
+                          {key}{" "}
+                          {PERMISSION_ACTION_LABELS[key] ? (
+                            <span className="text-slate-400">
+                              —{" "}
+                              <span className="font-am-body">
+                                {PERMISSION_ACTION_LABELS[key].am}
+                              </span>{" "}
+                              / {PERMISSION_ACTION_LABELS[key].en}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">— {PERMISSION_LABELS[key] ?? ""}</span>
+                          )}
+                          <span className="ml-2 text-[10px] text-slate-400">
+                            (default: {defaultGranted ? "granted" : "not granted"})
+                          </span>
+                        </div>
+                        <Select
+                          value={overrideValue}
+                          disabled={locked || pending.has(key)}
+                          onValueChange={(v) => setOverride(key, v as "default" | "grant" | "deny")}
+                        >
+                          <SelectTrigger className="h-8 w-28">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="default">Default</SelectItem>
+                            <SelectItem value="grant">Grant</SelectItem>
+                            <SelectItem value="deny">Deny</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function AssignRoleDialog({
   open,
   onOpenChange,
   users,
+  tenantRoles,
+  tenantRolesById,
   onConfirm,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   users: AppUserRow[];
-  onConfirm: (u: AppUserRow, role: string) => Promise<void>;
+  tenantRoles: TenantRoleRow[];
+  tenantRolesById: Map<string, TenantRoleRow>;
+  onConfirm: (u: AppUserRow, role: string, customRoleId?: string | null) => Promise<boolean>;
 }) {
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<AppUserRow | null>(null);
-  const [role, setRole] = useState<string>("registry_clerk");
+  const [roleValue, setRoleValue] = useState<string>("registry_clerk");
   const [submitting, setSubmitting] = useState(false);
 
   const filtered = useMemo(() => {
@@ -825,7 +1276,7 @@ function AssignRoleDialog({
   function reset() {
     setQ("");
     setSelected(null);
-    setRole("registry_clerk");
+    setRoleValue("registry_clerk");
   }
 
   return (
@@ -860,7 +1311,7 @@ function AssignRoleDialog({
               >
                 <div className="font-medium text-slate-800">{u.full_name}</div>
                 <div className="text-xs text-slate-500">
-                  <span className="font-am-body">{ROLE_LABEL_MAP[u.role]?.am ?? u.role}</span>
+                  <span className="font-am-body">{roleLabel(u, tenantRolesById).am}</span>
                 </div>
               </button>
             ))}
@@ -871,7 +1322,7 @@ function AssignRoleDialog({
           {selected && (
             <div>
               <Label>New role</Label>
-              <Select value={role} onValueChange={setRole}>
+              <Select value={roleValue} onValueChange={setRoleValue}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -880,6 +1331,11 @@ function AssignRoleDialog({
                     <SelectItem key={r.key} value={r.key}>
                       <span className="font-am-body">{r.am}</span>
                       <span className="ml-2 text-xs text-slate-500">/ {r.en}</span>
+                    </SelectItem>
+                  ))}
+                  {tenantRoles.map((r) => (
+                    <SelectItem key={r.tenant_role_id} value={`custom:${r.tenant_role_id}`}>
+                      {r.name} <span className="ml-2 text-xs text-slate-500">/ Custom</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -897,7 +1353,8 @@ function AssignRoleDialog({
             onClick={async () => {
               if (!selected) return;
               setSubmitting(true);
-              await onConfirm(selected, role);
+              const { role: newRole, customRoleId } = decodeRoleValue(roleValue);
+              await onConfirm(selected, newRole, customRoleId);
               setSubmitting(false);
               reset();
               onOpenChange(false);

@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Building2, Pencil, UserPlus, UserMinus, ScrollText, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { DetailHeader } from "@/components/common/DetailHeader";
@@ -22,6 +22,7 @@ import { ResidentSearchPicker } from "@/components/forms/ResidentSearchPicker";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
 import { P } from "@/config/permissions";
+import { OCCUPATION_OPTIONS } from "@/lib/residentConstants";
 import { Navigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/woreda/rental-houses/$houseId/")({
@@ -31,6 +32,38 @@ export const Route = createFileRoute("/woreda/rental-houses/$houseId/")({
 
 function fmtDate(d: string | null | undefined) {
   return d ? d : "—";
+}
+
+interface ResidentBirthPlace {
+  place_name?: string;
+  kebele?: string;
+  woreda?: string;
+}
+
+interface ResidentWorkInfo {
+  occupation_post?: string;
+  occupation_status?: string;
+  work_address?: string;
+}
+
+function birthPlaceLabel(bp: ResidentBirthPlace | null): string {
+  if (!bp) return "";
+  if (bp.place_name?.trim()) return bp.place_name;
+  return [bp.kebele, bp.woreda].filter((x): x is string => !!x?.trim()).join(", ");
+}
+
+/** Mirrors formatOccupation() in woreda.residents.$residentId.index.tsx --
+ * occupation_post (a specific job title) is the exception, not the norm;
+ * most residents only have occupation_status (a category like "Employed")
+ * recorded, and reading only occupation_post left this blank for them. */
+function occupationLabel(wi: ResidentWorkInfo | null): string {
+  if (!wi) return "";
+  if (wi.occupation_post?.trim()) return wi.occupation_post;
+  if (wi.occupation_status) {
+    const opt = OCCUPATION_OPTIONS.find((o) => o.value === wi.occupation_status);
+    return opt ? `${opt.am} / ${opt.en}` : wi.occupation_status;
+  }
+  return "";
 }
 
 function RentalHouseDetailPage() {
@@ -78,7 +111,39 @@ function RentalHouseDetailPage() {
         .eq("woreda_id", woredaId!)
         .order("rent_start_date", { ascending: false });
       if (error) throw error;
-      return data;
+
+      // rental_occupancy_decrypted isn't in the generated types yet
+      // (00000000000023_pii_encryption.sql) -- same untyped-client cast
+      // pattern already used elsewhere in this codebase for pre-typegen
+      // tables. Fetched separately: the select above embeds resident via a
+      // FK-derived PostgREST join, which is not guaranteed to resolve
+      // through a view the same way it does through the base table. Both
+      // the active-occupancy card and the full history table below render
+      // rent_amount, so every row's decrypted value is needed, not just one.
+      const ids = (data ?? []).map((o) => o.occupancy_id);
+      let decryptedRentById = new Map<string, number>();
+      if (ids.length > 0) {
+        const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+        const { data: amounts, error: amountsError } = await db
+          .from("rental_occupancy_decrypted")
+          .select("occupancy_id, rent_amount_decrypted")
+          .in("occupancy_id", ids);
+        if (amountsError) throw amountsError;
+        decryptedRentById = new Map(
+          (amounts ?? [])
+            .filter(
+              (r: { rent_amount_decrypted: number | null }) => r.rent_amount_decrypted != null,
+            )
+            .map((r: { occupancy_id: string; rent_amount_decrypted: number }) => [
+              r.occupancy_id,
+              r.rent_amount_decrypted,
+            ]),
+        );
+      }
+      return (data ?? []).map((o) => ({
+        ...o,
+        rent_amount: decryptedRentById.get(o.occupancy_id) ?? o.rent_amount,
+      }));
     },
   });
 
@@ -86,10 +151,15 @@ function RentalHouseDetailPage() {
     queryKey: ["rental-requests-for-house", houseId],
     enabled: !!woredaId,
     queryFn: async () => {
+      // rent_amount deliberately not selected -- unused in this list (only
+      // request_number/type/resident/status render below); the decrypted
+      // value lives in rental_occupancy_request_decrypted, not this base
+      // table, so there's no reason to pull it for a field nothing here
+      // displays.
       const { data, error } = await supabase
         .from("rental_occupancy_request")
         .select(
-          `rental_request_id, request_number, request_type, status, rent_start_date, rent_amount, created_at,
+          `rental_request_id, request_number, request_type, status, rent_start_date, created_at,
            resident:resident_id ( full_name_am, full_name )`,
         )
         .eq("rental_house_id", houseId)
@@ -380,8 +450,36 @@ function AssignDialog({
   const [dob, setDob] = useState("");
   const [occupation, setOccupation] = useState("");
   const [workAddress, setWorkAddress] = useState("");
-  const [rentStart, setRentStart] = useState("");
+  const [rentStart, setRentStart] = useState(() => new Date().toISOString().slice(0, 10));
   const [rent, setRent] = useState(String(defaultRent || ""));
+
+  const residentDetailQuery = useQuery({
+    queryKey: ["assign-dialog-resident-detail", residentId],
+    enabled: !!residentId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("resident")
+        .select("resident_id, date_of_birth, birth_place, work_info")
+        .eq("resident_id", residentId)
+        .maybeSingle();
+      if (error) throw error;
+      return data as {
+        resident_id: string;
+        date_of_birth: string | null;
+        birth_place: ResidentBirthPlace | null;
+        work_info: ResidentWorkInfo | null;
+      } | null;
+    },
+  });
+
+  useEffect(() => {
+    const r = residentDetailQuery.data;
+    if (!r) return;
+    setDob(r.date_of_birth || "");
+    setPlaceOfBirth(birthPlaceLabel(r.birth_place));
+    setOccupation(occupationLabel(r.work_info));
+    setWorkAddress(r.work_info?.work_address || "");
+  }, [residentDetailQuery.data]);
 
   const mutation = useMutation({
     mutationFn: async () => {

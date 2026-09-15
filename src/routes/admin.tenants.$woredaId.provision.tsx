@@ -11,11 +11,18 @@ import { Switch } from "@/components/ui/switch";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Stepper } from "@/components/forms/Stepper";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdgeFunction } from "@/lib/edgeFunction";
 import { CP } from "@/config/permissions";
 import {
   ConsolePermissionGate,
   InsufficientConsolePermissionNotice,
 } from "@/components/common/ConsolePermissionGate";
+import { PhoneDigitsInput } from "@/components/forms/PhoneDigitsInput";
+import {
+  isValidPhoneDigits,
+  phoneDigitsToE164,
+  PHONE_DIGITS_ERROR_EN_ONLY,
+} from "@/lib/phoneNumber";
 
 export const Route = createFileRoute("/admin/tenants/$woredaId/provision")({
   ssr: false,
@@ -104,6 +111,7 @@ function ProvisionPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [phoneTouched, setPhoneTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // Initialize modules from DB once
@@ -122,17 +130,10 @@ function ProvisionPage() {
     if (step === 3) {
       if (!fullName.trim() || !email.trim()) return false;
       if (!/^\S+@\S+\.\S+$/.test(email)) return false;
+      if (!isValidPhoneDigits(phone)) return false;
     }
     return true;
   };
-
-  function handlePhoneChange(v: string) {
-    let digits = v.replace(/\D/g, "");
-    if (digits.startsWith("251")) digits = digits.slice(3);
-    if (digits.startsWith("0")) digits = digits.slice(1);
-    digits = digits.slice(0, 9);
-    setPhone(digits);
-  }
 
   async function submit() {
     if (!woreda) return;
@@ -144,26 +145,35 @@ function ProvisionPage() {
         module_key: m.key,
         is_enabled: modules[m.key] ?? true,
       }));
-      const { error: modErr } = await supabase
+      // Row-verified per the CLAUDE.md house rule: a missing
+      // tenant_module_config row means enabled, so a write this wizard
+      // reports as successful but that RLS silently filtered would leave a
+      // module the operator explicitly disabled live for the tenant, with
+      // no error anywhere to explain why.
+      const { data: savedModules, error: modErr } = await supabase
         .from("tenant_module_config")
-        .upsert(rows, { onConflict: "woreda_id,module_key" });
+        .upsert(rows, { onConflict: "woreda_id,module_key" })
+        .select("woreda_id, module_key");
       if (modErr) throw modErr;
+      if ((savedModules?.length ?? 0) !== MODULES.length) {
+        throw new Error(
+          "የሞጁል ቅንብር አልተረጋገጠም — እንደገና ይሞክሩ / Could not confirm module settings were saved — please try again.",
+        );
+      }
 
       // 2. Invoke invite function
-      const { data, error } = await supabase.functions.invoke("invite-platform-admin", {
-        body: {
+      const { data, friendlyError } = await invokeEdgeFunction<{ warning?: string | null }>(
+        "invite-platform-admin",
+        {
           email: email.trim(),
           full_name: fullName.trim(),
           role: "tenant_admin",
           woredaId,
         },
-      });
-      const payload = data as { success?: boolean; warning?: string | null; error?: string } | null;
-      if (error || payload?.error) {
-        throw new Error(payload?.error ?? error?.message ?? "Failed to send invitation");
-      }
+      );
+      if (friendlyError) throw new Error(friendlyError);
       toast.success("ግብዣ ተልኳል / Invitation sent");
-      if (payload?.warning) toast.warning(payload.warning);
+      if (data?.warning) toast.warning(data.warning);
       navigate({ to: "/admin/tenants" });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
@@ -278,17 +288,14 @@ function ProvisionPage() {
               </div>
               <div>
                 <Label>Phone Number</Label>
-                <div className="flex">
-                  <span className="inline-flex items-center rounded-l-md border border-r-0 bg-slate-50 px-3 text-sm text-slate-600">
-                    +251
-                  </span>
-                  <Input
-                    className="rounded-l-none"
-                    value={phone}
-                    onChange={(e) => handlePhoneChange(e.target.value)}
-                    placeholder="9XXXXXXXX"
-                  />
-                </div>
+                <PhoneDigitsInput
+                  value={phone}
+                  onChange={setPhone}
+                  onBlur={() => setPhoneTouched(true)}
+                />
+                {phoneTouched && !isValidPhoneDigits(phone) && (
+                  <p className="mt-1 text-xs text-red-600">{PHONE_DIGITS_ERROR_EN_ONLY}</p>
+                )}
               </div>
             </div>
             <div className="rounded-md bg-blue-50 p-3 text-xs">
@@ -322,7 +329,7 @@ function ProvisionPage() {
                 </div>
                 <div className="text-slate-900">{fullName}</div>
                 <div className="text-sm text-slate-600">{email}</div>
-                {phone && <div className="text-sm text-slate-600">+251{phone}</div>}
+                {phone && <div className="text-sm text-slate-600">{phoneDigitsToE164(phone)}</div>}
               </Card>
               <Card className="p-4 md:col-span-2">
                 <div className="mb-2 text-xs font-semibold uppercase text-slate-500">Modules</div>
