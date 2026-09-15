@@ -17,16 +17,14 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
-  Legend,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip as RTooltip,
   XAxis,
   YAxis,
 } from "recharts";
 import { PageHeader } from "@/components/common/PageHeader";
+import { PieChartCard } from "@/components/charts/PieChartCard";
+import { CHART_GRID_COLOR, CHART_PRIMARY } from "@/components/charts/palette";
 import { KpiCard } from "@/components/common/KpiCard";
 import { ModuleGate } from "@/components/common/ModuleGate";
 import { KebeleFilter } from "@/components/common/KebeleFilter";
@@ -58,8 +56,6 @@ export const Route = createFileRoute("/woreda/reports/")({
     </ModuleGate>
   ),
 });
-
-const COLORS = ["#1d4ed8", "#0ea5e9", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#14b8a6"];
 
 function isoDaysAgo(days: number) {
   const d = new Date();
@@ -346,12 +342,23 @@ function ReportsPage() {
             loading={isLoading}
           />
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <PieCard titleAm="በጾታ" titleEn="By sex" rows={agg.residentsBySex} loading={isLoading} />
-            <PieCard
+            <PieChartCard
+              titleAm="በጾታ"
+              titleEn="By sex"
+              data={agg.residentsBySex}
+              nameKey="name"
+              valueKey="value"
+              loading={isLoading}
+              formatter={(v: number) => v.toLocaleString()}
+            />
+            <PieChartCard
               titleAm="በሁኔታ"
               titleEn="By residency status"
-              rows={agg.residentsByStatus}
+              data={agg.residentsByStatus}
+              nameKey="name"
+              valueKey="value"
               loading={isLoading}
+              formatter={(v: number) => v.toLocaleString()}
             />
           </div>
           <ChartCard
@@ -493,7 +500,7 @@ function ChartCard({
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={rows.slice(0, 12)}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_COLOR} vertical={false} />
                 <XAxis
                   dataKey="name"
                   tick={{ fontSize: 11 }}
@@ -507,7 +514,7 @@ function ChartCard({
                 <Bar
                   dataKey="value"
                   name={valueLabel}
-                  fill="#1d4ed8"
+                  fill={CHART_PRIMARY}
                   radius={[4, 4, 0, 0]}
                   isAnimationActive={false}
                   maxBarSize={56}
@@ -542,46 +549,6 @@ function ChartCard({
               </tbody>
             </table>
           </div>
-        </div>
-      )}
-    </Card>
-  );
-}
-
-function PieCard({
-  titleAm,
-  titleEn,
-  rows,
-  loading,
-}: {
-  titleAm: string;
-  titleEn: string;
-  rows: { name: string; value: number }[];
-  loading: boolean;
-}) {
-  return (
-    <Card className="overflow-hidden">
-      <div className="border-b bg-slate-50 px-4 py-3">
-        <h2 className="font-am-heading text-sm font-semibold text-slate-900">{titleAm}</h2>
-        <p className="text-xs text-slate-500">{titleEn}</p>
-      </div>
-      {loading ? (
-        <div className="p-6 text-sm text-slate-500">Loading…</div>
-      ) : rows.length === 0 ? (
-        <div className="p-6 text-center text-sm text-slate-500 font-am-body">መረጃ የለም / No data</div>
-      ) : (
-        <div className="h-64 p-2">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie data={rows} dataKey="value" nameKey="name" outerRadius={80} label>
-                {rows.map((r, i) => (
-                  <Cell key={r.name} fill={COLORS[i % COLORS.length]} />
-                ))}
-              </Pie>
-              <Legend />
-              <RTooltip formatter={(v: number) => v.toLocaleString()} />
-            </PieChart>
-          </ResponsiveContainer>
         </div>
       )}
     </Card>
