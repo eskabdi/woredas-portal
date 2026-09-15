@@ -27,15 +27,35 @@ function keyFor(woredaId: string): string {
   return `${QUEUE_KEY_PREFIX}${woredaId}`;
 }
 
+// useOfflineQueue's useSyncExternalStore calls getQueue() as its getSnapshot
+// -- React requires that to return the SAME reference when nothing changed,
+// or it re-renders forever ("Maximum update depth exceeded", crashing
+// OfflineStatusBar and, with it, every /woreda/* route since it's mounted
+// once in WoredaShell). Re-parsing localStorage on every call always
+// allocated a new array (even a fresh `[]` for an empty queue), so this
+// caches the last parsed result per woredaId and only reparses when the
+// underlying raw string actually changed.
+const parsedQueueCache = new Map<string, { raw: string | null; items: QueueItem[] }>();
+
 function readQueue(woredaId: string): QueueItem[] {
+  let raw: string | null;
   try {
-    const raw = localStorage.getItem(keyFor(woredaId));
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as QueueItem[]) : [];
+    raw = localStorage.getItem(keyFor(woredaId));
   } catch {
-    return []; // corrupt JSON or storage blocked (private mode) -- start empty
+    raw = null; // storage blocked (private mode) -- treat as empty
   }
+  const cached = parsedQueueCache.get(woredaId);
+  if (cached && cached.raw === raw) return cached.items;
+
+  let items: QueueItem[];
+  try {
+    const parsed = raw ? JSON.parse(raw) : [];
+    items = Array.isArray(parsed) ? (parsed as QueueItem[]) : [];
+  } catch {
+    items = []; // corrupt JSON -- start empty
+  }
+  parsedQueueCache.set(woredaId, { raw, items });
+  return items;
 }
 
 function writeQueue(woredaId: string, items: QueueItem[]): void {
@@ -72,9 +92,10 @@ export function enqueue(
     createdAt: new Date().toISOString(),
     attemptCount: 0,
   };
-  const items = readQueue(woredaId);
-  items.push(item);
-  writeQueue(woredaId, items);
+  // Spread rather than push -- readQueue's result may be the cached array
+  // returned to an earlier caller/snapshot; mutating it in place would
+  // corrupt a reference React (or another reader) is still holding.
+  writeQueue(woredaId, [...readQueue(woredaId), item]);
   return item;
 }
 
