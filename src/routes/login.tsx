@@ -273,15 +273,10 @@ function LoginPage() {
               </div>
 
               <div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">
-                    <span className="font-am-body">የይለፍ ቃል</span>{" "}
-                    <span className="text-xs font-normal text-slate-400">(password)</span>
-                  </Label>
-                  <span className="font-am-body cursor-not-allowed text-xs text-blue-600 opacity-70">
-                    የረሱት? (Forgot?)
-                  </span>
-                </div>
+                <Label htmlFor="password">
+                  <span className="font-am-body">የይለፍ ቃል</span>{" "}
+                  <span className="text-xs font-normal text-slate-400">(password)</span>
+                </Label>
                 <div className="relative mt-1">
                   <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <Input

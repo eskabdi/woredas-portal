@@ -301,19 +301,20 @@ function RentalRequestDetailPage() {
     (req.status === "submitted" || req.status === "under_review" || req.status === "returned");
   const canApprove = hasPermission(P.RENTAL_APPROVE) && req.status === "verified";
   const isTermination = req.request_type === "termination";
+  // WorkflowStepper renders currentStage as "now", not "up next" -- this must
+  // be the request's own real stage, unlike the "up next" convention this
+  // screen used before it fed a hand-rolled stepper (which rendered that
+  // index as an unreached, hollow ring instead of a completed one).
   const currentStage: Stage =
     req.status === "approved"
       ? "final"
       : req.status === "verified"
-        ? "approved"
+        ? "verified"
         : req.status === "returned" || req.status === "rejected"
           ? req.verified_at
-            ? "approved"
-            : "verified"
-          : "verified"; // submitted → up next: verified
-
-  const initialStage: Stage =
-    req.status === "submitted" || req.status === "under_review" ? "submitted" : currentStage;
+            ? "verified"
+            : "submitted"
+          : "submitted"; // submitted, under_review
 
   const workflowStages: WorkflowStage[] = [
     { key: "submitted", am: "ተልኳል", en: "Submitted" },
@@ -384,7 +385,7 @@ function RentalRequestDetailPage() {
 
       <WorkflowStepper
         stages={workflowStages}
-        currentStage={initialStage}
+        currentStage={currentStage}
         exception={workflowException}
       />
 
