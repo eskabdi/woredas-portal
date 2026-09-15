@@ -686,15 +686,18 @@ break hooks. Don't pin a nitro preset — see the Vercel section.
 
 ### Subagents (`.claude/agents/`)
 
-Four review agents, each covering a failure mode this codebase has that a build
+Seven review agents, each covering a failure mode this codebase has that a build
 or a typecheck will not catch. Invoke them by name.
 
-| Agent                       | Use it when                                                           | Guards against                                                                                                                         |
-| --------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `secret-sweep`              | after any migration or deploy, before pushing                         | a deploy token reaching a commit — see the rule at the top of this file                                                                |
-| `tenant-isolation-review`   | touching a permission, role, migration, RLS policy, or upload path    | cross-tenant reads, a client gate without its seed rows, a missing storage path prefix                                                 |
-| `portal-conventions-review` | after adding a route or a list/detail page                            | a route missing `ssr: false`, table state in `useState` instead of the URL, non-bilingual labels, Gregorian dates in the woreda portal |
-| `card-print-review`         | touching signing, the print route, the template editor, QR or barcode | invariants whose failure is only discovered after cards are physically printed                                                         |
+| Agent                        | Use it when                                                            | Guards against                                                                                                                          |
+| ---------------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `secret-sweep`                | after any migration or deploy, before pushing                          | a deploy token reaching a commit — see the rule at the top of this file                                                                |
+| `tenant-isolation-review`     | touching a permission, role, migration, RLS policy, or upload path      | cross-tenant reads, a client gate without its seed rows, a missing storage path prefix                                                 |
+| `portal-conventions-review`   | after adding a route or a list/detail page                             | a route missing `ssr: false`, table state in `useState` instead of the URL, non-bilingual labels, Gregorian dates in the woreda portal |
+| `card-print-review`           | touching signing, the print route, the template editor, QR or barcode  | invariants whose failure is only discovered after cards are physically printed                                                         |
+| `rbac-escalation-review`      | touching permissions.ts, seed.sql, `default_role_perms()`, `role_permission`, `tenant_role`, or `user_permission_override` | a permission escalation slipping in via one grant source but not the others                                    |
+| `workflow-fsm-review`         | touching `workflow_transition`, `enforce_workflow_transition()`, a `*_status_check` constraint, or a route writing a status | an unreachable/skippable/resurrectable workflow state                                            |
+| `main-logic-authority-review` | after any merge or rebase against `origin/main`, especially one resolved by hand or by taking main's whole file | a UI-restructuring branch silently altering main's business logic, permissions, or workflow/status literals instead of only layering display changes on top |
 
 They are read-only reviewers (`Bash`, `Read`, `Grep`, `Glob`) — they report, they
 do not push, rewrite history or rotate credentials.
