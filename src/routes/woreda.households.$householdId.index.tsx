@@ -20,7 +20,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusChip } from "@/components/common/StatusChip";
-import { PageHeader } from "@/components/common/PageHeader";
+import { DetailHeader } from "@/components/common/DetailHeader";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -209,17 +209,17 @@ function HouseholdDetailPage() {
 
   return (
     <div className="space-y-6 pb-12">
-      <PageHeader
+      <DetailHeader
         icon={Home}
         titleAm={titleAm}
         titleEn={`House ${h.house_number}${kebele?.kebele_name_en ? ` — Kebele ${kebele.kebele_number} ${kebele.kebele_name_en}` : ""}`}
+        status={<StatusChip status={h.occupancy_status as string} />}
         actions={
           <div className="flex items-center gap-2 print:hidden">
-            <StatusChip status={h.occupancy_status as string} />
             <Button
               type="button"
               onClick={triggerPrint}
-              className="rounded-md bg-blue-700 text-white hover:bg-blue-800"
+              className="bg-white text-[color:var(--shell-header)] hover:bg-white/90"
               size="sm"
             >
               <Printer className="mr-2 h-4 w-4" />
@@ -228,7 +228,7 @@ function HouseholdDetailPage() {
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" className="text-white hover:bg-white/15">
                   <MoreVertical className="h-5 w-5" />
                 </Button>
               </DropdownMenuTrigger>

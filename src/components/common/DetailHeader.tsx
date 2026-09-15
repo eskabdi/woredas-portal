@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 
 /**
  * Shared detail-screen header (master_design_system.md §3.C: "one DetailHeader
@@ -13,16 +13,19 @@ import type { ReactNode } from "react";
 export function DetailHeader({
   photoUrl,
   initials,
+  icon: Icon,
   titleAm,
   titleEn,
   meta,
   status,
   actions,
 }: {
-  /** Signed URL for a photo/avatar image. Falls back to `initials` when absent. */
+  /** Signed URL for a photo/avatar image. Falls back to `initials`, then `icon`, when absent. */
   photoUrl?: string | null;
-  /** 1-2 letter fallback shown when there's no photo. */
+  /** 1-2 letter fallback shown when there's no photo (people). */
   initials?: string;
+  /** Icon fallback for non-person entities (household, rental house, tenant) that have no initials. */
+  icon?: ComponentType<{ className?: string }>;
   titleAm: string;
   /** Secondary line under the Amharic title — English name, request number, etc. */
   titleEn?: string;
@@ -45,7 +48,7 @@ export function DetailHeader({
             />
           ) : (
             <div className="font-am-body flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-white/15 text-xl font-semibold ring-2 ring-white/25">
-              {initials ?? "—"}
+              {initials ?? (Icon ? <Icon className="h-7 w-7 text-white/80" /> : "—")}
             </div>
           )}
           <div className="min-w-0 leading-tight">

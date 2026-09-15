@@ -17,7 +17,8 @@ import {
   XCircle,
 } from "lucide-react";
 
-import { PageHeader } from "@/components/common/PageHeader";
+import { DetailHeader } from "@/components/common/DetailHeader";
+import { WorkflowStepper, type WorkflowStage } from "@/components/common/WorkflowStepper";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
@@ -139,6 +140,14 @@ const EVENT_TITLES: Record<
   divorce: { am: "የፍቺ ማጠቃለያ", en: "Divorce Summary", icon: Scale },
 };
 
+const WORKFLOW_STAGES: WorkflowStage[] = [
+  { key: "submitted", am: "ገባ", en: "Submitted" },
+  { key: "under_review", am: "በግምገማ", en: "Under Review" },
+  { key: "pending_approval", am: "ማጽደቅ በመጠበቅ", en: "Pending Approval" },
+  { key: "approved", am: "ጸድቋል", en: "Approved" },
+  { key: "issued", am: "ወጪ ተደርጓል", en: "Issued" },
+];
+
 function CivilEventDetailPage() {
   const { eventId } = Route.useParams();
   const navigate = useNavigate();
@@ -172,6 +181,19 @@ function CivilEventDetailPage() {
 
   const event = eventQuery.data;
   const status = event?.status ?? "";
+  const workflowException: { am: string; en: string; tone: "danger" | "warning" } | undefined =
+    status === "rejected"
+      ? { am: "ውድቅ ተደርጓል", en: "Rejected", tone: "danger" }
+      : status === "returned"
+        ? { am: "እርማት ተጠይቋል", en: "Returned to registrar", tone: "warning" }
+        : status === "approval_returned"
+          ? { am: "እርማት ተጠይቋል", en: "Returned by approver", tone: "warning" }
+          : undefined;
+  const workflowStage = workflowException
+    ? status === "returned"
+      ? "under_review"
+      : "pending_approval"
+    : status;
   const eventType = event?.event_type ?? "birth";
   const rawDetails = (event?.event_details ?? {}) as Record<string, unknown>;
   const birthD = rawDetails as BirthDetails;
@@ -473,19 +495,27 @@ function CivilEventDetailPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <DetailHeader
         icon={FileText}
         titleAm="የፍትሐ ብሔር ክስተት"
         titleEn="Civil Event"
-        description={event.event_number}
+        status={<StatusChip status={status} />}
+        meta={[{ label: <span className="font-mono">{event.event_number}</span> }]}
         actions={
-          <div className="flex items-center gap-3">
-            <StatusChip status={status} />
-            <Button variant="outline" onClick={() => navigate({ to: "/woreda/civil" })}>
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            className="bg-white text-[color:var(--shell-header)] hover:bg-white/90"
+            onClick={() => navigate({ to: "/woreda/civil" })}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back
+          </Button>
         }
+      />
+
+      <WorkflowStepper
+        stages={WORKFLOW_STAGES}
+        currentStage={workflowStage}
+        exception={workflowException}
       />
 
       {/* Card 1 — Submission summary (per event type) */}
