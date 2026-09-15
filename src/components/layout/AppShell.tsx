@@ -1,5 +1,6 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
+import { useState } from "react";
 import {
   LayoutDashboard,
   Users,
@@ -12,6 +13,7 @@ import {
   Settings,
   Bell,
   LogOut,
+  KeyRound,
   ShieldCheck,
   Building2,
   type LucideIcon,
@@ -20,6 +22,7 @@ import {
   Inbox,
   UserCog,
 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { NAV_PERMISSION_MAP, ADMIN_NAV, type NavItem } from "@/config/permissions";
 import { NAV_GROUP_LABEL, groupNavItems } from "@/config/navGroups";
 import { useAuthStore } from "@/stores/authStore";
@@ -28,6 +31,11 @@ import { getCurrentEthiopianDate } from "@/utils/ethiopianCalendar";
 import { useWoredaInfo } from "@/hooks/useWoredaInfo";
 import { useWoredaLogo } from "@/hooks/useWoredaLogo";
 import { useTenantModules } from "@/hooks/useTenantModules";
+import { useIdleTimeout } from "@/hooks/useIdleTimeout";
+import { clearAllWizardDrafts } from "@/hooks/useFormDraft";
+import { clearOfflineQueue } from "@/lib/offlineQueue";
+import { OfflineStatusBar } from "@/components/common/OfflineStatusBar";
+import { ChangePasswordDialog } from "@/components/common/ChangePasswordDialog";
 import {
   SidebarProvider,
   Sidebar,
@@ -184,11 +192,15 @@ function UserMenu({
   name,
   roleLabel,
   onSignOut,
+  onChangePassword,
+  changePasswordLabel = "Change Password",
   dark,
 }: {
   name: string;
   roleLabel?: string;
   onSignOut: () => void;
+  onChangePassword?: () => void;
+  changePasswordLabel?: React.ReactNode;
   dark?: boolean;
 }) {
   return (
@@ -224,6 +236,12 @@ function UserMenu({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        {onChangePassword && (
+          <DropdownMenuItem onClick={onChangePassword}>
+            <KeyRound className="mr-2 h-4 w-4" />
+            {changePasswordLabel}
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem onClick={onSignOut}>
           <LogOut className="mr-2 h-4 w-4" />
           Sign Out
@@ -235,12 +253,14 @@ function UserMenu({
 
 function WoredaAppShell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const appUser = useAuthStore((s) => s.appUser);
   const currentPath = useRouterState({ select: (r) => r.location.pathname });
   const { data: woreda } = useWoredaInfo();
   const { data: logoUrl } = useWoredaLogo();
   const { data: enabledModules } = useTenantModules();
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   const visibleNav = NAV_PERMISSION_MAP.filter((item) => {
     if (item.permission !== null && !hasPermission(item.permission)) return false;
@@ -254,8 +274,28 @@ function WoredaAppShell({ children }: { children: React.ReactNode }) {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
+    // Task 7: TanStack Query's cache is a single module-level client shared
+    // across the whole app -- nothing clears it on its own when a session
+    // ends, so a resident/household/report query cached under the outgoing
+    // tenant's data could otherwise flash stale (wrong-tenant) content the
+    // instant the next person signs in on the same tab.
+    queryClient.clear();
+    // Task 7: a half-typed wizard draft is localStorage, not session state.
+    clearAllWizardDrafts();
+    // Task 12-C: a queued offline submission would otherwise sync under the
+    // NEXT person's identity the moment they reconnect on the same browser.
+    clearOfflineQueue();
     navigate({ to: "/login" });
   };
+
+  // INSA Phase 3 session management: warn at 20 idle minutes, force
+  // sign-out at 25 (src/config/idleTimeout.ts).
+  useIdleTimeout({
+    onTimeout: handleSignOut,
+    warningMessage: "እንቅስቃሴ ስለሌለ በቅርቡ ከስርዓቱ ይወጣሉ / You'll be signed out soon due to inactivity",
+    staySignedInLabel: "ልቀጥል / Stay signed in",
+    signedOutMessage: "እንቅስቃሴ ስለሌለ ከስርዓቱ ወጥተዋል / Signed out due to inactivity",
+  });
 
   return (
     <SidebarProvider>
@@ -330,9 +370,18 @@ function WoredaAppShell({ children }: { children: React.ReactNode }) {
               name={appUser?.full_name ?? "User"}
               roleLabel={ROLE_LABEL_AM[appUser?.role ?? ""] ?? appUser?.role}
               onSignOut={handleSignOut}
+              onChangePassword={() => setChangePasswordOpen(true)}
+              changePasswordLabel={
+                <>
+                  <span className="font-am-body">የይለፍ ቃል ቀይር</span>
+                  <span className="ml-1 text-xs opacity-70">/ Change Password</span>
+                </>
+              }
             />
           </div>
         </header>
+
+        <OfflineStatusBar />
 
         <motion.main
           key={currentPath}
@@ -344,15 +393,18 @@ function WoredaAppShell({ children }: { children: React.ReactNode }) {
           {children}
         </motion.main>
       </SidebarInset>
+      <ChangePasswordDialog open={changePasswordOpen} onOpenChange={setChangePasswordOpen} />
     </SidebarProvider>
   );
 }
 
 function AdminAppShell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const appUser = useAuthStore((s) => s.appUser);
   const hasConsolePermission = useAuthStore((s) => s.hasConsolePermission);
   const currentPath = useRouterState({ select: (r) => r.location.pathname });
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   const visibleNav = ADMIN_NAV.filter((item) => {
     if (item.consolePermission === null) return true;
@@ -364,8 +416,27 @@ function AdminAppShell({ children }: { children: React.ReactNode }) {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
+    // Task 7: same shared-query-client reasoning as the woreda shell.
+    queryClient.clear();
+    // Task 7/12-C: the admin console shares this browser origin's
+    // localStorage with the woreda portal -- these clear any leftover
+    // woreda-portal draft/queue data that would otherwise still be
+    // readable (and syncable) after an admin signs in on the same browser,
+    // even though the admin console itself never writes either.
+    clearAllWizardDrafts();
+    clearOfflineQueue();
     navigate({ to: "/login" });
   };
+
+  // INSA Phase 3 session management: warn at 20 idle minutes, force
+  // sign-out at 25. English-only copy -- the admin console is English by
+  // convention.
+  useIdleTimeout({
+    onTimeout: handleSignOut,
+    warningMessage: "You'll be signed out soon due to inactivity",
+    staySignedInLabel: "Stay signed in",
+    signedOutMessage: "Signed out due to inactivity",
+  });
 
   return (
     <SidebarProvider>
@@ -408,7 +479,12 @@ function AdminAppShell({ children }: { children: React.ReactNode }) {
             <SidebarTrigger />
             <h1 className="text-base font-semibold text-slate-900">Super Admin Console</h1>
           </div>
-          <UserMenu name={appUser?.full_name ?? "Admin"} onSignOut={handleSignOut} dark />
+          <UserMenu
+            name={appUser?.full_name ?? "Admin"}
+            onSignOut={handleSignOut}
+            onChangePassword={() => setChangePasswordOpen(true)}
+            dark
+          />
         </header>
         <motion.main
           key={currentPath}
@@ -420,6 +496,7 @@ function AdminAppShell({ children }: { children: React.ReactNode }) {
           {children}
         </motion.main>
       </SidebarInset>
+      <ChangePasswordDialog open={changePasswordOpen} onOpenChange={setChangePasswordOpen} />
     </SidebarProvider>
   );
 }
