@@ -91,6 +91,7 @@ const WORKFLOW_STAGES: WorkflowStage[] = [
   { key: "pending_approval", am: "ማጽደቅ በመጠበቅ", en: "Pending Approval" },
   { key: "awaiting_payment", am: "ክፍያ በመጠበቅ", en: "Awaiting Payment" },
   { key: "paid", am: "ተከፍሏል", en: "Paid" },
+  { key: "printed", am: "ታትሟል", en: "Printed" },
   { key: "active", am: "ወጪ ተደርጓል", en: "Issued" },
 ];
 
