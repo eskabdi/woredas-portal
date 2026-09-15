@@ -103,7 +103,9 @@ const CRED_TYPE_LABEL: Record<string, string> = {
 const WORKFLOW_STAGES: WorkflowStage[] = [
   { key: "submitted", am: "ገባ", en: "Submitted" },
   { key: "under_review", am: "በግምገማ", en: "Under Review" },
+  { key: "verified", am: "ተረጋግጧል", en: "Verified" },
   { key: "pending_approval", am: "ማጽደቅ በመጠበቅ", en: "Pending Approval" },
+  { key: "approved", am: "ጸድቋል", en: "Approved" },
   { key: "awaiting_payment", am: "ክፍያ በመጠበቅ", en: "Awaiting Payment" },
   { key: "paid", am: "ተከፍሏል", en: "Paid" },
   { key: "printed", am: "ታትሟል", en: "Printed" },
