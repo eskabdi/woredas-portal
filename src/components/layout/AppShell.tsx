@@ -16,6 +16,7 @@ import {
   KeyRound,
   ShieldCheck,
   Building2,
+  ChevronDown,
   type LucideIcon,
   MailQuestion,
   MessageSquareWarning,
@@ -24,7 +25,8 @@ import {
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { NAV_PERMISSION_MAP, ADMIN_NAV, type NavItem } from "@/config/permissions";
-import { NAV_GROUP_LABEL, groupNavItems } from "@/config/navGroups";
+import { NAV_GROUP_LABEL, groupNavItems, type NavGroupKey } from "@/config/navGroups";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentEthiopianDate } from "@/utils/ethiopianCalendar";
@@ -43,7 +45,6 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
-  SidebarGroupLabel,
   SidebarGroupContent,
   SidebarMenu,
   SidebarMenuItem,
@@ -125,26 +126,30 @@ function SidebarBrand({
     <Link
       to={href}
       aria-label="Tenant profile & settings"
-      className="block rounded-md px-2 py-3 transition hover:bg-white/5"
+      className="block rounded-md px-2 py-3 transition hover:bg-slate-200/60"
     >
       <div className="flex items-center justify-center gap-3">
         {logoUrl && (
           <img
             src={logoUrl}
             alt={`${titleEn} logo`}
-            className="h-11 w-11 shrink-0 rounded-full bg-white/10 object-contain"
+            className="h-11 w-11 shrink-0 rounded-full bg-slate-100 object-contain"
           />
         )}
         <div className="min-w-0 text-center">
-          <h2 className="font-am-heading text-xl font-bold leading-snug text-white [text-wrap:balance]">
+          <h2 className="font-am-heading text-xl font-bold leading-snug text-slate-900 [text-wrap:balance]">
             {titleAm}
           </h2>
-          <p className="mt-0.5 text-xs text-slate-400">{titleEn}</p>
+          <p className="mt-0.5 text-xs text-slate-500">{titleEn}</p>
         </div>
       </div>
     </Link>
   );
 }
+
+/** Groups rendered as an expandable accordion in the sidebar (master_design_system.md
+ * §2.B "Nested Accordion Categories") -- everything else renders as a flat list. */
+const ACCORDION_GROUPS: NavGroupKey[] = ["credentials", "rental", "queues", "settings"];
 
 /**
  * The active item's highlight is one motion.div with a shared `layoutId`,
@@ -160,14 +165,14 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
   return (
     <Link
       to={item.href}
-      className={`relative flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors ${
-        active ? "text-white" : "text-slate-300 hover:bg-slate-700/30"
+      className={`relative flex items-center gap-3 rounded-full px-3 py-2.5 text-sm transition-colors ${
+        active ? "text-white" : "text-slate-600 hover:bg-slate-200/60"
       }`}
     >
       {active && (
         <motion.span
           layoutId="woreda-nav-active-pill"
-          className="absolute inset-0 rounded-md bg-[color:var(--color-primary)]"
+          className="absolute inset-0 rounded-full bg-[#1D5BD8] shadow-sm"
           transition={{ type: "spring", bounce: 0, duration: 0.35 }}
         />
       )}
@@ -175,16 +180,95 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
       <span className="relative z-10 flex-1">
         <span
           className={`font-am-heading block leading-tight ${
-            active ? "text-[16px] font-bold" : "font-semibold"
+            active ? "text-[16px] font-bold text-white" : "font-semibold text-slate-800"
           }`}
         >
           {item.labelAm}
         </span>
-        <span className="block text-[10px] uppercase tracking-wide text-slate-400">
+        <span
+          className={`block text-[10px] uppercase tracking-wide ${active ? "text-white/80" : "text-slate-400"}`}
+        >
           {item.labelEn}
         </span>
       </span>
     </Link>
+  );
+}
+
+/** Indented sub-item inside an accordion group -- same active/inactive convention
+ * as NavLink, one size down, with a bullet standing in for the group's icon. */
+function NavSubLink({ item, active }: { item: NavItem; active: boolean }) {
+  return (
+    <Link
+      to={item.href}
+      className={`flex items-center gap-2.5 rounded-full py-2 pr-3 pl-9 text-sm transition-colors ${
+        active ? "bg-[#1D5BD8] text-white shadow-sm" : "text-slate-600 hover:bg-slate-200/60"
+      }`}
+    >
+      <span
+        className={`h-1.5 w-1.5 shrink-0 rounded-full ${active ? "bg-white" : "bg-slate-400"}`}
+      />
+      <span className="flex-1">
+        <span
+          className={`font-am-heading block text-[13px] leading-tight ${active ? "font-bold text-white" : "font-semibold text-slate-800"}`}
+        >
+          {item.labelAm}
+        </span>
+        <span
+          className={`block text-[10px] uppercase tracking-wide ${active ? "text-white/80" : "text-slate-400"}`}
+        >
+          {item.labelEn}
+        </span>
+      </span>
+    </Link>
+  );
+}
+
+/** One expandable sidebar category (master_design_system.md §2.B). Defaults open
+ * so every sub-item is visible without an extra click, matching the reference. */
+function NavAccordionGroup({
+  groupKey,
+  items,
+  currentPath,
+}: {
+  groupKey: NavGroupKey;
+  items: NavItem[];
+  currentPath: string;
+}) {
+  const [open, setOpen] = useState(true);
+  const label = NAV_GROUP_LABEL[groupKey];
+  const groupActive = items.some(
+    (item) => currentPath === item.href || currentPath.startsWith(item.href + "/"),
+  );
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger asChild>
+        <button
+          type="button"
+          className={`flex w-full items-center gap-3 rounded-full px-3 py-2.5 text-left text-sm transition-colors ${
+            groupActive ? "text-slate-900" : "text-slate-600 hover:bg-slate-200/60"
+          }`}
+        >
+          <span className="flex-1">
+            <span className="font-am-heading block text-[11px] leading-tight font-bold tracking-wide text-slate-500 uppercase">
+              {label.am}
+            </span>
+            <span className="block text-[10px] font-semibold tracking-wide text-slate-400 uppercase">
+              {label.en}
+            </span>
+          </span>
+          <ChevronDown
+            className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`}
+          />
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="space-y-0.5 pt-0.5">
+        {items.map((item) => {
+          const active = currentPath === item.href || currentPath.startsWith(item.href + "/");
+          return <NavSubLink key={item.href} item={item} active={active} />;
+        })}
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 
@@ -268,9 +352,6 @@ function WoredaAppShell({ children }: { children: React.ReactNode }) {
     return true;
   });
   const groups = groupNavItems(visibleNav);
-  const currentItem = visibleNav.find(
-    (n) => currentPath === n.href || currentPath.startsWith(n.href + "/"),
-  );
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -301,9 +382,9 @@ function WoredaAppShell({ children }: { children: React.ReactNode }) {
     <SidebarProvider>
       <Sidebar
         collapsible="icon"
-        className="border-r-0 [--sidebar-width:16rem] [&_[data-sidebar=sidebar]]:bg-[color:var(--color-shell-header)]"
+        className="border-r border-slate-200/80 [--sidebar-width:16rem] [&_[data-sidebar=sidebar]]:bg-[#F8FAFC]"
       >
-        <SidebarHeader className="border-b border-white/10 px-2 py-2">
+        <SidebarHeader className="border-b border-slate-200/80 px-2 py-2">
           <SidebarBrand
             titleAm={woreda?.display_name_am ?? "—"}
             titleEn={woreda?.woreda_name_en ?? ""}
@@ -311,61 +392,77 @@ function WoredaAppShell({ children }: { children: React.ReactNode }) {
             href="/woreda/settings"
           />
         </SidebarHeader>
-        <SidebarContent className="px-1">
-          {groups.map(({ key, items }) => (
-            <SidebarGroup key={key}>
-              {NAV_GROUP_LABEL[key].en && (
-                <SidebarGroupLabel className="font-am-heading px-3 text-[10px] uppercase tracking-wide text-slate-400">
-                  {NAV_GROUP_LABEL[key].am} / {NAV_GROUP_LABEL[key].en}
-                </SidebarGroupLabel>
-              )}
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {items.map((item) => {
-                    const active =
-                      currentPath === item.href || currentPath.startsWith(item.href + "/");
-                    return (
-                      <SidebarMenuItem key={item.href}>
-                        <SidebarMenuButton asChild className="h-auto p-0 hover:bg-transparent">
-                          <NavLink item={item} active={active} />
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    );
-                  })}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          ))}
+        <SidebarContent className="px-2">
+          {groups.map(({ key, items }) =>
+            ACCORDION_GROUPS.includes(key) ? (
+              <SidebarGroup key={key} className="py-1">
+                <NavAccordionGroup groupKey={key} items={items} currentPath={currentPath} />
+              </SidebarGroup>
+            ) : (
+              <SidebarGroup key={key} className="py-1">
+                <SidebarGroupContent>
+                  <SidebarMenu className="gap-0.5">
+                    {items.map((item) => {
+                      const active =
+                        currentPath === item.href || currentPath.startsWith(item.href + "/");
+                      return (
+                        <SidebarMenuItem key={item.href}>
+                          <SidebarMenuButton asChild className="h-auto p-0 hover:bg-transparent">
+                            <NavLink item={item} active={active} />
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      );
+                    })}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            ),
+          )}
         </SidebarContent>
-        <SidebarFooter className="border-t border-white/10 px-5 py-3 text-xs text-slate-400">
+        <SidebarFooter className="border-t border-slate-200/80 px-5 py-3 text-xs text-slate-400">
           Harari Regional State
         </SidebarFooter>
       </Sidebar>
 
       <SidebarInset>
-        <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-6">
-          <div className="flex items-center gap-2">
-            <SidebarTrigger />
-            <div>
-              <h1 className="font-am-heading text-base font-semibold text-slate-900">
-                {currentItem?.labelAm ?? "ዳሽቦርድ"}
+        <header className="sticky top-0 z-10 flex h-16 items-center justify-between gap-2 bg-[#0B192C]/95 px-4 text-white shadow-md backdrop-blur-md sm:px-6">
+          <div className="flex min-w-0 items-center gap-2">
+            <SidebarTrigger className="text-white hover:bg-white/10 hover:text-white" />
+            <div className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-amber-400 bg-[#11233B] sm:flex">
+              <img
+                src="/images/harari-seal.png"
+                alt="Harari Regional State seal"
+                className="h-6 w-6 object-contain"
+              />
+            </div>
+            <div className="min-w-0">
+              <h1 className="font-am-heading truncate text-sm font-bold text-amber-300 sm:text-base">
+                {woreda?.display_name_am ?? "የወረዳ አስተዳደር"}
               </h1>
-              <p className="text-xs text-slate-400">{currentItem?.labelEn ?? "Dashboard"}</p>
+              <p className="truncate text-[11px] font-medium text-slate-300">
+                {woreda?.woreda_name_en ?? "Woreda"} Administration Portal
+              </p>
             </div>
           </div>
 
-          <span className="font-am-body rounded-full bg-blue-50 px-3 py-1 text-sm text-blue-800">
-            {getCurrentEthiopianDate()}
-          </span>
+          <div className="hidden shrink-0 items-center gap-2 rounded-full border border-[#23436B]/60 bg-[#172D4A] px-4 py-1.5 text-xs font-semibold lg:flex">
+            <span className="rounded bg-rose-600 px-1.5 py-0.5 text-[10px] font-extrabold text-white">
+              {new Date()
+                .toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                .toUpperCase()}
+            </span>
+            <span className="font-am-body">{getCurrentEthiopianDate()}</span>
+          </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
             <button
               type="button"
-              className="rounded-md p-2 text-amber-600 hover:bg-slate-100"
+              className="rounded-full p-2 text-amber-400 hover:bg-white/10"
               aria-label="Notifications"
             >
               <Bell className="h-5 w-5" />
             </button>
+            <div className="hidden h-6 w-px bg-slate-700/80 sm:block" />
             <UserMenu
               name={appUser?.full_name ?? "User"}
               roleLabel={ROLE_LABEL_AM[appUser?.role ?? ""] ?? appUser?.role}
@@ -377,6 +474,7 @@ function WoredaAppShell({ children }: { children: React.ReactNode }) {
                   <span className="ml-1 text-xs opacity-70">/ Change Password</span>
                 </>
               }
+              dark
             />
           </div>
         </header>
