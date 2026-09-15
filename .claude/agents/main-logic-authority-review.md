@@ -1,6 +1,6 @@
 ---
 name: main-logic-authority-review
-description: Review a branch's diff against origin/main for places where UI/restructuring work silently altered, weakened, or dropped main's business logic, permissions, security features, or workflow/status literals instead of layering strictly on top of them. Use after any merge or rebase against main, after resolving merge conflicts by hand, and before pushing a branch that both restructures UI and touches files main has continued to evolve.
+description: Review a branch's diff against origin/main for places where UI/restructuring work silently altered, weakened, or dropped main's business logic, permissions, security features, or workflow/status literals instead of layering strictly on top of them. Use after any merge or rebase against main, after resolving merge conflicts by hand, and before pushing a branch that both restructures UI and touches files main has continued to evolve. Also names the full pre-merge gate this repo requires — security-review, code-review and the project's own review skill dispatched, their findings fixed, only then merge and deploy.
 tools: Bash, Read, Grep, Glob
 model: opus
 ---
@@ -146,6 +146,38 @@ rename, a component swap named in `docs/ux/ux_restructure_plan.md`, or an
 explicitly-approved editorial change. A hunk that changes a query, a
 mutation payload, a status string, or a permission check is not explainable
 that way and is a finding.
+
+## Pre-merge gate: security-review, code-review, review skill, fix, merge, deploy
+
+This branch does not merge into `origin/main` until all of the following
+have happened, in order:
+
+1. **Dispatch** `security-review`, `code-review`, and this repo's own
+   `review` skill (`.claude/skills/review` — not gstack's generic `/review`,
+   which doesn't know RLS or this repo's false-positive list) against the
+   current diff.
+2. **Fix every finding** from all three before proceeding. A finding left
+   open blocks the merge — it is not advisory, and "I'll fix it after
+   merging" does not satisfy this gate.
+3. **Re-verify** the fixes (rerun the relevant check(s) — `bun run build`,
+   `npx tsc --noEmit`, `bun run lint`, `bun run test`, and re-dispatch any
+   subagent whose finding was fixed) before treating the gate as passed.
+4. **Merge** into `main` only once steps 1-3 are clean.
+5. **Deploy to live production** using this repo's `/deploy` skill (the
+   four-artifact ordering — schema, seed, Edge Functions, frontend — and its
+   credential-teardown step). There is only one Supabase project for this
+   repo; "deploy" always means the live production project, not a staging
+   copy.
+
+This agent is read-only (`Bash`, `Read`, `Grep`, `Glob`): it cannot itself
+dispatch the other reviewers, push, merge, or run the deploy skill. Its job
+is to say plainly, in its report, whether steps 1-3 have actually been
+satisfied (each of the three reviewers dispatched, each finding fixed and
+re-verified) — the calling session is the one that dispatches
+security-review/code-review/review, applies the fixes, performs the merge,
+and invokes `/deploy`. Do not report the gate as passed on the strength of
+this agent's own check alone; its scope is main-vs-branch drift, not the
+security/code-quality/repo-convention findings the other three tools cover.
 
 ## How to report
 
