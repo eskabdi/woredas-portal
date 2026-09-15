@@ -321,7 +321,7 @@ function WoredaAppShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-3">
             <button
               type="button"
-              className="rounded-md p-2 text-[color:var(--color-shell-accent-gold)] hover:bg-slate-100"
+              className="rounded-md p-2 text-amber-600 hover:bg-slate-100"
               aria-label="Notifications"
             >
               <Bell className="h-5 w-5" />

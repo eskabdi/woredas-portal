@@ -230,7 +230,12 @@ function LoginPage() {
                 alt="Harari Regional State seal"
                 className="h-14 w-14 shrink-0 object-contain"
               />
-              <p className="font-am-body mt-3 text-sm font-medium text-[color:var(--color-shell-accent-gold)]">
+              {/* amber-700, not the raw --shell-accent-gold token: gold is
+                  calibrated as an accent against the dark shell-header
+                  background (8.22:1) and fails WCAG AA (2.15:1) on this
+                  white card -- see docs/ux/ux_implementation_report.md's
+                  Phase 4 contrast audit. */}
+              <p className="font-am-body mt-3 text-sm font-medium text-amber-700">
                 የሐረሪ ሕዝብ ክልላዊ መንግሥት
               </p>
               <h1 className="font-am-heading text-xl font-bold text-slate-900">የወረዳ አስተዳደር ፖርታል</h1>

@@ -78,13 +78,17 @@ export function WorkflowStepper({
       {exception ? (
         <div
           className={`mt-3 rounded-lg px-3 py-2 text-sm ${
+            /* WCAG 2.1 AA: the raw --status-danger/--status-warning tokens
+             * (2.15-3.76:1 on their own light tint) are calibrated as
+             * accent hues against the dark --shell-header background, not
+             * as text-on-light -- darker Tailwind shades pass 4.5:1 here. */
             exception.tone === "danger"
-              ? "bg-[color:var(--status-danger-bg)] text-[color:var(--status-danger)]"
-              : "bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)]"
+              ? "bg-[color:var(--status-danger-bg)] text-red-700"
+              : "bg-[color:var(--status-warning-bg)] text-amber-700"
           }`}
         >
           <span className="font-am-body font-medium">{exception.am}</span>
-          <span className="ml-1 opacity-80">/ {exception.en}</span>
+          <span className="ml-1 font-normal">/ {exception.en}</span>
         </div>
       ) : (
         currentStageInfo && (
