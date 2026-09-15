@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-15
 **Severity:** Critical — every tenant admin/staff user, every woreda, every page under `/woreda/*`
-**Status:** Fixed, verified, PR open ([#77](https://github.com/eskabdi/woredas-portal/pull/77)), pending merge
+**Status:** Resolved — fixed, merged ([#77](https://github.com/eskabdi/woredas-portal/pull/77)), deployed to production, and re-verified live
 **Detected by:** Owner-requested live investigation ("go live act as tenant admin ... investigate the issue")
 **Reported downtime window:** Unknown start; introduced with Task 12-C (offline queue, PR #73, merged before this session). At minimum affected the entire period between that merge and this fix.
 
@@ -133,12 +133,14 @@ whatever is already sitting in a user's `localStorage`.
 
 ## Final status
 
-Fix committed (`a1db585`) and pushed to `claude/fix-offline-queue-infinite-loop`;
-[PR #77](https://github.com/eskabdi/woredas-portal/pull/77) open against `main`, CI
-running. **Not yet merged or deployed to production as of this report** — the live
-Vercel deployment (`https://woredas-portal.vercel.app`) still carries the bug until
-this PR merges and a new frontend deploy ships. Merge and redeploy are the two
-remaining steps to close this incident.
+**Resolved.** [PR #77](https://github.com/eskabdi/woredas-portal/pull/77) merged to
+`main` (merge commit `a23dfa8`), CI green. Frontend redeployed to production
+(`vercel deploy --prod --archive=tgz`, deployment `dpl_6PaeMaG3LZkEzDAFz43WSyKAr58C`,
+aliased to `https://woredas-portal.vercel.app`, confirmed serving `a23dfa8` via the
+Vercel API). Re-verified live: logged into production as the same `tenant_admin`
+account, `/woreda/dashboard` renders fully with real data, zero console errors, zero
+render-loop warnings. Incident closed — no further action required to restore
+service.
 
 ## Follow-up / prevention (not yet actioned — recorded for the go-live declaration)
 
