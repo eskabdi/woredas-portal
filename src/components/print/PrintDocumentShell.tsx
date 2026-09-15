@@ -212,7 +212,7 @@ export function DocField({
 }) {
   return (
     <div className={span === 3 ? "col-span-3" : span === 2 ? "col-span-2" : undefined}>
-      <div className="text-[9.5px] font-medium uppercase tracking-wide text-slate-400">
+      <div className="text-[10.5px] font-medium uppercase tracking-wide text-slate-400">
         <span className="font-am-body">{labelAm}</span>
         <span className="ml-1 normal-case text-slate-400">/ {labelEn}</span>
       </div>
@@ -242,7 +242,7 @@ export function DocStat({
 }) {
   return (
     <div>
-      <div className="text-[9.5px] font-medium uppercase tracking-wide text-slate-400">
+      <div className="text-[10.5px] font-medium uppercase tracking-wide text-slate-400">
         <span className="font-am-body">{labelAm}</span>
         <span className="ml-1 normal-case text-slate-400">/ {labelEn}</span>
       </div>
@@ -314,7 +314,7 @@ export function DocSignatureBlock({
           <div className="text-[10px] text-slate-500">/ {it.labelEn}</div>
         </div>
       ))}
-      <div className="flex min-h-[70px] items-center justify-center border border-dashed border-slate-300 text-center text-[9.5px] uppercase tracking-wide text-slate-400">
+      <div className="flex min-h-[70px] items-center justify-center border border-dashed border-slate-300 text-center text-[10.5px] uppercase tracking-wide text-slate-400">
         ኦፊሴላዊ ማህተም
         <br />
         Official Stamp
@@ -350,7 +350,7 @@ export function DocRecordFooter({
         </div>
         <div>የታተመው ቀን / Printed: {printedOn}</div>
       </div>
-      {note && <div className="text-center text-[9.5px] text-slate-400">{note}</div>}
+      {note && <div className="text-center text-[10.5px] text-slate-400">{note}</div>}
     </div>
   );
 }
