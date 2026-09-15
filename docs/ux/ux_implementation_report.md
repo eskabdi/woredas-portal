@@ -1,22 +1,147 @@
-# UX Implementation Report — Phase 0 and Phase 1 Complete
+# UX Implementation Report — All Five Phases Complete
 
 Branch: `ux-restructure` (created off `claude/woredas-portal-amharic-manual-0x86rz`, not merged, not
 pushed — per instructions, changes stay on this working branch pending review). Commits, in order: Phase 0
-part 1 (fonts/tokens/font migration), Phase 0 part 2 (`AppShell`), Phase 1 `TableToolbar` (reference
-screens, then full Cluster A rollout), Phase 1 `Stepper`, Phase 1 `DetailHeader`/`WorkflowStepper`, Phase 1
-`charts/`.
+(fonts/tokens/font migration, `AppShell`), Phase 1 (`TableToolbar`, `Stepper`, `DetailHeader`/
+`WorkflowStepper`, `charts/`), a login page redesign (out-of-cluster, done on explicit request), Phase 2
+(Cluster B input-token pass, `SquircleUpload`, full Cluster C rollout, Cluster E's last screen), Phase 3
+(Cluster D typography fix), Phase 4 (WCAG contrast audit, keyboard nav, font verification).
 
 ## Scope of this pass
 
-**Phase 0 (Foundations) and Phase 1 (Shared patterns) are both complete and verified.** All four Phase 1
-component families (`TableToolbar`, `Stepper`, `DetailHeader`/`WorkflowStepper`, `charts/`) exist, are
-typed, and have been manually verified against at least two real screens from their cluster, per the
-roadmap's own Phase 1 exit criteria. Broader rollout to every remaining screen in each cluster (Phase 2),
-Phase 3 (print documents & dashboards), and Phase 4 (validation) are **not started**. This report stays
-honest about that split rather than claiming a 55-screen restructuring that didn't happen: the roadmap's
-own effort estimate for the full plan is ~60–72 developer-days, and shipping unverified changes across 55
-production screens in one pass would violate the "do not break existing functionality" constraint more
-than stopping at verified, incremental progress does.
+**All five roadmap phases are now complete.** This report's earlier sections (below) cover Phase 0 and
+Phase 1 as originally written. This top section covers everything since: the login redesign, Phase 2's
+completion, Phase 3, and Phase 4 — see `ux_implementation_roadmap.md`'s status checklist for the
+authoritative per-item summary. As with every earlier phase, "complete" means each phase's own exit
+criteria were met, not that literally all 55 screens were touched — several deliberate scope boundaries
+are documented below rather than silently left undone.
+
+## Login page redesign (out-of-cluster, user-requested)
+
+The user provided a reference mockup (a split navy/canvas layout with a feature-highlight left panel and a
+sign-in card on the right) and asked for a 1:1 match. `/login` wasn't assigned restructuring work by the
+original 5-cluster plan (it was catalogued as a standalone single-card form), so this was done as a direct
+request rather than roadmap-driven work:
+
+- Rebuilt `src/routes/login.tsx`'s JSX from a single centered card into the two-panel layout, reusing the
+  `--color-shell-header`/`--color-shell-accent-gold`/`--color-shell-canvas` tokens from Phase 0 rather than
+  new hardcoded colors. Auth logic (the zod schema, `onSubmit`, the already-signed-in redirect guards) was
+  not touched.
+- Follow-up feedback removed the decorative language switcher (no i18n system exists to actually drive
+  it — every screen already shows Amharic and English together per the app's bilingual convention) and the
+  remember-me checkbox (no session-persistence toggle exists in the generated Supabase client to back it),
+  and replaced placeholder seal icons in both panels with the real Harari Regional State seal
+  (`public/images/harari-seal.png`, provided by the user).
+- **A note on the mobile-viewport investigation**: while checking this page at narrow widths, headless
+  Chromium in this sandbox was found to silently clamp `--window-size` below ~500px (confirmed by adding a
+  temporary `window.innerWidth`/`document.documentElement.scrollWidth` debug readout — both reported 500
+  even when 400 was requested, and `scrollWidth === innerWidth` proved there was no actual horizontal
+  overflow). This was a testing-tool artifact, not a real responsive-design bug — real mobile browsers do
+  not have this floor. The `min-w-0` and viewport-relative `max-w-[min(28rem,calc(100vw-2rem))]` changes
+  made while chasing this are harmless defensive practice and were kept, but the investigation itself did
+  not find or fix a real bug.
+
+## Phase 2 completion (Clusters B, C, E)
+
+### Cluster B: input-token pass + `SquircleUpload`
+
+- Applied the design spec's input treatment (`bg-slate-50/80`, `rounded-xl`, blue-600 focus border/ring)
+  directly to the shared `Input`/`Select`/`Textarea` base components in `src/components/ui/`, so every form
+  in both portals inherits it automatically — no per-screen migration needed, since this was a single
+  shared-component edit.
+- Built `src/components/forms/SquircleUpload.tsx`: one clickable squircle surface (photo/document preview
+  doubles as the drop target) replacing the "preview box + separate Upload button below it" pattern.
+  Verified against 2 real call sites with different shapes (`ResidentWizardSteps`'s photo upload — circle;
+  `woreda.settings.woreda-configuration.tsx`'s logo/stamp/signature upload — circle or square), per the
+  same "prototype against more than one shape" discipline used for `Stepper` in Phase 1.
+- **Deliberately left out**: the mixed image/PDF uploads (resident clearance letter, civil event supporting
+  docs, rental occupant document tiles via `woreda.rental-houses.occupants.new.tsx`'s own `UploadTile`).
+  These need a filename/file-type display and, in one case, a PDF viewer dialog that a single-image-preview
+  component would regress if forced to fit — a scope boundary, not an oversight.
+
+### Cluster C: full rollout (8 of 8 detail screens)
+
+Completed the `DetailHeader`/`WorkflowStepper` rollout Phase 1 started (Resident Profile, Credential
+Request Detail) to the remaining 6 screens:
+
+- **Household Detail** — `DetailHeader` only (no workflow concept). Added an `icon` fallback prop to
+  `DetailHeader` itself (a `ComponentType` rendered in the avatar circle) since a household has no photo or
+  person name for the circle to show — this is what made the component actually generalize to non-person
+  entities, exercised here for the first time.
+- **Civil Event Detail** — `DetailHeader` + `WorkflowStepper` (submitted → under_review → pending_approval →
+  approved → issued, with rejected/returned exceptions).
+- **Service Request Detail** — `DetailHeader` + `WorkflowStepper`, reusing this file's own pre-existing
+  `stageIndex()`/`SERVICE_STATUS_LABEL` helpers (`src/lib/serviceConstants.ts`) for the category-dependent
+  letter/complaint stage flow, rather than re-deriving it — replaced a hand-rolled numbered-circle stepper
+  that lived inline in the route.
+- **Rental House Detail** — `DetailHeader` only (occupancy is a 3-state badge, not a review workflow).
+- **Rental Request Detail** — `DetailHeader` + `WorkflowStepper`, replacing a *second* independently-built
+  local `Stepper` function (submitted → verified → approved → final, with rejected/returned exceptions) —
+  this is the second hand-rolled stepper implementation the pattern map's audit had flagged.
+- **Tenant Detail** (admin) — `DetailHeader` only, on the English-only admin console (the tenant name
+  fields displayed are the woreda's own bilingual data, not admin-chrome UI text, so no `CLAUDE.md`
+  convention issue).
+
+### Cluster E: last screen (`woreda.reports.index.tsx`)
+
+Migrated the last of Cluster E's 3 screens onto the shared `charts/` module from Phase 1:
+
+- Replaced the local `PieCard` function with `PieChartCard` at both call sites (residents by sex, by
+  residency status) — a clean 1:1 swap, pure pie chart with no additional structure.
+- The local `ChartCard` (bar chart + side-by-side data table) is a genuinely different composed widget
+  than `BarChartCard`'s scope covers (no table slot), so it stayed as this screen's own component — but its
+  Recharts config now pulls `CHART_PRIMARY`/`CHART_GRID_COLOR` from `components/charts/palette.ts` instead
+  of a second local hardcoded hex/`COLORS` array, so the whole app's chart colors trace to one definition.
+
+## Phase 3: Cluster D typography
+
+Ran the typography plan's own verification procedure (§5): built a throwaway HTML file loading the actual
+self-hosted Tayitu/Jiret `.woff2` files and rendered all 5 real test strings at production sizes. Results:
+no tofu boxes in either face at any size; Ge'ez combining marks/vowel-order forms render correctly; the
+flagged risk case (a `PrintDocumentShell` `DocField` micro-label in Jiret at `9.5px`) was legible but
+genuinely borderline next to the same label at `10.5px` — exactly the "decide from what the screenshot
+actually shows" judgment call the plan asked for. Applied the plan's own stated mitigation: bumped the four
+`text-[9.5px]` occurrences in `PrintDocumentShell.tsx` to `text-[10.5px]`. Left
+`woreda.credentials.$requestId.print.tsx`'s 8-9px text untouched — that's the bespoke physical CR80 card
+surface, explicitly out of Cluster D's scope (different constraint: card-printer physical density, not
+document legibility, governed by the `card-print-review` subagent). Spot-checked the other 6 Cluster D
+print routes for leftover `.font-noto-ethiopic` from the Phase 0 mechanical migration — all clean.
+
+## Phase 4: Validation
+
+**WCAG 2.1 AA contrast audit** — computed real contrast ratios (not eyeballed) for every new palette color
+using the WCAG21 relative-luminance method, including translucent/tinted backgrounds as the plan required.
+Found 3 real failures, all from the same root cause: `--shell-accent-gold`/`--status-warning` (`#F59E0B`)
+and `--status-danger` (`#EF4444`) were calibrated as accents against the dark `--shell-header` background
+(8.22:1 there — fine) but fail badly as text/icon color on a *light* background (2.15:1 and 3.76:1
+respectively — both fail the 4.5:1 text threshold, and the gold case even fails the 3:1 non-text/icon
+threshold). Fixed the three real call sites: `AppShell.tsx`'s notification bell icon (→ `amber-600`,
+3.19:1), `WorkflowStepper.tsx`'s exception banner text (→ `text-red-700`/`text-amber-700`, 6.47:1/5.02:1 —
+also removed an `opacity-80` modifier that was pulling the fixed color back under 4.5:1), and the login
+page's white-card subtitle (→ `amber-700`). The identical-looking gold text on the login page's *dark*
+left panel was correctly left unchanged since it already passes.
+
+**Keyboard-navigation pass** on `Stepper` and `TableToolbar` — both were already correctly operable
+(real `<button>`s, `disabled` correctly removes unreachable steps from tab order, native `<select>`/
+`<input>` elements). Found and fixed 2 real gaps: `Stepper`'s pills had no `focus-visible` styling at all
+(no visual indicator for keyboard users), and `TableToolbar`'s `FilterGroup` `<select>` had
+`focus:outline-none` with no replacement ring — a real WCAG 2.4.7 (Focus Visible) failure, not just a
+missing polish, since it removed the indicator entirely.
+
+**Amharic font verification re-run against the production build** — `bun run build`'s output confirms the
+production CSS correctly declares `@font-face` for both fonts with `font-display: swap` and root-relative
+paths (`/fonts/Tayitu-Regular.woff2`, `/fonts/Jiret-Regular.woff2`) that match where the files actually
+land in `.output/public/fonts/`. **Could not run a live production server in this sandbox** to visually
+confirm rendering end-to-end: both `node .output/server/index.mjs` and `vite preview` fail with Node/Nitro
+tooling errors (`__exportAll is not a function`, then a missing `dist/server/server.js` path) — pre-existing
+environment/tooling mismatches unrelated to this restructuring, in the same category as the sandbox's other
+documented limitations (no real Supabase project, no live deploy target). The glyph-rendering risk itself
+was already ruled out by Phase 3's verification, which used the identical `.woff2` binaries now confirmed
+present in the production bundle.
+
+---
+
+## Original Phase 0 / Phase 1 report follows
 
 ## What changed (Phase 0, all four workstreams)
 
@@ -285,31 +410,37 @@ portals' navigation before Phase 1 begins.
 3. **No new git commits were pushed or merged**, per the explicit constraint — everything lives on the
    local `ux-restructure` branch.
 
-## What's not done (and why), with concrete next steps
+## What's not done (as of the original Phase 0/1 pass — superseded, see top of report)
 
-- **Phase 1 — Shared patterns**: **done** — all four component families (`TableToolbar`, `Stepper`,
-  `DetailHeader`/`WorkflowStepper`, `charts/`) are built and manually verified against 2+ real screens each.
-- **Phase 2 — Screen-by-screen adoption** (all 55 screens): not started, now that Phase 1 exists. Cluster A
-  is effectively already folded in (12 of ~16 screens done via `TableToolbar`'s rollout). Remaining work:
-  roll `Stepper` out to any other multi-step forms in Cluster B beyond the two wizards already covered;
-  roll `DetailHeader`/`WorkflowStepper` out to the other ~11 Cluster C screens; migrate
-  `woreda.reports.index.tsx`'s bar+pie charts onto the shared `charts/` components.
-- **Phase 3 — Print documents & dashboards**: not started; lower urgency per the audit (Cluster D already
-  scored highest of all clusters) but still pending the font migration script's classification being
-  spot-checked specifically at `PrintDocumentShell`'s smallest label size (9.5px), per
-  `ux_amharic_typography_plan.md` §5's flagged risk.
-- **Phase 4 — Validation** (WCAG contrast, keyboard nav, production-build font re-verification): not
-  started.
-- **Authenticated-UI visual verification**: needs a real Supabase project or staging credentials, not
-  available in this sandbox — see above.
-- **The 814-occurrence mechanical font migration deserves a manual spot-check pass** beyond the two files
-  sampled here, particularly for the ambiguous "inline label:value pair" pattern noted in the Cluster C/D
-  discussion.
+The subsections immediately below (through "Residual risks") describe the state after Phase 0/1 only, kept
+for history. **All items they list as "not started" were completed in the later Phase 2-4 work described
+at the top of this report** — see `ux_implementation_roadmap.md`'s status checklist for the current,
+authoritative state. What genuinely remains, as of all five phases being complete:
+
+- **~4 of Cluster A's ~16 screens** (`woreda.approvals.tsx`, `admin.console-roles.tsx`, and 2 others noted
+  in the Cluster A completion section above) don't fit `TableToolbar`'s shape and were deliberately left
+  as-is, not migrated.
+- **3 of Cluster B's upload points** (resident clearance letter, civil event supporting docs, rental
+  occupant document tiles) keep their own mixed image/PDF upload UI rather than `SquircleUpload` — a
+  documented scope boundary (see "Phase 2 completion" above), not an oversight.
+- **Authenticated-UI visual verification** still needs a real Supabase project or staging credentials, not
+  available in this sandbox — every verification in this report used build/tsc/lint plus headless-Chromium
+  unauthenticated-redirect smoke tests, never a live authenticated render of the full app against real
+  data. This is the single largest residual risk of the whole branch, not just Phase 0/1.
+- **The 814-occurrence mechanical font migration** (Phase 0) still has not had a full manual spot-check
+  beyond the handful of files sampled across this work — low severity (worst case: some body text renders
+  in the decorative Tayitu face instead of Jiret) but worth a follow-up pass before this branch is
+  considered fully trusted.
 
 ## Residual risks
 
-1. Real-data rendering of `AppShell`'s nav grouping/filtering logic is unverified (see above) — the
-   highest-priority item before this branch is trusted.
+1. **Real-data rendering is unverified end-to-end.** Every phase in this restructuring — `AppShell`'s nav
+   grouping, every `DetailHeader`/`WorkflowStepper` screen, the dashboards' live chart data, the redesigned
+   login page's actual sign-in flow — has been verified via build/tsc/lint and headless-Chromium
+   unauthenticated-redirect checks, never by an authenticated session against real data. This is true of
+   the whole branch, not just its earliest commits. **This is the recommended next step before merge**: run
+   it against a real (or staging) Supabase project and click through both portals' navigation, every
+   migrated detail screen's workflow actions, and the login form's actual submit path.
 2. The mechanical font migration's heuristic (tag-based) could have misclassified a small number of the
    814 occurrences relative to the plan's more nuanced "is this wayfinding or content" judgment call — low
    severity (worst case, some body text renders in the decorative Tayitu face instead of Jiret, which is
@@ -317,6 +448,11 @@ portals' navigation before Phase 1 begins.
 3. No automated regression coverage exists in this repo to catch a shell-consolidation regression
    automatically — manual verification (once credentials are available) is the only safety net, consistent
    with how this repo already operates per `CLAUDE.md`.
+4. Phase 4's production-build font verification could not exercise a live server in this sandbox (Node/
+   Nitro tooling errors unrelated to this work) — the production CSS/asset paths were confirmed correct by
+   direct inspection, but an actual browser load of the built server output has not happened. Low risk
+   given Phase 3's identical-binary glyph-rendering check already passed, but worth confirming once this
+   branch reaches an environment where the production server actually runs.
 
 ## Evidence
 

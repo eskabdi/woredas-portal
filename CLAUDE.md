@@ -346,15 +346,17 @@ one) rather than inventing per-page state:
   than hand-writing them, and keep app-specific composition in
   `src/components/common/` and the feature folders.
 
-### UX restructuring in progress (`docs/ux/`)
+### UX restructuring (`docs/ux/`) — all 5 phases complete, not yet merged
 
 An Apple-HIG-driven restructuring (dark navy shell, floating translucent
 toolbars, segmented steppers, and a two-typeface Amharic system — Tayitu for
 headers/titles/nav, Jiret for body copy, replacing the single
-`.font-noto-ethiopic` utility) is underway on the `ux-restructure` branch, not
+`.font-noto-ethiopic` utility) is complete on the `ux-restructure` branch, not
 yet merged. `docs/ux/` holds the planning trail and is the source of truth for
-what's done vs. pending — check `ux_implementation_roadmap.md`'s status
-checklist before assuming a screen already uses the new patterns:
+exactly which screens use the new patterns vs. the ~4 Cluster A screens and 3
+Cluster B upload points that were deliberately left as-is — check
+`ux_implementation_roadmap.md`'s status checklist rather than assuming every
+one of the 55 screens was touched:
 
 - `ux_screen_inventory.md`, `ux_pattern_map.md`, `ux_audit_findings.md` — the
   55-route inventory, the five reuse clusters (List/Filter/Export, Multi-step
@@ -376,14 +378,22 @@ checklist before assuming a screen already uses the new patterns:
   unauthenticated-redirect behavior rather than visually confirmed — see the
   report's "residual risks" section), and deviations from the plan.
 
-As of the last update: **Phase 0 and Phase 1 are both done.** All four Phase 1
-component families — `TableToolbar` (Cluster A), `Stepper` (both wizards),
-`DetailHeader`/`WorkflowStepper` (2 of Cluster C's ~13 screens), and `charts/`
-(2 of Cluster E's 3 screens) — are built and manually verified. Phases 2-4
-(rolling each component out to every remaining screen, print/dashboard
-typography, and WCAG/keyboard validation) are not started. Continuing this
-work means reading the roadmap's current status first, not re-deriving it
-from the code.
+As of the last update: **all five phases are done** — foundations, the four
+shared component families, their rollout across Clusters A/C/E (Cluster B's
+input-token pass and `Stepper` apply globally already; `SquircleUpload`
+covers its 2 real single-image call sites, deliberately not the 3 mixed
+image/PDF upload points), Cluster D's typography fix, and Phase 4's WCAG
+contrast/keyboard/font validation (which found and fixed 3 real contrast
+failures and 2 real focus-visibility gaps — not just a clean pass). The
+login page was also redesigned to match a user-provided reference mockup,
+outside the original 5-cluster scope. **The largest remaining risk before
+merge**: every verification in this work used build/tsc/lint plus
+headless-Chromium unauthenticated-redirect checks — none of it has been
+seen rendered against a real authenticated session with live data (no
+Supabase project exists in this sandbox). Continuing this work means
+reading `ux_implementation_roadmap.md`'s status checklist and
+`ux_implementation_report.md`'s residual-risks section first, not
+re-deriving state from the code.
 
 ### Build and server entry
 

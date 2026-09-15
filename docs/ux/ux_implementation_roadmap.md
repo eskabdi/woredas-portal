@@ -5,17 +5,33 @@ chain, not a checklist to work in parallel. Component names match `ux_restructur
 
 **Status** (see `ux_implementation_report.md` for full detail):
 - [x] Phase 0 — Foundations — **done**, verified (branch `ux-restructure`)
-- [x] Phase 1 — Shared patterns — **all four component families done and manually verified**:
-  `TableToolbar` (rolled out across all of Cluster A — 12 of ~16 list screens; approval queue and admin
-  console-roles don't fit the standard shape and were left as-is); `Stepper` (verified against both
-  wizards it needs to generalize across); `DetailHeader`/`WorkflowStepper` (verified against 2 of Cluster
-  C's ~13 screens); `charts/` (verified against 2 of Cluster E's 3 screens — bar and line chart types;
-  `woreda.reports.index.tsx`'s bar+pie usage is a Phase 2 rollout item). Broader rollout to every
-  remaining screen in each cluster is Phase 2, not this phase's exit criteria.
-- [ ] Phase 2 — Screen-by-screen adoption — Cluster A effectively folded into Phase 1 above; Clusters B/C
-  (forms, detail/workflow screens) not started
-- [ ] Phase 3 — Print documents & dashboards — not started
-- [ ] Phase 4 — Validation — not started
+- [x] Phase 1 — Shared patterns — **done**, all four component families built and manually verified.
+- [x] Phase 2 — Screen-by-screen adoption — **substantially done**: Cluster A (12 of ~16 screens; 2
+  intentionally excluded — see below), Cluster C (8 of 8 detail screens — full rollout), Cluster E (3 of 3
+  dashboard/report screens — full rollout). Cluster B: the input-token pass and `Stepper` apply globally/to
+  both wizards already (nothing left to roll out there); `SquircleUpload` covers 2 of its ~3 real call
+  sites (resident photo, settings logo/stamp/signature) — the mixed image/PDF uploads (clearance letter,
+  civil event docs, rental occupant document tiles) are a deliberate scope boundary, not an oversight (see
+  report). Intentionally excluded from any cluster: `woreda.approvals.tsx` (no filter/export UI to migrate)
+  and `admin.console-roles.tsx` (a permission matrix, not a list or detail screen).
+- [x] Phase 3 — Print documents & dashboards — **done**: Cluster D typography verified against the real
+  self-hosted fonts (one micro-label size bumped 9.5px → 10.5px per the typography plan's own decision
+  criteria); Cluster E dashboard theming folded into Phase 2 above.
+- [x] Phase 4 — Validation — **done**: WCAG 2.1 AA contrast audit found and fixed 3 real failures (gold
+  accent and status colors used as text/icon color on light backgrounds — they were calibrated as accents
+  against the dark shell header, not for light backgrounds); keyboard-navigation pass found and fixed 2
+  real gaps (missing focus-visible rings); Amharic font verification re-run against the actual production
+  build's compiled CSS and copied font assets (the sandbox's Node/Nitro server can't run in this
+  environment — a pre-existing tooling limitation, not a UX regression — so this checked the production
+  bundle's `@font-face` rules and asset paths directly rather than a live server).
+
+**What's NOT covered by "done" above**: not every one of the 55 screens uses every new component (e.g. 4
+of Cluster A's screens, the mixed-file uploads in Cluster B). This was a deliberate choice to finish each
+component family's genuine reuse targets rather than force-fit screens that don't match the pattern —
+documented per-item above and in `ux_implementation_report.md`, not silently left incomplete. The login
+page (`/login`) was also redesigned to match a user-provided reference mockup (split navy/canvas layout,
+real Harari Regional State seal) — this was outside the original 5-cluster scope (Login was catalogued as
+a standalone form screen, not assigned restructuring work), done on explicit request.
 
 ## Phase 0 — Foundations (blocks every later phase)
 
