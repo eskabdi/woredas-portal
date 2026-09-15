@@ -5,7 +5,7 @@ import { Building2, ScrollText, UserPlus } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { PageHeader } from "@/components/common/PageHeader";
+import { DetailHeader } from "@/components/common/DetailHeader";
 import { StatusChip } from "@/components/common/StatusChip";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
@@ -157,11 +157,13 @@ function TenantDetailPage() {
           ← Back to Tenants
         </Link>
       </div>
-      <PageHeader
+      <DetailHeader
         icon={Building2}
         titleAm={woreda.woreda_name_am}
         titleEn={woreda.woreda_name_en}
-        description={`Code ${woreda.woreda_numeric_code ?? woreda.woreda_code} · Harari Region`}
+        meta={[
+          { label: `Code ${woreda.woreda_numeric_code ?? woreda.woreda_code} · Harari Region` },
+        ]}
       />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

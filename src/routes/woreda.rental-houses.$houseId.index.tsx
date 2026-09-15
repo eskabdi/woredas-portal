@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Building2, Pencil, UserPlus, UserMinus, ScrollText, Printer } from "lucide-react";
 import { toast } from "sonner";
-import { PageHeader } from "@/components/common/PageHeader";
+import { DetailHeader } from "@/components/common/DetailHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -113,14 +113,27 @@ function RentalHouseDetailPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader
+      <DetailHeader
         icon={Building2}
         titleAm={`ቤት ቁ. ${house.house_number}`}
         titleEn={`House ${house.house_number}`}
-        description={
+        meta={
           house.kebele?.kebele_name_am
-            ? `${house.kebele.kebele_name_am} (#${house.kebele.kebele_number ?? ""})`
+            ? [{ label: `${house.kebele.kebele_name_am} (#${house.kebele.kebele_number ?? ""})` }]
             : undefined
+        }
+        status={
+          <Badge
+            variant={
+              house.occupancy_status === "occupied"
+                ? "default"
+                : house.occupancy_status === "vacant"
+                  ? "secondary"
+                  : "outline"
+            }
+          >
+            {house.occupancy_status}
+          </Badge>
         }
         actions={
           <div className="flex gap-2">

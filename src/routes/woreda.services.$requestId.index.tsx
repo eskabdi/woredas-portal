@@ -15,7 +15,8 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { PageHeader } from "@/components/common/PageHeader";
+import { DetailHeader } from "@/components/common/DetailHeader";
+import { WorkflowStepper, type WorkflowStage } from "@/components/common/WorkflowStepper";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +40,7 @@ import {
   ALLOWED_UPLOAD_TYPES,
   stageIndex,
   serviceStatusLabel,
+  SERVICE_STATUS_LABEL,
   type ServiceCategory,
 } from "@/lib/serviceConstants";
 
@@ -418,6 +420,19 @@ function ServiceRequestDetailPage() {
   const category = (req.category === "complaint" ? "complaint" : "letter") as ServiceCategory;
   const { flow, index } = stageIndex(req.status, category);
   const isTerminal = ["rejected", "closed"].includes(req.status);
+  const workflowStages: WorkflowStage[] = flow.map((s) => {
+    const [am, en] = (SERVICE_STATUS_LABEL[s] ?? s).split(" / ");
+    return { key: s, am, en: en ?? am };
+  });
+  const workflowException: { am: string; en: string; tone: "danger" | "warning" } | undefined =
+    req.status === "rejected"
+      ? { am: "ውድቅ ተደርጓል", en: "Rejected", tone: "danger" }
+      : req.status === "returned"
+        ? { am: "እርማት ተጠይቋል", en: "Returned", tone: "warning" }
+        : req.status === "approval_returned"
+          ? { am: "እርማት ተጠይቋል", en: "Returned by approver", tone: "warning" }
+          : undefined;
+  const workflowStage = index >= 0 ? flow[index] : "pending_approval";
   const canVerify = hasPermission(P.SERVICE_VERIFY);
   const canApprove = hasPermission(P.SERVICE_APPROVE);
   const canIssue = hasPermission(P.SERVICE_ISSUE);
@@ -426,16 +441,25 @@ function ServiceRequestDetailPage() {
   return (
     <>
       <div className="space-y-6 pb-16">
-        <PageHeader
+        <DetailHeader
           titleAm={req.subject || (category === "complaint" ? "ቅሬታ" : "የአገልግሎት ጥያቄ")}
           titleEn={req.request_number}
-          description={
-            req.service_type ? `${req.service_type.name_am} / ${req.service_type.name_en}` : ""
-          }
+          status={<StatusBadge status={req.status} />}
+          meta={[
+            {
+              label: req.service_type
+                ? `${req.service_type.name_am} / ${req.service_type.name_en}`
+                : "",
+            },
+          ]}
           actions={
             <div className="flex items-center gap-2">
               <Link to={category === "complaint" ? "/woreda/complaints" : "/woreda/services"}>
-                <Button variant="outline" size="sm">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="bg-white text-[color:var(--shell-header)] hover:bg-white/90"
+                >
                   <ArrowLeft className="mr-1 h-4 w-4" /> ተመለስ / Back
                 </Button>
               </Link>
@@ -451,43 +475,25 @@ function ServiceRequestDetailPage() {
           }
         />
 
-        {/* Stepper */}
-        <Card className="p-4">
-          <div className="flex flex-wrap items-center gap-2">
-            {flow.map((s, i) => (
-              <div key={s} className="flex items-center gap-2">
-                <div
-                  className={
-                    "flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold " +
-                    (isTerminal
-                      ? "bg-slate-200 text-slate-500"
-                      : i <= index
-                        ? "bg-blue-700 text-white"
-                        : "bg-slate-100 text-slate-500")
-                  }
-                >
-                  {i < index && !isTerminal ? <Check className="h-4 w-4" /> : i + 1}
-                </div>
-                <span className="font-am-body text-xs text-slate-600">{serviceStatusLabel(s)}</span>
-                {i < flow.length - 1 && <span className="mx-1 text-slate-300">→</span>}
-              </div>
-            ))}
-          </div>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <StatusBadge status={req.status} />
-            <PriorityBadge priority={req.priority} />
-            {req.return_reason && (
-              <span className="font-am-body text-xs text-amber-700">
-                የመመለስ ምክንያት: {req.return_reason}
-              </span>
-            )}
-            {req.reject_reason && (
-              <span className="font-am-body text-xs text-red-700">
-                የውድቅ ምክንያት: {req.reject_reason}
-              </span>
-            )}
-          </div>
-        </Card>
+        <WorkflowStepper
+          stages={workflowStages}
+          currentStage={workflowStage ?? workflowStages[0]!.key}
+          exception={workflowException}
+        />
+
+        <div className="flex flex-wrap items-center gap-2">
+          <PriorityBadge priority={req.priority} />
+          {req.return_reason && (
+            <span className="font-am-body text-xs text-amber-700">
+              የመመለስ ምክንያት: {req.return_reason}
+            </span>
+          )}
+          {req.reject_reason && (
+            <span className="font-am-body text-xs text-red-700">
+              የውድቅ ምክንያት: {req.reject_reason}
+            </span>
+          )}
+        </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">
