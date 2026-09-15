@@ -34,13 +34,16 @@ export function BarChartCard<T extends Record<string, unknown>>({
       <ResponsiveContainer width="100%" height={height ?? "100%"}>
         <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_COLOR} vertical={!angledLabels} />
+          {/* Recharts' own defaultProps merge only backfills a key that's absent from
+              props, not one explicitly set to `undefined` -- passing height={undefined}
+              here (instead of omitting it) left the axis height, and everything computed
+              from it (the plot area's clip-path height, every bar's height), as NaN. */}
           <XAxis
             dataKey={xKey}
             tick={{ fontSize: 11 }}
-            interval={angledLabels ? 0 : undefined}
-            angle={angledLabels ? -20 : undefined}
-            height={angledLabels ? 50 : undefined}
-            textAnchor={angledLabels ? "end" : undefined}
+            {...(angledLabels
+              ? { interval: 0, angle: -20, height: 50, textAnchor: "end" as const }
+              : {})}
           />
           <YAxis tick={{ fontSize: 11 }} />
           <Tooltip formatter={formatter ? (v: number) => formatter(v) : undefined} />
