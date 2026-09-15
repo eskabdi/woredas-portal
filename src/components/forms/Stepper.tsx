@@ -70,7 +70,7 @@ export function Stepper({
               aria-current={isCurrent ? "step" : undefined}
               aria-label={`${s.am} / ${s.en}`}
               title={`${s.am} / ${s.en}`}
-              className={`h-2 flex-1 rounded-full transition-colors duration-200 ${
+              className={`h-2 flex-1 rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${
                 filled ? "bg-[color:var(--color-primary)]" : "bg-slate-200"
               } ${reachable ? "cursor-pointer hover:opacity-80" : reachable === false && onJump ? "cursor-not-allowed" : ""}`}
             />

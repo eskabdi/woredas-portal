@@ -198,7 +198,7 @@ export function FilterGroup({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="font-am-body bg-transparent px-1 py-0.5 text-sm focus:outline-none"
+        className="font-am-body rounded bg-transparent px-1 py-0.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
