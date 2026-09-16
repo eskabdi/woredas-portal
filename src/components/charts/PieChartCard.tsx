@@ -12,6 +12,9 @@ export function PieChartCard<T extends Record<string, unknown>>({
   height,
   loading,
   formatter,
+  /** Ring with a hole (master_design_system.md §4.2 demographics donuts) instead
+   * of a solid pie -- opt-in so the existing reports-page pies are unaffected. */
+  donut,
 }: {
   titleAm?: string;
   titleEn: string;
@@ -21,12 +24,20 @@ export function PieChartCard<T extends Record<string, unknown>>({
   height?: number;
   loading?: boolean;
   formatter?: (value: number) => string;
+  donut?: boolean;
 }) {
   return (
     <ChartCard titleAm={titleAm} titleEn={titleEn} loading={loading} empty={data.length === 0}>
       <ResponsiveContainer width="100%" height={height ?? "100%"}>
         <PieChart>
-          <Pie data={data} dataKey={valueKey} nameKey={nameKey} outerRadius={80} label>
+          <Pie
+            data={data}
+            dataKey={valueKey}
+            nameKey={nameKey}
+            innerRadius={donut ? 55 : 0}
+            outerRadius={80}
+            label={!donut}
+          >
             {data.map((row, i) => (
               <Cell
                 key={String(row[nameKey])}

@@ -1,5 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import {
   Users,
   Home,
@@ -9,10 +10,17 @@ import {
   Banknote,
   AlertTriangle,
   LayoutDashboard,
+  UserCheck,
+  FileWarning,
+  ChevronRight,
+  UserPlus2,
+  Building2,
+  ScrollText,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { BarChartCard } from "@/components/charts/BarChartCard";
 import { LineChartCard } from "@/components/charts/LineChartCard";
+import { PieChartCard } from "@/components/charts/PieChartCard";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
@@ -30,8 +38,79 @@ function startOfDayISO() {
   return d.toISOString();
 }
 
+type RegPeriod = "weekly" | "monthly" | "quarterly";
+
+const QUICK_ACTIONS = [
+  { am: "አዲስ ነዋሪ ምዝገባ", en: "New Resident", icon: UserPlus2, href: "/woreda/residents/new" },
+  { am: "የመታወቂያ ጥያቄ", en: "Credential Request", icon: CreditCard, href: "/woreda/credentials/new" },
+  { am: "የቤት ኪራይ", en: "Rental Houses", icon: Building2, href: "/woreda/rental-houses" },
+  { am: "አገልግሎት ጥያቄ", en: "Service Request", icon: ScrollText, href: "/woreda/services/new" },
+];
+
+function QuickActionsCard() {
+  return (
+    <div className="rounded-2xl bg-[#0F2038] p-5 text-white shadow-lg">
+      <h3 className="font-am-heading text-sm font-semibold">ፈጣን ተግባራት</h3>
+      <p className="text-xs text-slate-300">Quick Actions</p>
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        {QUICK_ACTIONS.map((a) => (
+          <Link
+            key={a.href}
+            to={a.href}
+            className="flex flex-col items-center gap-2 rounded-xl bg-white/5 p-3 text-center ring-1 ring-white/10 transition hover:bg-white/10"
+          >
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10">
+              <a.icon className="h-4.5 w-4.5 text-amber-300" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-am-body truncate text-xs font-medium text-white">{a.am}</p>
+              <p className="truncate text-[10px] text-slate-400">{a.en}</p>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PriorityTaskRow({
+  icon: Icon,
+  color,
+  titleAm,
+  titleEn,
+  count,
+  href,
+}: {
+  icon: typeof Clock;
+  color: string;
+  titleAm: string;
+  titleEn: string;
+  count: number;
+  href: string;
+}) {
+  if (count === 0) return null;
+  return (
+    <Link
+      to={href}
+      className="flex items-center gap-3 rounded-xl p-2.5 transition hover:bg-slate-50"
+    >
+      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${color}`}>
+        <Icon className="h-4.5 w-4.5" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="font-am-body text-sm font-medium text-slate-800">
+          {count} {titleAm}
+        </p>
+        <p className="text-xs text-slate-400">{titleEn}</p>
+      </div>
+      <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
+    </Link>
+  );
+}
+
 function WoredaDashboard() {
   const woredaId = useAuthStore((s) => s.woredaId);
+  const [regPeriod, setRegPeriod] = useState<RegPeriod>("monthly");
 
   const totalResidents = useQuery({
     queryKey: ["dash", woredaId, "residents"],
@@ -144,13 +223,15 @@ function WoredaDashboard() {
     },
   });
 
-  const monthlyRegs = useQuery({
-    queryKey: ["dash", woredaId, "monthly-regs"],
+  // Fetched wide (12 months) once; re-bucketed client-side per the segmented
+  // toggle rather than re-querying per click -- weekly/monthly/quarterly are
+  // all just different groupings of the same created_at values.
+  const registrations = useQuery({
+    queryKey: ["dash", woredaId, "registrations-12mo"],
     enabled: !!woredaId,
     queryFn: async () => {
       const since = new Date();
-      since.setMonth(since.getMonth() - 5);
-      since.setDate(1);
+      since.setMonth(since.getMonth() - 12);
       since.setHours(0, 0, 0, 0);
       const { data, error } = await supabase
         .from("resident")
@@ -158,26 +239,76 @@ function WoredaDashboard() {
         .eq("woreda_id", woredaId as string)
         .gte("created_at", since.toISOString());
       if (error) throw error;
+      return (data ?? []).map((r) => new Date(r.created_at as string));
+    },
+  });
+
+  const monthlyRegs = (() => {
+    const dates = registrations.data ?? [];
+    if (regPeriod === "weekly") {
       const buckets = new Map<string, { label: string; count: number; sort: number }>();
-      for (let i = 5; i >= 0; i--) {
+      for (let i = 7; i >= 0; i--) {
         const d = new Date();
-        d.setMonth(d.getMonth() - i);
-        const key = `${d.getFullYear()}-${d.getMonth()}`;
+        d.setDate(d.getDate() - i * 7);
+        const weekStart = new Date(d);
+        weekStart.setDate(d.getDate() - d.getDay());
+        weekStart.setHours(0, 0, 0, 0);
+        const key = weekStart.toISOString().slice(0, 10);
         buckets.set(key, {
-          label: ethiopianMonthLabel(d),
+          label: weekStart.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
           count: 0,
-          sort: d.getFullYear() * 12 + d.getMonth(),
+          sort: weekStart.getTime(),
         });
       }
-      (data ?? []).forEach((r) => {
-        const d = new Date(r.created_at as string);
-        const key = `${d.getFullYear()}-${d.getMonth()}`;
+      dates.forEach((d) => {
+        const weekStart = new Date(d);
+        weekStart.setDate(d.getDate() - d.getDay());
+        weekStart.setHours(0, 0, 0, 0);
+        const b = buckets.get(weekStart.toISOString().slice(0, 10));
+        if (b) b.count += 1;
+      });
+      return Array.from(buckets.values()).sort((a, b) => a.sort - b.sort);
+    }
+    if (regPeriod === "quarterly") {
+      const buckets = new Map<string, { label: string; count: number; sort: number }>();
+      for (let i = 3; i >= 0; i--) {
+        const d = new Date();
+        d.setMonth(d.getMonth() - i * 3);
+        const q = Math.floor(d.getMonth() / 3) + 1;
+        const key = `${d.getFullYear()}-Q${q}`;
+        buckets.set(key, {
+          label: `Q${q} ${d.getFullYear()}`,
+          count: 0,
+          sort: d.getFullYear() * 4 + q,
+        });
+      }
+      dates.forEach((d) => {
+        const q = Math.floor(d.getMonth() / 3) + 1;
+        const key = `${d.getFullYear()}-Q${q}`;
         const b = buckets.get(key);
         if (b) b.count += 1;
       });
       return Array.from(buckets.values()).sort((a, b) => a.sort - b.sort);
-    },
-  });
+    }
+    // monthly (default) -- last 6 months, Ethiopian month labels
+    const buckets = new Map<string, { label: string; count: number; sort: number }>();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      buckets.set(key, {
+        label: ethiopianMonthLabel(d),
+        count: 0,
+        sort: d.getFullYear() * 12 + d.getMonth(),
+      });
+    }
+    dates.forEach((d) => {
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      const b = buckets.get(key);
+      if (b) b.count += 1;
+    });
+    return Array.from(buckets.values()).sort((a, b) => a.sort - b.sort);
+  })();
 
   const dailyRevenue = useQuery({
     queryKey: ["dash", woredaId, "daily-revenue"],
@@ -216,6 +347,150 @@ function WoredaDashboard() {
     },
   });
 
+  // Service requests awaiting verification -- third Priority Tasks item, same
+  // "needs someone's attention now" shape as pendingApprovals/expiredCredentials.
+  const serviceRequestsPending = useQuery({
+    queryKey: ["dash", woredaId, "service-pending"],
+    enabled: !!woredaId,
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("service_request")
+        .select("service_request_id", { count: "exact", head: true })
+        .eq("woreda_id", woredaId as string)
+        .in("status", ["submitted", "under_review"]);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+
+  // Gender distribution -- real resident.sex split, no fabricated figures.
+  const genderSplit = useQuery({
+    queryKey: ["dash", woredaId, "gender-split"],
+    enabled: !!woredaId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("resident")
+        .select("sex")
+        .eq("woreda_id", woredaId as string);
+      if (error) throw error;
+      let male = 0;
+      let female = 0;
+      (data ?? []).forEach((r) => {
+        if (r.sex === "male") male += 1;
+        else if (r.sex === "female") female += 1;
+      });
+      return [
+        { name: "ወንድ / Male", value: male },
+        { name: "ሴት / Female", value: female },
+      ];
+    },
+  });
+
+  // Population by kebele -- resident has no direct kebele_id; it's derived
+  // through current_household_id -> household.kebele_id, so this is a
+  // client-side join (three small queries) rather than one filtered count.
+  const populationByKebele = useQuery({
+    queryKey: ["dash", woredaId, "population-by-kebele"],
+    enabled: !!woredaId,
+    queryFn: async () => {
+      const [
+        { data: kebeles, error: kErr },
+        { data: households, error: hErr },
+        { data: residents, error: rErr },
+      ] = await Promise.all([
+        supabase
+          .from("kebele")
+          .select("kebele_id, kebele_name_am, kebele_name_en")
+          .eq("woreda_id", woredaId as string),
+        supabase
+          .from("household")
+          .select("household_id, kebele_id")
+          .eq("woreda_id", woredaId as string),
+        supabase
+          .from("resident")
+          .select("current_household_id")
+          .eq("woreda_id", woredaId as string),
+      ]);
+      if (kErr) throw kErr;
+      if (hErr) throw hErr;
+      if (rErr) throw rErr;
+
+      const householdToKebele = new Map<string, string>();
+      (households ?? []).forEach((h) => {
+        if (h.household_id && h.kebele_id) householdToKebele.set(h.household_id, h.kebele_id);
+      });
+      const countByKebele = new Map<string, number>();
+      (residents ?? []).forEach((r) => {
+        const hid = r.current_household_id as string | null;
+        if (!hid) return;
+        const kid = householdToKebele.get(hid);
+        if (!kid) return;
+        countByKebele.set(kid, (countByKebele.get(kid) ?? 0) + 1);
+      });
+      const total = Array.from(countByKebele.values()).reduce((a, b) => a + b, 0);
+      return (kebeles ?? [])
+        .map((k) => {
+          const count = countByKebele.get(k.kebele_id) ?? 0;
+          return {
+            kebeleId: k.kebele_id,
+            am: k.kebele_name_am,
+            en: k.kebele_name_en,
+            count,
+            pct: total > 0 ? Math.round((count / total) * 1000) / 10 : 0,
+          };
+        })
+        .sort((a, b) => b.count - a.count);
+    },
+  });
+
+  // Recent System Activities -- real audit_log rows, actor name resolved via
+  // a second small query rather than a client-side join across many rows
+  // (this table is append-only and small per tenant).
+  const recentActivity = useQuery({
+    queryKey: ["dash", woredaId, "recent-activity"],
+    enabled: !!woredaId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("audit_log")
+        .select("audit_log_id, actor_user_id, entity_name, entity_id, action_type, action_at")
+        .eq("woreda_id", woredaId as string)
+        .order("action_at", { ascending: false })
+        .limit(6);
+      if (error) throw error;
+      const rows = data ?? [];
+      const actorIds = Array.from(
+        new Set(rows.map((r) => r.actor_user_id).filter((id): id is string => !!id)),
+      );
+      const actorNames = new Map<string, string>();
+      if (actorIds.length > 0) {
+        const { data: actors, error: aErr } = await supabase
+          .from("app_user")
+          .select("user_id, full_name")
+          .in("user_id", actorIds);
+        if (aErr) throw aErr;
+        (actors ?? []).forEach((a) => actorNames.set(a.user_id, a.full_name));
+      }
+      return rows.map((r) => ({
+        id: r.audit_log_id,
+        actor: r.actor_user_id ? (actorNames.get(r.actor_user_id) ?? "—") : "System",
+        action: r.action_type,
+        entity: `${r.entity_name}${r.entity_id ? ` #${r.entity_id.slice(0, 8)}` : ""}`,
+        time: new Date(r.action_at as string).toLocaleString("en-GB", {
+          day: "2-digit",
+          month: "short",
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      }));
+    },
+  });
+
+  const regPeriodLabel: Record<RegPeriod, { am: string; en: string }> = {
+    weekly: { am: "በሳምንት", en: "Weekly" },
+    monthly: { am: "በወር", en: "Monthly" },
+    quarterly: { am: "ሩብ ዓመት", en: "Quarterly" },
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -249,6 +524,7 @@ function WoredaDashboard() {
           icon={UserPlus}
           color="bg-purple-50 text-purple-700"
           isLoading={newToday.isLoading}
+          badge={newToday.data ? { text: `+${newToday.data} today`, tone: "up" } : undefined}
         />
         <KpiCard
           titleAm="በጥበቃ ላይ ያሉ"
@@ -288,27 +564,193 @@ function WoredaDashboard() {
         />
       </div>
 
-      {/* Row 3 — charts */}
+      {/* Row 3 -- Analytics: registrations bar chart w/ period toggle + Priority Tasks */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="font-am-heading text-sm font-semibold text-slate-900">
+                  የምዝገባ እንቅስቃሴ ({regPeriodLabel[regPeriod].am})
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Registration activity — {regPeriodLabel[regPeriod].en}
+                </p>
+              </div>
+              <div className="flex rounded-full bg-slate-100 p-1">
+                {(Object.keys(regPeriodLabel) as RegPeriod[]).map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setRegPeriod(p)}
+                    className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                      regPeriod === p
+                        ? "bg-[#1D5BD8] text-white shadow-sm"
+                        : "text-slate-500 hover:text-slate-700"
+                    }`}
+                  >
+                    {regPeriodLabel[p].en}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="mt-4" style={{ height: 256 }}>
+              <BarChartCard
+                titleEn=""
+                data={monthlyRegs}
+                xKey="label"
+                yKey="count"
+                loading={registrations.isLoading}
+                height={256}
+                angledLabels={regPeriod !== "monthly"}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+          <h3 className="font-am-heading text-sm font-semibold text-slate-900">
+            ቅድሚያ የሚሰጣቸው ተግባራት
+          </h3>
+          <p className="text-xs text-slate-400">Priority Tasks</p>
+          <div className="mt-3 space-y-1">
+            <PriorityTaskRow
+              icon={Clock}
+              color="bg-amber-50 text-amber-600"
+              titleAm="ማጽደቅ የሚጠብቁ የመታወቂያ ጥያቄዎች"
+              titleEn="Credential requests awaiting approval"
+              count={pendingApprovals.data ?? 0}
+              href="/woreda/approvals"
+            />
+            <PriorityTaskRow
+              icon={FileWarning}
+              color="bg-red-50 text-red-600"
+              titleAm="ወቅታቸው ያለፈባቸው መታወቂያዎች"
+              titleEn="Expired credentials"
+              count={expiredCredentials.data ?? 0}
+              href="/woreda/credentials"
+            />
+            <PriorityTaskRow
+              icon={UserCheck}
+              color="bg-blue-50 text-blue-600"
+              titleAm="ማረጋገጫ የሚጠብቁ የአገልግሎት ጥያቄዎች"
+              titleEn="Service requests awaiting review"
+              count={serviceRequestsPending.data ?? 0}
+              href="/woreda/services"
+            />
+            {!pendingApprovals.data && !expiredCredentials.data && !serviceRequestsPending.data && (
+              <p className="font-am-body py-6 text-center text-sm text-slate-400">
+                ምንም አስቸኳይ ተግባር የለም / Nothing needs attention right now
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Row 4 -- Demographics: population by kebele + gender distribution */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <BarChartCard
-          titleAm="ወርሃዊ ምዝገባዎች (6 ወር)"
-          titleEn="Monthly registrations — last 6 months"
-          data={monthlyRegs.data ?? []}
-          xKey="label"
-          yKey="count"
-          loading={monthlyRegs.isLoading}
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+          <h3 className="font-am-heading text-sm font-semibold text-slate-900">የሕዝብ ብዛት በቀበሌ</h3>
+          <p className="text-xs text-slate-400">Population by Kebele</p>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 text-left text-xs text-slate-400">
+                  <th className="py-1.5 font-normal">ቀበሌ / Kebele</th>
+                  <th className="py-1.5 font-normal">ነዋሪዎች / Residents</th>
+                  <th className="py-1.5 text-right font-normal">%</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(populationByKebele.data ?? []).map((k) => (
+                  <tr key={k.kebeleId} className="border-b border-slate-50 last:border-0">
+                    <td className="py-2">
+                      <span className="font-am-body text-slate-800">{k.am}</span>{" "}
+                      <span className="text-xs text-slate-400">/ {k.en}</span>
+                    </td>
+                    <td className="py-2 text-slate-700">{k.count}</td>
+                    <td className="py-2 text-right text-slate-500">{k.pct}%</td>
+                  </tr>
+                ))}
+                {populationByKebele.data?.length === 0 && !populationByKebele.isLoading && (
+                  <tr>
+                    <td colSpan={3} className="py-6 text-center text-sm text-slate-400">
+                      ምንም ቀበሌዎች የሉም / No kebeles configured
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <PieChartCard
+          titleAm="የፆታ ስርጭት በወረዳ"
+          titleEn="Gender Distribution"
+          data={genderSplit.data ?? []}
+          nameKey="name"
+          valueKey="value"
+          loading={genderSplit.isLoading}
           height={256}
-        />
-        <LineChartCard
-          titleAm="ዕለታዊ ገቢ (30 ቀን)"
-          titleEn="Daily revenue — last 30 days"
-          data={dailyRevenue.data ?? []}
-          xKey="day"
-          yKey="amount"
-          loading={dailyRevenue.isLoading}
-          height={256}
+          donut
         />
       </div>
+
+      {/* Row 5 -- recent system activity + quick actions */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_2px_10px_rgba(0,0,0,0.02)] lg:col-span-2">
+          <h3 className="font-am-heading text-sm font-semibold text-slate-900">የቅርብ ጊዜ እንቅስቃሴዎች</h3>
+          <p className="text-xs text-slate-400">Recent System Activities</p>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 text-left text-xs text-slate-400">
+                  <th className="py-1.5 font-normal">ፈጻሚ / Executor</th>
+                  <th className="py-1.5 font-normal">ተግባር / Action</th>
+                  <th className="py-1.5 font-normal">ነገር / Entity</th>
+                  <th className="py-1.5 text-right font-normal">ሰዓት / Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(recentActivity.data ?? []).map((row) => (
+                  <tr key={row.id} className="border-b border-slate-50 last:border-0">
+                    <td className="py-2">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-100 text-[10px] font-semibold text-blue-700">
+                          {row.actor[0]?.toUpperCase() ?? "?"}
+                        </span>
+                        <span className="text-slate-800">{row.actor}</span>
+                      </div>
+                    </td>
+                    <td className="py-2 text-slate-600">{row.action}</td>
+                    <td className="py-2 text-slate-500">{row.entity}</td>
+                    <td className="py-2 text-right text-slate-400">{row.time}</td>
+                  </tr>
+                ))}
+                {recentActivity.data?.length === 0 && !recentActivity.isLoading && (
+                  <tr>
+                    <td colSpan={4} className="py-6 text-center text-sm text-slate-400">
+                      ምንም እንቅስቃሴ የለም / No recent activity
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <QuickActionsCard />
+      </div>
+
+      {/* Row 6 -- daily revenue */}
+      <LineChartCard
+        titleAm="ዕለታዊ ገቢ (30 ቀን)"
+        titleEn="Daily revenue — last 30 days"
+        data={dailyRevenue.data ?? []}
+        xKey="day"
+        yKey="amount"
+        loading={dailyRevenue.isLoading}
+        height={256}
+      />
     </div>
   );
 }
