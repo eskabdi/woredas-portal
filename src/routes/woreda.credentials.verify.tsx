@@ -17,6 +17,7 @@ function VerifyPage() {
         icon={ShieldCheck}
         titleAm="የማንነት መታወቂያ ማረጋገጫ"
         titleEn="Credential Verification"
+        backHref="/woreda/credentials"
       />
       <PermissionGate
         permission={P.CREDENTIAL_VERIFY}

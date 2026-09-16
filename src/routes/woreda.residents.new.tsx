@@ -132,7 +132,12 @@ function NewResidentPage() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-6 pb-28">
-      <PageHeader icon={UserCircle2} titleAm="አዲስ ነዋሪ ምዝገባ" titleEn="Register a new resident" />
+      <PageHeader
+        icon={UserCircle2}
+        titleAm="አዲስ ነዋሪ ምዝገባ"
+        titleEn="Register a new resident"
+        backHref="/woreda/residents"
+      />
 
       <ResidentWizardSteps
         form={form}

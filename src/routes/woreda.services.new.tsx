@@ -291,6 +291,7 @@ function NewServiceRequestPage() {
         titleAm={isComplaint ? "አዲስ ቅሬታ ማስመዝገቢያ" : "አዲስ የአገልግሎት ጥያቄ"}
         titleEn={isComplaint ? "New Complaint" : "New Service Request"}
         description={isComplaint ? "የነዋሪ ቅሬታ በመዝገብ ውስጥ ያስገቡ" : "የደብዳቤ/ማረጃ ጥያቄን በመዝገብ ውስጥ ያስገቡ"}
+        backHref={isComplaint ? "/woreda/complaints" : "/woreda/services"}
       />
 
       <Section

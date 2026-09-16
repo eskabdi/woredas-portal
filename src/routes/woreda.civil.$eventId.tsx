@@ -550,6 +550,7 @@ function CivilEventDetailPage() {
   return (
     <div className="space-y-6">
       <DetailHeader
+        backHref="/woreda/civil"
         icon={FileText}
         titleAm="የፍትሐ ብሔር ክስተት"
         titleEn="Civil Event"

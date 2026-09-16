@@ -357,6 +357,7 @@ function RentalRequestDetailPage() {
   return (
     <div className="space-y-4">
       <DetailHeader
+        backHref="/woreda/rental-houses/requests"
         icon={FileText}
         titleAm={`የቤት ኪራይ ጥያቄ · ${req.request_number}`}
         titleEn={isTermination ? "Vacate Request" : "Rental Occupancy Request"}

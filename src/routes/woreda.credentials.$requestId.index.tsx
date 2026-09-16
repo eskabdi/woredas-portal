@@ -778,6 +778,7 @@ function CredentialRequestDetailPage() {
         </div>
 
         <DetailHeader
+          backHref="/woreda/credentials"
           photoUrl={photoUrl}
           titleAm={resident?.full_name_am || "—"}
           titleEn={resident?.full_name || undefined}

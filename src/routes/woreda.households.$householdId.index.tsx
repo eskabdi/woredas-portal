@@ -237,6 +237,7 @@ function HouseholdDetailPage() {
   return (
     <div className="space-y-6 pb-12">
       <DetailHeader
+        backHref="/woreda/households"
         icon={Home}
         titleAm={titleAm}
         titleEn={`House ${h.house_number}${kebele?.kebele_name_en ? ` — Kebele ${kebele.kebele_number} ${kebele.kebele_name_en}` : ""}`}

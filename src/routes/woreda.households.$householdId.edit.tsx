@@ -222,7 +222,12 @@ function EditHouseholdPage() {
 
   return (
     <div className="mx-auto max-w-4xl pb-24">
-      <PageHeader icon={Home} titleAm="ቤተሰብ አስተካክል" titleEn="Edit Household" />
+      <PageHeader
+        icon={Home}
+        titleAm="ቤተሰብ አስተካክል"
+        titleEn="Edit Household"
+        backHref={`/woreda/households/${householdId}`}
+      />
 
       {contactUnverified && (
         <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">

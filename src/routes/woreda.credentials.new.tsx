@@ -598,7 +598,12 @@ function NewCredentialRequestPage() {
 
   return (
     <div className="space-y-6 pb-32">
-      <PageHeader icon={CreditCard} titleAm="አዲስ የመታወቂያ ጥያቄ" titleEn="New Credential Request" />
+      <PageHeader
+        icon={CreditCard}
+        titleAm="አዲስ የመታወቂያ ጥያቄ"
+        titleEn="New Credential Request"
+        backHref="/woreda/credentials"
+      />
 
       {/* Section A — Resident selection */}
       <section className="rounded-xl border border-slate-200 bg-white shadow-sm">

@@ -365,6 +365,7 @@ function ResidentProfilePage() {
   return (
     <div className="space-y-6 pb-12">
       <DetailHeader
+        backHref="/woreda/residents"
         photoUrl={photoUrl}
         initials={initials}
         titleAm={name}

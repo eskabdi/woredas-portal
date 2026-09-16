@@ -184,6 +184,7 @@ function RentalHouseDetailPage() {
   return (
     <div className="space-y-4">
       <DetailHeader
+        backHref="/woreda/rental-houses"
         icon={Building2}
         titleAm={`ቤት ቁ. ${house.house_number}`}
         titleEn={`House ${house.house_number}`}

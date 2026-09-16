@@ -471,6 +471,7 @@ function ServiceRequestDetailPage() {
     <>
       <div className="space-y-6 pb-16">
         <DetailHeader
+          backHref={category === "complaint" ? "/woreda/complaints" : "/woreda/services"}
           titleAm={req.subject || (category === "complaint" ? "ቅሬታ" : "የአገልግሎት ጥያቄ")}
           titleEn={req.request_number}
           status={<StatusBadge status={req.status} />}

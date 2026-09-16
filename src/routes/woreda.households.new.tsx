@@ -151,7 +151,12 @@ function NewHouseholdPage() {
 
   return (
     <div className="mx-auto max-w-4xl pb-24">
-      <PageHeader icon={Home} titleAm="አዲስ ቤተሰብ ምዝገባ" titleEn="New Household Registration" />
+      <PageHeader
+        icon={Home}
+        titleAm="አዲስ ቤተሰብ ምዝገባ"
+        titleEn="New Household Registration"
+        backHref="/woreda/households"
+      />
 
       <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-6">
         <HouseholdFormFields

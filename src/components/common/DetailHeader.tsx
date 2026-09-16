@@ -1,4 +1,6 @@
 import type { ComponentType, ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
+import { ArrowLeft } from "lucide-react";
 
 /**
  * Shared detail-screen header (master_design_system.md §3.C: "one DetailHeader
@@ -19,6 +21,10 @@ export function DetailHeader({
   meta,
   status,
   actions,
+  /** Route to the parent list page -- renders a small back link above the title. */
+  backHref,
+  /** Override the bilingual "ተመለስ / Back" label -- pass "← Back" on English-only admin.* routes. */
+  backLabel,
 }: {
   /** Signed URL for a photo/avatar image. Falls back to `initials`, then `icon`, when absent. */
   photoUrl?: string | null;
@@ -35,9 +41,20 @@ export function DetailHeader({
   status?: ReactNode;
   /** Action buttons (print, share, permission-gated actions). */
   actions?: ReactNode;
+  backHref?: string;
+  backLabel?: ReactNode;
 }) {
   return (
     <div className="rounded-2xl bg-[color:var(--shell-header)] px-5 py-5 text-white shadow-sm">
+      {backHref && (
+        <Link
+          to={backHref}
+          className="mb-3 inline-flex items-center gap-1 text-xs font-medium text-white/70 hover:text-white"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          {backLabel ?? "ተመለስ / Back"}
+        </Link>
+      )}
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="flex min-w-0 items-center gap-4">
           {photoUrl ? (

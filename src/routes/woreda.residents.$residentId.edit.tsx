@@ -284,7 +284,12 @@ function EditResidentPage() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-6 pb-28">
-      <PageHeader icon={UserCircle2} titleAm="ነዋሪ አስተካክል" titleEn="Edit Resident" />
+      <PageHeader
+        icon={UserCircle2}
+        titleAm="ነዋሪ አስተካክል"
+        titleEn="Edit Resident"
+        backHref={`/woreda/residents/${residentId}`}
+      />
 
       {piiUnverified && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">

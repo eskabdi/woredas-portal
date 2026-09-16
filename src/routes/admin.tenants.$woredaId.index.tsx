@@ -158,6 +158,8 @@ function TenantDetailPage() {
         </Link>
       </div>
       <DetailHeader
+        backHref="/admin/tenants"
+        backLabel="← Back to Tenants"
         icon={Building2}
         titleAm={woreda.woreda_name_am}
         titleEn={woreda.woreda_name_en}
