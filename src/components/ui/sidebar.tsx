@@ -317,7 +317,14 @@ const SidebarInset = React.forwardRef<HTMLDivElement, React.ComponentProps<"main
       <main
         ref={ref}
         className={cn(
-          "relative flex w-full flex-1 flex-col bg-background",
+          // min-w-0 overrides the flex item's default min-width:auto, which
+          // otherwise refuses to shrink below its content's natural width
+          // (a wide table) and forces the whole shell wider than the
+          // viewport instead of letting the table's own scroll container
+          // handle the overflow -- visible only at in-between widths (e.g.
+          // a tablet in portrait) where the docked sidebar plus that natural
+          // content width exceeds the viewport but neither alone would.
+          "relative flex w-full min-w-0 flex-1 flex-col bg-background",
           "md:peer-data-[variant=inset]:m-2 md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow",
           className,
         )}
