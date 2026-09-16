@@ -24,6 +24,8 @@ import { PieChartCard } from "@/components/charts/PieChartCard";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
+import { PermissionGate } from "@/components/common/PermissionGate";
+import { P } from "@/config/permissions";
 import { KpiCard } from "@/components/common/KpiCard";
 import { ethiopianMonthLabel } from "@/utils/ethiopianCalendar";
 
@@ -110,6 +112,8 @@ function PriorityTaskRow({
 
 function WoredaDashboard() {
   const woredaId = useAuthStore((s) => s.woredaId);
+  const hasPermission = useAuthStore((s) => s.hasPermission);
+  const canViewAudit = hasPermission(P.AUDIT_VIEW);
   const [regPeriod, setRegPeriod] = useState<RegPeriod>("monthly");
 
   const totalResidents = useQuery({
@@ -448,7 +452,11 @@ function WoredaDashboard() {
   // (this table is append-only and small per tenant).
   const recentActivity = useQuery({
     queryKey: ["dash", woredaId, "recent-activity"],
-    enabled: !!woredaId,
+    // Same gate as /woreda/audit itself (P.AUDIT_VIEW) -- RLS lets any woreda
+    // member SELECT audit_log, so the client-side check here is the only
+    // thing standing between a role without audit access (finance_clerk,
+    // viewer, ...) and who-approved-what history on their own dashboard.
+    enabled: !!woredaId && canViewAudit,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("audit_log")
@@ -638,11 +646,16 @@ function WoredaDashboard() {
               count={serviceRequestsPending.data ?? 0}
               href="/woreda/services"
             />
-            {!pendingApprovals.data && !expiredCredentials.data && !serviceRequestsPending.data && (
-              <p className="font-am-body py-6 text-center text-sm text-slate-400">
-                ምንም አስቸኳይ ተግባር የለም / Nothing needs attention right now
-              </p>
-            )}
+            {!pendingApprovals.isLoading &&
+              !expiredCredentials.isLoading &&
+              !serviceRequestsPending.isLoading &&
+              !pendingApprovals.data &&
+              !expiredCredentials.data &&
+              !serviceRequestsPending.data && (
+                <p className="font-am-body py-6 text-center text-sm text-slate-400">
+                  ምንም አስቸኳይ ተግባር የለም / Nothing needs attention right now
+                </p>
+              )}
           </div>
         </div>
       </div>
@@ -696,49 +709,56 @@ function WoredaDashboard() {
         />
       </div>
 
-      {/* Row 5 -- recent system activity + quick actions */}
+      {/* Row 5 -- recent system activity (P.AUDIT_VIEW only, same gate as
+          /woreda/audit) + quick actions */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_2px_10px_rgba(0,0,0,0.02)] lg:col-span-2">
-          <h3 className="font-am-heading text-sm font-semibold text-slate-900">የቅርብ ጊዜ እንቅስቃሴዎች</h3>
-          <p className="text-xs text-slate-400">Recent System Activities</p>
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 text-left text-xs text-slate-400">
-                  <th className="py-1.5 font-normal">ፈጻሚ / Executor</th>
-                  <th className="py-1.5 font-normal">ተግባር / Action</th>
-                  <th className="py-1.5 font-normal">ነገር / Entity</th>
-                  <th className="py-1.5 text-right font-normal">ሰዓት / Time</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(recentActivity.data ?? []).map((row) => (
-                  <tr key={row.id} className="border-b border-slate-50 last:border-0">
-                    <td className="py-2">
-                      <div className="flex items-center gap-2">
-                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-100 text-[10px] font-semibold text-blue-700">
-                          {row.actor[0]?.toUpperCase() ?? "?"}
-                        </span>
-                        <span className="text-slate-800">{row.actor}</span>
-                      </div>
-                    </td>
-                    <td className="py-2 text-slate-600">{row.action}</td>
-                    <td className="py-2 text-slate-500">{row.entity}</td>
-                    <td className="py-2 text-right text-slate-400">{row.time}</td>
+        <PermissionGate permission={P.AUDIT_VIEW}>
+          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_2px_10px_rgba(0,0,0,0.02)] lg:col-span-2">
+            <h3 className="font-am-heading text-sm font-semibold text-slate-900">
+              የቅርብ ጊዜ እንቅስቃሴዎች
+            </h3>
+            <p className="text-xs text-slate-400">Recent System Activities</p>
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 text-left text-xs text-slate-400">
+                    <th className="py-1.5 font-normal">ፈጻሚ / Executor</th>
+                    <th className="py-1.5 font-normal">ተግባር / Action</th>
+                    <th className="py-1.5 font-normal">ነገር / Entity</th>
+                    <th className="py-1.5 text-right font-normal">ሰዓት / Time</th>
                   </tr>
-                ))}
-                {recentActivity.data?.length === 0 && !recentActivity.isLoading && (
-                  <tr>
-                    <td colSpan={4} className="py-6 text-center text-sm text-slate-400">
-                      ምንም እንቅስቃሴ የለም / No recent activity
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {(recentActivity.data ?? []).map((row) => (
+                    <tr key={row.id} className="border-b border-slate-50 last:border-0">
+                      <td className="py-2">
+                        <div className="flex items-center gap-2">
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-100 text-[10px] font-semibold text-blue-700">
+                            {row.actor[0]?.toUpperCase() ?? "?"}
+                          </span>
+                          <span className="text-slate-800">{row.actor}</span>
+                        </div>
+                      </td>
+                      <td className="py-2 text-slate-600">{row.action}</td>
+                      <td className="py-2 text-slate-500">{row.entity}</td>
+                      <td className="py-2 text-right text-slate-400">{row.time}</td>
+                    </tr>
+                  ))}
+                  {recentActivity.data?.length === 0 && !recentActivity.isLoading && (
+                    <tr>
+                      <td colSpan={4} className="py-6 text-center text-sm text-slate-400">
+                        ምንም እንቅስቃሴ የለም / No recent activity
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
+        </PermissionGate>
+        <div className={canViewAudit ? "" : "lg:col-span-3"}>
+          <QuickActionsCard />
         </div>
-        <QuickActionsCard />
       </div>
 
       {/* Row 6 -- daily revenue */}

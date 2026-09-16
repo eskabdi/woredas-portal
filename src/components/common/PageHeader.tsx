@@ -3,8 +3,18 @@ import { Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 
 /** Shared back-to-parent link, same convention wherever a page needs one
- * (master_design_system.md: a child page always has a way back to its list). */
-function BackLink({ href, dark, label }: { href: string; dark?: boolean; label?: ReactNode }) {
+ * (master_design_system.md: a child page always has a way back to its list).
+ * Exported so DetailHeader.tsx reuses this exact markup instead of a second
+ * hand-copied version that could drift from it. */
+export function BackLink({
+  href,
+  dark,
+  label,
+}: {
+  href: string;
+  dark?: boolean;
+  label?: ReactNode;
+}) {
   return (
     <Link
       to={href}

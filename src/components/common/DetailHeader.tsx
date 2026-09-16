@@ -1,6 +1,5 @@
 import type { ComponentType, ReactNode } from "react";
-import { Link } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
+import { BackLink } from "@/components/common/PageHeader";
 
 /**
  * Shared detail-screen header (master_design_system.md §3.C: "one DetailHeader
@@ -46,15 +45,7 @@ export function DetailHeader({
 }) {
   return (
     <div className="rounded-2xl bg-[color:var(--shell-header)] px-5 py-5 text-white shadow-sm">
-      {backHref && (
-        <Link
-          to={backHref}
-          className="mb-3 inline-flex items-center gap-1 text-xs font-medium text-white/70 hover:text-white"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          {backLabel ?? "ተመለስ / Back"}
-        </Link>
-      )}
+      {backHref && <BackLink href={backHref} label={backLabel} dark />}
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="flex min-w-0 items-center gap-4">
           {photoUrl ? (
