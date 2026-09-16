@@ -591,7 +591,7 @@ function ResidentProfilePage() {
                     <PermissionGate permission={P.RESIDENT_UPDATE}>
                       <Button
                         onClick={() => setAddHouseholdOpen(true)}
-                        className="mt-3 bg-blue-700 text-white hover:bg-blue-800"
+                        className="mt-3 bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90"
                         size="sm"
                       >
                         <UserPlus className="mr-2 h-4 w-4" />

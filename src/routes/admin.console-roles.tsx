@@ -202,7 +202,10 @@ function ConsoleRolesPage() {
         titleEn="Console Users and Role"
         description="Named roles that narrow a super admin's access to specific sections of this console."
         actions={
-          <Button onClick={() => setCreateOpen(true)} className="bg-blue-700 hover:bg-blue-800">
+          <Button
+            onClick={() => setCreateOpen(true)}
+            className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
+          >
             <Plus className="mr-1 h-4 w-4" />
             New Console Role
           </Button>
@@ -409,7 +412,11 @@ function CreateConsoleRoleDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button disabled={submitting} onClick={submit} className="bg-blue-700 hover:bg-blue-800">
+          <Button
+            disabled={submitting}
+            onClick={submit}
+            className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
+          >
             {submitting ? "Creating…" : "Create"}
           </Button>
         </DialogFooter>
@@ -507,7 +514,11 @@ function EditConsoleRoleDialog({
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button disabled={saving} onClick={save} className="bg-blue-700 hover:bg-blue-800">
+            <Button
+              disabled={saving}
+              onClick={save}
+              className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
+            >
               Save
             </Button>
           </div>

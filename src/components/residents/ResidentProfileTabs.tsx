@@ -124,7 +124,7 @@ function ChipRow({
             className={
               "font-am-body rounded-full border px-3 py-1 text-xs transition " +
               (active
-                ? "border-blue-600 bg-blue-600 text-white"
+                ? "border-[color:var(--color-shell-header)] bg-[color:var(--color-shell-header)] text-white"
                 : "border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-700")
             }
           >

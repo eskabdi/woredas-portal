@@ -132,7 +132,11 @@ export function ChangePasswordDialog({
               <span className="font-am-body">ይቅር</span>
               <span className="ml-1">/ Cancel</span>
             </Button>
-            <Button type="submit" disabled={submitting} className="bg-blue-700 hover:bg-blue-800">
+            <Button
+              type="submit"
+              disabled={submitting}
+              className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
+            >
               {submitting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (

@@ -814,7 +814,7 @@ function CivilEventDetailPage() {
                   <Button
                     onClick={handlePass}
                     disabled={!allChecked || busy}
-                    className="bg-blue-700 text-white hover:bg-blue-800"
+                    className="bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90"
                   >
                     {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     <CheckCircle2 className="mr-2 h-4 w-4" />
@@ -854,7 +854,7 @@ function CivilEventDetailPage() {
                 <Button
                   onClick={handleSendForApproval}
                   disabled={busy || !canApprove}
-                  className="bg-blue-700 text-white hover:bg-blue-800"
+                  className="bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90"
                 >
                   {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   <span className="font-am-body">ለማጽደቅ ላክ</span>
@@ -905,7 +905,7 @@ function CivilEventDetailPage() {
                   <Button
                     onClick={handleApprove}
                     disabled={busy || !canApprove}
-                    className="bg-blue-700 text-white hover:bg-blue-800"
+                    className="bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90"
                   >
                     {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     <CheckCircle2 className="mr-2 h-4 w-4" />
@@ -979,7 +979,7 @@ function CivilEventDetailPage() {
                       to="/woreda/residents/$residentId"
                       params={{ residentId: event.resident_id }}
                     >
-                      <Button className="bg-blue-700 text-white hover:bg-blue-800">
+                      <Button className="bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90">
                         <span className="font-am-body">የነዋሪ መገለጫ ተመልከት</span>
                         <span className="ml-2 opacity-80">/ View Resident</span>
                       </Button>

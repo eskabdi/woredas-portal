@@ -524,7 +524,7 @@ function SettingsPage() {
           <Button
             onClick={onSave}
             disabled={saving || !form.formState.isDirty}
-            className="bg-blue-700 hover:bg-blue-800"
+            className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
           >
             {saving ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -832,7 +832,7 @@ function ServiceTypeCatalogTab({
         </div>
         <Button
           onClick={() => setCreating(true)}
-          className="bg-blue-700 hover:bg-blue-800"
+          className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
           size="sm"
         >
           <Plus className="mr-1.5 h-4 w-4" />
@@ -1151,7 +1151,11 @@ function ServiceTypeDialog({
           <Button variant="outline" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
-          <Button onClick={onSubmit} disabled={saving} className="bg-blue-700 hover:bg-blue-800">
+          <Button
+            onClick={onSubmit}
+            disabled={saving}
+            className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
+          >
             {saving ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
@@ -1199,7 +1203,7 @@ function FeesTab({
         </div>
         <Button
           onClick={() => setCreating(true)}
-          className="bg-blue-700 hover:bg-blue-800"
+          className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
           size="sm"
         >
           <Plus className="mr-1.5 h-4 w-4" />
@@ -1454,7 +1458,11 @@ function FeeDialog({
           <Button variant="outline" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
-          <Button onClick={onSubmit} disabled={saving} className="bg-blue-700 hover:bg-blue-800">
+          <Button
+            onClick={onSubmit}
+            disabled={saving}
+            className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
+          >
             {saving ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (

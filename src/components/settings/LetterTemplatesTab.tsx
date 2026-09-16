@@ -194,7 +194,7 @@ export function LetterTemplatesTab() {
                   </Button>
                   <Button
                     size="sm"
-                    className="bg-blue-700 hover:bg-blue-800"
+                    className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
                     disabled={!dirty || saveMutation.isPending}
                     onClick={() => saveMutation.mutate()}
                   >

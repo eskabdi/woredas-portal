@@ -320,7 +320,10 @@ export function UsersRolesTab() {
               placeholder="በስም ወይም ሚና ይፈልጉ / Search name or role…"
               className="max-w-xs"
             />
-            <Button onClick={() => setInviteOpen(true)} className="bg-blue-700 hover:bg-blue-800">
+            <Button
+              onClick={() => setInviteOpen(true)}
+              className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
+            >
               <Plus className="mr-2 h-4 w-4" />
               <span className="font-am-body">ተጠቃሚ ጨምር</span>
               <span className="ml-1 text-xs opacity-80">/ Add User</span>
@@ -464,7 +467,7 @@ export function UsersRolesTab() {
           <div className="mb-3 flex justify-end">
             <Button
               onClick={() => setAssignRoleOpen(true)}
-              className="bg-blue-700 hover:bg-blue-800"
+              className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
             >
               <UserPlus className="mr-2 h-4 w-4" />
               <span className="font-am-body">የሚና ምድብ ስጥ</span>
@@ -864,7 +867,11 @@ function InviteDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button disabled={submitting} onClick={submit} className="bg-blue-700 hover:bg-blue-800">
+          <Button
+            disabled={submitting}
+            onClick={submit}
+            className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
+          >
             {submitting ? "Sending…" : "Send Invitation"}
           </Button>
         </DialogFooter>
@@ -1010,7 +1017,7 @@ function ChangeRoleDialog({
           </Button>
           <Button
             disabled={submitting}
-            className="bg-blue-700 hover:bg-blue-800"
+            className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
             onClick={async () => {
               if (!current) return;
               setSubmitting(true);
@@ -1349,7 +1356,7 @@ function AssignRoleDialog({
           </Button>
           <Button
             disabled={!selected || submitting}
-            className="bg-blue-700 hover:bg-blue-800"
+            className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
             onClick={async () => {
               if (!selected) return;
               setSubmitting(true);

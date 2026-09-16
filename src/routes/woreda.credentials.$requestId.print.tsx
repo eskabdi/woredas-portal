@@ -1098,7 +1098,7 @@ function PrintPage() {
 
               <div className="space-y-2">
                 <Button
-                  className="w-full bg-blue-700 hover:bg-blue-800"
+                  className="w-full bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
                   disabled={!canPrint}
                   onClick={() => setConfirmOpen(true)}
                 >
@@ -1321,7 +1321,7 @@ function PrintPage() {
                 e.preventDefault();
                 handlePrint();
               }}
-              className="bg-blue-700 hover:bg-blue-800"
+              className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
             >
               {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Confirm &amp; Print

@@ -275,7 +275,7 @@ function HouseholdsListPage() {
           <PermissionGate permission={P.HOUSEHOLD_CREATE}>
             <Button
               onClick={() => navigate({ to: "/woreda/households/new" })}
-              className="bg-blue-700 text-white hover:bg-blue-800"
+              className="bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90"
             >
               <Plus className="mr-2 h-4 w-4" />
               <span className="font-am-body">አዲስ ቤተሰብ</span>
@@ -404,7 +404,7 @@ function HouseholdsListPage() {
                   {!filtersActive && (
                     <PermissionGate permission={P.HOUSEHOLD_CREATE}>
                       <Link to="/woreda/households/new" className="mt-2">
-                        <Button className="bg-blue-700 text-white hover:bg-blue-800">
+                        <Button className="bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90">
                           <Plus className="mr-2 h-4 w-4" />
                           <span className="font-am-body">አዲስ ቤተሰብ መዝግብ</span>
                         </Button>

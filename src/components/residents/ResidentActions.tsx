@@ -555,7 +555,7 @@ export function AddToHouseholdDialog({
           <Button
             disabled={!selectedId || assign.isPending}
             onClick={() => selectedId && assign.mutate(selectedId)}
-            className="bg-blue-700 text-white hover:bg-blue-800"
+            className="bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90"
           >
             <span className="font-am-body">ጨምር / Add</span>
           </Button>

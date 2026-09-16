@@ -578,7 +578,7 @@ function TabExportBar({
         type="button"
         size="sm"
         onClick={onPrint}
-        className="rounded-md bg-blue-700 text-white hover:bg-blue-800"
+        className="rounded-md bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90"
       >
         <Printer className="mr-2 h-4 w-4" />
         <span className="font-am-body">አትም</span>

@@ -498,7 +498,7 @@ function HouseholdDetailPage() {
                 e.preventDefault();
                 if (setHeadFor) setHeadMutation.mutate(setHeadFor.id);
               }}
-              className="bg-blue-700 hover:bg-blue-800"
+              className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
             >
               <span className="font-am-body">አረጋግጥ / Confirm</span>
             </AlertDialogAction>

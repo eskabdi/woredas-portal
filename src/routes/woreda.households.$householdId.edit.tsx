@@ -265,7 +265,7 @@ function EditHouseholdPage() {
             <Button
               type="submit"
               disabled={updateMutation.isPending}
-              className="bg-blue-700 text-white hover:bg-blue-800"
+              className="bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90"
             >
               {updateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               <span className="font-am-body">ለውጥ አስቀምጥ</span>

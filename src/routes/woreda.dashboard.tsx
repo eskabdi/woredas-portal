@@ -593,7 +593,7 @@ function WoredaDashboard() {
                     onClick={() => setRegPeriod(p)}
                     className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
                       regPeriod === p
-                        ? "bg-[#1D5BD8] text-white shadow-sm"
+                        ? "bg-[color:var(--color-shell-header)] text-white shadow-sm"
                         : "text-slate-500 hover:text-slate-700"
                     }`}
                   >

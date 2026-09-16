@@ -361,7 +361,7 @@ function ProvisionPage() {
             <Button
               disabled={!canNext()}
               onClick={() => setStep((s) => Math.min(4, s + 1))}
-              className="bg-blue-700 hover:bg-blue-800"
+              className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
             >
               Next <ChevronRight className="ml-1 h-4 w-4" />
             </Button>
@@ -369,7 +369,7 @@ function ProvisionPage() {
             <Button
               disabled={submitting}
               onClick={submit}
-              className="bg-blue-700 hover:bg-blue-800"
+              className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
             >
               <Shield className="mr-2 h-4 w-4" />
               <span className="font-am-body">ጨርስ እና ወረዳ አስተዳዳሪ ፍጠር</span>

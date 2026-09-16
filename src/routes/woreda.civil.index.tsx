@@ -410,7 +410,7 @@ function CivilListPage() {
             <PermissionGate permission={P.CIVIL_REGISTER}>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button className="bg-blue-700 text-white hover:bg-blue-800">
+                  <Button className="bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90">
                     <Plus className="mr-2 h-4 w-4" />
                     <span className="font-am-body">አዲስ ምዝገባ</span>
                     <span className="ml-2 opacity-80">/ New Registration</span>
@@ -470,7 +470,7 @@ function CivilListPage() {
           <PermissionGate permission={P.CIVIL_REGISTER}>
             <Button
               onClick={() => navigate({ to: "/woreda/civil/birth/new" })}
-              className="mt-3 bg-blue-700 text-white hover:bg-blue-800"
+              className="mt-3 bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90"
             >
               <Baby className="mr-2 h-4 w-4" />
               <span className="font-am-body">አዲስ የልደት ምዝገባ</span>

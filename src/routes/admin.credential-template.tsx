@@ -659,7 +659,7 @@ function CredentialTemplatePage() {
               Discard Draft
             </Button>
             <Button
-              className="bg-blue-700 hover:bg-blue-800"
+              className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
               onClick={publish}
               disabled={publishing}
             >
@@ -689,7 +689,7 @@ function CredentialTemplatePage() {
                 }}
                 className={`rounded px-4 py-1.5 text-sm font-medium transition ${
                   activeSide === s
-                    ? "bg-blue-700 text-white shadow"
+                    ? "bg-[color:var(--color-shell-header)] text-white shadow"
                     : "text-slate-600 hover:bg-slate-200"
                 }`}
               >
@@ -1291,7 +1291,7 @@ function ToggleBtn({
       title={title}
       className={`inline-flex h-8 w-8 items-center justify-center rounded border transition ${
         active
-          ? "border-blue-600 bg-blue-600 text-white"
+          ? "border-[color:var(--color-shell-header)] bg-[color:var(--color-shell-header)] text-white"
           : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
       }`}
     >

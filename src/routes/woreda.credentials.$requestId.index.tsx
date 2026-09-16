@@ -992,7 +992,7 @@ function CredentialRequestDetailPage() {
                     <Button
                       onClick={handlePass}
                       disabled={!allChecked || missingCorrectionDoc || busy || isOffline}
-                      className="bg-blue-700 text-white hover:bg-blue-800"
+                      className="bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90"
                     >
                       {busy ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1018,7 +1018,7 @@ function CredentialRequestDetailPage() {
                   <Button
                     onClick={handleResubmit}
                     disabled={busy || isOffline}
-                    className="bg-blue-700 text-white hover:bg-blue-800"
+                    className="bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90"
                   >
                     {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     <span className="font-am-body">ዳግም ለክለሳ አስገባ</span>
@@ -1899,7 +1899,7 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
                   <Button
                     onClick={handleRecord}
                     disabled={!canSubmit}
-                    className="bg-blue-700 text-white hover:bg-blue-800"
+                    className="bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90"
                   >
                     {busy ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -2156,7 +2156,11 @@ function CredentialReadinessCard({
                   </dd>
                 </dl>
                 <div className="mt-4">
-                  <Button asChild size="sm" className="bg-blue-700 hover:bg-blue-800">
+                  <Button
+                    asChild
+                    size="sm"
+                    className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
+                  >
                     <Link to="/woreda/credentials/$requestId/print" params={{ requestId }}>
                       <Printer className="mr-2 h-4 w-4" />
                       <span className="font-am-body">ቅድመ ዕይታ እና ህትመት</span>
@@ -2527,7 +2531,7 @@ function IssuanceCard({
               <Button
                 onClick={handleSubmit}
                 disabled={!canSubmit}
-                className="bg-blue-700 hover:bg-blue-800"
+                className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
               >
                 {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 <span className="font-am-body">ርክክብ አረጋግጥ</span>

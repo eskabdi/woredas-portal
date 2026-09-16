@@ -373,7 +373,7 @@ function ResidentsListPage() {
           <PermissionGate permission={P.RESIDENT_CREATE}>
             <Button
               onClick={() => navigate({ to: "/woreda/residents/new" })}
-              className="bg-blue-700 text-white hover:bg-blue-800"
+              className="bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90"
             >
               <Plus className="mr-2 h-4 w-4" />
               <span className="font-am-body">አዲስ ነዋሪ</span>
@@ -500,7 +500,7 @@ function ResidentsListPage() {
                   {!filtersActive && (
                     <PermissionGate permission={P.RESIDENT_CREATE}>
                       <Link to="/woreda/residents/new" className="mt-2">
-                        <Button className="bg-blue-700 text-white hover:bg-blue-800">
+                        <Button className="bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90">
                           <UserPlus className="mr-2 h-4 w-4" />
                           <span className="font-am-body">አዲስ ነዋሪ መዝግብ</span>
                         </Button>
@@ -1089,7 +1089,7 @@ function AddToHouseholdDialog({
           <Button
             disabled={!selectedId || assign.isPending}
             onClick={() => selectedId && assign.mutate(selectedId)}
-            className="bg-blue-700 text-white hover:bg-blue-800"
+            className="bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90"
           >
             <span className="font-am-body">ጨምር / Add</span>
           </Button>

@@ -199,7 +199,7 @@ function CredentialsListPage() {
             <PermissionGate permission={P.CREDENTIAL_ISSUE}>
               <Button
                 onClick={() => navigate({ to: "/woreda/credentials/new" })}
-                className="bg-blue-700 text-white hover:bg-blue-800"
+                className="bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90"
               >
                 <Plus className="mr-2 h-4 w-4" />
                 <span className="font-am-body">አዲስ ጥያቄ</span>

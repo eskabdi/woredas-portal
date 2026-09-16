@@ -109,7 +109,7 @@ function InvalidLinkCard({ description }: { description: string }) {
         <p className="mt-4 text-xs text-slate-400">{description}</p>
         <a
           href="/login"
-          className="mt-6 inline-flex w-full items-center justify-center rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800"
+          className="mt-6 inline-flex w-full items-center justify-center rounded-md bg-[color:var(--color-shell-header)] px-4 py-2 text-sm font-medium text-white hover:bg-[color:var(--color-shell-header)]/90"
         >
           Back to sign in
         </a>

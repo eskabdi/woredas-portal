@@ -570,7 +570,7 @@ function RentalRequestDetailPage() {
                 <Button
                   onClick={() => passVerification.mutate()}
                   disabled={passVerification.isPending}
-                  className="bg-blue-700 hover:bg-blue-800"
+                  className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
                 >
                   <CheckCircle2 className="mr-1 h-4 w-4" /> Pass Verification
                 </Button>
@@ -604,7 +604,7 @@ function RentalRequestDetailPage() {
                 <Button
                   onClick={() => approve.mutate()}
                   disabled={approve.isPending || houseOccupiedConflict}
-                  className="bg-blue-700 hover:bg-blue-800"
+                  className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
                 >
                   <CheckCircle2 className="mr-1 h-4 w-4" /> Approve
                 </Button>

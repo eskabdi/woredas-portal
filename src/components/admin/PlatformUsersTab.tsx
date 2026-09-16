@@ -329,7 +329,10 @@ export function PlatformUsersTab() {
             User Management — Super Admin and Tenant Admin accounts across the platform.
           </p>
         </div>
-        <Button onClick={() => setInviteOpen(true)} className="bg-blue-700 hover:bg-blue-800">
+        <Button
+          onClick={() => setInviteOpen(true)}
+          className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
+        >
           <Plus className="mr-1 h-4 w-4" />
           <span className="font-am-body">አዲስ አስተዳዳሪ</span>
           <span className="ml-1 text-xs opacity-80">/ Add Admin</span>
@@ -708,7 +711,11 @@ function InviteAdminDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button disabled={submitting} onClick={submit} className="bg-blue-700 hover:bg-blue-800">
+          <Button
+            disabled={submitting}
+            onClick={submit}
+            className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
+          >
             {submitting ? "Sending…" : "Send Invitation"}
           </Button>
         </DialogFooter>

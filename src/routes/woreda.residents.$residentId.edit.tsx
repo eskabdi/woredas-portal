@@ -333,7 +333,7 @@ function EditResidentPage() {
               <Button
                 type="button"
                 onClick={goNext}
-                className="bg-blue-700 text-white hover:bg-blue-800"
+                className="bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90"
               >
                 <span className="font-am-body">ቀጣይ</span>
                 <span className="ml-1 opacity-80">/ Next</span>
@@ -343,7 +343,7 @@ function EditResidentPage() {
               <Button
                 type="submit"
                 disabled={submitting}
-                className="bg-blue-700 text-white hover:bg-blue-800"
+                className="bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90"
               >
                 {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 <span className="font-am-body">ለውጦችን አስቀምጥ</span>

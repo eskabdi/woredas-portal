@@ -99,7 +99,10 @@ export function CustomRolesTab() {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Button onClick={() => setCreateOpen(true)} className="bg-blue-700 hover:bg-blue-800">
+        <Button
+          onClick={() => setCreateOpen(true)}
+          className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
+        >
           <Plus className="mr-2 h-4 w-4" />
           <span className="font-am-body">አዲስ ሚና</span>
           <span className="ml-1 text-xs opacity-80">/ New Custom Role</span>
@@ -235,7 +238,11 @@ function CreateRoleDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button disabled={submitting} onClick={submit} className="bg-blue-700 hover:bg-blue-800">
+          <Button
+            disabled={submitting}
+            onClick={submit}
+            className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
+          >
             Create
           </Button>
         </DialogFooter>
