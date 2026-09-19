@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, Navigate } from "@tanstack/react-router";
 import { useAuthStore } from "@/stores/authStore";
-import { WoredaShell } from "@/components/layout/WoredaShell";
+import { AppShell } from "@/components/layout/AppShell";
 
 export const Route = createFileRoute("/woreda")({
   ssr: false,
@@ -22,8 +22,8 @@ function WoredaLayout() {
   if (role === "super_admin") return <Navigate to="/admin/dashboard" />;
 
   return (
-    <WoredaShell>
+    <AppShell portal="woreda">
       <Outlet />
-    </WoredaShell>
+    </AppShell>
   );
 }

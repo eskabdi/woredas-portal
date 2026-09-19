@@ -127,7 +127,7 @@ export function RichTextEditor({
 
       <div className="relative">
         {isEmpty && !focused && placeholder && (
-          <div className="font-noto-ethiopic pointer-events-none absolute left-4 top-3 text-sm text-slate-400">
+          <div className="font-am-body pointer-events-none absolute left-4 top-3 text-sm text-slate-400">
             {placeholder}
           </div>
         )}
@@ -141,7 +141,7 @@ export function RichTextEditor({
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           onInput={(e) => onChange((e.currentTarget as HTMLDivElement).innerHTML)}
-          className="rte-content font-noto-ethiopic max-h-[520px] overflow-y-auto px-4 py-3 text-sm leading-7 outline-none"
+          className="rte-content font-am-body max-h-[520px] overflow-y-auto px-4 py-3 text-sm leading-7 outline-none"
           style={{ minHeight }}
         />
       </div>

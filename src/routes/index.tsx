@@ -98,7 +98,7 @@ function InvalidLinkCard({ description }: { description: string }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
       <div className="w-full max-w-md rounded-xl bg-white p-8 text-center shadow-lg">
-        <h1 className="font-noto-ethiopic text-2xl font-bold text-slate-900">ወረዳ አስተዳደር ሥርዓት</h1>
+        <h1 className="font-am-heading text-2xl font-bold text-slate-900">ወረዳ አስተዳደር ሥርዓት</h1>
         <p className="mt-1 text-sm text-slate-500">Woreda Administration ERP — Harari Region</p>
         <div className="my-6 border-t border-slate-200" />
         <h2 className="text-lg font-semibold text-slate-900">This link is no longer valid</h2>
@@ -109,7 +109,7 @@ function InvalidLinkCard({ description }: { description: string }) {
         <p className="mt-4 text-xs text-slate-400">{description}</p>
         <a
           href="/login"
-          className="mt-6 inline-flex w-full items-center justify-center rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800"
+          className="mt-6 inline-flex w-full items-center justify-center rounded-md bg-[color:var(--color-shell-header)] px-4 py-2 text-sm font-medium text-white hover:bg-[color:var(--color-shell-header)]/90"
         >
           Back to sign in
         </a>

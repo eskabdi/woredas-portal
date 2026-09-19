@@ -15,7 +15,7 @@ export function KebeleFilter({ value, onChange, className, hint }: KebeleFilterP
 
   return (
     <div className={className}>
-      <Label className="font-noto-ethiopic text-xs">ቀበሌ / Kebele</Label>
+      <Label className="font-am-body text-xs">ቀበሌ / Kebele</Label>
       <select
         className="mt-1 block h-10 w-[220px] rounded-md border border-input bg-background px-3 text-sm"
         value={value}

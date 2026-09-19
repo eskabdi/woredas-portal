@@ -98,7 +98,7 @@ export function ResidentSearchPicker({
     return (
       <div className="flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2">
         <div className="flex-1 min-w-0">
-          <div className="font-noto-ethiopic truncate text-sm font-medium text-slate-900">
+          <div className="font-am-body truncate text-sm font-medium text-slate-900">
             {selected.full_name_am || selected.full_name || "—"}
           </div>
           <div className="font-mono text-xs text-slate-500">{selected.resident_number}</div>
@@ -134,7 +134,7 @@ export function ResidentSearchPicker({
           onFocus={() => setOpen(true)}
           disabled={disabled}
           placeholder={placeholder ?? "በስም ወይም በመለያ ቁጥር ይፈልጉ / Search by name or resident #"}
-          className="font-noto-ethiopic pl-10"
+          className="font-am-body pl-10"
         />
       </div>
       {open && debounced.length >= 2 && (
@@ -145,7 +145,7 @@ export function ResidentSearchPicker({
             </div>
           )}
           {!query.isLoading && (query.data?.length ?? 0) === 0 && (
-            <div className="font-noto-ethiopic px-3 py-3 text-sm text-slate-500">
+            <div className="font-am-body px-3 py-3 text-sm text-slate-500">
               ምንም ውጤት የለም / No matches
             </div>
           )}
@@ -161,7 +161,7 @@ export function ResidentSearchPicker({
               }}
               className="block w-full px-3 py-2 text-left hover:bg-blue-50"
             >
-              <div className="font-noto-ethiopic text-sm font-medium text-slate-900">
+              <div className="font-am-body text-sm font-medium text-slate-900">
                 {r.full_name_am || r.full_name || "—"}
               </div>
               <div className="font-mono text-xs text-slate-500">{r.resident_number}</div>

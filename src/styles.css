@@ -6,6 +6,27 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
+ * Amharic display faces (docs/ux/ux_amharic_typography_plan.md).
+ * Tayitu is decorative use only (headings/titles/nav labels) per the
+ * licensing decision recorded there — never applied to body-weight
+ * Amharic text at volume. Both fall back to Noto Sans Ethiopic, which
+ * stays loaded (see __root.tsx) so a font-load failure is invisible to
+ * users rather than a missing-glyph regression.
+ */
+@font-face {
+  font-family: "Tayitu";
+  src: url("/fonts/Tayitu-Regular.woff2") format("woff2");
+  font-display: swap;
+  font-weight: 400 700;
+}
+@font-face {
+  font-family: "Jiret";
+  src: url("/fonts/Jiret-Regular.woff2") format("woff2");
+  font-display: swap;
+  font-weight: 400 700;
+}
+
+/*
  * Design system definition.
  *
  * The @theme inline block maps CSS custom properties to Tailwind utility
@@ -21,8 +42,20 @@
 
 @theme inline {
   --font-noto-ethiopic: "Noto Sans Ethiopic", sans-serif;
+  --font-am-heading: "Tayitu", "Noto Sans Ethiopic", sans-serif;
+  --font-am-body: "Jiret", "Noto Sans Ethiopic", sans-serif;
   --font-inter: "Inter", sans-serif;
   --font-sans: "Inter", sans-serif;
+  --color-shell-header: var(--shell-header);
+  --color-shell-header-foreground: var(--shell-header-foreground);
+  --color-shell-accent-gold: var(--shell-accent-gold);
+  --color-shell-canvas: var(--shell-canvas);
+  --color-status-success: var(--status-success);
+  --color-status-success-bg: var(--status-success-bg);
+  --color-status-warning: var(--status-warning);
+  --color-status-warning-bg: var(--status-warning-bg);
+  --color-status-danger: var(--status-danger);
+  --color-status-danger-bg: var(--status-danger-bg);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -99,6 +132,18 @@
   --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
   --sidebar-border: oklch(0.929 0.013 255.508);
   --sidebar-ring: oklch(0.704 0.04 256.788);
+
+  /* Design system palette (docs/ux/ux_restructure_plan.md — AppShell). */
+  --shell-header: oklch(0.212 0.043 256.459); /* #0B192C */
+  --shell-header-foreground: oklch(1 0 0);
+  --shell-accent-gold: oklch(0.769 0.165 70.08); /* #F59E0B */
+  --shell-canvas: oklch(0.972 0.005 258.325); /* #F4F6F9 */
+  --status-success: oklch(0.696 0.149 162.48); /* #10B981 */
+  --status-success-bg: oklch(0.696 0.149 162.48 / 10%);
+  --status-warning: oklch(0.769 0.165 70.08); /* #F59E0B */
+  --status-warning-bg: oklch(0.769 0.165 70.08 / 10%);
+  --status-danger: oklch(0.637 0.208 25.331); /* #EF4444 */
+  --status-danger-bg: oklch(0.637 0.208 25.331 / 10%);
 }
 
 .dark {
@@ -150,6 +195,20 @@
   :lang(am),
   .font-noto-ethiopic {
     font-family: "Noto Sans Ethiopic", sans-serif;
+  }
+
+  /*
+   * Amharic type split (docs/ux/ux_amharic_typography_plan.md §1): headings,
+   * section titles and nav labels use Tayitu; body copy (table cells, form
+   * labels/hints, toasts, print body text) uses Jiret. .font-noto-ethiopic
+   * stays defined above during migration -- see the plan for the per-file
+   * worklist -- and is removed once no call sites reference it.
+   */
+  .font-am-heading {
+    font-family: var(--font-am-heading);
+  }
+  .font-am-body {
+    font-family: var(--font-am-body);
   }
 }
 

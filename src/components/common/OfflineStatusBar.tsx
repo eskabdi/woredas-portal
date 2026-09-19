@@ -70,12 +70,12 @@ export function OfflineStatusBar() {
       {!isOnline && (
         <span className="flex items-center gap-1 font-medium">
           <WifiOff className="h-3.5 w-3.5" />
-          <span className="font-noto-ethiopic">ከመስመር ውጭ ነዎት</span>
+          <span className="font-am-body">ከመስመር ውጭ ነዎት</span>
           <span className="opacity-80">/ You are offline</span>
         </span>
       )}
       {count > 0 && (
-        <span className="font-noto-ethiopic">
+        <span className="font-am-body">
           {count} በመጠባበቅ ላይ <span className="opacity-70">/ {count} queued</span>
         </span>
       )}
@@ -89,7 +89,7 @@ export function OfflineStatusBar() {
           className="ml-auto h-6 gap-1 border-amber-300 bg-white px-2 text-xs font-medium hover:bg-amber-100"
         >
           <RefreshCw className={`h-3 w-3 ${syncing ? "animate-spin" : ""}`} />
-          <span className="font-noto-ethiopic">አሁን አመሳስል</span>
+          <span className="font-am-body">አሁን አመሳስል</span>
           <span className="opacity-70">/ Sync now</span>
         </Button>
       )}

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Building2, Pencil, UserPlus, UserMinus, ScrollText, Printer } from "lucide-react";
 import { toast } from "sonner";
-import { PageHeader } from "@/components/common/PageHeader";
+import { DetailHeader } from "@/components/common/DetailHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -183,14 +183,28 @@ function RentalHouseDetailPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader
+      <DetailHeader
+        backHref="/woreda/rental-houses"
         icon={Building2}
         titleAm={`ቤት ቁ. ${house.house_number}`}
         titleEn={`House ${house.house_number}`}
-        description={
+        meta={
           house.kebele?.kebele_name_am
-            ? `${house.kebele.kebele_name_am} (#${house.kebele.kebele_number ?? ""})`
+            ? [{ label: `${house.kebele.kebele_name_am} (#${house.kebele.kebele_number ?? ""})` }]
             : undefined
+        }
+        status={
+          <Badge
+            variant={
+              house.occupancy_status === "occupied"
+                ? "default"
+                : house.occupancy_status === "vacant"
+                  ? "secondary"
+                  : "outline"
+            }
+          >
+            {house.occupancy_status}
+          </Badge>
         }
         actions={
           <div className="flex gap-2">
@@ -204,7 +218,7 @@ function RentalHouseDetailPage() {
               }
             >
               <Printer className="mr-1 h-4 w-4" />
-              <span className="font-noto-ethiopic">የተከራይ መገለጫ አትም</span>
+              <span className="font-am-body">የተከራይ መገለጫ አትም</span>
               <span className="ml-1 opacity-80">/ Print occupant profile</span>
             </Button>
             {hasPermission(P.RENTAL_CREATE) && (
@@ -268,13 +282,13 @@ function RentalHouseDetailPage() {
 
       {active && (
         <Card className="p-4">
-          <div className="mb-2 font-noto-ethiopic text-sm font-semibold text-slate-700">
+          <div className="mb-2 font-am-body text-sm font-semibold text-slate-700">
             አሁን ተከራይ / Current Occupant
           </div>
           <div className="flex flex-wrap items-center gap-6">
             <div>
               <div className="text-xs text-slate-500">Name</div>
-              <div className="font-noto-ethiopic">
+              <div className="font-am-body">
                 {active.resident?.full_name_am || active.resident?.full_name || "—"}
               </div>
             </div>
@@ -316,7 +330,7 @@ function RentalHouseDetailPage() {
               )}
               {(occupancies ?? []).map((o) => (
                 <tr key={o.occupancy_id} className="border-t">
-                  <td className="px-4 py-2 font-noto-ethiopic">
+                  <td className="px-4 py-2 font-am-body">
                     {o.resident?.full_name_am || o.resident?.full_name || "—"}
                   </td>
                   <td className="px-4 py-2">{fmtDate(o.rent_start_date)}</td>
@@ -362,7 +376,7 @@ function RentalHouseDetailPage() {
                 <tr key={r.rental_request_id} className="border-t">
                   <td className="px-4 py-2 font-medium">{r.request_number}</td>
                   <td className="px-4 py-2">{r.request_type}</td>
-                  <td className="px-4 py-2 font-noto-ethiopic">
+                  <td className="px-4 py-2 font-am-body">
                     {r.resident?.full_name_am || r.resident?.full_name || "—"}
                   </td>
                   <td className="px-4 py-2">
@@ -521,14 +535,14 @@ function AssignDialog({
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>
-            <span className="font-noto-ethiopic">የተከራይ ምዝገባ ጥያቄ</span>{" "}
+            <span className="font-am-body">የተከራይ ምዝገባ ጥያቄ</span>{" "}
             <span className="text-sm text-slate-500">/ New Occupancy Request</span>
           </DialogTitle>
         </DialogHeader>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <div className="md:col-span-2">
             <Label>
-              <span className="font-noto-ethiopic">ሙሉ ስም</span>{" "}
+              <span className="font-am-body">ሙሉ ስም</span>{" "}
               <span className="text-xs text-slate-500">/ Full Name (search registry)</span>
             </Label>
             <ResidentSearchPicker
@@ -540,42 +554,42 @@ function AssignDialog({
           </div>
           <div>
             <Label>
-              <span className="font-noto-ethiopic">የትውልድ ዘመን</span>{" "}
+              <span className="font-am-body">የትውልድ ዘመን</span>{" "}
               <span className="text-xs text-slate-500">/ DoB (ET)</span>
             </Label>
             <EthiopianDateInput value={dob} onChange={setDob} />
           </div>
           <div>
             <Label>
-              <span className="font-noto-ethiopic">የትውልድ ስፍራ</span>{" "}
+              <span className="font-am-body">የትውልድ ስፍራ</span>{" "}
               <span className="text-xs text-slate-500">/ Place of Birth</span>
             </Label>
             <Input value={placeOfBirth} onChange={(e) => setPlaceOfBirth(e.target.value)} />
           </div>
           <div>
             <Label>
-              <span className="font-noto-ethiopic">ስራ</span>{" "}
+              <span className="font-am-body">ስራ</span>{" "}
               <span className="text-xs text-slate-500">/ Occupation</span>
             </Label>
             <Input value={occupation} onChange={(e) => setOccupation(e.target.value)} />
           </div>
           <div>
             <Label>
-              <span className="font-noto-ethiopic">የስራ አድራሻ</span>{" "}
+              <span className="font-am-body">የስራ አድራሻ</span>{" "}
               <span className="text-xs text-slate-500">/ Work Address</span>
             </Label>
             <Input value={workAddress} onChange={(e) => setWorkAddress(e.target.value)} />
           </div>
           <div>
             <Label>
-              <span className="font-noto-ethiopic">የገባበት ቀን</span>{" "}
+              <span className="font-am-body">የገባበት ቀን</span>{" "}
               <span className="text-xs text-slate-500">/ Rent Start (ET)</span>
             </Label>
             <EthiopianDateInput value={rentStart} onChange={setRentStart} />
           </div>
           <div>
             <Label>
-              <span className="font-noto-ethiopic">የቤት ኪራይ መጠን</span>{" "}
+              <span className="font-am-body">የቤት ኪራይ መጠን</span>{" "}
               <span className="text-xs text-slate-500">/ Amount</span>
             </Label>
             <Input
@@ -667,7 +681,7 @@ function VacateDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            <span className="font-noto-ethiopic">የመተው ጥያቄ</span>{" "}
+            <span className="font-am-body">የመተው ጥያቄ</span>{" "}
             <span className="text-sm text-slate-500">/ Vacate Occupancy</span>
           </DialogTitle>
         </DialogHeader>

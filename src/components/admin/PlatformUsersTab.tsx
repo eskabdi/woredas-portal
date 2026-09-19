@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Plus, MoreHorizontal, Search } from "lucide-react";
+import { Plus, MoreHorizontal } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,8 +45,7 @@ import {
   useUrlSearchTerm,
 } from "@/components/common/TablePagination";
 import {
-  ClearFiltersButton,
-  ExportButtons,
+  TableToolbar,
   SortableTh,
   useClearTableFilters,
   useUrlSort,
@@ -325,14 +324,17 @@ export function PlatformUsersTab() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h2 className="font-noto-ethiopic text-lg font-semibold text-slate-900">የተጠቃሚ አስተዳደር</h2>
+          <h2 className="font-am-heading text-lg font-semibold text-slate-900">የተጠቃሚ አስተዳደር</h2>
           <p className="text-sm text-slate-500">
             User Management — Super Admin and Tenant Admin accounts across the platform.
           </p>
         </div>
-        <Button onClick={() => setInviteOpen(true)} className="bg-blue-700 hover:bg-blue-800">
+        <Button
+          onClick={() => setInviteOpen(true)}
+          className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
+        >
           <Plus className="mr-1 h-4 w-4" />
-          <span className="font-noto-ethiopic">አዲስ አስተዳዳሪ</span>
+          <span className="font-am-body">አዲስ አስተዳዳሪ</span>
           <span className="ml-1 text-xs opacity-80">/ Add Admin</span>
         </Button>
       </div>
@@ -346,64 +348,63 @@ export function PlatformUsersTab() {
       </div>
 
       {/* Filters */}
-      <Card className="mb-4 p-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative min-w-[240px] flex-1">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-slate-400" />
-            <Input
-              placeholder="Search name or email…"
-              className="pl-8"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
-          </div>
-          <Select value={roleFilter} onValueChange={(v) => setRoleFilter(v as typeof roleFilter)}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Roles</SelectItem>
-              <SelectItem value="super_admin">Super Admin</SelectItem>
-              <SelectItem value="tenant_admin">Tenant Admin</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select
-            value={statusFilter}
-            onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}
-          >
-            <SelectTrigger className="w-[160px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="suspended">Suspended</SelectItem>
-            </SelectContent>
-          </Select>
-          <ClearFiltersButton active={filtersActive} onClear={clearFilters} />
-          <ExportButtons onCsv={exportCsv} onPdf={handleExportPdf} busy={exporting} />
-        </div>
-      </Card>
+      <TableToolbar
+        searchValue={q}
+        onSearchChange={setQ}
+        searchPlaceholder="Search name or email…"
+        clearActive={filtersActive}
+        onClear={clearFilters}
+        onExportCsv={exportCsv}
+        onExportPdf={handleExportPdf}
+        exportBusy={exporting}
+        filters={
+          <>
+            <Select value={roleFilter} onValueChange={(v) => setRoleFilter(v as typeof roleFilter)}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Roles</SelectItem>
+                <SelectItem value="super_admin">Super Admin</SelectItem>
+                <SelectItem value="tenant_admin">Tenant Admin</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select
+              value={statusFilter}
+              onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}
+            >
+              <SelectTrigger className="w-[160px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="suspended">Suspended</SelectItem>
+              </SelectContent>
+            </Select>
+          </>
+        }
+      />
 
       <Card className="overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-slate-600">
             <tr>
               <SortableTh field="tenant" sort={sort} className="text-xs font-medium">
-                <span className="font-noto-ethiopic">ወረዳ</span>
+                <span className="font-am-body">ወረዳ</span>
                 <span className="ml-1 text-slate-400">/ Tenant</span>
               </SortableTh>
               <SortableTh field="full_name" sort={sort} className="text-xs font-medium">
-                <span className="font-noto-ethiopic">ሙሉ ስም</span>
+                <span className="font-am-body">ሙሉ ስም</span>
                 <span className="ml-1 text-slate-400">/ Full Name</span>
               </SortableTh>
               <SortableTh field="role" sort={sort} className="text-xs font-medium">
-                <span className="font-noto-ethiopic">ሚና</span>
+                <span className="font-am-body">ሚና</span>
                 <span className="ml-1 text-slate-400">/ Role</span>
               </SortableTh>
               <SortableTh field="status" sort={sort} className="text-xs font-medium">
-                <span className="font-noto-ethiopic">ሁኔታ</span>
+                <span className="font-am-body">ሁኔታ</span>
                 <span className="ml-1 text-slate-400">/ Status</span>
               </SortableTh>
               <Th am="ድርጊት" en="Actions" className="text-right" />
@@ -428,7 +429,7 @@ export function PlatformUsersTab() {
                       <Badge variant="secondary">Platform</Badge>
                     ) : u.woreda_id && woredaMap.get(u.woreda_id) ? (
                       <div>
-                        <div className="font-noto-ethiopic">
+                        <div className="font-am-body">
                           {woredaMap.get(u.woreda_id)!.woreda_name_am}
                         </div>
                         <div className="text-xs text-slate-500">
@@ -467,7 +468,7 @@ export function PlatformUsersTab() {
                       <DropdownMenuContent align="end">
                         {u.status === "pending" && (
                           <DropdownMenuItem onClick={() => resendInvite(u)}>
-                            <span className="font-noto-ethiopic">ግብዣ ድጋሚ ላክ</span>
+                            <span className="font-am-body">ግብዣ ድጋሚ ላክ</span>
                             <span className="ml-2 text-xs text-slate-500">/ Resend Invite</span>
                           </DropdownMenuItem>
                         )}
@@ -479,12 +480,12 @@ export function PlatformUsersTab() {
                             }
                             onClick={() => setSuspendUser(u)}
                           >
-                            <span className="font-noto-ethiopic text-red-600">እግድ</span>
+                            <span className="font-am-body text-red-600">እግድ</span>
                             <span className="ml-2 text-xs text-slate-500">/ Suspend</span>
                           </DropdownMenuItem>
                         ) : (
                           <DropdownMenuItem onClick={() => setReactivateUser(u)}>
-                            <span className="font-noto-ethiopic text-green-700">ፍቀድ</span>
+                            <span className="font-am-body text-green-700">ፍቀድ</span>
                             <span className="ml-2 text-xs text-slate-500">/ Reactivate</span>
                           </DropdownMenuItem>
                         )}
@@ -516,7 +517,7 @@ export function PlatformUsersTab() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              <span className="font-noto-ethiopic">አስተዳዳሪውን ማገድ?</span>
+              <span className="font-am-body">አስተዳዳሪውን ማገድ?</span>
               <span className="ml-2 text-sm text-slate-500">/ Suspend admin?</span>
             </AlertDialogTitle>
             <AlertDialogDescription>{suspendUser?.full_name}</AlertDialogDescription>
@@ -540,7 +541,7 @@ export function PlatformUsersTab() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              <span className="font-noto-ethiopic">አስተዳዳሪውን መፍቀድ?</span>
+              <span className="font-am-body">አስተዳዳሪውን መፍቀድ?</span>
               <span className="ml-2 text-sm text-slate-500">/ Reactivate admin?</span>
             </AlertDialogTitle>
             <AlertDialogDescription>{reactivateUser?.full_name}</AlertDialogDescription>
@@ -589,7 +590,7 @@ function Kpi({
   return (
     <Card className="p-5">
       <div className={`text-3xl font-bold ${color}`}>{value}</div>
-      <div className="mt-1 font-noto-ethiopic text-sm text-slate-700">{am}</div>
+      <div className="mt-1 font-am-body text-sm text-slate-700">{am}</div>
       <div className="text-xs text-slate-500">{en}</div>
     </Card>
   );
@@ -598,7 +599,7 @@ function Kpi({
 function Th({ am, en, className }: { am: string; en: string; className?: string }) {
   return (
     <th className={`px-4 py-2 text-left text-xs font-medium ${className ?? ""}`}>
-      <span className="font-noto-ethiopic">{am}</span>
+      <span className="font-am-body">{am}</span>
       <span className="ml-1 text-slate-400">/ {en}</span>
     </th>
   );
@@ -662,7 +663,7 @@ function InviteAdminDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            <span className="font-noto-ethiopic">አዲስ አስተዳዳሪ</span>
+            <span className="font-am-body">አዲስ አስተዳዳሪ</span>
             <span className="ml-2 text-sm text-slate-500">/ Add New Admin</span>
           </DialogTitle>
         </DialogHeader>
@@ -697,7 +698,7 @@ function InviteAdminDialog({
                 <SelectContent>
                   {woredas.map((w) => (
                     <SelectItem key={w.woreda_id} value={w.woreda_id}>
-                      <span className="font-noto-ethiopic">{w.woreda_name_am}</span>
+                      <span className="font-am-body">{w.woreda_name_am}</span>
                       <span className="ml-2 text-xs text-slate-500">/ {w.woreda_name_en}</span>
                     </SelectItem>
                   ))}
@@ -710,7 +711,11 @@ function InviteAdminDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button disabled={submitting} onClick={submit} className="bg-blue-700 hover:bg-blue-800">
+          <Button
+            disabled={submitting}
+            onClick={submit}
+            className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
+          >
             {submitting ? "Sending…" : "Send Invitation"}
           </Button>
         </DialogFooter>
@@ -955,7 +960,7 @@ function UserDetailDialog({
                   <SelectContent>
                     {woredas.map((w) => (
                       <SelectItem key={w.woreda_id} value={w.woreda_id}>
-                        <span className="font-noto-ethiopic">{w.woreda_name_am}</span>
+                        <span className="font-am-body">{w.woreda_name_am}</span>
                         <span className="ml-2 text-xs text-slate-500">/ {w.woreda_name_en}</span>
                       </SelectItem>
                     ))}

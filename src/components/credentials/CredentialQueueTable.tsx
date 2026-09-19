@@ -257,7 +257,7 @@ export function CredentialQueueTable() {
       en: "Resident",
       render: (r) => (
         <>
-          <div className="font-noto-ethiopic font-medium text-slate-900">
+          <div className="font-am-body font-medium text-slate-900">
             {r.resident?.full_name_am || "—"}
           </div>
           <div className="text-xs text-slate-500">
@@ -281,9 +281,7 @@ export function CredentialQueueTable() {
       am: "ዓይነት",
       en: "Type",
       render: (r) => (
-        <span className="font-noto-ethiopic">
-          {REQUEST_TYPE_LABEL[r.request_type] ?? r.request_type}
-        </span>
+        <span className="font-am-body">{REQUEST_TYPE_LABEL[r.request_type] ?? r.request_type}</span>
       ),
     },
     {
@@ -341,9 +339,9 @@ export function CredentialQueueTable() {
       emptyAction={
         <PermissionGate permission={P.CREDENTIAL_ISSUE}>
           <Link to="/woreda/credentials/new" className="mt-3">
-            <Button className="bg-blue-700 text-white hover:bg-blue-800">
+            <Button className="bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90">
               <FilePlus className="mr-2 h-4 w-4" />
-              <span className="font-noto-ethiopic">አዲስ ጥያቄ</span>
+              <span className="font-am-body">አዲስ ጥያቄ</span>
               <span className="ml-2 opacity-80">/ New Request</span>
             </Button>
           </Link>

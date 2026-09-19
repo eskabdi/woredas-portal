@@ -16,7 +16,7 @@ export const Route = createFileRoute("/woreda/settings/users-permissions")({
       permission={P.TENANT_MANAGE}
       fallback={
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-800">
-          <p className="font-noto-ethiopic font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
+          <p className="font-am-body font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
           <p className="text-sm">You do not have permission to manage users and permissions.</p>
         </div>
       }
@@ -74,7 +74,7 @@ function SettingsTab({
       className="relative rounded-none border-b-2 border-transparent bg-transparent px-4 py-3 text-slate-600 shadow-none data-[state=active]:border-blue-700 data-[state=active]:bg-transparent data-[state=active]:text-blue-800 data-[state=active]:shadow-none"
     >
       <div className="flex flex-col items-start leading-tight">
-        <span className="font-noto-ethiopic text-sm font-medium">{labelAm}</span>
+        <span className="font-am-body text-sm font-medium">{labelAm}</span>
         <span className="text-[10px] uppercase tracking-wide text-slate-400">{labelEn}</span>
       </div>
     </TabsTrigger>

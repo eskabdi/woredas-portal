@@ -92,7 +92,7 @@ export const Route = createFileRoute("/woreda/civil/death/new")({
       permission={P.CIVIL_REGISTER}
       fallback={
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-800">
-          <p className="font-noto-ethiopic font-medium">ይህን ለመጠቀም ፈቃድ የለዎትም</p>
+          <p className="font-am-body font-medium">ይህን ለመጠቀም ፈቃድ የለዎትም</p>
           <p className="text-sm">You do not have permission.</p>
         </div>
       }
@@ -304,10 +304,10 @@ function DeathNewPage() {
           <Button
             type="submit"
             disabled={mutation.isPending}
-            className="bg-blue-700 text-white hover:bg-blue-800"
+            className="bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90"
           >
             <Save className="mr-2 h-4 w-4" />
-            <span className="font-noto-ethiopic">አስገባ</span>
+            <span className="font-am-body">አስገባ</span>
             <span className="ml-2 opacity-80">/ Submit</span>
           </Button>
         </div>

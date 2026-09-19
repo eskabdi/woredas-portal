@@ -30,7 +30,7 @@ export const Route = createFileRoute("/woreda/households/$householdId/edit")({
       permission={P.HOUSEHOLD_UPDATE}
       fallback={
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-800">
-          <p className="font-noto-ethiopic font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
+          <p className="font-am-body font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
           <p className="text-sm">You don't have permission to edit households.</p>
         </div>
       }
@@ -215,18 +215,23 @@ function EditHouseholdPage() {
   if (householdQuery.error || !householdQuery.data) {
     return (
       <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-red-800">
-        <p className="font-noto-ethiopic font-medium">ቤተሰብ አልተገኘም / Household not found</p>
+        <p className="font-am-body font-medium">ቤተሰብ አልተገኘም / Household not found</p>
       </div>
     );
   }
 
   return (
     <div className="mx-auto max-w-4xl pb-24">
-      <PageHeader icon={Home} titleAm="ቤተሰብ አስተካክል" titleEn="Edit Household" />
+      <PageHeader
+        icon={Home}
+        titleAm="ቤተሰብ አስተካክል"
+        titleEn="Edit Household"
+        backHref={`/woreda/households/${householdId}`}
+      />
 
       {contactUnverified && (
         <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-          <p className="font-noto-ethiopic">{DECRYPT_UNVERIFIED_WARNING.am}</p>
+          <p className="font-am-body">{DECRYPT_UNVERIFIED_WARNING.am}</p>
           <p>{DECRYPT_UNVERIFIED_WARNING.en}</p>
         </div>
       )}
@@ -254,16 +259,16 @@ function EditHouseholdPage() {
                 navigate({ to: "/woreda/households/$householdId", params: { householdId } })
               }
             >
-              <span className="font-noto-ethiopic">ይቅር</span>
+              <span className="font-am-body">ይቅር</span>
               <span className="ml-2 text-xs opacity-70">/ Cancel</span>
             </Button>
             <Button
               type="submit"
               disabled={updateMutation.isPending}
-              className="bg-blue-700 text-white hover:bg-blue-800"
+              className="bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90"
             >
               {updateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              <span className="font-noto-ethiopic">ለውጥ አስቀምጥ</span>
+              <span className="font-am-body">ለውጥ አስቀምጥ</span>
               <span className="ml-2 text-xs opacity-80">/ Save Changes</span>
             </Button>
           </div>

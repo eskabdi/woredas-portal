@@ -33,7 +33,7 @@ export const Route = createFileRoute("/woreda/credentials/$requestId/certificate
       permission={P.CREDENTIAL_PREVIEW_PRINT}
       fallback={
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-800">
-          <p className="font-noto-ethiopic font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
+          <p className="font-am-body font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
           <p className="text-sm">You do not have permission to view this page.</p>
         </div>
       }
@@ -183,8 +183,8 @@ function CredentialCertificatePage() {
             </div>
           )}
           <p className="max-w-md text-xs text-slate-600">
-            <span className="font-noto-ethiopic">ይህ ደብዳቤ ከላይ ያለውን QR ኮድ በመቃኘት ሊረጋገጥ ይችላል።</span>{" "}
-            This certificate can be verified by scanning the QR code above against the woreda's live
+            <span className="font-am-body">ይህ ደብዳቤ ከላይ ያለውን QR ኮድ በመቃኘት ሊረጋገጥ ይችላል።</span> This
+            certificate can be verified by scanning the QR code above against the woreda's live
             credential status.
           </p>
         </div>

@@ -3,7 +3,19 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import {
+  ArrowRight,
+  Calendar,
+  CreditCard,
+  Eye,
+  EyeOff,
+  Info,
+  Loader2,
+  Lock,
+  Mail,
+  Shield,
+  Users,
+} from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
@@ -24,6 +36,28 @@ const loginSchema = z.object({
 });
 type LoginInput = z.infer<typeof loginSchema>;
 
+const FEATURES = [
+  {
+    icon: Users,
+    am: "የዜጎችና ቤተሰብ ምዝገባ",
+    en: "Civil Registry",
+    description: "Centralized household records, biometric IDs, and vital life statistics ledger.",
+  },
+  {
+    icon: Shield,
+    am: "የይዞታና የኪራይ ቤቶች ቁጥጥር",
+    en: "Kebele Housing",
+    description: "Integrated rental quotas, municipal property credential verifications & audits.",
+  },
+  {
+    icon: CreditCard,
+    am: "የገቢ ፋይናንስ አስተዳደር",
+    en: "ETB Revenue",
+    description:
+      "Automated woreda municipal billing, trade license renewals, and regional treasury ledger.",
+  },
+];
+
 function LoginPage() {
   const navigate = useNavigate();
   const role = useAuthStore((s) => s.role);
@@ -31,6 +65,7 @@ function LoginPage() {
   const setAuth = useAuthStore((s) => s.setAuth);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -114,77 +149,192 @@ function LoginPage() {
   };
 
   return (
-    <main className="relative min-h-screen bg-slate-50 px-4 py-12">
-      <div className="absolute right-4 top-4">
-        <span className="font-noto-ethiopic rounded-full bg-blue-50 px-3 py-1 text-sm text-blue-800">
-          {getCurrentEthiopianDate()}
-        </span>
+    <div className="flex min-h-screen flex-col lg:grid lg:grid-cols-2">
+      {/* Left panel -- brand/feature showcase, hidden below lg */}
+      <div className="relative hidden flex-col justify-between overflow-hidden bg-[color:var(--color-shell-header)] px-10 py-8 text-white lg:flex">
+        <div className="flex items-center justify-between gap-3">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs text-white/80">
+            <Calendar className="h-3.5 w-3.5" />
+            <span className="font-am-body">{getCurrentEthiopianDate()}</span>
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-medium tracking-wide text-emerald-300">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            GOV-GRADE SSL 256-BIT
+          </span>
+        </div>
+
+        <div className="mx-auto flex max-w-md min-w-0 flex-col items-center text-center">
+          <img
+            src="/images/harari-seal.png"
+            alt="Harari Regional State seal"
+            className="h-24 w-24 shrink-0 object-contain drop-shadow-lg"
+          />
+          <p className="font-am-body mt-4 text-sm font-medium text-[color:var(--color-shell-accent-gold)]">
+            የሐረሪ ሕዝብ ክልላዊ መንግሥት
+          </p>
+          <h1 className="font-am-heading mt-2 text-3xl font-bold text-white">
+            የወረዳ አስተዳደር ዲጂታል ፖርታል
+          </h1>
+          <p className="mt-3 text-sm text-white/70">
+            Harari Region Woreda Integrated Administration &amp; Citizen Service ERP System
+          </p>
+        </div>
+
+        <div className="mx-auto w-full max-w-md space-y-3">
+          {FEATURES.map((f) => (
+            <div
+              key={f.en}
+              className="flex items-start gap-3 rounded-xl bg-white/5 p-3 ring-1 ring-white/10"
+            >
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10">
+                <f.icon className="h-4.5 w-4.5 text-white" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-white">
+                  <span className="font-am-body">{f.am}</span>{" "}
+                  <span className="font-normal text-white/60">({f.en})</span>
+                </p>
+                <p className="mt-0.5 text-xs leading-snug text-white/60">{f.description}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex items-center justify-between text-xs text-white/50">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            <span className="font-am-body">ሥርዓቱ በሙሉ ዝግጁ ነው</span>
+            <span>(System Operational)</span>
+          </span>
+          <span>ISO 27001 Certified</span>
+        </div>
       </div>
 
-      <div className="mx-auto flex min-h-[80vh] max-w-md items-center">
-        <div className="w-full rounded-xl bg-white p-8 shadow-lg">
-          <div className="text-center">
-            <h1 className="font-noto-ethiopic text-2xl font-bold text-slate-900">
-              ወረዳ አስተዳደር ሥርዓት
-            </h1>
-            <p className="mt-1 text-sm text-slate-500">Woreda Administration ERP — Harari Region</p>
-          </div>
+      {/* Right panel -- login form */}
+      <div className="flex min-w-0 flex-col overflow-x-hidden bg-[color:var(--color-shell-canvas)] px-4 py-6 sm:px-8">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs text-emerald-700">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            <span className="font-am-body">ሲስተም ዝግጁ ነው</span> / Online
+          </span>
+          <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] text-slate-500">
+            V1.0
+          </span>
+        </div>
 
-          <div className="my-6 border-t border-slate-200" />
-
-          <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                required
-                {...register("email")}
-                className="mt-1"
+        <div className="flex min-w-0 flex-1 items-center justify-center py-8">
+          <div className="w-full max-w-[min(28rem,calc(100vw-2rem))] min-w-0 rounded-2xl bg-white p-8 shadow-lg">
+            <div className="flex flex-col items-center text-center">
+              <img
+                src="/images/harari-seal.png"
+                alt="Harari Regional State seal"
+                className="h-14 w-14 shrink-0 object-contain"
               />
-              {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>}
+              {/* amber-700, not the raw --shell-accent-gold token: gold is
+                  calibrated as an accent against the dark shell-header
+                  background (8.22:1) and fails WCAG AA (2.15:1) on this
+                  white card -- see docs/ux/ux_implementation_report.md's
+                  Phase 4 contrast audit. */}
+              <p className="font-am-body mt-3 text-sm font-medium text-amber-700">
+                የሐረሪ ሕዝብ ክልላዊ መንግሥት
+              </p>
+              <h1 className="font-am-heading text-xl font-bold text-slate-900">የወረዳ አስተዳደር ፖርታል</h1>
+              <p className="mt-1 text-sm text-slate-500">
+                Harari Regional State Woreda Administration ERP
+              </p>
             </div>
 
-            <div>
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                {...register("password")}
-                className="mt-1"
-              />
-              {errors.password && (
-                <p className="mt-1 text-xs text-red-600">{errors.password.message}</p>
-              )}
+            <div className="mt-5 flex items-start gap-2 rounded-lg bg-blue-50 p-3 text-sm text-blue-800">
+              <Info className="mt-0.5 h-4 w-4 shrink-0" />
+              <p className="font-am-body">እንኳን ደህና መጡ! እባክዎን የተመደበልዎትን የወረዳ ሠራተኛ መግቢያ መረጃ ያስገቡ።</p>
             </div>
 
-            {submitError && (
-              <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                {submitError}
+            <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-5 space-y-4">
+              <div>
+                <Label htmlFor="email">
+                  <span className="font-am-body">ኢሜይል ወይም የተጠቃሚ ቁጥር</span>{" "}
+                  <span className="text-xs font-normal text-slate-400">(email or staff id)</span>
+                </Label>
+                <div className="relative mt-1">
+                  <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    placeholder="abkr_admin@eharari.gov.et"
+                    {...register("email")}
+                    className="pl-9"
+                  />
+                </div>
+                {errors.email && (
+                  <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>
+                )}
               </div>
-            )}
 
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full bg-blue-700 text-white hover:bg-blue-800"
-            >
-              {isSubmitting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <span className="font-noto-ethiopic">ግባ / Sign In</span>
+              <div>
+                <Label htmlFor="password">
+                  <span className="font-am-body">የይለፍ ቃል</span>{" "}
+                  <span className="text-xs font-normal text-slate-400">(password)</span>
+                </Label>
+                <div className="relative mt-1">
+                  <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="current-password"
+                    required
+                    {...register("password")}
+                    className="px-9"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {errors.password && (
+                  <p className="mt-1 text-xs text-red-600">{errors.password.message}</p>
+                )}
+              </div>
+
+              {submitError && (
+                <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                  {submitError}
+                </div>
               )}
-            </Button>
-          </form>
 
-          <p className="mt-4 text-center text-sm text-slate-500">
-            Forgot your password? Contact your administrator.
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full gap-2 bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90"
+              >
+                {isSubmitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <span className="font-am-body">ግባ / Sign In</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </>
+                )}
+              </Button>
+            </form>
+          </div>
+        </div>
+
+        <div className="pb-2 text-center text-xs text-slate-500">
+          <p>
+            <span className="font-am-body">ችግር እያጋጠመዎት ነው? የሲስተም አስተዳዳሪዎን (System Admin) ያግኙ</span>
+          </p>
+          <p className="mt-1 text-slate-400">
+            Official Government Administrative Gateway © {new Date().getFullYear()} Harari Regional
+            State. All Rights Reserved.
           </p>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

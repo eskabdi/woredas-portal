@@ -62,7 +62,7 @@ function LocateButton({ onChange }: { onChange: (lat: number, lng: number) => vo
         <button
           type="button"
           onClick={handleClick}
-          className="font-noto-ethiopic flex items-center gap-1.5 rounded-md bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow hover:bg-slate-50"
+          className="font-am-body flex items-center gap-1.5 rounded-md bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow hover:bg-slate-50"
         >
           <LocateFixed className="h-3.5 w-3.5" />
           የአሁኑን አካባቢ ተጠቀም
@@ -115,7 +115,7 @@ export default function LocationPickerMap({
           )}
         </MapContainer>
       </div>
-      <div className="font-noto-ethiopic text-xs text-slate-600">
+      <div className="font-am-body text-xs text-slate-600">
         {hasCoord ? (
           <>
             ኬክሮስ / Latitude: <span className="font-mono">{latitude.toFixed(6)}</span>

@@ -608,6 +608,55 @@ one) rather than inventing per-page state:
   than hand-writing them, and keep app-specific composition in
   `src/components/common/` and the feature folders.
 
+### UX restructuring (`docs/ux/`) — all 5 phases complete, not yet merged
+
+An Apple-HIG-driven restructuring (dark navy shell, floating translucent
+toolbars, segmented steppers, and a two-typeface Amharic system — Tayitu for
+headers/titles/nav, Jiret for body copy, replacing the single
+`.font-noto-ethiopic` utility) is complete on the `ux-restructure` branch, not
+yet merged. `docs/ux/` holds the planning trail and is the source of truth for
+exactly which screens use the new patterns vs. the ~4 Cluster A screens and 3
+Cluster B upload points that were deliberately left as-is — check
+`ux_implementation_roadmap.md`'s status checklist rather than assuming every
+one of the 55 screens was touched:
+
+- `ux_screen_inventory.md`, `ux_pattern_map.md`, `ux_audit_findings.md` — the
+  55-route inventory, the five reuse clusters (List/Filter/Export, Multi-step
+  Forms, Detail/Profile, Printable Documents, Dashboards), and the
+  Clarity/Deference/Depth/Typography audit scored per cluster.
+- `ux_amharic_typography_plan.md` — the Tayitu/Jiret mapping rules, the
+  `.font-am-heading`/`.font-am-body` utility split, and the font-license open
+  item (Tayitu is © Anbassa Design; the user confirmed decorative-only use —
+  headings/nav, never body copy — is acceptable).
+- `ux_restructure_plan.md` — the shared components each cluster maps to:
+  `AppShell` (replaces `WoredaShell`/`AdminShell`), `TableToolbar`, `Stepper`,
+  `DetailHeader`/`WorkflowStepper`, `charts/`.
+- `ux_implementation_roadmap.md` — the five-phase, dependency-ordered plan
+  (Foundations → Shared patterns → Screen-by-screen adoption → Print/dashboards
+  → Validation) with its status checklist kept current at the top.
+- `ux_implementation_report.md` — the running implementation log: what's built,
+  how it was verified (this sandbox has no real Supabase project, so
+  authenticated-shell rendering is smoke-tested via headless Chromium's
+  unauthenticated-redirect behavior rather than visually confirmed — see the
+  report's "residual risks" section), and deviations from the plan.
+
+As of the last update: **all five phases are done** — foundations, the four
+shared component families, their rollout across Clusters A/C/E (Cluster B's
+input-token pass and `Stepper` apply globally already; `SquircleUpload`
+covers its 2 real single-image call sites, deliberately not the 3 mixed
+image/PDF upload points), Cluster D's typography fix, and Phase 4's WCAG
+contrast/keyboard/font validation (which found and fixed 3 real contrast
+failures and 2 real focus-visibility gaps — not just a clean pass). The
+login page was also redesigned to match a user-provided reference mockup,
+outside the original 5-cluster scope. **The largest remaining risk before
+merge**: every verification in this work used build/tsc/lint plus
+headless-Chromium unauthenticated-redirect checks — none of it has been
+seen rendered against a real authenticated session with live data (no
+Supabase project exists in this sandbox). Continuing this work means
+reading `ux_implementation_roadmap.md`'s status checklist and
+`ux_implementation_report.md`'s residual-risks section first, not
+re-deriving state from the code.
+
 ### Build and server entry
 
 `src/server.ts` is a wrapper around TanStack Start's server entry, pointed at
@@ -637,15 +686,18 @@ break hooks. Don't pin a nitro preset — see the Vercel section.
 
 ### Subagents (`.claude/agents/`)
 
-Four review agents, each covering a failure mode this codebase has that a build
+Seven review agents, each covering a failure mode this codebase has that a build
 or a typecheck will not catch. Invoke them by name.
 
-| Agent                       | Use it when                                                           | Guards against                                                                                                                         |
-| --------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `secret-sweep`              | after any migration or deploy, before pushing                         | a deploy token reaching a commit — see the rule at the top of this file                                                                |
-| `tenant-isolation-review`   | touching a permission, role, migration, RLS policy, or upload path    | cross-tenant reads, a client gate without its seed rows, a missing storage path prefix                                                 |
-| `portal-conventions-review` | after adding a route or a list/detail page                            | a route missing `ssr: false`, table state in `useState` instead of the URL, non-bilingual labels, Gregorian dates in the woreda portal |
-| `card-print-review`         | touching signing, the print route, the template editor, QR or barcode | invariants whose failure is only discovered after cards are physically printed                                                         |
+| Agent                        | Use it when                                                            | Guards against                                                                                                                          |
+| ---------------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `secret-sweep`                | after any migration or deploy, before pushing                          | a deploy token reaching a commit — see the rule at the top of this file                                                                |
+| `tenant-isolation-review`     | touching a permission, role, migration, RLS policy, or upload path      | cross-tenant reads, a client gate without its seed rows, a missing storage path prefix                                                 |
+| `portal-conventions-review`   | after adding a route or a list/detail page                             | a route missing `ssr: false`, table state in `useState` instead of the URL, non-bilingual labels, Gregorian dates in the woreda portal |
+| `card-print-review`           | touching signing, the print route, the template editor, QR or barcode  | invariants whose failure is only discovered after cards are physically printed                                                         |
+| `rbac-escalation-review`      | touching permissions.ts, seed.sql, `default_role_perms()`, `role_permission`, `tenant_role`, or `user_permission_override` | a permission escalation slipping in via one grant source but not the others                                    |
+| `workflow-fsm-review`         | touching `workflow_transition`, `enforce_workflow_transition()`, a `*_status_check` constraint, or a route writing a status | an unreachable/skippable/resurrectable workflow state                                            |
+| `main-logic-authority-review` | after any merge or rebase against `origin/main`, especially one resolved by hand or by taking main's whole file | a UI-restructuring branch silently altering main's business logic, permissions, or workflow/status literals instead of only layering display changes on top |
 
 They are read-only reviewers (`Bash`, `Read`, `Grep`, `Glob`) — they report, they
 do not push, rewrite history or rotate credentials.

@@ -81,14 +81,14 @@ export function ChangePasswordDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            <span className="font-noto-ethiopic">የይለፍ ቃል ቀይር</span>
+            <span className="font-am-body">የይለፍ ቃል ቀይር</span>
             <span className="ml-2 text-sm text-slate-500">/ Change Password</span>
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <Label htmlFor="new-password">
-              <span className="font-noto-ethiopic">አዲስ የይለፍ ቃል</span>
+              <span className="font-am-body">አዲስ የይለፍ ቃል</span>
               <span className="ml-1 text-slate-500">/ New password</span>
             </Label>
             <Input
@@ -102,7 +102,7 @@ export function ChangePasswordDialog({
           </div>
           <div>
             <Label htmlFor="confirm-password">
-              <span className="font-noto-ethiopic">የይለፍ ቃል አረጋግጥ</span>
+              <span className="font-am-body">የይለፍ ቃል አረጋግጥ</span>
               <span className="ml-1 text-slate-500">/ Confirm new password</span>
             </Label>
             <Input
@@ -129,15 +129,19 @@ export function ChangePasswordDialog({
                 onOpenChange(false);
               }}
             >
-              <span className="font-noto-ethiopic">ይቅር</span>
+              <span className="font-am-body">ይቅር</span>
               <span className="ml-1">/ Cancel</span>
             </Button>
-            <Button type="submit" disabled={submitting} className="bg-blue-700 hover:bg-blue-800">
+            <Button
+              type="submit"
+              disabled={submitting}
+              className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
+            >
               {submitting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <>
-                  <span className="font-noto-ethiopic">አስቀምጥ</span>
+                  <span className="font-am-body">አስቀምጥ</span>
                   <span className="ml-1">/ Save</span>
                 </>
               )}

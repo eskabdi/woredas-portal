@@ -22,9 +22,9 @@ export function Section({
           <Icon className="h-5 w-5" />
         </div>
         <div className="leading-tight">
-          <h2 className="font-noto-ethiopic text-lg font-semibold">{titleAm}</h2>
+          <h2 className="font-am-heading text-lg font-semibold">{titleAm}</h2>
           <p className="text-sm text-blue-100">{titleEn}</p>
-          {helper && <p className="font-noto-ethiopic mt-1 text-xs text-blue-100/90">{helper}</p>}
+          {helper && <p className="font-am-body mt-1 text-xs text-blue-100/90">{helper}</p>}
         </div>
       </div>
       <div className="p-5 md:p-6">{children}</div>
@@ -56,14 +56,14 @@ export function FieldWrap({
   return (
     <div className={colSpan2 ? "md:col-span-2" : ""}>
       <Label className="mb-1.5 block">
-        <span className="font-noto-ethiopic text-sm font-medium text-slate-700">{labelAm}</span>
+        <span className="font-am-body text-sm font-medium text-slate-700">{labelAm}</span>
         <span className="ml-1 text-xs text-slate-500">/ {labelEn}</span>
         {required && <span className="ml-1 text-red-600">*</span>}
       </Label>
       {children}
-      {helper && <p className="font-noto-ethiopic mt-1 text-xs text-slate-500">{helper}</p>}
+      {helper && <p className="font-am-body mt-1 text-xs text-slate-500">{helper}</p>}
       {error && (
-        <p className="font-noto-ethiopic mt-1 flex items-center gap-1 text-xs text-red-600">
+        <p className="font-am-body mt-1 flex items-center gap-1 text-xs text-red-600">
           <AlertCircle className="h-3 w-3" />
           {error}
         </p>
@@ -77,7 +77,7 @@ export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
       {...rest}
-      className={`font-noto-ethiopic flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
+      className={`font-am-body flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
     />
   );
 }

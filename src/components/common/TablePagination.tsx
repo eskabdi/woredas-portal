@@ -60,7 +60,7 @@ export function TablePagination({
       <div className="flex items-center gap-3">
         <span className="text-slate-500">
           Showing {from}–{to} of {total}
-          <span className="font-noto-ethiopic"> ({total} አጠቃላይ)</span>
+          <span className="font-am-body"> ({total} አጠቃላይ)</span>
         </span>
         <div className="flex items-center gap-2">
           <Button

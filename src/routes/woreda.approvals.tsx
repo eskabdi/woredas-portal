@@ -116,9 +116,9 @@ function ApprovalQueuePage() {
         <Card className="p-4">
           <div className="flex flex-wrap items-end gap-3">
             <div>
-              <Label className="font-noto-ethiopic text-xs">ዓይነት / Work type</Label>
+              <Label className="font-am-body text-xs">ዓይነት / Work type</Label>
               <select
-                className="font-noto-ethiopic mt-1 block h-10 w-[220px] rounded-md border border-input bg-background px-3 text-sm"
+                className="font-am-body mt-1 block h-10 w-[220px] rounded-md border border-input bg-background px-3 text-sm"
                 value={workType}
                 onChange={(e) => patch({ wt: e.target.value || undefined })}
               >
@@ -147,7 +147,7 @@ function ApprovalQueuePage() {
         <Card className="overflow-hidden p-0">
           <div className="flex items-center gap-2 border-b bg-slate-50 px-4 py-3">
             <Inbox className="h-4 w-4 text-blue-700" />
-            <span className="font-noto-ethiopic text-sm font-medium">
+            <span className="font-am-body text-sm font-medium">
               {total} ጥያቄዎች በጥበቃ ላይ / {total} items awaiting action
             </span>
           </div>
@@ -200,10 +200,10 @@ function ApprovalQueuePage() {
                             <span className="font-mono text-xs">{r.reference_number ?? "—"}</span>
                           )}
                         </td>
-                        <td className="font-noto-ethiopic px-4 py-3">
+                        <td className="font-am-body px-4 py-3">
                           {WORK_TYPE_LABEL[r.work_type ?? ""] ?? r.work_type ?? "—"}
                         </td>
-                        <td className="font-noto-ethiopic px-4 py-3">
+                        <td className="font-am-body px-4 py-3">
                           {r.subtype_am ?? r.subtype_en ?? "—"}
                         </td>
                         <td className="px-4 py-3">

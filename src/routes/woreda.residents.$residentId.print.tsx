@@ -138,7 +138,7 @@ function ResidentProfilePrintPage() {
   if (!hasPermission(P.RESIDENT_READ)) {
     return (
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-800">
-        <p className="font-noto-ethiopic font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
+        <p className="font-am-body font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
         <p className="text-sm">You don't have permission to view this page.</p>
       </div>
     );

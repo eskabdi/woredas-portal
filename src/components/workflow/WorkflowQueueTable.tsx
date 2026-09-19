@@ -196,7 +196,7 @@ export function WorkflowQueueTable<Row>({
           value={filters.searchInput}
           onChange={(e) => filters.setSearchInput(e.target.value)}
           placeholder={searchPlaceholder}
-          className="font-noto-ethiopic"
+          className="font-am-body"
         />
         <div className="flex flex-wrap items-end gap-2">
           <SelectFilter
@@ -280,7 +280,7 @@ export function WorkflowQueueTable<Row>({
               {columns.map((c) =>
                 c.sortField ? (
                   <SortableTh key={c.key} field={c.sortField} sort={filters.sort}>
-                    <span className="font-noto-ethiopic">{c.am}</span>
+                    <span className="font-am-body">{c.am}</span>
                     <span className="ml-1 text-slate-400 normal-case">/ {c.en}</span>
                   </SortableTh>
                 ) : (
@@ -331,7 +331,7 @@ export function WorkflowQueueTable<Row>({
                             }}
                           >
                             <action.icon className="mr-1.5 h-3.5 w-3.5" />
-                            <span className="font-noto-ethiopic">{action.labelAm}</span>
+                            <span className="font-am-body">{action.labelAm}</span>
                             <span className="ml-1 opacity-70">/ {action.labelEn}</span>
                           </Button>
                         </PermissionGate>
@@ -360,7 +360,7 @@ export function WorkflowQueueTable<Row>({
 function Th({ am, en }: { am: string; en: string }) {
   return (
     <th className="px-4 py-3">
-      <span className="font-noto-ethiopic">{am}</span>
+      <span className="font-am-body">{am}</span>
       <span className="ml-1 text-slate-400 normal-case">/ {en}</span>
     </th>
   );
@@ -379,11 +379,11 @@ function SelectFilter({
 }) {
   return (
     <div className="flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1">
-      <span className="font-noto-ethiopic text-xs font-medium text-slate-500">{label}:</span>
+      <span className="font-am-body text-xs font-medium text-slate-500">{label}:</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="font-noto-ethiopic bg-transparent px-1 py-0.5 text-sm focus:outline-none"
+        className="font-am-body bg-transparent px-1 py-0.5 text-sm focus:outline-none"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>

@@ -27,7 +27,7 @@ export const Route = createFileRoute("/woreda/households/new")({
       permission={P.HOUSEHOLD_CREATE}
       fallback={
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-800">
-          <p className="font-noto-ethiopic font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
+          <p className="font-am-body font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
           <p className="text-sm">You don't have permission to create households.</p>
         </div>
       }
@@ -151,7 +151,12 @@ function NewHouseholdPage() {
 
   return (
     <div className="mx-auto max-w-4xl pb-24">
-      <PageHeader icon={Home} titleAm="አዲስ ቤተሰብ ምዝገባ" titleEn="New Household Registration" />
+      <PageHeader
+        icon={Home}
+        titleAm="አዲስ ቤተሰብ ምዝገባ"
+        titleEn="New Household Registration"
+        backHref="/woreda/households"
+      />
 
       <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-6">
         <HouseholdFormFields
@@ -173,16 +178,16 @@ function NewHouseholdPage() {
               variant="ghost"
               onClick={() => navigate({ to: "/woreda/households" })}
             >
-              <span className="font-noto-ethiopic">ይቅር</span>
+              <span className="font-am-body">ይቅር</span>
               <span className="ml-2 text-xs opacity-70">/ Cancel</span>
             </Button>
             <Button
               type="submit"
               disabled={createMutation.isPending}
-              className="bg-blue-700 text-white hover:bg-blue-800"
+              className="bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90"
             >
               {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              <span className="font-noto-ethiopic">ቤተሰብ መዝግብ</span>
+              <span className="font-am-body">ቤተሰብ መዝግብ</span>
               <span className="ml-2 text-xs opacity-80">/ Register Household</span>
             </Button>
           </div>

@@ -10,6 +10,7 @@ const appUser = {
   username: "test",
   status: "active",
   console_role_id: null,
+  photo_path: null,
 };
 
 describe("authStore.hasPermission (F7 regression lock)", () => {

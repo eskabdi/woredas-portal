@@ -46,7 +46,7 @@ export const Route = createFileRoute("/woreda/credentials/new")({
       permission={P.CREDENTIAL_ISSUE}
       fallback={
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-800">
-          <p className="font-noto-ethiopic font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
+          <p className="font-am-body font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
           <p className="text-sm">You do not have permission to submit credential requests.</p>
         </div>
       }
@@ -598,12 +598,17 @@ function NewCredentialRequestPage() {
 
   return (
     <div className="space-y-6 pb-32">
-      <PageHeader icon={CreditCard} titleAm="አዲስ የመታወቂያ ጥያቄ" titleEn="New Credential Request" />
+      <PageHeader
+        icon={CreditCard}
+        titleAm="አዲስ የመታወቂያ ጥያቄ"
+        titleEn="New Credential Request"
+        backHref="/woreda/credentials"
+      />
 
       {/* Section A — Resident selection */}
       <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center gap-3 rounded-t-xl bg-blue-700 px-5 py-3 text-white">
-          <span className="font-noto-ethiopic text-base font-semibold">ነዋሪ ይምረጡ</span>
+          <span className="font-am-body text-base font-semibold">ነዋሪ ይምረጡ</span>
           <span className="text-sm text-blue-100">/ Select Resident</span>
         </div>
         <div className="space-y-4 p-5">
@@ -642,7 +647,7 @@ function NewCredentialRequestPage() {
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="font-noto-ethiopic text-lg font-semibold text-slate-900">
+                <div className="font-am-body text-lg font-semibold text-slate-900">
                   {resident.full_name_am || "—"}
                 </div>
                 <div className="text-sm text-slate-600">{resident.full_name}</div>
@@ -650,16 +655,16 @@ function NewCredentialRequestPage() {
                   {resident.resident_number}
                 </div>
                 <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                  <dt className="font-noto-ethiopic text-slate-500">ጾታ / Sex</dt>
-                  <dd className="font-noto-ethiopic text-slate-800">
+                  <dt className="font-am-body text-slate-500">ጾታ / Sex</dt>
+                  <dd className="font-am-body text-slate-800">
                     {resident.sex === "male"
                       ? "ወንድ / Male"
                       : resident.sex === "female"
                         ? "ሴት / Female"
                         : "—"}
                   </dd>
-                  <dt className="font-noto-ethiopic text-slate-500">የልደት ቀን / DOB</dt>
-                  <dd className="font-noto-ethiopic text-slate-800">
+                  <dt className="font-am-body text-slate-500">የልደት ቀን / DOB</dt>
+                  <dd className="font-am-body text-slate-800">
                     {dobDisplay}
                     {age !== null && (
                       <span className={isUnder18 ? "ml-2 text-red-600" : "ml-2 text-slate-500"}>
@@ -667,8 +672,8 @@ function NewCredentialRequestPage() {
                       </span>
                     )}
                   </dd>
-                  <dt className="font-noto-ethiopic text-slate-500">ቤተሰብ / Household</dt>
-                  <dd className="font-noto-ethiopic text-slate-800">
+                  <dt className="font-am-body text-slate-500">ቤተሰብ / Household</dt>
+                  <dd className="font-am-body text-slate-800">
                     {resident.household
                       ? `${resident.household.house_number ?? "—"} · ${
                           resident.household.kebele
@@ -688,15 +693,13 @@ function NewCredentialRequestPage() {
               generic rejection instead. */}
           {notActive && (
             <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-red-800">
-              <p className="font-noto-ethiopic font-medium">ይህ ነዋሪ ንቁ አይደለም</p>
+              <p className="font-am-body font-medium">ይህ ነዋሪ ንቁ አይደለም</p>
               <p className="text-sm">This resident is not active.</p>
             </div>
           )}
           {notInHousehold && !notActive && (
             <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-red-800">
-              <p className="font-noto-ethiopic font-medium">
-                ይህ ነዋሪ ወደ ቤተሰብ አልተመደበም፤ መጀመሪያ ወደ ቤተሰብ ይመድቡ
-              </p>
+              <p className="font-am-body font-medium">ይህ ነዋሪ ወደ ቤተሰብ አልተመደበም፤ መጀመሪያ ወደ ቤተሰብ ይመድቡ</p>
               <p className="text-sm">
                 This resident is not assigned to a household — assign one first.
               </p>
@@ -711,19 +714,19 @@ function NewCredentialRequestPage() {
           )}
           {isDeceased && !notActive && !notInHousehold && (
             <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-red-800">
-              <p className="font-noto-ethiopic font-medium">ይህ ነዋሪ ሟች ተብሎ ተመዝግቧል</p>
+              <p className="font-am-body font-medium">ይህ ነዋሪ ሟች ተብሎ ተመዝግቧል</p>
               <p className="text-sm">This resident is recorded as deceased.</p>
             </div>
           )}
           {isUnder18 && !notActive && !notInHousehold && !isDeceased && (
             <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-red-800">
-              <p className="font-noto-ethiopic font-medium">ይህ ነዋሪ ከ18 ዓመት በታች ነው ({age})</p>
+              <p className="font-am-body font-medium">ይህ ነዋሪ ከ18 ዓመት በታች ነው ({age})</p>
               <p className="text-sm">This resident is under 18 (age {age}).</p>
             </div>
           )}
           {noPhone && !notActive && !notInHousehold && !isDeceased && !isUnder18 && (
             <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-red-800">
-              <p className="font-noto-ethiopic font-medium">ይህ ነዋሪ ስልክ ቁጥር የለውም፤ መጀመሪያ ይመዝግቡ</p>
+              <p className="font-am-body font-medium">ይህ ነዋሪ ስልክ ቁጥር የለውም፤ መጀመሪያ ይመዝግቡ</p>
               <p className="text-sm">This resident has no phone number on file — add one first.</p>
               <Link
                 to="/woreda/residents/$residentId/edit"
@@ -736,7 +739,7 @@ function NewCredentialRequestPage() {
           )}
           {noPhoto && !notActive && !notInHousehold && !isDeceased && !isUnder18 && !noPhone && (
             <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-red-800">
-              <p className="font-noto-ethiopic font-medium">ይህ ነዋሪ ፎቶ የለውም፤ መጀመሪያ ይመዝግቡ</p>
+              <p className="font-am-body font-medium">ይህ ነዋሪ ፎቶ የለውም፤ መጀመሪያ ይመዝግቡ</p>
               <p className="text-sm">This resident has no photo on file — add one first.</p>
               <Link
                 to="/woreda/residents/$residentId/edit"
@@ -750,7 +753,7 @@ function NewCredentialRequestPage() {
 
           {activeCredBlocksNewIssue && (
             <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-red-800">
-              <p className="font-noto-ethiopic font-medium">
+              <p className="font-am-body font-medium">
                 ይህ ነዋሪ ቀድሞውኑ ንቁ የመታወቂያ ማስረጃ አለው — “አዲስ አወጣጥ” መጠቀም አይቻልም
               </p>
               <p className="text-sm">
@@ -769,7 +772,7 @@ function NewCredentialRequestPage() {
               <div className="flex items-start gap-3">
                 <AlertTriangle className="mt-0.5 h-5 w-5 text-amber-600" />
                 <div className="flex-1">
-                  <p className="font-noto-ethiopic font-medium text-amber-900">
+                  <p className="font-am-body font-medium text-amber-900">
                     ይህ ነዋሪ ቀድሞውኑ ንቁ የመታወቂያ ማስረጃ አለው
                   </p>
                   <p className="text-sm text-amber-800">
@@ -786,7 +789,7 @@ function NewCredentialRequestPage() {
                       onChange={(e) => setAckExistingCred(e.target.checked)}
                       className="mt-0.5"
                     />
-                    <span className="font-noto-ethiopic">
+                    <span className="font-am-body">
                       ቢሆንም ለመቀጠል እወቅበታለሁ / I acknowledge and want to proceed anyway
                     </span>
                   </label>
@@ -800,7 +803,7 @@ function NewCredentialRequestPage() {
               <div className="flex items-start gap-3">
                 <AlertTriangle className="mt-0.5 h-5 w-5 text-amber-600" />
                 <div className="flex-1">
-                  <p className="font-noto-ethiopic font-medium text-amber-900">
+                  <p className="font-am-body font-medium text-amber-900">
                     ይህ ነዋሪ ቀድሞውኑ ክፍት ጥያቄ አለው
                   </p>
                   <p className="text-sm text-amber-800">
@@ -817,7 +820,7 @@ function NewCredentialRequestPage() {
                       onChange={(e) => setAckExistingReq(e.target.checked)}
                       className="mt-0.5"
                     />
-                    <span className="font-noto-ethiopic">
+                    <span className="font-am-body">
                       ቢሆንም ለመቀጠል እወቅበታለሁ / I acknowledge and want to proceed anyway
                     </span>
                   </label>
@@ -836,12 +839,12 @@ function NewCredentialRequestPage() {
         aria-disabled={!formEnabled}
       >
         <div className="flex items-center gap-3 rounded-t-xl bg-blue-700 px-5 py-3 text-white">
-          <span className="font-noto-ethiopic text-base font-semibold">የጥያቄ ዝርዝር</span>
+          <span className="font-am-body text-base font-semibold">የጥያቄ ዝርዝር</span>
           <span className="text-sm text-blue-100">/ Request Details</span>
         </div>
         <div className="space-y-5 p-5">
           <div>
-            <Label className="font-noto-ethiopic">
+            <Label className="font-am-body">
               ዓይነት / Request Type <span className="text-red-600">*</span>
             </Label>
             <Controller
@@ -860,7 +863,7 @@ function NewCredentialRequestPage() {
                           : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
                       }`}
                     >
-                      <div className="font-noto-ethiopic font-medium">{t.labelAm}</div>
+                      <div className="font-am-body font-medium">{t.labelAm}</div>
                       <div className="text-xs text-slate-500">{t.labelEn}</div>
                     </button>
                   ))}
@@ -870,7 +873,7 @@ function NewCredentialRequestPage() {
           </div>
 
           <div>
-            <Label className="font-noto-ethiopic">
+            <Label className="font-am-body">
               የምስክርነት ዓይነት / Credential Type <span className="text-red-600">*</span>
             </Label>
             <Controller
@@ -889,7 +892,7 @@ function NewCredentialRequestPage() {
                           : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
                       }`}
                     >
-                      <div className="font-noto-ethiopic font-medium">{t.labelAm}</div>
+                      <div className="font-am-body font-medium">{t.labelAm}</div>
                       <div className="text-xs text-slate-500">{t.labelEn}</div>
                     </button>
                   ))}
@@ -900,7 +903,7 @@ function NewCredentialRequestPage() {
 
           {requestType !== "new_issue" && (
             <div>
-              <Label className="font-noto-ethiopic">
+              <Label className="font-am-body">
                 ቀዳሚ ማስረጃ / Prior Credential <span className="text-red-600">*</span>
               </Label>
               <Controller
@@ -939,7 +942,7 @@ function NewCredentialRequestPage() {
 
           {requestType === "reissue_stolen" && (
             <div>
-              <Label className="font-noto-ethiopic" htmlFor="police-report-number">
+              <Label className="font-am-body" htmlFor="police-report-number">
                 የፖሊስ ሪፖርት ቁጥር / Police Report Number <span className="text-red-600">*</span>
               </Label>
               <Input
@@ -957,7 +960,7 @@ function NewCredentialRequestPage() {
           {requestType === "reissue_correction" && (
             <div className="space-y-3 rounded-md border border-slate-200 p-3">
               <div>
-                <Label className="font-noto-ethiopic">
+                <Label className="font-am-body">
                   የሚስተካከሉ መስኮች / Fields to Correct <span className="text-red-600">*</span>
                 </Label>
                 <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -991,7 +994,7 @@ function NewCredentialRequestPage() {
                 )}
               </div>
               <div>
-                <Label className="font-noto-ethiopic" htmlFor="correction-reason">
+                <Label className="font-am-body" htmlFor="correction-reason">
                   የማስተካከያ ምክንያት / Correction Reason <span className="text-red-600">*</span>
                 </Label>
                 <Textarea
@@ -1010,7 +1013,7 @@ function NewCredentialRequestPage() {
 
           {requestType === "new_issue" && (
             <div>
-              <Label className="font-noto-ethiopic">
+              <Label className="font-am-body">
                 ፎቶ / Photo <span className="text-red-600">*</span>
               </Label>
               <p className="mt-0.5 text-xs text-slate-500">JPG or PNG. Max 5MB.</p>
@@ -1040,7 +1043,7 @@ function NewCredentialRequestPage() {
                   ) : (
                     <Upload className="h-4 w-4" />
                   )}
-                  <span className="font-noto-ethiopic">
+                  <span className="font-am-body">
                     {photoUploading ? "በመጫን ላይ… / Uploading…" : "ፎቶ ይምረጡ / Choose photo"}
                   </span>
                   <input
@@ -1060,7 +1063,7 @@ function NewCredentialRequestPage() {
           )}
 
           <div>
-            <Label className="font-noto-ethiopic">
+            <Label className="font-am-body">
               ደጋፊ ሰነድ / Supporting Document{" "}
               {requestType === "reissue_correction" && <span className="text-red-600">*</span>}
             </Label>
@@ -1098,7 +1101,7 @@ function NewCredentialRequestPage() {
                 ) : (
                   <Upload className="h-4 w-4" />
                 )}
-                <span className="font-noto-ethiopic">
+                <span className="font-am-body">
                   {uploading ? "በመጫን ላይ… / Uploading…" : "ፋይል ይምረጡ / Choose file"}
                 </span>
                 <input
@@ -1120,7 +1123,7 @@ function NewCredentialRequestPage() {
           </div>
 
           <div>
-            <Label className="font-noto-ethiopic">ማስታወሻ / Notes</Label>
+            <Label className="font-am-body">ማስታወሻ / Notes</Label>
             <Controller
               control={control}
               name="notes"
@@ -1129,7 +1132,7 @@ function NewCredentialRequestPage() {
                   {...field}
                   value={field.value ?? ""}
                   rows={3}
-                  className="font-noto-ethiopic mt-2"
+                  className="font-am-body mt-2"
                   placeholder="Optional notes…"
                 />
               )}
@@ -1147,7 +1150,7 @@ function NewCredentialRequestPage() {
             onClick={() => navigate({ to: "/woreda/credentials" })}
             disabled={submitting}
           >
-            <span className="font-noto-ethiopic">ይቅር</span>
+            <span className="font-am-body">ይቅር</span>
             <span className="ml-2 opacity-70">/ Cancel</span>
           </Button>
           <Button
@@ -1160,10 +1163,10 @@ function NewCredentialRequestPage() {
               photoUploading ||
               (requestType === "new_issue" && !photoAttachment)
             }
-            className="bg-blue-700 text-white hover:bg-blue-800"
+            className="bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90"
           >
             {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            <span className="font-noto-ethiopic">ጥያቄ አስገባ</span>
+            <span className="font-am-body">ጥያቄ አስገባ</span>
             <span className="ml-2 opacity-80">/ Submit Request</span>
           </Button>
         </div>

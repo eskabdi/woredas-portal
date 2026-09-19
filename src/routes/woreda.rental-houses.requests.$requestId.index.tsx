@@ -8,14 +8,14 @@ import {
   ChevronLeft,
   ClipboardCheck,
   ShieldCheck,
-  Send,
   Home,
   User,
   Briefcase,
   AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
-import { PageHeader } from "@/components/common/PageHeader";
+import { DetailHeader } from "@/components/common/DetailHeader";
+import { WorkflowStepper, type WorkflowStage } from "@/components/common/WorkflowStepper";
 import { Section } from "@/components/forms/FormSection";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
 import { P } from "@/config/permissions";
 import { formatEthiopianDateShort, parseDateOnly } from "@/utils/ethiopianCalendar";
-import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/woreda/rental-houses/requests/$requestId/")({
   ssr: false,
@@ -63,99 +62,14 @@ function fmtDateTime(iso: string | null | undefined): string {
   });
 }
 
-function Stepper({
-  current,
-  isTermination,
-  verifiedAt,
-  approvedAt,
-  status,
-}: {
-  current: Stage;
-  isTermination: boolean;
-  verifiedAt?: string | null;
-  approvedAt?: string | null;
-  status: string;
-}) {
-  const finalLabel = isTermination ? "Vacated" : "Active";
-  const steps = [
-    { key: "submitted" as const, icon: Send, am: "ተልኳል", en: "Submitted", ts: undefined },
-    {
-      key: "verified" as const,
-      icon: ClipboardCheck,
-      am: "ተረጋግጧል",
-      en: "Verified",
-      ts: verifiedAt,
-    },
-    { key: "approved" as const, icon: ShieldCheck, am: "ፀድቋል", en: "Approved", ts: approvedAt },
-    {
-      key: "final" as const,
-      icon: CheckCircle2,
-      am: isTermination ? "ተለቋል" : "ንቁ",
-      en: finalLabel,
-      ts: undefined,
-    },
-  ];
-  const order: Stage[] = ["submitted", "verified", "approved", "final"];
-  const currentIdx = order.indexOf(current);
-  const isFailed = status === "rejected" || status === "returned";
-
-  return (
-    <Card className="p-4">
-      <ol className="flex items-center gap-2 overflow-x-auto">
-        {steps.map((s, idx) => {
-          const done = idx < currentIdx || (idx === currentIdx && current === "final" && !isFailed);
-          const active = idx === currentIdx && !isFailed;
-          const failedHere = isFailed && idx === currentIdx;
-          const Icon = failedHere ? AlertTriangle : s.icon;
-          return (
-            <li key={s.key} className="flex flex-1 items-center gap-2">
-              <div
-                className={cn(
-                  "flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-2 transition",
-                  done && "bg-blue-700 text-white ring-blue-700",
-                  active && "bg-white text-blue-700 ring-blue-700",
-                  failedHere && "bg-red-50 text-red-600 ring-red-500",
-                  !done && !active && !failedHere && "bg-slate-100 text-slate-400 ring-slate-200",
-                )}
-              >
-                <Icon className="h-4 w-4" />
-              </div>
-              <div className="min-w-0 leading-tight">
-                <div
-                  className={cn(
-                    "font-noto-ethiopic text-xs font-medium",
-                    done || active ? "text-slate-900" : "text-slate-400",
-                  )}
-                >
-                  {s.am}
-                </div>
-                <div className="text-[10px] text-slate-500">{s.en}</div>
-                {s.ts && <div className="text-[10px] text-slate-400">{fmtDateTime(s.ts)}</div>}
-              </div>
-              {idx < steps.length - 1 && (
-                <div
-                  className={cn(
-                    "mx-1 hidden h-0.5 flex-1 md:block",
-                    idx < currentIdx ? "bg-blue-700" : "bg-slate-200",
-                  )}
-                />
-              )}
-            </li>
-          );
-        })}
-      </ol>
-    </Card>
-  );
-}
-
 function KV({ am, en, children }: { am: string; en: string; children: React.ReactNode }) {
   return (
     <div>
       <div className="text-xs">
-        <span className="font-noto-ethiopic text-slate-700">{am}</span>
+        <span className="font-am-body text-slate-700">{am}</span>
         <span className="ml-1 text-slate-400">/ {en}</span>
       </div>
-      <div className="font-noto-ethiopic mt-0.5 text-sm text-slate-900">{children ?? "—"}</div>
+      <div className="font-am-body mt-0.5 text-sm text-slate-900">{children ?? "—"}</div>
     </div>
   );
 }
@@ -387,19 +301,37 @@ function RentalRequestDetailPage() {
     (req.status === "submitted" || req.status === "under_review" || req.status === "returned");
   const canApprove = hasPermission(P.RENTAL_APPROVE) && req.status === "verified";
   const isTermination = req.request_type === "termination";
+  // WorkflowStepper renders currentStage as "now", not "up next" -- this must
+  // be the request's own real stage, unlike the "up next" convention this
+  // screen used before it fed a hand-rolled stepper (which rendered that
+  // index as an unreached, hollow ring instead of a completed one).
   const currentStage: Stage =
     req.status === "approved"
       ? "final"
       : req.status === "verified"
-        ? "approved"
+        ? "verified"
         : req.status === "returned" || req.status === "rejected"
           ? req.verified_at
-            ? "approved"
-            : "verified"
-          : "verified"; // submitted → up next: verified
+            ? "verified"
+            : "submitted"
+          : "submitted"; // submitted, under_review
 
-  const initialStage: Stage =
-    req.status === "submitted" || req.status === "under_review" ? "submitted" : currentStage;
+  const workflowStages: WorkflowStage[] = [
+    { key: "submitted", am: "ተልኳል", en: "Submitted" },
+    { key: "verified", am: "ተረጋግጧል", en: "Verified" },
+    { key: "approved", am: "ፀድቋል", en: "Approved" },
+    {
+      key: "final",
+      am: isTermination ? "ተለቋል" : "ንቁ",
+      en: isTermination ? "Vacated" : "Active",
+    },
+  ];
+  const workflowException: { am: string; en: string; tone: "danger" | "warning" } | undefined =
+    req.status === "rejected"
+      ? { am: "ውድቅ ተደርጓል", en: "Rejected", tone: "danger" }
+      : req.status === "returned"
+        ? { am: "እርማት ተጠይቋል", en: "Returned", tone: "warning" }
+        : undefined;
 
   const bp = req.resident?.birth_place;
   const birthPlace =
@@ -424,14 +356,20 @@ function RentalRequestDetailPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader
+      <DetailHeader
+        backHref="/woreda/rental-houses/requests"
         icon={FileText}
         titleAm={`የቤት ኪራይ ጥያቄ · ${req.request_number}`}
         titleEn={isTermination ? "Vacate Request" : "Rental Occupancy Request"}
-        description={`${isTermination ? "የመተው ጥያቄ" : "የተከራይ ምዝገባ ጥያቄ"}  •  Created ${fmtDateTime(req.created_at)}`}
+        meta={[
+          {
+            label: `${isTermination ? "የመተው ጥያቄ" : "የተከራይ ምዝገባ ጥያቄ"}  •  Created ${fmtDateTime(req.created_at)}`,
+          },
+        ]}
         actions={
           <Button
             variant="outline"
+            className="bg-white text-[color:var(--shell-header)] hover:bg-white/90"
             onClick={() =>
               req.house
                 ? navigate({
@@ -446,12 +384,10 @@ function RentalRequestDetailPage() {
         }
       />
 
-      <Stepper
-        current={initialStage}
-        isTermination={isTermination}
-        verifiedAt={req.verified_at}
-        approvedAt={req.approval_decision_at}
-        status={req.status}
+      <WorkflowStepper
+        stages={workflowStages}
+        currentStage={currentStage}
+        exception={workflowException}
       />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -615,7 +551,7 @@ function RentalRequestDetailPage() {
                       onCheckedChange={(v) => setChecks((s) => ({ ...s, [c.key]: v === true }))}
                     />
                     <span>
-                      <span className="font-noto-ethiopic">{c.labelAm}</span>
+                      <span className="font-am-body">{c.labelAm}</span>
                       <span className="ml-1 text-xs text-slate-500">/ {c.labelEn}</span>
                     </span>
                   </label>
@@ -634,7 +570,7 @@ function RentalRequestDetailPage() {
                 <Button
                   onClick={() => passVerification.mutate()}
                   disabled={passVerification.isPending}
-                  className="bg-blue-700 hover:bg-blue-800"
+                  className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
                 >
                   <CheckCircle2 className="mr-1 h-4 w-4" /> Pass Verification
                 </Button>
@@ -668,7 +604,7 @@ function RentalRequestDetailPage() {
                 <Button
                   onClick={() => approve.mutate()}
                   disabled={approve.isPending || houseOccupiedConflict}
-                  className="bg-blue-700 hover:bg-blue-800"
+                  className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
                 >
                   <CheckCircle2 className="mr-1 h-4 w-4" /> Approve
                 </Button>
@@ -685,7 +621,7 @@ function RentalRequestDetailPage() {
 
           {req.status === "approved" && !isTermination && (
             <Card className="p-4">
-              <div className="mb-1 font-noto-ethiopic text-sm font-semibold">የቤት ኪራይ ክፍያ</div>
+              <div className="mb-1 font-am-body text-sm font-semibold">የቤት ኪራይ ክፍያ</div>
               <div className="text-xs text-slate-600">
                 Collect the initial rent from the Revenue page. A receipt is generated on payment.
               </div>

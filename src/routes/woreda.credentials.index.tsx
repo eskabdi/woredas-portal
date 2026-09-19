@@ -192,17 +192,17 @@ function CredentialsListPage() {
                 className="border-emerald-600 text-emerald-700 hover:bg-emerald-50"
               >
                 <ShieldCheck className="mr-2 h-4 w-4" />
-                <span className="font-noto-ethiopic">ያረጋግጡ</span>
+                <span className="font-am-body">ያረጋግጡ</span>
                 <span className="ml-2 opacity-80">/ Verify</span>
               </Button>
             </PermissionGate>
             <PermissionGate permission={P.CREDENTIAL_ISSUE}>
               <Button
                 onClick={() => navigate({ to: "/woreda/credentials/new" })}
-                className="bg-blue-700 text-white hover:bg-blue-800"
+                className="bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90"
               >
                 <Plus className="mr-2 h-4 w-4" />
-                <span className="font-noto-ethiopic">አዲስ ጥያቄ</span>
+                <span className="font-am-body">አዲስ ጥያቄ</span>
                 <span className="ml-2 opacity-80">/ New Request</span>
               </Button>
             </PermissionGate>

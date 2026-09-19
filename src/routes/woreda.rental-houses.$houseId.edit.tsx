@@ -133,7 +133,12 @@ function EditRentalHousePage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader icon={Building2} titleAm="የኪራይ ቤት አርትዕ" titleEn="Edit Rental House" />
+      <PageHeader
+        icon={Building2}
+        titleAm="የኪራይ ቤት አርትዕ"
+        titleEn="Edit Rental House"
+        backHref={`/woreda/rental-houses/${houseId}`}
+      />
       <form onSubmit={form.handleSubmit((v) => mutation.mutate(v))} className="space-y-4">
         <Section icon={Building2} titleAm="የቤት መረጃ" titleEn="House Information">
           <Grid>

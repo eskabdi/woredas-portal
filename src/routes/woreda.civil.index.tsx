@@ -344,7 +344,7 @@ function CivilListPage() {
       am: "ዓይነት",
       en: "Type",
       render: (r) => (
-        <span className="font-noto-ethiopic">{EVENT_TYPE_LABEL[r.event_type] ?? r.event_type}</span>
+        <span className="font-am-body">{EVENT_TYPE_LABEL[r.event_type] ?? r.event_type}</span>
       ),
     },
     {
@@ -355,7 +355,7 @@ function CivilListPage() {
         const sub = subjectName(r);
         return (
           <>
-            <div className="font-noto-ethiopic font-medium text-slate-900">{sub.am}</div>
+            <div className="font-am-body font-medium text-slate-900">{sub.am}</div>
             {sub.en && <div className="text-xs text-slate-500">{sub.en}</div>}
           </>
         );
@@ -410,9 +410,9 @@ function CivilListPage() {
             <PermissionGate permission={P.CIVIL_REGISTER}>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button className="bg-blue-700 text-white hover:bg-blue-800">
+                  <Button className="bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90">
                     <Plus className="mr-2 h-4 w-4" />
-                    <span className="font-noto-ethiopic">አዲስ ምዝገባ</span>
+                    <span className="font-am-body">አዲስ ምዝገባ</span>
                     <span className="ml-2 opacity-80">/ New Registration</span>
                     <ChevronDown className="ml-2 h-4 w-4 opacity-80" />
                   </Button>
@@ -420,22 +420,22 @@ function CivilListPage() {
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuItem onClick={() => navigate({ to: "/woreda/civil/birth/new" })}>
                     <Baby className="mr-2 h-4 w-4 text-blue-600" />
-                    <span className="font-noto-ethiopic">ልደት</span>
+                    <span className="font-am-body">ልደት</span>
                     <span className="ml-auto text-xs text-slate-500">Birth</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate({ to: "/woreda/civil/death/new" })}>
                     <HeartCrack className="mr-2 h-4 w-4 text-slate-700" />
-                    <span className="font-noto-ethiopic">ሞት</span>
+                    <span className="font-am-body">ሞት</span>
                     <span className="ml-auto text-xs text-slate-500">Death</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate({ to: "/woreda/civil/marriage/new" })}>
                     <Heart className="mr-2 h-4 w-4 text-rose-600" />
-                    <span className="font-noto-ethiopic">ጋብቻ</span>
+                    <span className="font-am-body">ጋብቻ</span>
                     <span className="ml-auto text-xs text-slate-500">Marriage</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate({ to: "/woreda/civil/divorce/new" })}>
                     <Scale className="mr-2 h-4 w-4 text-amber-600" />
-                    <span className="font-noto-ethiopic">ፍቺ</span>
+                    <span className="font-am-body">ፍቺ</span>
                     <span className="ml-auto text-xs text-slate-500">Divorce</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -470,10 +470,10 @@ function CivilListPage() {
           <PermissionGate permission={P.CIVIL_REGISTER}>
             <Button
               onClick={() => navigate({ to: "/woreda/civil/birth/new" })}
-              className="mt-3 bg-blue-700 text-white hover:bg-blue-800"
+              className="mt-3 bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90"
             >
               <Baby className="mr-2 h-4 w-4" />
-              <span className="font-noto-ethiopic">አዲስ የልደት ምዝገባ</span>
+              <span className="font-am-body">አዲስ የልደት ምዝገባ</span>
               <span className="ml-2 opacity-80">/ New Birth</span>
             </Button>
           </PermissionGate>

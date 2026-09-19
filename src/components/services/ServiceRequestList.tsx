@@ -65,7 +65,7 @@ export function PriorityBadge({ priority }: { priority: string }) {
   return (
     <span
       className={
-        "font-noto-ethiopic inline-flex items-center rounded px-2 py-0.5 text-xs " +
+        "font-am-body inline-flex items-center rounded px-2 py-0.5 text-xs " +
         (PRIORITY_STYLE[priority] ?? "bg-slate-100 text-slate-700")
       }
     >
@@ -333,7 +333,7 @@ export function ServiceRequestList({ category, titleAm, titleEn, descriptionAm }
       am: "አመልካች",
       en: "Applicant",
       render: (r) => (
-        <span className="font-noto-ethiopic">
+        <span className="font-am-body">
           {r.applicant_name || r.resident?.full_name_am || r.resident?.full_name || "—"}
         </span>
       ),
@@ -344,7 +344,7 @@ export function ServiceRequestList({ category, titleAm, titleEn, descriptionAm }
       en: "Service",
       render: (r) => (
         <>
-          <span className="font-noto-ethiopic">
+          <span className="font-am-body">
             {r.service_type?.name_am ?? r.service_type?.name_en ?? "—"}
           </span>
           {r.subject && <div className="text-xs text-slate-500">{r.subject}</div>}
@@ -413,7 +413,7 @@ export function ServiceRequestList({ category, titleAm, titleEn, descriptionAm }
               <Link to="/woreda/services/new" search={{ category } as never}>
                 <Button>
                   <Plus className="mr-1 h-4 w-4" />
-                  <span className="font-noto-ethiopic">
+                  <span className="font-am-body">
                     {category === "complaint" ? "አዲስ ቅሬታ" : "አዲስ ጥያቄ"}
                   </span>
                 </Button>

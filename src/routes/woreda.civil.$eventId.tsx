@@ -19,7 +19,8 @@ import {
   XCircle,
 } from "lucide-react";
 
-import { PageHeader } from "@/components/common/PageHeader";
+import { DetailHeader } from "@/components/common/DetailHeader";
+import { WorkflowStepper, type WorkflowStage } from "@/components/common/WorkflowStepper";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
@@ -62,7 +63,7 @@ export const Route = createFileRoute("/woreda/civil/$eventId")({
       permission={P.CIVIL_READ}
       fallback={
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-800">
-          <p className="font-noto-ethiopic font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
+          <p className="font-am-body font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
           <p className="text-sm">You do not have permission to view civil events.</p>
         </div>
       }
@@ -154,6 +155,24 @@ const EVENT_TITLES: Record<
   marriage: { am: "የጋብቻ ማጠቃለያ", en: "Marriage Summary", icon: Heart },
   divorce: { am: "የፍቺ ማጠቃለያ", en: "Divorce Summary", icon: Scale },
 };
+
+// Matches the seeded FSM (workflow_transition rows for the `civil` entity):
+// submitted -> under_review -> verified -> pending_approval -> approved ->
+// awaiting_payment -> paid -> registered (the last hop is a system
+// transition, never set from the client). `returned` is a single ambiguous
+// target from either under_review or pending_approval (civil.return) --
+// disambiguated at render time via event.verified_at, same as the credential
+// and rental-request workflow screens.
+const WORKFLOW_STAGES: WorkflowStage[] = [
+  { key: "submitted", am: "ገባ", en: "Submitted" },
+  { key: "under_review", am: "በግምገማ", en: "Under Review" },
+  { key: "verified", am: "ተረጋግጧል", en: "Verified" },
+  { key: "pending_approval", am: "ማጽደቅ በመጠበቅ", en: "Pending Approval" },
+  { key: "approved", am: "ጸድቋል", en: "Approved" },
+  { key: "awaiting_payment", am: "ክፍያ በመጠበቅ", en: "Awaiting Payment" },
+  { key: "paid", am: "ተከፍሏል", en: "Paid" },
+  { key: "registered", am: "ተመዝግቧል", en: "Registered" },
+];
 
 // Task 14-A: resolve_civil_fee() (00000000000059) -- same fail-closed,
 // tenant-internal RPC pattern as useFeeSchedule() (credential module), but
@@ -489,7 +508,7 @@ function CivilEventDetailPage() {
   if (!event) {
     return (
       <div className="rounded-lg border border-slate-200 bg-white p-8 text-center">
-        <p className="font-noto-ethiopic text-slate-700">ክስተቱ አልተገኘም</p>
+        <p className="font-am-body text-slate-700">ክስተቱ አልተገኘም</p>
         <p className="text-sm text-slate-500">Event not found</p>
         <Button
           className="mt-4"
@@ -514,23 +533,44 @@ function CivilEventDetailPage() {
   const isApprovable = status === "verified" || status === "pending_approval";
   const isPayable = status === "approved" || status === "awaiting_payment";
 
+  const workflowException: { am: string; en: string; tone: "danger" | "warning" } | undefined =
+    status === "rejected"
+      ? { am: "ውድቅ ተደርጓል", en: "Rejected", tone: "danger" }
+      : status === "returned"
+        ? { am: "እርማት ተጠይቋል", en: "Returned for correction", tone: "warning" }
+        : undefined;
+  const workflowStage = workflowException
+    ? event.verified_at
+      ? "pending_approval"
+      : "under_review"
+    : status;
+
   const findParent = (id?: string | null) => parentsQuery.data?.find((p) => p.resident_id === id);
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <DetailHeader
+        backHref="/woreda/civil"
         icon={FileText}
         titleAm="የፍትሐ ብሔር ክስተት"
         titleEn="Civil Event"
-        description={event.event_number}
+        meta={[{ label: <span className="font-mono">{event.event_number}</span> }]}
+        status={<StatusChip status={status} />}
         actions={
-          <div className="flex items-center gap-3">
-            <StatusChip status={status} />
-            <Button variant="outline" onClick={() => navigate({ to: "/woreda/civil" })}>
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            className="bg-white text-[color:var(--shell-header)] hover:bg-white/90"
+            onClick={() => navigate({ to: "/woreda/civil" })}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back
+          </Button>
         }
+      />
+
+      <WorkflowStepper
+        stages={WORKFLOW_STAGES}
+        currentStage={workflowStage}
+        exception={workflowException}
       />
 
       {/* Card 1 — Submission summary (per event type) */}
@@ -552,7 +592,7 @@ function CivilEventDetailPage() {
               {eventType === "birth" && (
                 <>
                   <Field labelAm="የልጅ ሙሉ ስም" labelEn="Child Name">
-                    <span className="font-noto-ethiopic">{childName || "—"}</span>
+                    <span className="font-am-body">{childName || "—"}</span>
                     {birthD.child_full_name_en && (
                       <div className="text-xs text-slate-500">{birthD.child_full_name_en}</div>
                     )}
@@ -577,14 +617,14 @@ function CivilEventDetailPage() {
                         params={{ residentId: birthD.mother_resident_id }}
                         className="text-blue-700 hover:underline"
                       >
-                        <span className="font-noto-ethiopic">
+                        <span className="font-am-body">
                           {findParent(birthD.mother_resident_id)?.full_name_am ||
                             findParent(birthD.mother_resident_id)?.full_name ||
                             "View"}
                         </span>
                       </Link>
                     ) : (
-                      <span className="font-noto-ethiopic">{birthD.mother_name || "—"}</span>
+                      <span className="font-am-body">{birthD.mother_name || "—"}</span>
                     )}
                   </Field>
                   <Field labelAm="አባት" labelEn="Father">
@@ -594,14 +634,14 @@ function CivilEventDetailPage() {
                         params={{ residentId: birthD.father_resident_id }}
                         className="text-blue-700 hover:underline"
                       >
-                        <span className="font-noto-ethiopic">
+                        <span className="font-am-body">
                           {findParent(birthD.father_resident_id)?.full_name_am ||
                             findParent(birthD.father_resident_id)?.full_name ||
                             "View"}
                         </span>
                       </Link>
                     ) : (
-                      <span className="font-noto-ethiopic">{birthD.father_name || "—"}</span>
+                      <span className="font-am-body">{birthD.father_name || "—"}</span>
                     )}
                   </Field>
                   <Field labelAm="የተወለደበት ስፍራ" labelEn="Place of Birth">
@@ -622,12 +662,12 @@ function CivilEventDetailPage() {
                         params={{ residentId: event.resident.resident_id }}
                         className="text-blue-700 hover:underline"
                       >
-                        <span className="font-noto-ethiopic">
+                        <span className="font-am-body">
                           {event.resident.full_name_am || event.resident.full_name || "View"}
                         </span>
                       </Link>
                     ) : (
-                      <span className="font-noto-ethiopic">{deathD.deceased_name || "—"}</span>
+                      <span className="font-am-body">{deathD.deceased_name || "—"}</span>
                     )}
                   </Field>
                   <Field labelAm="ፆታ" labelEn="Sex">
@@ -708,7 +748,7 @@ function CivilEventDetailPage() {
               )}
 
               <Field labelAm="መረጃ ሰጪ" labelEn="Informant">
-                <span className="font-noto-ethiopic">
+                <span className="font-am-body">
                   {(rawDetails.informant as { name?: string } | undefined)?.name || "—"}
                 </span>
                 {(rawDetails.informant as { relation?: string } | undefined)?.relation && (
@@ -739,12 +779,12 @@ function CivilEventDetailPage() {
             <div className="space-y-4">
               <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
                 <div className="font-medium">Returned for correction</div>
-                <div className="mt-1 font-noto-ethiopic">ምክንያት: {event.return_reason || "—"}</div>
+                <div className="mt-1 font-am-body">ምክንያት: {event.return_reason || "—"}</div>
               </div>
               <PermissionGate permission={P.CIVIL_RESUBMIT}>
                 <Button onClick={handleResubmit} disabled={busy || !canResubmit}>
                   {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  <span className="font-noto-ethiopic">እንደገና ላክ</span>
+                  <span className="font-am-body">እንደገና ላክ</span>
                   <span className="ml-2 opacity-80">/ Resubmit</span>
                 </Button>
               </PermissionGate>
@@ -763,7 +803,7 @@ function CivilEventDetailPage() {
                       disabled={!canVerify}
                     />
                     <label htmlFor={item.key} className="cursor-pointer text-sm leading-tight">
-                      <div className="font-noto-ethiopic text-slate-800">{item.am}</div>
+                      <div className="font-am-body text-slate-800">{item.am}</div>
                       <div className="text-xs text-slate-500">{item.en}</div>
                     </label>
                   </li>
@@ -774,16 +814,16 @@ function CivilEventDetailPage() {
                   <Button
                     onClick={handlePass}
                     disabled={!allChecked || busy}
-                    className="bg-blue-700 text-white hover:bg-blue-800"
+                    className="bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90"
                   >
                     {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     <CheckCircle2 className="mr-2 h-4 w-4" />
-                    <span className="font-noto-ethiopic">አልፏል</span>
+                    <span className="font-am-body">አልፏል</span>
                     <span className="ml-2 opacity-80">/ Pass Verification</span>
                   </Button>
                   {canReturn && (
                     <Button variant="outline" onClick={() => setReturnOpen(true)} disabled={busy}>
-                      <span className="font-noto-ethiopic">መልስ</span>
+                      <span className="font-am-body">መልስ</span>
                       <span className="ml-2 opacity-80">/ Return</span>
                     </Button>
                   )}
@@ -807,17 +847,17 @@ function CivilEventDetailPage() {
               }
             >
               <div className="space-y-3">
-                <p className="font-noto-ethiopic text-sm text-slate-700">ተረጋግጧል፤ ለማጽደቅ ይላኩ።</p>
+                <p className="font-am-body text-sm text-slate-700">ተረጋግጧል፤ ለማጽደቅ ይላኩ።</p>
                 <p className="text-xs text-slate-500">
                   Verified. Send it into your approval queue to decide.
                 </p>
                 <Button
                   onClick={handleSendForApproval}
                   disabled={busy || !canApprove}
-                  className="bg-blue-700 text-white hover:bg-blue-800"
+                  className="bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90"
                 >
                   {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  <span className="font-noto-ethiopic">ለማጽደቅ ላክ</span>
+                  <span className="font-am-body">ለማጽደቅ ላክ</span>
                   <span className="ml-2 opacity-80">/ Send for Approval</span>
                 </Button>
               </div>
@@ -826,7 +866,7 @@ function CivilEventDetailPage() {
             <div className="space-y-4">
               {eventType === "birth" && (
                 <>
-                  <p className="font-noto-ethiopic text-sm text-slate-700">
+                  <p className="font-am-body text-sm text-slate-700">
                     ክፍያ ከተጠናቀቀ በኋላ አዲስ የነዋሪ መዝገብ ይፈጠራል።
                   </p>
                   <p className="text-xs text-slate-500">
@@ -837,7 +877,7 @@ function CivilEventDetailPage() {
               )}
               {eventType === "death" && (
                 <>
-                  <p className="font-noto-ethiopic text-sm text-slate-700">
+                  <p className="font-am-body text-sm text-slate-700">
                     ክፍያ ከተጠናቀቀ በኋላ የነዋሪ ሁኔታ "የተሞተ" ተብሎ ይመዘገባል።
                   </p>
                   <p className="text-xs text-slate-500">
@@ -865,16 +905,16 @@ function CivilEventDetailPage() {
                   <Button
                     onClick={handleApprove}
                     disabled={busy || !canApprove}
-                    className="bg-blue-700 text-white hover:bg-blue-800"
+                    className="bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90"
                   >
                     {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     <CheckCircle2 className="mr-2 h-4 w-4" />
-                    <span className="font-noto-ethiopic">አጽድቅ</span>
+                    <span className="font-am-body">አጽድቅ</span>
                     <span className="ml-2 opacity-80">/ Approve</span>
                   </Button>
                   {canReturn && (
                     <Button variant="outline" onClick={() => setReturnOpen(true)} disabled={busy}>
-                      <span className="font-noto-ethiopic">መልስ</span>
+                      <span className="font-am-body">መልስ</span>
                       <span className="ml-2 opacity-80">/ Return</span>
                     </Button>
                   )}
@@ -885,7 +925,7 @@ function CivilEventDetailPage() {
                       disabled={busy}
                     >
                       <XCircle className="mr-2 h-4 w-4" />
-                      <span className="font-noto-ethiopic">ውድቅ</span>
+                      <span className="font-am-body">ውድቅ</span>
                       <span className="ml-2 opacity-80">/ Reject</span>
                     </Button>
                   )}
@@ -922,14 +962,14 @@ function CivilEventDetailPage() {
         >
           {status === "rejected" ? (
             <div className="text-sm text-slate-700">
-              <div className="font-noto-ethiopic">ምክንያት: {event.reject_reason || "—"}</div>
+              <div className="font-am-body">ምክንያት: {event.reject_reason || "—"}</div>
             </div>
           ) : (
             <div className="space-y-3 text-sm">
               {eventType === "birth" && (
                 <>
                   <div className="text-slate-700">
-                    <span className="font-noto-ethiopic">ክስተቱ ተመዝግቧል። አዲስ የነዋሪ መዝገብ ተፈጥሯል።</span>
+                    <span className="font-am-body">ክስተቱ ተመዝግቧል። አዲስ የነዋሪ መዝገብ ተፈጥሯል።</span>
                     <div className="text-xs text-slate-500">
                       Event registered. A new resident record has been generated.
                     </div>
@@ -939,8 +979,8 @@ function CivilEventDetailPage() {
                       to="/woreda/residents/$residentId"
                       params={{ residentId: event.resident_id }}
                     >
-                      <Button className="bg-blue-700 text-white hover:bg-blue-800">
-                        <span className="font-noto-ethiopic">የነዋሪ መገለጫ ተመልከት</span>
+                      <Button className="bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90">
+                        <span className="font-am-body">የነዋሪ መገለጫ ተመልከት</span>
                         <span className="ml-2 opacity-80">/ View Resident</span>
                       </Button>
                     </Link>
@@ -951,7 +991,7 @@ function CivilEventDetailPage() {
               {eventType === "death" && (
                 <>
                   <div className="text-slate-700">
-                    <span className="font-noto-ethiopic">የሞት ክስተት ተመዝግቧል። የነዋሪ ሁኔታ ተሻሽሏል።</span>
+                    <span className="font-am-body">የሞት ክስተት ተመዝግቧል። የነዋሪ ሁኔታ ተሻሽሏል።</span>
                     <div className="text-xs text-slate-500">
                       Death registered. Resident status updated and active credentials revoked.
                     </div>
@@ -962,7 +1002,7 @@ function CivilEventDetailPage() {
                       params={{ residentId: event.resident_id }}
                     >
                       <Button variant="outline">
-                        <span className="font-noto-ethiopic">የነዋሪ መገለጫ ተመልከት</span>
+                        <span className="font-am-body">የነዋሪ መገለጫ ተመልከት</span>
                         <span className="ml-2 opacity-80">/ View Resident</span>
                       </Button>
                     </Link>
@@ -972,7 +1012,7 @@ function CivilEventDetailPage() {
 
               {(eventType === "marriage" || eventType === "divorce") && (
                 <div className="text-slate-700">
-                  <span className="font-noto-ethiopic">
+                  <span className="font-am-body">
                     {eventType === "marriage" ? "የጋብቻ ክስተት ተመዝግቧል።" : "የፍቺ ክስተት ተመዝግቧል።"}
                   </span>
                   <div className="text-xs text-slate-500">
@@ -1074,7 +1114,7 @@ function Card({
           <Icon className="h-5 w-5" />
         </div>
         <div className="leading-tight">
-          <h2 className="font-noto-ethiopic text-lg font-semibold">{title}</h2>
+          <h2 className="font-am-heading text-lg font-semibold">{title}</h2>
           <p className="text-sm text-white/80">{titleEn}</p>
         </div>
       </div>
@@ -1095,7 +1135,7 @@ function Field({
   return (
     <div>
       <div className="text-xs uppercase tracking-wide text-slate-500">
-        <span className="font-noto-ethiopic">{labelAm}</span>
+        <span className="font-am-body">{labelAm}</span>
         <span className="ml-1">/ {labelEn}</span>
       </div>
       <div className="mt-1 text-sm text-slate-800">{children}</div>
@@ -1120,11 +1160,11 @@ function SpouseView({
         params={{ residentId: party.resident_id }}
         className="text-blue-700 hover:underline"
       >
-        <span className="font-noto-ethiopic">{p?.full_name_am || p?.full_name || "View"}</span>
+        <span className="font-am-body">{p?.full_name_am || p?.full_name || "View"}</span>
       </Link>
     );
   }
-  return <span className="font-noto-ethiopic">{party.name || "—"}</span>;
+  return <span className="font-am-body">{party.name || "—"}</span>;
 }
 
 interface PaymentCardProps {
@@ -1271,7 +1311,7 @@ function PaymentCard({
           <ReceiptIcon className="h-5 w-5" />
         </div>
         <div className="leading-tight">
-          <h2 className="font-noto-ethiopic text-lg font-semibold">ክፍያ</h2>
+          <h2 className="font-am-heading text-lg font-semibold">ክፍያ</h2>
           <p className="text-sm text-white/80">Payment</p>
         </div>
       </div>
@@ -1280,7 +1320,7 @@ function PaymentCard({
           <p className="text-sm text-red-700">{(feeQuery.error as Error).message}</p>
         ) : (
           <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm">
-            <span className="font-noto-ethiopic font-medium">የክፍያ መጠን</span>
+            <span className="font-am-body font-medium">የክፍያ መጠን</span>
             <span className="ml-2 text-slate-500">/ Fee amount</span>
             <div className="mt-1 text-lg font-semibold">
               {feeQuery.isLoading ? "…" : `${fee.toFixed(2)} ETB`}
@@ -1299,7 +1339,7 @@ function PaymentCard({
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="civil-payment-channel">
-                <span className="font-noto-ethiopic">የክፍያ መንገድ</span>
+                <span className="font-am-body">የክፍያ መንገድ</span>
                 <span className="ml-2 text-slate-500">/ Channel</span>
               </Label>
               <Select value={channel} onValueChange={(v) => setChannel(v as typeof channel)}>
@@ -1316,7 +1356,7 @@ function PaymentCard({
             {(channel === "bank" || channel === "mobile") && (
               <div className="space-y-2">
                 <Label htmlFor="civil-payment-ref">
-                  <span className="font-noto-ethiopic">የማጣቀሻ ቁጥር</span>
+                  <span className="font-am-body">የማጣቀሻ ቁጥር</span>
                   <span className="ml-2 text-slate-500">/ Reference No.</span>
                 </Label>
                 <Input
@@ -1335,7 +1375,7 @@ function PaymentCard({
           >
             {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             <CheckCircle2 className="mr-2 h-4 w-4" />
-            <span className="font-noto-ethiopic">ክፍያ መዝግብ</span>
+            <span className="font-am-body">ክፍያ መዝግብ</span>
             <span className="ml-2 opacity-80">/ Record Payment</span>
           </Button>
         </PermissionGate>

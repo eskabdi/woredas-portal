@@ -34,7 +34,7 @@ export function PdfPageView({ file, width = 640 }: { file: string; width?: numbe
           }
           error={
             <div className="flex h-64 w-full items-center justify-center px-4 text-center text-sm text-slate-500">
-              <span className="font-noto-ethiopic">ፋይሉ ሊታይ አልቻለም</span>
+              <span className="font-am-body">ፋይሉ ሊታይ አልቻለም</span>
               <span className="ml-1">/ Couldn&apos;t render this file</span>
             </div>
           }
@@ -101,7 +101,7 @@ export default function DocumentViewerDialog({
       <DialogContent className="flex max-h-[90vh] max-w-4xl flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between gap-4 pr-6">
-            <span className="font-noto-ethiopic truncate text-sm font-medium">{title}</span>
+            <span className="font-am-body truncate text-sm font-medium">{title}</span>
             {signedUrl && (
               <a
                 href={signedUrl}
@@ -110,7 +110,7 @@ export default function DocumentViewerDialog({
                 className="flex shrink-0 items-center gap-1 text-xs font-normal text-blue-700 hover:underline"
               >
                 <ExternalLink className="h-3.5 w-3.5" />
-                <span className="font-noto-ethiopic">በአዲስ ትር ክፈት</span>
+                <span className="font-am-body">በአዲስ ትር ክፈት</span>
                 <span className="opacity-70">/ Open in new tab</span>
               </a>
             )}

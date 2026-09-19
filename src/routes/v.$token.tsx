@@ -69,7 +69,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-slate-100 px-4 py-10">
       <div className="mx-auto w-full max-w-xl">
-        <h1 className="font-noto-ethiopic mb-6 text-center text-lg font-bold text-slate-800">
+        <h1 className="font-am-heading mb-6 text-center text-lg font-bold text-slate-800">
           የመታወቂያ ማረጋገጫ / ID Card Verification
         </h1>
         {children}
@@ -82,7 +82,7 @@ function Row({ labelAm, labelEn, value }: { labelAm: string; labelEn: string; va
   return (
     <div className="flex flex-col gap-0.5 border-b border-slate-100 py-2 last:border-0 sm:flex-row sm:items-baseline sm:gap-3">
       <div className="w-44 shrink-0 text-xs text-slate-500">
-        <span className="font-noto-ethiopic">{labelAm}</span>
+        <span className="font-am-body">{labelAm}</span>
         <span className="ml-1">/ {labelEn}</span>
       </div>
       <div className="break-words text-sm font-medium text-slate-900">{value || "—"}</div>
@@ -161,7 +161,7 @@ function CredentialVerificationPage() {
       <Shell>
         <div className="rounded-xl border border-red-200 bg-white p-8 text-center">
           <ShieldX className="mx-auto h-10 w-10 text-red-600" />
-          <h2 className="font-noto-ethiopic mt-3 text-base font-bold text-red-700">
+          <h2 className="font-am-heading mt-3 text-base font-bold text-red-700">
             ትክክለኛ መታወቂያ አይደለም
           </h2>
           <p className="mt-1 text-sm font-medium text-red-700">Not a valid card</p>
@@ -222,7 +222,7 @@ function CredentialVerificationPage() {
           <div className="flex items-center gap-3 bg-red-50 px-5 py-4">
             <ShieldX className="h-6 w-6 shrink-0 text-red-600" />
             <div>
-              <div className="font-noto-ethiopic font-bold text-red-800">ይህ መታወቂያ ተሰርዟል</div>
+              <div className="font-am-body font-bold text-red-800">ይህ መታወቂያ ተሰርዟል</div>
               <div className="text-sm text-red-700">
                 {registry!.status === "invalid"
                   ? "Revoked ID Card"
@@ -234,7 +234,7 @@ function CredentialVerificationPage() {
           <div className="flex items-center gap-3 bg-amber-50 px-5 py-4">
             <Clock className="h-6 w-6 shrink-0 text-amber-600" />
             <div>
-              <div className="font-noto-ethiopic font-bold text-amber-800">ገና አልተሰጠም</div>
+              <div className="font-am-body font-bold text-amber-800">ገና አልተሰጠም</div>
               <div className="text-sm text-amber-700">
                 This card has been prepared but not yet issued to its holder.
               </div>
@@ -244,7 +244,7 @@ function CredentialVerificationPage() {
           <div className="flex items-center gap-3 bg-amber-50 px-5 py-4">
             <Clock className="h-6 w-6 shrink-0 text-amber-600" />
             <div>
-              <div className="font-noto-ethiopic font-bold text-amber-800">ታትሟል፤ ገና አልተሰጠም</div>
+              <div className="font-am-body font-bold text-amber-800">ታትሟል፤ ገና አልተሰጠም</div>
               <div className="text-sm text-amber-700">
                 Genuine card, printed but not yet collected by its holder.
               </div>
@@ -254,7 +254,7 @@ function CredentialVerificationPage() {
           <div className="flex items-center gap-3 bg-amber-50 px-5 py-4">
             <Clock className="h-6 w-6 shrink-0 text-amber-600" />
             <div>
-              <div className="font-noto-ethiopic font-bold text-amber-800">የአገልግሎት ጊዜው አብቅቷል</div>
+              <div className="font-am-body font-bold text-amber-800">የአገልግሎት ጊዜው አብቅቷል</div>
               <div className="text-sm text-amber-700">Genuine card, but it has expired.</div>
             </div>
           </div>
@@ -262,9 +262,7 @@ function CredentialVerificationPage() {
           <div className="flex items-center gap-3 bg-emerald-50 px-5 py-4">
             <BadgeCheck className="h-6 w-6 shrink-0 text-emerald-600" />
             <div>
-              <div className="font-noto-ethiopic font-bold text-emerald-800">
-                የተረጋገጠ ትክክለኛ መታወቂያ
-              </div>
+              <div className="font-am-body font-bold text-emerald-800">የተረጋገጠ ትክክለኛ መታወቂያ</div>
               <div className="text-sm text-emerald-700">Issued by the Harari Regional State.</div>
             </div>
           </div>
@@ -311,7 +309,7 @@ function CredentialVerificationPage() {
       </div>
 
       <p className="mt-4 text-center text-xs text-slate-500">
-        <span className="font-noto-ethiopic">የሐረሪ ክልላዊ መንግሥት</span> / Harari Regional State
+        <span className="font-am-body">የሐረሪ ክልላዊ መንግሥት</span> / Harari Regional State
       </p>
     </Shell>
   );

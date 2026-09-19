@@ -111,7 +111,12 @@ function NewRentalHousePage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader icon={Building2} titleAm="አዲስ የኪራይ ቤት ምዝገባ" titleEn="Register New Rental House" />
+      <PageHeader
+        icon={Building2}
+        titleAm="አዲስ የኪራይ ቤት ምዝገባ"
+        titleEn="Register New Rental House"
+        backHref="/woreda/rental-houses"
+      />
 
       <form onSubmit={form.handleSubmit((v) => mutation.mutate(v))} className="space-y-4">
         <Section icon={Building2} titleAm="የቤት መረጃ" titleEn="House Information">

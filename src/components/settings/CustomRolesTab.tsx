@@ -99,16 +99,19 @@ export function CustomRolesTab() {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Button onClick={() => setCreateOpen(true)} className="bg-blue-700 hover:bg-blue-800">
+        <Button
+          onClick={() => setCreateOpen(true)}
+          className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
+        >
           <Plus className="mr-2 h-4 w-4" />
-          <span className="font-noto-ethiopic">አዲስ ሚና</span>
+          <span className="font-am-body">አዲስ ሚና</span>
           <span className="ml-1 text-xs opacity-80">/ New Custom Role</span>
         </Button>
       </div>
 
       {roles.length === 0 ? (
         <div className="rounded-md border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">
-          <span className="font-noto-ethiopic">ምንም ዝግጁ ሚና የለም</span>
+          <span className="font-am-body">ምንም ዝግጁ ሚና የለም</span>
           <span className="ml-2">/ No custom roles yet</span>
         </div>
       ) : (
@@ -217,7 +220,7 @@ function CreateRoleDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            <span className="font-noto-ethiopic">አዲስ ብጁ ሚና</span>
+            <span className="font-am-body">አዲስ ብጁ ሚና</span>
             <span className="ml-2 text-sm text-slate-500">/ New Custom Role</span>
           </DialogTitle>
         </DialogHeader>
@@ -235,7 +238,11 @@ function CreateRoleDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button disabled={submitting} onClick={submit} className="bg-blue-700 hover:bg-blue-800">
+          <Button
+            disabled={submitting}
+            onClick={submit}
+            className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
+          >
             Create
           </Button>
         </DialogFooter>
@@ -300,7 +307,7 @@ function EditPermissionsDialog({
         <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              <span className="font-noto-ethiopic">ፈቃዶች</span>
+              <span className="font-am-body">ፈቃዶች</span>
               <span className="ml-2 text-sm text-slate-500">/ Permissions — {role.name}</span>
             </DialogTitle>
           </DialogHeader>
@@ -311,7 +318,7 @@ function EditPermissionsDialog({
               {catalog.map(([prefix, keys]) => (
                 <Fragment key={prefix}>
                   <div className="text-xs font-semibold text-slate-600">
-                    <span className="font-noto-ethiopic">{GROUP_LABELS[prefix]?.am ?? prefix}</span>
+                    <span className="font-am-body">{GROUP_LABELS[prefix]?.am ?? prefix}</span>
                     <span className="ml-1 text-slate-400">
                       / {GROUP_LABELS[prefix]?.en ?? prefix}
                     </span>
@@ -343,7 +350,7 @@ function EditPermissionsDialog({
                             <Tooltip>
                               <TooltipTrigger asChild>{cell}</TooltipTrigger>
                               <TooltipContent>
-                                <span className="font-noto-ethiopic">የስርዓት ገደብ</span>
+                                <span className="font-am-body">የስርዓት ገደብ</span>
                                 <span className="ml-1 text-xs text-slate-300">/ System-locked</span>
                               </TooltipContent>
                             </Tooltip>

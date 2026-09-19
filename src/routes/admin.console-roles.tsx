@@ -202,7 +202,10 @@ function ConsoleRolesPage() {
         titleEn="Console Users and Role"
         description="Named roles that narrow a super admin's access to specific sections of this console."
         actions={
-          <Button onClick={() => setCreateOpen(true)} className="bg-blue-700 hover:bg-blue-800">
+          <Button
+            onClick={() => setCreateOpen(true)}
+            className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
+          >
             <Plus className="mr-1 h-4 w-4" />
             New Console Role
           </Button>
@@ -257,7 +260,7 @@ function ConsoleRolesPage() {
                 {PERMISSION_ROWS.map((p, idx) => (
                   <tr key={p.key} className={idx % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
                     <td className="sticky left-0 z-[1] bg-inherit px-4 py-2 text-xs text-slate-700">
-                      <div className="font-noto-ethiopic">{p.am}</div>
+                      <div className="font-am-body">{p.am}</div>
                       <div className="text-slate-400">{p.en}</div>
                     </td>
                     {roles.map((r) => (
@@ -409,7 +412,11 @@ function CreateConsoleRoleDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button disabled={submitting} onClick={submit} className="bg-blue-700 hover:bg-blue-800">
+          <Button
+            disabled={submitting}
+            onClick={submit}
+            className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
+          >
             {submitting ? "Creating…" : "Create"}
           </Button>
         </DialogFooter>
@@ -507,7 +514,11 @@ function EditConsoleRoleDialog({
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button disabled={saving} onClick={save} className="bg-blue-700 hover:bg-blue-800">
+            <Button
+              disabled={saving}
+              onClick={save}
+              className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
+            >
               Save
             </Button>
           </div>

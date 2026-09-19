@@ -20,7 +20,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusChip } from "@/components/common/StatusChip";
-import { PageHeader } from "@/components/common/PageHeader";
+import { DetailHeader } from "@/components/common/DetailHeader";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -189,7 +189,7 @@ function HouseholdDetailPage() {
   if (!hasPermission(P.HOUSEHOLD_READ)) {
     return (
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-800">
-        <p className="font-noto-ethiopic font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
+        <p className="font-am-body font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
         <p className="text-sm">You don't have permission to view this page.</p>
       </div>
     );
@@ -207,7 +207,7 @@ function HouseholdDetailPage() {
   if (householdQuery.error || !householdQuery.data) {
     return (
       <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-red-800">
-        <p className="font-noto-ethiopic font-medium">ቤተሰብ አልተገኘም / Household not found</p>
+        <p className="font-am-body font-medium">ቤተሰብ አልተገኘም / Household not found</p>
         <Button variant="link" onClick={() => navigate({ to: "/woreda/households" })}>
           ← Back to list
         </Button>
@@ -236,26 +236,27 @@ function HouseholdDetailPage() {
 
   return (
     <div className="space-y-6 pb-12">
-      <PageHeader
+      <DetailHeader
+        backHref="/woreda/households"
         icon={Home}
         titleAm={titleAm}
         titleEn={`House ${h.house_number}${kebele?.kebele_name_en ? ` — Kebele ${kebele.kebele_number} ${kebele.kebele_name_en}` : ""}`}
+        status={<StatusChip status={h.occupancy_status as string} />}
         actions={
           <div className="flex items-center gap-2 print:hidden">
-            <StatusChip status={h.occupancy_status as string} />
             <Button
               type="button"
               onClick={triggerPrint}
-              className="rounded-md bg-blue-700 text-white hover:bg-blue-800"
+              className="bg-white text-[color:var(--shell-header)] hover:bg-white/90"
               size="sm"
             >
               <Printer className="mr-2 h-4 w-4" />
-              <span className="font-noto-ethiopic">አትም</span>
+              <span className="font-am-body">አትም</span>
               <span className="ml-1 opacity-80">/ Print</span>
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" className="text-white hover:bg-white/15">
                   <MoreVertical className="h-5 w-5" />
                 </Button>
               </DropdownMenuTrigger>
@@ -269,7 +270,7 @@ function HouseholdDetailPage() {
                   }
                 >
                   <Edit className="mr-2 h-4 w-4" />
-                  <span className="font-noto-ethiopic">አስተካክል</span>
+                  <span className="font-am-body">አስተካክል</span>
                   <span className="ml-1 text-xs opacity-70">/ Edit</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -281,11 +282,11 @@ function HouseholdDetailPage() {
       <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)} className="w-full">
         <TabsList>
           <TabsTrigger value="overview" className="flex-none">
-            <span className="font-noto-ethiopic">አጠቃላይ</span>
+            <span className="font-am-body">አጠቃላይ</span>
             <span className="ml-1.5 text-xs text-slate-500">/ Overview</span>
           </TabsTrigger>
           <TabsTrigger value="documents" className="flex-none">
-            <span className="font-noto-ethiopic">ሰነዶች</span>
+            <span className="font-am-body">ሰነዶች</span>
             <span className="ml-1.5 text-xs text-slate-500">/ Documents</span>
           </TabsTrigger>
         </TabsList>
@@ -389,9 +390,7 @@ function HouseholdDetailPage() {
 
                 {!membersQuery.isLoading && members.length === 0 && (
                   <div className="rounded-md border border-dashed border-slate-200 px-4 py-8 text-center">
-                    <p className="font-noto-ethiopic text-sm text-slate-700">
-                      በዚህ ቤት ውስጥ የተመዘገበ ነዋሪ የለም
-                    </p>
+                    <p className="font-am-body text-sm text-slate-700">በዚህ ቤት ውስጥ የተመዘገበ ነዋሪ የለም</p>
                     <p className="text-xs text-slate-500">
                       No residents registered in this household yet
                     </p>
@@ -411,11 +410,11 @@ function HouseholdDetailPage() {
                             params={{ residentId: m.resident_id }}
                             className="flex flex-1 items-center gap-3 rounded-md hover:bg-blue-50/40"
                           >
-                            <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-blue-100 font-noto-ethiopic text-sm font-semibold text-blue-700">
+                            <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-blue-100 font-am-body text-sm font-semibold text-blue-700">
                               {initials}
                             </div>
                             <div className="min-w-0 flex-1">
-                              <div className="font-noto-ethiopic flex items-center gap-1.5 truncate text-sm font-medium text-slate-900">
+                              <div className="font-am-body flex items-center gap-1.5 truncate text-sm font-medium text-slate-900">
                                 <span className="truncate">{name}</span>
                                 {isHead && (
                                   <Crown
@@ -424,7 +423,7 @@ function HouseholdDetailPage() {
                                   />
                                 )}
                               </div>
-                              <div className="font-noto-ethiopic truncate text-xs text-slate-500">
+                              <div className="font-am-body truncate text-xs text-slate-500">
                                 {(m.relation_to_head as string) || "—"}
                               </div>
                             </div>
@@ -446,7 +445,7 @@ function HouseholdDetailPage() {
                                   onClick={() => setSetHeadFor({ id: m.resident_id, name })}
                                 >
                                   <Crown className="mr-2 h-4 w-4 text-amber-500" />
-                                  <span className="font-noto-ethiopic">የቤተሰብ ኃላፊ አድርግ</span>
+                                  <span className="font-am-body">የቤተሰብ ኃላፊ አድርግ</span>
                                   <span className="ml-1 text-xs opacity-70">/ Set as Head</span>
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
@@ -486,13 +485,11 @@ function HouseholdDetailPage() {
       <AlertDialog open={!!setHeadFor} onOpenChange={(o) => !o && setSetHeadFor(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-noto-ethiopic">
+            <AlertDialogTitle className="font-am-body">
               ይህን ግለሰብ የቤተሰብ ኃላፊ ማድረግ ይፈልጋሉ? / Set this person as household head?
             </AlertDialogTitle>
           </AlertDialogHeader>
-          {setHeadFor && (
-            <p className="font-noto-ethiopic text-sm text-slate-700">{setHeadFor.name}</p>
-          )}
+          {setHeadFor && <p className="font-am-body text-sm text-slate-700">{setHeadFor.name}</p>}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
@@ -501,9 +498,9 @@ function HouseholdDetailPage() {
                 e.preventDefault();
                 if (setHeadFor) setHeadMutation.mutate(setHeadFor.id);
               }}
-              className="bg-blue-700 hover:bg-blue-800"
+              className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
             >
-              <span className="font-noto-ethiopic">አረጋግጥ / Confirm</span>
+              <span className="font-am-body">አረጋግጥ / Confirm</span>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -526,7 +523,7 @@ function CardHeader({
   return (
     <div className="flex items-center gap-2 bg-blue-700 px-5 py-3 text-white">
       <Icon className="h-4 w-4 text-white" />
-      <h3 className="font-noto-ethiopic text-base font-bold">
+      <h3 className="font-am-heading text-base font-bold">
         {titleAm} <span className="font-medium text-blue-100">/ {titleEn}</span>
       </h3>
       {rightSlot && <div className="ml-auto">{rightSlot}</div>}
@@ -543,7 +540,7 @@ function documentDateLabel(value: string) {
 
 function notRecorded() {
   return (
-    <span className="font-noto-ethiopic text-slate-400">
+    <span className="font-am-body text-slate-400">
       አልተመዘገበም <span className="text-slate-300">/ Not recorded</span>
     </span>
   );
@@ -579,10 +576,10 @@ function PersonLink({
   if (!person) {
     return (
       <div className="flex items-center justify-between rounded-md border border-dashed border-slate-200 px-3 py-2">
-        <span className="font-noto-ethiopic text-xs uppercase tracking-wide text-slate-500">
+        <span className="font-am-body text-xs uppercase tracking-wide text-slate-500">
           {labelAm} <span className="text-slate-400">/ {labelEn}</span>
         </span>
-        <span className="font-noto-ethiopic text-sm text-slate-400">አልተመዘገበም / Not set</span>
+        <span className="font-am-body text-sm text-slate-400">አልተመዘገበም / Not set</span>
       </div>
     );
   }
@@ -592,10 +589,10 @@ function PersonLink({
       params={{ residentId: person.resident_id }}
       className="flex items-center justify-between rounded-md border border-slate-200 bg-white px-3 py-2 hover:border-blue-300 hover:bg-blue-50/40"
     >
-      <span className="font-noto-ethiopic text-xs uppercase tracking-wide text-slate-500">
+      <span className="font-am-body text-xs uppercase tracking-wide text-slate-500">
         {labelAm} <span className="text-slate-400">/ {labelEn}</span>
       </span>
-      <span className="font-noto-ethiopic text-sm font-medium text-slate-900">
+      <span className="font-am-body text-sm font-medium text-slate-900">
         {person.full_name_am || "—"}
       </span>
     </Link>
@@ -685,7 +682,7 @@ function HouseholdDocumentsTab({
     <Card className="overflow-hidden p-0">
       <div className="flex items-center gap-2 bg-blue-700 px-5 py-3 text-white">
         <FileText className="h-4 w-4 text-white" />
-        <h3 className="font-noto-ethiopic text-base font-bold">
+        <h3 className="font-am-heading text-base font-bold">
           ሰነዶች <span className="font-medium text-blue-100">/ Documents</span>
         </h3>
         <span className="ml-auto inline-flex items-center rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold text-white">
@@ -695,14 +692,14 @@ function HouseholdDocumentsTab({
       <div className="p-5">
         {docs.length === 0 ? (
           <div className="rounded-md border border-dashed border-slate-200 px-4 py-8 text-center">
-            <p className="font-noto-ethiopic text-sm text-slate-700">ለዚህ ቤተሰብ የተጫነ ሰነድ የለም</p>
+            <p className="font-am-body text-sm text-slate-700">ለዚህ ቤተሰብ የተጫነ ሰነድ የለም</p>
             <p className="text-xs text-slate-500">No documents uploaded for this household yet</p>
           </div>
         ) : (
           <div className="space-y-5">
             {Array.from(byResident.entries()).map(([rid, group]) => (
               <div key={rid}>
-                <div className="font-noto-ethiopic mb-2 flex items-center gap-2 text-sm font-semibold text-slate-900">
+                <div className="font-am-body mb-2 flex items-center gap-2 text-sm font-semibold text-slate-900">
                   {rid !== "unknown" ? (
                     <Link
                       to="/woreda/residents/$residentId"
@@ -722,7 +719,7 @@ function HouseholdDocumentsTab({
                         <FileText className="h-4 w-4" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="font-noto-ethiopic truncate text-sm font-medium text-slate-900">
+                        <div className="font-am-body truncate text-sm font-medium text-slate-900">
                           {doc.document_label}
                         </div>
                         <div className="truncate text-xs text-slate-500">
@@ -739,7 +736,7 @@ function HouseholdDocumentsTab({
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                           <>
-                            <span className="font-noto-ethiopic">ይመልከቱ</span>
+                            <span className="font-am-body">ይመልከቱ</span>
                             <span className="ml-1 opacity-70">/ View</span>
                           </>
                         )}

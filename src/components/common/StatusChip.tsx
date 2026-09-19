@@ -102,7 +102,7 @@ export function StatusChip({ status, showAmharic = true }: StatusChipProps) {
   return (
     <span
       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${style} ${
-        showAmharic ? "font-noto-ethiopic" : ""
+        showAmharic ? "font-am-body" : ""
       }`}
     >
       {label}

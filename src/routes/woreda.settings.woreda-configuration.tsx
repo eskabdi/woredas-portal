@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 
 import { PageHeader } from "@/components/common/PageHeader";
+import { SquircleUpload } from "@/components/forms/SquircleUpload";
 import { PermissionGate } from "@/components/common/PermissionGate";
 import { StatusChip } from "@/components/common/StatusChip";
 import { Button } from "@/components/ui/button";
@@ -67,7 +68,7 @@ export const Route = createFileRoute("/woreda/settings/woreda-configuration")({
       permission={P.TENANT_MANAGE}
       fallback={
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-800">
-          <p className="font-noto-ethiopic font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
+          <p className="font-am-body font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
           <p className="text-sm">You do not have permission to manage settings.</p>
         </div>
       }
@@ -450,7 +451,7 @@ function SettingsPage() {
             <div className="mt-4 space-y-3">
               <ReadOnlyBox value="{WOREDA_CODE}-{TYPE}-{YY}-{SEQ:6}" />
               <PreviewLine label="Example" value={`${woredaCode || "ABOKER"}-BR-26-000001`} />
-              <p className="font-noto-ethiopic text-xs text-slate-500">
+              <p className="font-am-body text-xs text-slate-500">
                 ይህ ቅርጸት በስርዓቱ ተስተካክሏል፤ ለውጥ አያስፈልገውም / This format is system-managed and does not
                 need adjustment.
               </p>
@@ -462,7 +463,7 @@ function SettingsPage() {
             <div className="mt-4 space-y-3">
               <ReadOnlyBox value="{WOREDA_CODE}-RCT-{YY}-{SEQ:6}" />
               <PreviewLine label="Example" value={`${woredaCode || "ABOKER"}-RCT-26-000001`} />
-              <p className="font-noto-ethiopic text-xs text-slate-500">
+              <p className="font-am-body text-xs text-slate-500">
                 ይህ ቅርጸት በስርዓቱ ተስተካክሏል፤ ለውጥ አያስፈልገውም / System-managed format.
               </p>
             </div>
@@ -516,21 +517,21 @@ function SettingsPage() {
       <div className="fixed bottom-0 left-64 right-0 z-20 border-t border-slate-200 bg-white/95 px-6 py-3 backdrop-blur">
         <div className="flex items-center justify-end gap-3">
           {form.formState.isDirty && (
-            <span className="font-noto-ethiopic text-xs text-amber-600">
+            <span className="font-am-body text-xs text-amber-600">
               ያልተቀመጡ ለውጦች አሉ / You have unsaved changes
             </span>
           )}
           <Button
             onClick={onSave}
             disabled={saving || !form.formState.isDirty}
-            className="bg-blue-700 hover:bg-blue-800"
+            className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
           >
             {saving ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <Save className="mr-2 h-4 w-4" />
             )}
-            <span className="font-noto-ethiopic">ለውጦችን አስቀምጥ</span>
+            <span className="font-am-body">ለውጦችን አስቀምጥ</span>
             <span className="ml-1 text-xs opacity-80">/ Save Changes</span>
           </Button>
         </div>
@@ -556,7 +557,7 @@ function SettingsTab({
       className="relative rounded-none border-b-2 border-transparent bg-transparent px-4 py-3 text-slate-600 shadow-none data-[state=active]:border-blue-700 data-[state=active]:bg-transparent data-[state=active]:text-blue-800 data-[state=active]:shadow-none"
     >
       <div className="flex flex-col items-start leading-tight">
-        <span className="font-noto-ethiopic text-sm font-medium">{labelAm}</span>
+        <span className="font-am-body text-sm font-medium">{labelAm}</span>
         <span className="text-[10px] uppercase tracking-wide text-slate-400">{labelEn}</span>
       </div>
     </TabsTrigger>
@@ -566,7 +567,7 @@ function SettingsTab({
 function SectionTitle({ titleAm, titleEn }: { titleAm: string; titleEn: string }) {
   return (
     <div className="border-b border-slate-100 pb-3">
-      <h3 className="font-noto-ethiopic text-base font-semibold text-slate-900">{titleAm}</h3>
+      <h3 className="font-am-heading text-base font-semibold text-slate-900">{titleAm}</h3>
       <p className="text-xs text-slate-500">{titleEn}</p>
     </div>
   );
@@ -588,7 +589,7 @@ function Field({
   return (
     <div className={colSpan2 ? "md:col-span-2" : ""}>
       <Label className="mb-1.5 block">
-        <span className="font-noto-ethiopic text-sm font-medium text-slate-700">{labelAm}</span>
+        <span className="font-am-body text-sm font-medium text-slate-700">{labelAm}</span>
         <span className="ml-1 text-xs text-slate-500">/ {labelEn}</span>
       </Label>
       {children}
@@ -693,49 +694,30 @@ function ImageUploadCard({
   return (
     <Card className="p-5">
       <div className="mb-3">
-        <h3 className="font-noto-ethiopic text-sm font-semibold text-slate-900">{titleAm}</h3>
+        <h3 className="font-am-heading text-sm font-semibold text-slate-900">{titleAm}</h3>
         <p className="text-xs text-slate-500">{titleEn}</p>
       </div>
 
-      <label className="group flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-6 transition hover:border-blue-400 hover:bg-blue-50/40">
-        {signedUrl ? (
-          <img
-            src={signedUrl}
-            alt={titleEn}
-            className={`h-32 w-32 object-cover ${shape === "circle" ? "rounded-full" : "rounded-md"} ring-2 ring-white shadow-sm`}
-          />
-        ) : (
-          <div
-            className={`flex h-32 w-32 items-center justify-center bg-white text-slate-300 ${shape === "circle" ? "rounded-full" : "rounded-md"} border border-slate-200`}
-          >
-            <ImageIcon className="h-10 w-10" />
-          </div>
-        )}
-        <div className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-blue-700">
-          {uploading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Upload className="h-4 w-4" />
-          )}
-          <span className="font-noto-ethiopic">ምስል አዘምን</span>
+      <div className="flex flex-col items-center gap-2">
+        <SquircleUpload
+          previewUrl={signedUrl}
+          uploading={uploading}
+          labelAm="ምስል ጫን"
+          labelEn="Upload Image"
+          accept="image/png,image/jpeg"
+          shape={shape}
+          size={128}
+          onFileSelect={onFile}
+        />
+        <div className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-700">
+          <span className="font-am-body">ምስል አዘምን</span>
           <span className="text-xs text-slate-500">/ Update Image</span>
         </div>
-        <input
-          type="file"
-          accept="image/png,image/jpeg"
-          className="hidden"
-          disabled={uploading}
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) onFile(f);
-            e.target.value = "";
-          }}
-        />
-      </label>
+      </div>
 
       {(helperAm || helperEn) && (
         <p className="mt-3 text-xs text-slate-500">
-          {helperAm && <span className="font-noto-ethiopic">{helperAm}</span>}
+          {helperAm && <span className="font-am-body">{helperAm}</span>}
           {helperAm && helperEn && " / "}
           {helperEn}
         </p>
@@ -845,16 +827,16 @@ function ServiceTypeCatalogTab({
     <Card className="overflow-hidden">
       <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
         <div>
-          <h3 className="font-noto-ethiopic text-base font-semibold text-slate-900">{titleAm}</h3>
+          <h3 className="font-am-body text-base font-semibold text-slate-900">{titleAm}</h3>
           <p className="text-xs text-slate-500">{titleEn}</p>
         </div>
         <Button
           onClick={() => setCreating(true)}
-          className="bg-blue-700 hover:bg-blue-800"
+          className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
           size="sm"
         >
           <Plus className="mr-1.5 h-4 w-4" />
-          <span className="font-noto-ethiopic">አዲስ</span>
+          <span className="font-am-body">አዲስ</span>
           <span className="ml-1 text-xs opacity-80">/ New</span>
         </Button>
       </div>
@@ -864,25 +846,25 @@ function ServiceTypeCatalogTab({
           <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
             <tr>
               <th className="px-5 py-3">
-                <span className="font-noto-ethiopic">ኮድ</span> / Code
+                <span className="font-am-body">ኮድ</span> / Code
               </th>
               <th className="px-5 py-3">
-                <span className="font-noto-ethiopic">ስም</span> / Name
+                <span className="font-am-body">ስም</span> / Name
               </th>
               <th className="px-5 py-3">
-                <span className="font-noto-ethiopic">ክፍያ</span> / Fee
+                <span className="font-am-body">ክፍያ</span> / Fee
               </th>
               <th className="px-5 py-3">
-                <span className="font-noto-ethiopic">ክፍያ ይፈለጋል?</span> / Payment
+                <span className="font-am-body">ክፍያ ይፈለጋል?</span> / Payment
               </th>
               <th className="px-5 py-3">
-                <span className="font-noto-ethiopic">ማጽደቅ ይፈለጋል?</span> / Approval
+                <span className="font-am-body">ማጽደቅ ይፈለጋል?</span> / Approval
               </th>
               <th className="px-5 py-3">
-                <span className="font-noto-ethiopic">ሁኔታ</span> / Status
+                <span className="font-am-body">ሁኔታ</span> / Status
               </th>
               <th className="px-5 py-3 text-right">
-                <span className="font-noto-ethiopic">ድርጊት</span> / Action
+                <span className="font-am-body">ድርጊት</span> / Action
               </th>
             </tr>
           </thead>
@@ -896,7 +878,7 @@ function ServiceTypeCatalogTab({
             ) : rows.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-5 py-8 text-center text-slate-500">
-                  <span className="font-noto-ethiopic">ገና ምንም አልተመዘገበም</span> / No entries yet.
+                  <span className="font-am-body">ገና ምንም አልተመዘገበም</span> / No entries yet.
                 </td>
               </tr>
             ) : (
@@ -904,7 +886,7 @@ function ServiceTypeCatalogTab({
                 <tr key={r.service_type_id} className="border-t border-slate-100">
                   <td className="px-5 py-3 font-mono text-xs text-slate-600">{r.code}</td>
                   <td className="px-5 py-3">
-                    <div className="font-noto-ethiopic font-medium text-slate-800">{r.name_am}</div>
+                    <div className="font-am-body font-medium text-slate-800">{r.name_am}</div>
                     <div className="text-xs text-slate-500">{r.name_en}</div>
                   </td>
                   <td className="px-5 py-3 text-slate-700">
@@ -928,7 +910,7 @@ function ServiceTypeCatalogTab({
                         className="text-blue-700"
                       >
                         <Pencil className="mr-1 h-3.5 w-3.5" />
-                        <span className="font-noto-ethiopic">አርትዕ</span>
+                        <span className="font-am-body">አርትዕ</span>
                       </Button>
                       <Button
                         variant="outline"
@@ -937,7 +919,7 @@ function ServiceTypeCatalogTab({
                         className="text-red-600"
                       >
                         <Trash2 className="mr-1 h-3.5 w-3.5" />
-                        <span className="font-noto-ethiopic">ሰርዝ</span>
+                        <span className="font-am-body">ሰርዝ</span>
                       </Button>
                     </div>
                   </td>
@@ -969,10 +951,10 @@ function ServiceTypeCatalogTab({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              <span className="font-noto-ethiopic">ይሰርዙ? "{deleting?.name_am}"</span>
+              <span className="font-am-body">ይሰርዙ? "{deleting?.name_am}"</span>
             </AlertDialogTitle>
             <AlertDialogDescription>
-              <span className="font-noto-ethiopic">ይህ የአገልግሎት ዓይነት እስከመጨረሻው ይሰረዛል።</span>
+              <span className="font-am-body">ይህ የአገልግሎት ዓይነት እስከመጨረሻው ይሰረዛል።</span>
               <span className="mt-1 block text-xs">
                 / Delete "{deleting?.name_en}" permanently. If existing requests reference it,
                 deletion will fail and you should deactivate it instead.
@@ -1093,7 +1075,7 @@ function ServiceTypeDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            <span className="font-noto-ethiopic">{isEdit ? "አርትዕ" : "አዲስ"}</span>
+            <span className="font-am-body">{isEdit ? "አርትዕ" : "አዲስ"}</span>
             <span className="ml-2 text-sm font-normal text-slate-500">
               / {isEdit ? "Edit" : "New"} {category === "letter" ? "Service" : "Complaint"} Type
             </span>
@@ -1109,7 +1091,7 @@ function ServiceTypeDialog({
               labelEn="Name (Amharic)"
               error={form.formState.errors.name_am?.message}
             >
-              <Input className="font-noto-ethiopic" {...form.register("name_am")} />
+              <Input className="font-am-body" {...form.register("name_am")} />
             </Field>
             <Field
               labelAm="ስም (እንግሊዝኛ)"
@@ -1132,7 +1114,7 @@ function ServiceTypeDialog({
               name="requires_payment"
               render={({ field }) => (
                 <div className="flex items-center justify-between">
-                  <Label className="font-noto-ethiopic text-sm font-normal">
+                  <Label className="font-am-body text-sm font-normal">
                     ክፍያ ይፈለጋል? <span className="text-slate-400">/ Requires payment</span>
                   </Label>
                   <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -1144,7 +1126,7 @@ function ServiceTypeDialog({
               name="requires_approval"
               render={({ field }) => (
                 <div className="flex items-center justify-between">
-                  <Label className="font-noto-ethiopic text-sm font-normal">
+                  <Label className="font-am-body text-sm font-normal">
                     ማጽደቅ ይፈለጋል? <span className="text-slate-400">/ Requires approval</span>
                   </Label>
                   <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -1156,7 +1138,7 @@ function ServiceTypeDialog({
               name="is_active"
               render={({ field }) => (
                 <div className="flex items-center justify-between">
-                  <Label className="font-noto-ethiopic text-sm font-normal">
+                  <Label className="font-am-body text-sm font-normal">
                     ንቁ <span className="text-slate-400">/ Active</span>
                   </Label>
                   <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -1169,7 +1151,11 @@ function ServiceTypeDialog({
           <Button variant="outline" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
-          <Button onClick={onSubmit} disabled={saving} className="bg-blue-700 hover:bg-blue-800">
+          <Button
+            onClick={onSubmit}
+            disabled={saving}
+            className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
+          >
             {saving ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
@@ -1212,18 +1198,16 @@ function FeesTab({
     <Card className="overflow-hidden">
       <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
         <div>
-          <h3 className="font-noto-ethiopic text-base font-semibold text-slate-900">
-            የአገልግሎት ክፍያዎች
-          </h3>
+          <h3 className="font-am-heading text-base font-semibold text-slate-900">የአገልግሎት ክፍያዎች</h3>
           <p className="text-xs text-slate-500">Service Fees</p>
         </div>
         <Button
           onClick={() => setCreating(true)}
-          className="bg-blue-700 hover:bg-blue-800"
+          className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
           size="sm"
         >
           <Plus className="mr-1.5 h-4 w-4" />
-          <span className="font-noto-ethiopic">አዲስ የአገልግሎት ክፍያ</span>
+          <span className="font-am-body">አዲስ የአገልግሎት ክፍያ</span>
           <span className="ml-1 text-xs opacity-80">/ New Service Fee</span>
         </Button>
       </div>
@@ -1233,19 +1217,19 @@ function FeesTab({
           <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
             <tr>
               <th className="px-5 py-3">
-                <span className="font-noto-ethiopic">የአገልግሎት ዓይነት</span> / Service Type
+                <span className="font-am-body">የአገልግሎት ዓይነት</span> / Service Type
               </th>
               <th className="px-5 py-3">
-                <span className="font-noto-ethiopic">መደበኛ ክፍያ</span> / Standard Fee
+                <span className="font-am-body">መደበኛ ክፍያ</span> / Standard Fee
               </th>
               <th className="px-5 py-3">
-                <span className="font-noto-ethiopic">የቅጣት መጠን</span> / Penalty
+                <span className="font-am-body">የቅጣት መጠን</span> / Penalty
               </th>
               <th className="px-5 py-3">
-                <span className="font-noto-ethiopic">ሁኔታ</span> / Status
+                <span className="font-am-body">ሁኔታ</span> / Status
               </th>
               <th className="px-5 py-3 text-right">
-                <span className="font-noto-ethiopic">ድርጊት</span> / Action
+                <span className="font-am-body">ድርጊት</span> / Action
               </th>
             </tr>
           </thead>
@@ -1283,7 +1267,7 @@ function FeesTab({
                       className="text-blue-700"
                     >
                       <Pencil className="mr-1 h-3.5 w-3.5" />
-                      <span className="font-noto-ethiopic">አርትዕ</span>
+                      <span className="font-am-body">አርትዕ</span>
                       <span className="ml-1 text-xs opacity-70">/ EDIT</span>
                     </Button>
                   </td>
@@ -1419,7 +1403,7 @@ function FeeDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            <span className="font-noto-ethiopic">{isEdit ? "የክፍያ አርትዕ" : "አዲስ ክፍያ"}</span>
+            <span className="font-am-body">{isEdit ? "የክፍያ አርትዕ" : "አዲስ ክፍያ"}</span>
             <span className="ml-2 text-sm font-normal text-slate-500">
               / {isEdit ? "Edit Fee" : "New Fee"}
             </span>
@@ -1474,7 +1458,11 @@ function FeeDialog({
           <Button variant="outline" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
-          <Button onClick={onSubmit} disabled={saving} className="bg-blue-700 hover:bg-blue-800">
+          <Button
+            onClick={onSubmit}
+            disabled={saving}
+            className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
+          >
             {saving ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (

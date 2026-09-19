@@ -38,7 +38,7 @@ interface ResidentDocumentRow {
 
 function EmptyState({ am, en }: { am: string; en: string }) {
   return (
-    <p className="font-noto-ethiopic rounded-md border border-dashed border-slate-200 px-4 py-10 text-center text-sm text-slate-500">
+    <p className="font-am-body rounded-md border border-dashed border-slate-200 px-4 py-10 text-center text-sm text-slate-500">
       {am} <span className="text-xs text-slate-400">/ {en}</span>
     </p>
   );
@@ -53,7 +53,7 @@ function EmptyState({ am, en }: { am: string; en: string }) {
 export function ErrorState({ message }: { message?: string }) {
   return (
     <p className="rounded-md border border-dashed border-red-200 bg-red-50 px-4 py-10 text-center text-sm text-red-700">
-      <span className="font-noto-ethiopic">መጫን አልተቻለም</span>
+      <span className="font-am-body">መጫን አልተቻለም</span>
       <span className="text-red-500"> / Couldn&apos;t load this</span>
       {message && <span className="mt-1 block text-xs text-red-400">{message}</span>}
     </p>
@@ -77,7 +77,7 @@ function PanelHeading({
     <div className="mb-4 flex items-center justify-between gap-3">
       <div className="flex min-w-0 items-center gap-2">
         <Icon className="h-4 w-4 shrink-0 text-blue-700" />
-        <h3 className="font-noto-ethiopic truncate text-base font-semibold text-slate-900">
+        <h3 className="font-am-heading truncate text-base font-semibold text-slate-900">
           {am} <span className="text-slate-400">/ {en}</span>
         </h3>
         {typeof count === "number" && (
@@ -110,7 +110,7 @@ function ChipRow({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="font-noto-ethiopic text-xs text-slate-500">
+      <span className="font-am-body text-xs text-slate-500">
         {labelAm} <span className="text-slate-400">/ {labelEn}</span>
       </span>
       {options.map((o) => {
@@ -122,9 +122,9 @@ function ChipRow({
             onClick={() => onChange(o.value)}
             aria-pressed={active}
             className={
-              "font-noto-ethiopic rounded-full border px-3 py-1 text-xs transition " +
+              "font-am-body rounded-full border px-3 py-1 text-xs transition " +
               (active
-                ? "border-blue-600 bg-blue-600 text-white"
+                ? "border-[color:var(--color-shell-header)] bg-[color:var(--color-shell-header)] text-white"
                 : "border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-700")
             }
           >
@@ -370,7 +370,7 @@ export function HouseholdTab({
                   className="flex items-center gap-3 rounded-md px-2 py-2.5 hover:bg-blue-50/40"
                 >
                   <div className="min-w-0 flex-1">
-                    <div className="font-noto-ethiopic truncate text-sm font-medium text-slate-900">
+                    <div className="font-am-body truncate text-sm font-medium text-slate-900">
                       {m.full_name_am || m.full_name || "—"}
                       {m.resident_id === residentId && (
                         <span className="ml-2 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] text-blue-700">
@@ -378,7 +378,7 @@ export function HouseholdTab({
                         </span>
                       )}
                     </div>
-                    <div className="font-noto-ethiopic truncate text-xs text-slate-500">
+                    <div className="font-am-body truncate text-xs text-slate-500">
                       {m.relation_to_head || "—"}
                     </div>
                   </div>
@@ -718,7 +718,7 @@ export function ActivityTab({
           {rows.map((row) => (
             <li key={row.audit_log_id} className="relative">
               <span className="absolute -left-[26px] top-1.5 flex h-3 w-3 items-center justify-center rounded-full bg-blue-600 ring-2 ring-white" />
-              <div className="font-noto-ethiopic text-sm font-medium text-slate-900">
+              <div className="font-am-body text-sm font-medium text-slate-900">
                 {ACTION_LABEL_AM[row.action_type as string] ?? row.action_type}
               </div>
               <div className="flex flex-wrap items-center gap-x-2 text-xs text-slate-500">
@@ -739,10 +739,10 @@ export function ActivityTab({
 function Row({ am, en, value }: { am: string; en: string; value: string }) {
   return (
     <div>
-      <dt className="font-noto-ethiopic text-xs text-slate-500">
+      <dt className="font-am-body text-xs text-slate-500">
         {am} <span className="text-slate-400">/ {en}</span>
       </dt>
-      <dd className="font-noto-ethiopic text-sm font-medium text-slate-900">{value}</dd>
+      <dd className="font-am-body text-sm font-medium text-slate-900">{value}</dd>
     </div>
   );
 }
@@ -886,14 +886,14 @@ export function DocumentsTab({
         <Card className="p-4">
           <div className="flex flex-wrap items-end gap-3">
             <div className="min-w-[200px] flex-1">
-              <label className="font-noto-ethiopic mb-1 block text-xs text-slate-500">
+              <label className="font-am-body mb-1 block text-xs text-slate-500">
                 የሰነድ ስም <span className="text-slate-400">/ Document label</span>
               </label>
               <Input
                 value={label}
                 onChange={(e) => setLabel(e.target.value)}
                 placeholder="ለምሳሌ፦ የልደት ሰርተፍኬት / e.g. Birth Certificate"
-                className="font-noto-ethiopic"
+                className="font-am-body"
               />
             </div>
             <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md border border-input px-3 text-sm hover:bg-slate-50">
@@ -902,7 +902,7 @@ export function DocumentsTab({
               ) : (
                 <Upload className="h-4 w-4" />
               )}
-              <span className="font-noto-ethiopic">ሰነድ ጫን / Upload PDF</span>
+              <span className="font-am-body">ሰነድ ጫን / Upload PDF</span>
               <input
                 type="file"
                 className="hidden"
@@ -931,7 +931,7 @@ export function DocumentsTab({
                   <FileText className="h-4 w-4" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="font-noto-ethiopic truncate text-sm font-medium text-slate-900">
+                  <div className="font-am-body truncate text-sm font-medium text-slate-900">
                     {doc.document_label}
                   </div>
                   <div className="truncate text-xs text-slate-500">
@@ -948,7 +948,7 @@ export function DocumentsTab({
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <>
-                      <span className="font-noto-ethiopic">ይመልከቱ</span>
+                      <span className="font-am-body">ይመልከቱ</span>
                       <span className="ml-1 opacity-70">/ View</span>
                     </>
                   )}

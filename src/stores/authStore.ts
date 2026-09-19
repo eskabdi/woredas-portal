@@ -16,6 +16,8 @@ export interface AppUser {
   status: string;
   /** null = unrestricted console access; see 00000000000009_console_roles.sql. */
   console_role_id: string | null;
+  /** Storage path (private `staff-assets` bucket) for the header avatar; null shows the initial fallback. */
+  photo_path: string | null;
 }
 
 interface AuthState {

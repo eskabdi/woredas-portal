@@ -112,7 +112,7 @@ export const Route = createFileRoute("/woreda/civil/birth/new")({
       permission={P.CIVIL_REGISTER}
       fallback={
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-800">
-          <p className="font-noto-ethiopic font-medium">ይህን ለመጠቀም ፈቃድ የለዎትም</p>
+          <p className="font-am-body font-medium">ይህን ለመጠቀም ፈቃድ የለዎትም</p>
           <p className="text-sm">You do not have permission to register civil events.</p>
         </div>
       }
@@ -440,7 +440,7 @@ function BirthNewPage() {
           <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900">
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
             <div className="flex-1 text-sm">
-              <p className="font-noto-ethiopic font-semibold">
+              <p className="font-am-body font-semibold">
                 ተመሳሳይ ልደት በዚህ ወረዳ ተመዝግቧል / Possible duplicate birth in this woreda
               </p>
               <p className="mt-0.5 text-xs">
@@ -467,10 +467,10 @@ function BirthNewPage() {
           <Button
             type="submit"
             disabled={mutation.isPending}
-            className="bg-blue-700 text-white hover:bg-blue-800"
+            className="bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90"
           >
             <Save className="mr-2 h-4 w-4" />
-            <span className="font-noto-ethiopic">አስገባ</span>
+            <span className="font-am-body">አስገባ</span>
             <span className="ml-2 opacity-80">/ Submit</span>
           </Button>
         </div>

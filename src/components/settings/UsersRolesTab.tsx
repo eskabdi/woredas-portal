@@ -303,11 +303,11 @@ export function UsersRolesTab() {
       <Tabs defaultValue="list">
         <TabsList>
           <TabsTrigger value="list">
-            <span className="font-noto-ethiopic">የተጠቃሚዎች ዝርዝር</span>
+            <span className="font-am-body">የተጠቃሚዎች ዝርዝር</span>
             <span className="ml-2 text-xs text-slate-500">/ User List</span>
           </TabsTrigger>
           <TabsTrigger value="roles">
-            <span className="font-noto-ethiopic">የስራ ድርሻ አስተዳደር</span>
+            <span className="font-am-body">የስራ ድርሻ አስተዳደር</span>
             <span className="ml-2 text-xs text-slate-500">/ Role Management</span>
           </TabsTrigger>
         </TabsList>
@@ -320,9 +320,12 @@ export function UsersRolesTab() {
               placeholder="በስም ወይም ሚና ይፈልጉ / Search name or role…"
               className="max-w-xs"
             />
-            <Button onClick={() => setInviteOpen(true)} className="bg-blue-700 hover:bg-blue-800">
+            <Button
+              onClick={() => setInviteOpen(true)}
+              className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
+            >
               <Plus className="mr-2 h-4 w-4" />
-              <span className="font-noto-ethiopic">ተጠቃሚ ጨምር</span>
+              <span className="font-am-body">ተጠቃሚ ጨምር</span>
               <span className="ml-1 text-xs opacity-80">/ Add User</span>
             </Button>
           </div>
@@ -370,7 +373,7 @@ export function UsersRolesTab() {
                             </span>
                           ) : (
                             <>
-                              <span className="font-noto-ethiopic">
+                              <span className="font-am-body">
                                 {ROLE_LABEL_MAP[u.role]?.am ?? u.role}
                               </span>
                               <span className="ml-1 text-xs text-slate-500">
@@ -404,14 +407,14 @@ export function UsersRolesTab() {
                                 disabled={u.role === "tenant_admin" || u.role === "super_admin"}
                                 onClick={() => setChangeUser(u)}
                               >
-                                <span className="font-noto-ethiopic">ሚና ቀይር</span>
+                                <span className="font-am-body">ሚና ቀይር</span>
                                 <span className="ml-2 text-xs text-slate-500">/ Change Role</span>
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 disabled={u.status === "suspended" || u.user_id === callerId}
                                 onClick={() => setSuspendUser(u)}
                               >
-                                <span className="font-noto-ethiopic text-red-600">አግድ</span>
+                                <span className="font-am-body text-red-600">አግድ</span>
                                 <span className="ml-2 text-xs text-slate-500">/ Suspend</span>
                               </DropdownMenuItem>
                               <DropdownMenuItem
@@ -429,9 +432,7 @@ export function UsersRolesTab() {
                                 }
                                 onClick={() => sendPasswordResetLink(u)}
                               >
-                                <span className="font-noto-ethiopic">
-                                  የይለፍ ቃል መልሶ ማስጀመሪያ አገናኝ ላክ
-                                </span>
+                                <span className="font-am-body">የይለፍ ቃል መልሶ ማስጀመሪያ አገናኝ ላክ</span>
                                 <span className="ml-2 text-xs text-slate-500">
                                   / Send Password Reset Link
                                 </span>
@@ -440,7 +441,7 @@ export function UsersRolesTab() {
                                 disabled={u.role === "tenant_admin" || u.role === "super_admin"}
                                 onClick={() => setPermissionsUser(u)}
                               >
-                                <span className="font-noto-ethiopic">የግል ፈቃድ</span>
+                                <span className="font-am-body">የግል ፈቃድ</span>
                                 <span className="ml-2 text-xs text-slate-500">/ Permissions</span>
                               </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -466,10 +467,10 @@ export function UsersRolesTab() {
           <div className="mb-3 flex justify-end">
             <Button
               onClick={() => setAssignRoleOpen(true)}
-              className="bg-blue-700 hover:bg-blue-800"
+              className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
             >
               <UserPlus className="mr-2 h-4 w-4" />
-              <span className="font-noto-ethiopic">የሚና ምድብ ስጥ</span>
+              <span className="font-am-body">የሚና ምድብ ስጥ</span>
               <span className="ml-1 text-xs opacity-80">/ Assign Role</span>
             </Button>
           </div>
@@ -478,15 +479,13 @@ export function UsersRolesTab() {
               <Card key={r.key} className="p-4">
                 <div className="flex items-start justify-between">
                   <div>
-                    <div className="font-noto-ethiopic text-sm font-semibold text-slate-900">
-                      {r.am}
-                    </div>
+                    <div className="font-am-body text-sm font-semibold text-slate-900">{r.am}</div>
                     <div className="text-xs text-slate-500">{r.en}</div>
                   </div>
                   <div className="text-2xl font-bold text-blue-700">{roleCounts[r.key] ?? 0}</div>
                 </div>
                 <div className="mt-2 text-xs text-slate-500">
-                  <span className="font-noto-ethiopic">ተጠቃሚዎች</span> / users
+                  <span className="font-am-body">ተጠቃሚዎች</span> / users
                 </div>
               </Card>
             ))}
@@ -524,7 +523,7 @@ export function UsersRolesTab() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              <span className="font-noto-ethiopic">ተጠቃሚን ማገድ</span>
+              <span className="font-am-body">ተጠቃሚን ማገድ</span>
               <span className="ml-2 text-sm text-slate-500">/ Suspend user?</span>
             </AlertDialogTitle>
             <AlertDialogDescription>{suspendUser?.full_name}</AlertDialogDescription>
@@ -560,7 +559,7 @@ function KpiCard({ am, en, value }: { am: string; en: string; value: number }) {
   return (
     <Card className="p-5">
       <div className="text-3xl font-bold text-blue-700">{value}</div>
-      <div className="mt-1 font-noto-ethiopic text-sm text-slate-700">{am}</div>
+      <div className="mt-1 font-am-body text-sm text-slate-700">{am}</div>
       <div className="text-xs text-slate-500">{en}</div>
     </Card>
   );
@@ -569,7 +568,7 @@ function KpiCard({ am, en, value }: { am: string; en: string; value: number }) {
 function Th({ am, en, className }: { am: string; en: string; className?: string }) {
   return (
     <th className={`px-4 py-2 text-left text-xs font-medium ${className ?? ""}`}>
-      <span className="font-noto-ethiopic">{am}</span>
+      <span className="font-am-body">{am}</span>
       <span className="ml-1 text-slate-400">/ {en}</span>
     </th>
   );
@@ -673,7 +672,7 @@ function StaffImageField({
   return (
     <div>
       <Label>
-        <span className="font-noto-ethiopic">{am}</span>
+        <span className="font-am-body">{am}</span>
         <span className="ml-1 text-xs text-slate-500">/ {en}</span>
       </Label>
       <div className="mt-1 flex items-center gap-3">
@@ -777,7 +776,7 @@ function InviteDialog({
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            <span className="font-noto-ethiopic">ተጠቃሚ ጨምር</span>
+            <span className="font-am-body">ተጠቃሚ ጨምር</span>
             <span className="ml-2 text-sm text-slate-500">/ Invite User</span>
           </DialogTitle>
         </DialogHeader>
@@ -799,7 +798,7 @@ function InviteDialog({
               <SelectContent>
                 {EDITABLE_ROLES.map((r) => (
                   <SelectItem key={r.key} value={r.key}>
-                    <span className="font-noto-ethiopic">{r.am}</span>
+                    <span className="font-am-body">{r.am}</span>
                     <span className="ml-2 text-xs text-slate-500">/ {r.en}</span>
                   </SelectItem>
                 ))}
@@ -808,21 +807,21 @@ function InviteDialog({
           </div>
           <div>
             <Label>
-              <span className="font-noto-ethiopic">የሥራ ክፍል</span>
+              <span className="font-am-body">የሥራ ክፍል</span>
               <span className="ml-1 text-xs text-slate-500">/ Department</span>
             </Label>
             <Input value={department} onChange={(e) => setDepartment(e.target.value)} />
           </div>
           <div>
             <Label>
-              <span className="font-noto-ethiopic">የሥራ ድርሻ</span>
+              <span className="font-am-body">የሥራ ድርሻ</span>
               <span className="ml-1 text-xs text-slate-500">/ Job Title</span>
             </Label>
             <Input value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} />
           </div>
           <div>
             <Label>
-              <span className="font-noto-ethiopic">ተጠሪነት</span>
+              <span className="font-am-body">ተጠሪነት</span>
               <span className="ml-1 text-xs text-slate-500">/ Report To</span>
             </Label>
             <Select value={reportsTo} onValueChange={setReportsTo}>
@@ -831,7 +830,7 @@ function InviteDialog({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">
-                  <span className="font-noto-ethiopic">የለም</span>
+                  <span className="font-am-body">የለም</span>
                   <span className="ml-2 text-xs text-slate-500">/ None</span>
                 </SelectItem>
                 {users.map((u) => (
@@ -868,7 +867,11 @@ function InviteDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button disabled={submitting} onClick={submit} className="bg-blue-700 hover:bg-blue-800">
+          <Button
+            disabled={submitting}
+            onClick={submit}
+            className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
+          >
             {submitting ? "Sending…" : "Send Invitation"}
           </Button>
         </DialogFooter>
@@ -956,7 +959,7 @@ function ChangeRoleDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            <span className="font-noto-ethiopic">ሚና ቀይር</span>
+            <span className="font-am-body">ሚና ቀይር</span>
             <span className="ml-2 text-sm text-slate-500">
               / Change Role — {current?.full_name}
             </span>
@@ -971,7 +974,7 @@ function ChangeRoleDialog({
             <SelectContent>
               {EDITABLE_ROLES.map((r) => (
                 <SelectItem key={r.key} value={r.key}>
-                  <span className="font-noto-ethiopic">{r.am}</span>
+                  <span className="font-am-body">{r.am}</span>
                   <span className="ml-2 text-xs text-slate-500">/ {r.en}</span>
                 </SelectItem>
               ))}
@@ -1014,7 +1017,7 @@ function ChangeRoleDialog({
           </Button>
           <Button
             disabled={submitting}
-            className="bg-blue-700 hover:bg-blue-800"
+            className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
             onClick={async () => {
               if (!current) return;
               setSubmitting(true);
@@ -1163,7 +1166,7 @@ function UserPermissionOverridesDialog({
       <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            <span className="font-noto-ethiopic">የግል ፈቃድ ማስተካከያ</span>
+            <span className="font-am-body">የግል ፈቃድ ማስተካከያ</span>
             <span className="ml-2 text-sm text-slate-500">
               / Permission Overrides — {user.full_name}
             </span>
@@ -1181,7 +1184,7 @@ function UserPermissionOverridesDialog({
             {grouped.map(([prefix, keys]) => (
               <div key={prefix}>
                 <div className="mb-1 text-xs font-semibold text-slate-600">
-                  <span className="font-noto-ethiopic">{GROUP_LABELS[prefix]?.am ?? prefix}</span>
+                  <span className="font-am-body">{GROUP_LABELS[prefix]?.am ?? prefix}</span>
                   <span className="ml-1 text-slate-400">
                     / {GROUP_LABELS[prefix]?.en ?? prefix}
                   </span>
@@ -1205,7 +1208,7 @@ function UserPermissionOverridesDialog({
                           {PERMISSION_ACTION_LABELS[key] ? (
                             <span className="text-slate-400">
                               —{" "}
-                              <span className="font-noto-ethiopic">
+                              <span className="font-am-body">
                                 {PERMISSION_ACTION_LABELS[key].am}
                               </span>{" "}
                               / {PERMISSION_ACTION_LABELS[key].en}
@@ -1294,7 +1297,7 @@ function AssignRoleDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            <span className="font-noto-ethiopic">የሚና ምድብ ስጥ</span>
+            <span className="font-am-body">የሚና ምድብ ስጥ</span>
             <span className="ml-2 text-sm text-slate-500">/ Assign Role</span>
           </DialogTitle>
         </DialogHeader>
@@ -1315,7 +1318,7 @@ function AssignRoleDialog({
               >
                 <div className="font-medium text-slate-800">{u.full_name}</div>
                 <div className="text-xs text-slate-500">
-                  <span className="font-noto-ethiopic">{roleLabel(u, tenantRolesById).am}</span>
+                  <span className="font-am-body">{roleLabel(u, tenantRolesById).am}</span>
                 </div>
               </button>
             ))}
@@ -1333,7 +1336,7 @@ function AssignRoleDialog({
                 <SelectContent>
                   {EDITABLE_ROLES.map((r) => (
                     <SelectItem key={r.key} value={r.key}>
-                      <span className="font-noto-ethiopic">{r.am}</span>
+                      <span className="font-am-body">{r.am}</span>
                       <span className="ml-2 text-xs text-slate-500">/ {r.en}</span>
                     </SelectItem>
                   ))}
@@ -1353,7 +1356,7 @@ function AssignRoleDialog({
           </Button>
           <Button
             disabled={!selected || submitting}
-            className="bg-blue-700 hover:bg-blue-800"
+            className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
             onClick={async () => {
               if (!selected) return;
               setSubmitting(true);

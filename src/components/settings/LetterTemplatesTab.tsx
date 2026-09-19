@@ -122,13 +122,13 @@ export function LetterTemplatesTab() {
     <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
       <Card className="h-fit overflow-hidden p-0">
         <div className="border-b bg-slate-50 px-4 py-3">
-          <div className="font-noto-ethiopic text-sm font-semibold">የደብዳቤ ዓይነቶች</div>
+          <div className="font-am-body text-sm font-semibold">የደብዳቤ ዓይነቶች</div>
           <div className="text-[11px] uppercase tracking-wide text-slate-400">Letter types</div>
         </div>
         <div className="max-h-[560px] overflow-y-auto">
           {typesQuery.isPending && <div className="p-4 text-sm text-slate-500">Loading…</div>}
           {!typesQuery.isPending && types.length === 0 && (
-            <div className="font-noto-ethiopic p-4 text-sm text-slate-500">
+            <div className="font-am-body p-4 text-sm text-slate-500">
               የደብዳቤ ዓይነት አልተገኘም / No letter services in the catalog
             </div>
           )}
@@ -151,7 +151,7 @@ export function LetterTemplatesTab() {
                   className={`mt-0.5 h-4 w-4 ${active ? "text-blue-700" : "text-slate-400"}`}
                 />
                 <div className="min-w-0 flex-1">
-                  <div className="font-noto-ethiopic truncate text-sm font-medium">{t.name_am}</div>
+                  <div className="font-am-body truncate text-sm font-medium">{t.name_am}</div>
                   <div className="truncate text-[11px] text-slate-500">{t.name_en}</div>
                 </div>
                 {hasTemplate ? (
@@ -182,9 +182,7 @@ export function LetterTemplatesTab() {
             <Card className="p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <div className="font-noto-ethiopic text-base font-semibold">
-                    {selected.name_am}
-                  </div>
+                  <div className="font-am-body text-base font-semibold">{selected.name_am}</div>
                   <div className="text-xs text-slate-500">
                     {selected.name_en} · <span className="font-mono">{selected.code}</span>
                   </div>
@@ -196,7 +194,7 @@ export function LetterTemplatesTab() {
                   </Button>
                   <Button
                     size="sm"
-                    className="bg-blue-700 hover:bg-blue-800"
+                    className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
                     disabled={!dirty || saveMutation.isPending}
                     onClick={() => saveMutation.mutate()}
                   >
@@ -205,14 +203,14 @@ export function LetterTemplatesTab() {
                     ) : (
                       <Save className="mr-1 h-4 w-4" />
                     )}
-                    <span className="font-noto-ethiopic">አስቀምጥ</span>
+                    <span className="font-am-body">አስቀምጥ</span>
                     <span className="ml-1 text-xs opacity-80">/ Save</span>
                   </Button>
                 </div>
               </div>
 
               <div className="mt-4">
-                <Label className="font-noto-ethiopic text-xs">
+                <Label className="font-am-body text-xs">
                   መለያ ቁልፎች / Placeholders — click to insert
                 </Label>
                 <div className="mt-2 flex flex-wrap gap-1.5">
@@ -237,7 +235,7 @@ export function LetterTemplatesTab() {
                   Preview with sample data
                 </div>
                 <div
-                  className="letter-body font-noto-ethiopic text-sm leading-8"
+                  className="letter-body font-am-body text-sm leading-8"
                   dangerouslySetInnerHTML={{ __html: previewHtml }}
                 />
               </Card>
@@ -253,7 +251,7 @@ export function LetterTemplatesTab() {
               />
             )}
 
-            <p className="font-noto-ethiopic text-xs text-slate-500">
+            <p className="font-am-body text-xs text-slate-500">
               እያንዳንዱ በዚህ አብነት የሚወጣ ደብዳቤ በሕዝብ ማረጋገጫ ዩአርኤል የሚሠራ QR ኮድ ይይዛል። / Every letter issued from
               this template carries a QR code that resolves to the public verification page.
             </p>

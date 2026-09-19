@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, Navigate } from "@tanstack/react-router";
 import { useAuthStore } from "@/stores/authStore";
-import { AdminShell } from "@/components/layout/AdminShell";
+import { AppShell } from "@/components/layout/AppShell";
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
@@ -31,8 +31,8 @@ function AdminLayout() {
   if (status !== "active") return <Navigate to="/login" />;
 
   return (
-    <AdminShell>
+    <AppShell portal="admin">
       <Outlet />
-    </AdminShell>
+    </AppShell>
   );
 }
