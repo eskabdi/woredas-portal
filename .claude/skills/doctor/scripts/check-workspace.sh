@@ -110,8 +110,8 @@ done
 section "Backend artifacts (files only — deployment state needs SKILL.md's checks)"
 [ -f supabase/migrations/00000000000000_baseline.sql ] && pass "baseline migration present" || fail "baseline migration missing"
 [ -f supabase/seed.sql ] && pass "seed.sql present" || fail "seed.sql missing — without it login works but no permission resolves"
-fn_count=$(ls -d supabase/functions/*/ 2>/dev/null | wc -l | tr -d ' ')
-[ "$fn_count" = "4" ] && pass "4 Edge Function sources present" || warn "expected 4 Edge Function sources, found $fn_count"
+fn_count=$(ls -d supabase/functions/*/ 2>/dev/null | grep -vc '/_shared/$')
+[ "$fn_count" = "7" ] && pass "7 Edge Function sources present" || warn "expected 7 Edge Function sources, found $fn_count"
 
 section "Git"
 branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
