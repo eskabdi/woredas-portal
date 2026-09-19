@@ -1,6 +1,6 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   LayoutDashboard,
   Users,
@@ -179,8 +179,8 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
       <Icon className="relative z-10 h-4 w-4 shrink-0" />
       <span className="relative z-10 flex-1">
         <span
-          className={`font-am-heading block leading-tight ${
-            active ? "text-[16px] font-bold text-white" : "font-semibold text-slate-800"
+          className={`font-am-heading block text-[14px] leading-tight ${
+            active ? "font-bold text-white" : "font-semibold text-slate-800"
           }`}
         >
           {item.labelAm}
@@ -210,7 +210,7 @@ function NavSubLink({ item, active }: { item: NavItem; active: boolean }) {
       />
       <span className="flex-1">
         <span
-          className={`font-am-heading block text-[13px] leading-tight ${active ? "font-bold text-white" : "font-semibold text-slate-800"}`}
+          className={`font-am-heading block text-[12px] leading-tight ${active ? "font-bold text-white" : "font-semibold text-slate-800"}`}
         >
           {item.labelAm}
         </span>
@@ -272,6 +272,30 @@ function NavAccordionGroup({
   );
 }
 
+/** Resolves app_user.photo_path (private `staff-assets` bucket) to a signed
+ * URL for the header avatar -- same pattern as UsersRolesTab.tsx's StaffThumb.
+ * Returns null (falls back to the initial) when there's no photo set. */
+function useStaffPhotoUrl(photoPath: string | null | undefined) {
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!photoPath) {
+      setSignedUrl(null);
+      return;
+    }
+    supabase.storage
+      .from("staff-assets")
+      .createSignedUrl(photoPath, 600)
+      .then(({ data }) => {
+        if (!cancelled) setSignedUrl(data?.signedUrl ?? null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [photoPath]);
+  return signedUrl;
+}
+
 function UserMenu({
   name,
   roleLabel,
@@ -279,6 +303,7 @@ function UserMenu({
   onChangePassword,
   changePasswordLabel = "Change Password",
   dark,
+  photoUrl,
 }: {
   name: string;
   roleLabel?: string;
@@ -286,6 +311,8 @@ function UserMenu({
   onChangePassword?: () => void;
   changePasswordLabel?: React.ReactNode;
   dark?: boolean;
+  /** Signed URL for the user's staff photo; falls back to the initial when null/not yet loaded. */
+  photoUrl?: string | null;
 }) {
   return (
     <DropdownMenu>
@@ -298,13 +325,17 @@ function UserMenu({
               : "border-slate-200 bg-white hover:bg-slate-50"
           }`}
         >
-          <div
-            className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold ${
-              dark ? "bg-[color:var(--color-primary)] text-white" : "bg-blue-100 text-blue-700"
-            }`}
-          >
-            {name[0]?.toUpperCase() ?? "U"}
-          </div>
+          {photoUrl ? (
+            <img src={photoUrl} alt={name} className="h-7 w-7 shrink-0 rounded-full object-cover" />
+          ) : (
+            <div
+              className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold ${
+                dark ? "bg-[color:var(--color-primary)] text-white" : "bg-blue-100 text-blue-700"
+              }`}
+            >
+              {name[0]?.toUpperCase() ?? "U"}
+            </div>
+          )}
           <div className="text-left leading-none">
             <div className={`text-sm font-medium ${dark ? "text-white" : "text-slate-900"}`}>
               {name}
@@ -340,6 +371,7 @@ function WoredaAppShell({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const appUser = useAuthStore((s) => s.appUser);
+  const staffPhotoUrl = useStaffPhotoUrl(appUser?.photo_path);
   const currentPath = useRouterState({ select: (r) => r.location.pathname });
   const { data: woreda } = useWoredaInfo();
   const { data: logoUrl } = useWoredaLogo();
@@ -466,6 +498,7 @@ function WoredaAppShell({ children }: { children: React.ReactNode }) {
             <UserMenu
               name={appUser?.full_name ?? "User"}
               roleLabel={ROLE_LABEL_AM[appUser?.role ?? ""] ?? appUser?.role}
+              photoUrl={staffPhotoUrl}
               onSignOut={handleSignOut}
               onChangePassword={() => setChangePasswordOpen(true)}
               changePasswordLabel={
@@ -500,6 +533,7 @@ function AdminAppShell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const appUser = useAuthStore((s) => s.appUser);
+  const staffPhotoUrl = useStaffPhotoUrl(appUser?.photo_path);
   const hasConsolePermission = useAuthStore((s) => s.hasConsolePermission);
   const currentPath = useRouterState({ select: (r) => r.location.pathname });
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
@@ -579,6 +613,7 @@ function AdminAppShell({ children }: { children: React.ReactNode }) {
           </div>
           <UserMenu
             name={appUser?.full_name ?? "Admin"}
+            photoUrl={staffPhotoUrl}
             onSignOut={handleSignOut}
             onChangePassword={() => setChangePasswordOpen(true)}
             dark

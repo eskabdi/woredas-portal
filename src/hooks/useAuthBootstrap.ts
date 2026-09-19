@@ -19,7 +19,7 @@ export async function fetchAppUser(userId: string): Promise<AppUser | null> {
     // collapses this whole .select()'s return to SelectQueryError -- cast
     // the row immediately below rather than touching `data`'s fields
     // directly. Regenerate types.ts post-deploy and this cast goes away.
-    .select("user_id, woreda_id, role, full_name, username, status, console_role_id")
+    .select("user_id, woreda_id, role, full_name, username, status, console_role_id, photo_path")
     .eq("user_id", userId)
     .maybeSingle();
   if (error || !data) return null;
@@ -31,6 +31,7 @@ export async function fetchAppUser(userId: string): Promise<AppUser | null> {
     username: string;
     status: string;
     console_role_id: string | null;
+    photo_path: string | null;
   };
   return {
     user_id: row.user_id,
@@ -40,6 +41,7 @@ export async function fetchAppUser(userId: string): Promise<AppUser | null> {
     username: row.username,
     status: row.status,
     console_role_id: row.console_role_id,
+    photo_path: row.photo_path,
   };
 }
 
