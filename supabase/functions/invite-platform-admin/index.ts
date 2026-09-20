@@ -128,11 +128,81 @@ Deno.serve(async (req) => {
       );
     }
     const newUserId = invited.user.id;
+    const targetWoredaId = role === "super_admin" ? null : woredaId;
 
+    // GoTrue's inviteUserByEmail() resends (200, same user_id, no error)
+    // rather than erroring when the target is an existing, still-unconfirmed
+    // ("pending") account -- only an already-confirmed account trips the
+    // duplicate-email rejection above. The dedicated resend-platform-invite
+    // function is the normal path for this, but calling this function twice
+    // for the same still-pending email (a double-click, or re-inviting
+    // instead of using Resend) hit app_user_pkey's unique constraint here,
+    // same failure mode fixed in invite-tenant-user. No tenant-boundary
+    // concern for the resend path here (unlike the tenant version): the
+    // caller is already an active super_admin, platform-wide by definition,
+    // so updating an existing pending row's role/woreda on correction is
+    // within their existing authority -- the console.console_users.manage
+    // gate above already re-applies to the requested role on every call.
     const username = email.split("@")[0]?.slice(0, 32) ?? email;
+    const { data: existing } = await admin
+      .from("app_user")
+      .select("user_id, status")
+      .eq("user_id", newUserId)
+      .maybeSingle();
+
+    if (existing) {
+      if (existing.status !== "pending") {
+        return safeError(
+          req,
+          "invite-platform-admin: re-invite of non-pending user",
+          new Error(`app_user ${newUserId} already exists with status ${existing.status}`),
+          "User already registered",
+          400,
+        );
+      }
+
+      const { data: updated, error: updateErr } = await admin
+        .from("app_user")
+        .update({
+          woreda_id: targetWoredaId,
+          role,
+          full_name,
+          username,
+          invited_by_user_id: callerId,
+          invited_at: new Date().toISOString(),
+        })
+        .eq("user_id", newUserId)
+        .select("user_id")
+        .maybeSingle();
+      // PostgREST returns error: null whether the WHERE clause matched a row
+      // or not -- an empty result must not be read as success (CLAUDE.md's
+      // "every admin-facing mutation verifies what it actually changed").
+      if (updateErr || !updated) {
+        return safeError(
+          req,
+          "invite-platform-admin: app_user re-invite update",
+          updateErr ?? new Error(`app_user ${newUserId} update matched no row`),
+          "Invite sent but profile setup failed",
+          400,
+        );
+      }
+
+      await admin.from("audit_log").insert({
+        actor_user_id: callerId,
+        woreda_id: targetWoredaId,
+        entity_name: "app_user",
+        entity_id: newUserId,
+        action_type: "PLATFORM_ADMIN_REINVITED",
+        new_value_json: { email, role, woreda_id: targetWoredaId },
+        source_ip: getClientIp(req),
+      });
+
+      return json(req, 200, { success: true, user_id: newUserId, warning });
+    }
+
     const { error: insertErr } = await admin.from("app_user").insert({
       user_id: newUserId,
-      woreda_id: role === "super_admin" ? null : woredaId,
+      woreda_id: targetWoredaId,
       role,
       full_name,
       username,
@@ -152,11 +222,11 @@ Deno.serve(async (req) => {
 
     await admin.from("audit_log").insert({
       actor_user_id: callerId,
-      woreda_id: role === "super_admin" ? null : woredaId,
+      woreda_id: targetWoredaId,
       entity_name: "app_user",
       entity_id: newUserId,
       action_type: "PLATFORM_ADMIN_INVITED",
-      new_value_json: { email, role, woreda_id: role === "super_admin" ? null : woredaId },
+      new_value_json: { email, role, woreda_id: targetWoredaId },
       source_ip: getClientIp(req),
     });
 
