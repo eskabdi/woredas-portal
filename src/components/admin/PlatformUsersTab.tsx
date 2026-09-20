@@ -299,8 +299,11 @@ export function PlatformUsersTab() {
   }
 
   async function resendInvite(u: AdminUserRow) {
+    // The function resolves the real email server-side from user_id --
+    // u.username is deliberately just the local part of the email
+    // (email.split("@")[0]), never the full address, so it can't be sent
+    // as-is.
     const { friendlyError } = await invokeEdgeFunction("resend-platform-invite", {
-      email: u.username.includes("@") ? u.username : `${u.username}`,
       user_id: u.user_id,
     });
     if (friendlyError) {
