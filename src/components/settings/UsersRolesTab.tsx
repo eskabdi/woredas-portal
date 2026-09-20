@@ -426,7 +426,7 @@ export function UsersRolesTab() {
                                 disabled={
                                   u.role === "tenant_admin" ||
                                   u.role === "super_admin" ||
-                                  u.status !== "active" ||
+                                  (u.status !== "active" && u.status !== "pending") ||
                                   u.user_id === callerId ||
                                   resetLinkSendingId === u.user_id
                                 }

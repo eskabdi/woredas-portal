@@ -95,6 +95,7 @@ export function PlatformUsersTab() {
   const [suspendUser, setSuspendUser] = useState<AdminUserRow | null>(null);
   const [reactivateUser, setReactivateUser] = useState<AdminUserRow | null>(null);
   const [detailUser, setDetailUser] = useState<AdminUserRow | null>(null);
+  const [resetLinkSendingId, setResetLinkSendingId] = useState<string | null>(null);
 
   const sort = useUrlSort("full_name", "asc");
   const [exporting, setExporting] = useState(false);
@@ -313,6 +314,29 @@ export function PlatformUsersTab() {
     toast.success("ግብዣ ተልኳል / Invitation resent");
   }
 
+  // The Edge Function does the real authorization check server-side (caller
+  // must be an active super_admin to target a tenant_admin/super_admin);
+  // this is just the UI's call site and its own no-op-avoidance, not a
+  // security boundary. Works for a "pending" target too -- the function
+  // checks the account's actual GoTrue confirmation status, not just
+  // app_user.status, so this correctly unblocks someone who confirmed their
+  // invite email but never finished setting a password.
+  async function sendPasswordResetLink(u: AdminUserRow) {
+    setResetLinkSendingId(u.user_id);
+    try {
+      const { friendlyError } = await invokeEdgeFunction("send-password-reset-link", {
+        user_id: u.user_id,
+      });
+      if (friendlyError) {
+        toast.error(friendlyError);
+        return;
+      }
+      toast.success("የይለፍ ቃል መልሶ ማስጀመሪያ አገናኝ ተልኳል / Reset link sent");
+    } finally {
+      setResetLinkSendingId(null);
+    }
+  }
+
   function exportCsv() {
     exportRowsToCsv({
       fileName: `platform-admins-${new Date().toISOString().slice(0, 10)}.csv`,
@@ -473,6 +497,17 @@ export function PlatformUsersTab() {
                           <DropdownMenuItem onClick={() => resendInvite(u)}>
                             <span className="font-am-body">ግብዣ ድጋሚ ላክ</span>
                             <span className="ml-2 text-xs text-slate-500">/ Resend Invite</span>
+                          </DropdownMenuItem>
+                        )}
+                        {(u.status === "active" || u.status === "pending") && (
+                          <DropdownMenuItem
+                            disabled={u.user_id === callerId || resetLinkSendingId === u.user_id}
+                            onClick={() => sendPasswordResetLink(u)}
+                          >
+                            <span className="font-am-body">የይለፍ ቃል መልሶ ማስጀመሪያ አገናኝ ላክ</span>
+                            <span className="ml-2 text-xs text-slate-500">
+                              / Send Password Reset Link
+                            </span>
                           </DropdownMenuItem>
                         )}
                         {u.status !== "suspended" ? (

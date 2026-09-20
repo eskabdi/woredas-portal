@@ -10,8 +10,10 @@ interface Body {
 }
 
 // Same boundary invite-tenant-user draws: a tenant admin manages staff, not
-// peers or platform admins. Reused here rather than widened, so a tenant
-// admin cannot use this to reset a co-admin's or a super_admin's password.
+// peers or platform admins. A tenant_admin caller is restricted to exactly
+// this set; a super_admin caller gets an additional platform-admin allowance
+// further down (canTargetPlatformAdmin), since only a super_admin has any
+// business resetting a tenant_admin's or another super_admin's password.
 const ALLOWED_TARGET_ROLES = new Set([
   "registry_clerk",
   "civil_registrar",
@@ -105,15 +107,18 @@ Deno.serve(async (req) => {
     const { data: target, error: targetErr } = await targetQuery.maybeSingle();
     if (targetErr || !target) return json(req, 404, { error: "User not found" });
 
-    if (!ALLOWED_TARGET_ROLES.has(target.role)) {
+    // A tenant_admin caller keeps the original staff-only boundary
+    // (invite-tenant-user draws the same line). A super_admin caller is
+    // additionally allowed to target tenant_admin/super_admin -- the
+    // platform-admin console has no other way to reach a stuck admin
+    // account, and only a super_admin (platform-wide by definition) can
+    // reach this branch at all.
+    const canTargetPlatformAdmin =
+      isSuper && (target.role === "tenant_admin" || target.role === "super_admin");
+    if (!ALLOWED_TARGET_ROLES.has(target.role) && !canTargetPlatformAdmin) {
       return json(req, 400, { error: "Cannot send a reset link for this role." });
     }
-    if (target.status === "pending") {
-      return json(req, 400, {
-        error: "This user has never completed setup. Resend the invitation instead.",
-      });
-    }
-    if (target.status !== "active") {
+    if (target.status !== "active" && target.status !== "pending") {
       return json(req, 400, {
         error: "This account is not active. Reactivate it before sending a reset link.",
       });
@@ -129,6 +134,23 @@ Deno.serve(async (req) => {
         "Could not resolve this user's email address",
         400,
       );
+    }
+
+    // A "pending" account is ambiguous: it could mean "never opened the
+    // invite at all" (the normal case -- send them a fresh invite, not a
+    // reset link) or "confirmed the invite email, then abandoned the flow
+    // before actually setting a password" (a real stuck state this function
+    // exists to unblock: resend-platform-invite/invite-tenant-user both
+    // correctly refuse to re-invite an already-confirmed address, and
+    // nothing else can reach them). auth.users.email_confirmed_at is the
+    // only place that distinction actually lives -- app_user.status alone
+    // can't tell them apart. Once they follow this link and set a new
+    // password, set-password.tsx's unconditional activate-invited-user call
+    // flips them to active -- no separate repair needed here.
+    if (target.status === "pending" && !authUser.user.email_confirmed_at) {
+      return json(req, 400, {
+        error: "This user has never completed setup. Resend the invitation instead.",
+      });
     }
 
     // A fresh, unauthenticated-scope client for the actual send. This hits
