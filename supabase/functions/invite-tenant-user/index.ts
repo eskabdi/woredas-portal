@@ -124,8 +124,100 @@ Deno.serve(async (req) => {
     }
     const newUserId = invited.user.id;
 
-    // Insert app_user row
+    // GoTrue's inviteUserByEmail() resends (200, same user_id, no error)
+    // rather than erroring when the target is an existing, still-unconfirmed
+    // ("pending") invite -- only an already-CONFIRMED user trips the
+    // duplicate-email rejection handled above. Without this check, the
+    // unconditional insert below hits app_user_pkey's unique constraint on
+    // every re-invite of a not-yet-activated user, which GoTrue itself just
+    // treated as a legitimate resend.
     const username = email.split("@")[0]?.slice(0, 32) ?? email;
+    const { data: existing } = await admin
+      .from("app_user")
+      .select("user_id, woreda_id, status")
+      .eq("user_id", newUserId)
+      .maybeSingle();
+
+    if (existing) {
+      if (existing.status !== "pending") {
+        // GoTrue's own duplicate-email check above should already have
+        // caught an active/suspended/inactive account -- reaching here means
+        // that check didn't recognize this GoTrue version's error shape.
+        // Fail closed rather than silently reassigning an existing account.
+        return safeError(
+          req,
+          "invite-tenant-user: re-invite of non-pending user",
+          new Error(`app_user ${newUserId} already exists with status ${existing.status}`),
+          "User already registered",
+          400,
+        );
+      }
+      if (existing.woreda_id !== woredaId) {
+        // Same fixed message as the ordinary duplicate-email case -- a
+        // distinct string here would let a woreda-A admin learn, from an
+        // arbitrary email address, that it's a pending invite in *some
+        // other* tenant (an existence oracle main didn't previously expose,
+        // since the old unconditional insert collapsed same-woreda and
+        // cross-woreda collisions into one generic failure). The woreda
+        // distinction is still visible server-side, in the log line below.
+        return safeError(
+          req,
+          "invite-tenant-user: re-invite across woredas",
+          new Error(`app_user ${newUserId} already pending in a different woreda`),
+          "User already registered",
+          400,
+        );
+      }
+
+      // Legitimate resend of a still-pending invite: update the editable
+      // fields (the admin may be correcting a role/detail before the
+      // invitee has activated) and refresh invited_at, rather than
+      // re-inserting.
+      const { data: updated, error: updateErr } = await admin
+        .from("app_user")
+        .update({
+          role,
+          full_name,
+          username,
+          invited_by_user_id: callerId,
+          invited_at: new Date().toISOString(),
+          department: department || null,
+          job_title: job_title || null,
+          reports_to_user_id: reports_to_user_id || null,
+          signature_path: signature_path || null,
+          photo_path: photo_path || null,
+        })
+        .eq("user_id", newUserId)
+        .select("user_id")
+        .maybeSingle();
+      // PostgREST returns error: null whether the WHERE clause matched a row
+      // or not -- an empty result here (the row vanished between the lookup
+      // above and this update) must not be read as success. See CLAUDE.md's
+      // "every admin-facing mutation verifies what it actually changed".
+      if (updateErr || !updated) {
+        return safeError(
+          req,
+          "invite-tenant-user: app_user re-invite update",
+          updateErr ?? new Error(`app_user ${newUserId} update matched no row`),
+          "Invite sent but profile setup failed",
+          400,
+        );
+      }
+
+      await admin.from("audit_log").insert({
+        actor_user_id: callerId,
+        woreda_id: woredaId,
+        entity_name: "app_user",
+        entity_id: newUserId,
+        action_type: "USER_REINVITED",
+        new_value_json: { email, role, full_name },
+        source_ip: getClientIp(req),
+      });
+
+      return json(req, 200, { success: true, user_id: newUserId });
+    }
+
+    // First-time invite: insert app_user row
     const { error: insertErr } = await admin.from("app_user").insert({
       user_id: newUserId,
       woreda_id: woredaId,

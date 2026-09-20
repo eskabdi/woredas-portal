@@ -197,6 +197,7 @@ export function UsersRolesTab() {
   const [assignRoleOpen, setAssignRoleOpen] = useState(false);
   const [permissionsUser, setPermissionsUser] = useState<AppUserRow | null>(null);
   const [resetLinkSendingId, setResetLinkSendingId] = useState<string | null>(null);
+  const [resendInviteSendingId, setResendInviteSendingId] = useState<string | null>(null);
 
   async function refresh() {
     qc.invalidateQueries({ queryKey: ["app_user_list", woredaId] });
@@ -269,6 +270,28 @@ export function UsersRolesTab() {
     });
     toast.success("ተጠቃሚው ታግዷል / User suspended");
     await refresh();
+  }
+
+  // app_user has no email column (it's on auth.users), and app_user.username
+  // is deliberately just the local part of the email -- never reconstructable
+  // into a real address -- so the resend has to be keyed by user_id and let
+  // the Edge Function resolve the real email server-side, same pattern
+  // resend-platform-invite and sendPasswordResetLink both already use.
+  async function resendInvite(user: AppUserRow) {
+    setResendInviteSendingId(user.user_id);
+    try {
+      const { friendlyError } = await invokeEdgeFunction("resend-tenant-invite", {
+        user_id: user.user_id,
+      });
+      if (friendlyError) {
+        toast.error(friendlyError);
+        return;
+      }
+      toast.success("ግብዣ ድጋሚ ተልኳል / Invitation resent");
+      await refresh();
+    } finally {
+      setResendInviteSendingId(null);
+    }
   }
 
   // The Edge Function does the real authorization and tenant-isolation check
@@ -436,6 +459,18 @@ export function UsersRolesTab() {
                                 <span className="ml-2 text-xs text-slate-500">
                                   / Send Password Reset Link
                                 </span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                disabled={
+                                  u.role === "tenant_admin" ||
+                                  u.role === "super_admin" ||
+                                  u.status !== "pending" ||
+                                  resendInviteSendingId === u.user_id
+                                }
+                                onClick={() => resendInvite(u)}
+                              >
+                                <span className="font-am-body">ግብዣ ድጋሚ ላክ</span>
+                                <span className="ml-2 text-xs text-slate-500">/ Resend Invite</span>
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 disabled={u.role === "tenant_admin" || u.role === "super_admin"}

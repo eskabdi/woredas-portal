@@ -33,8 +33,8 @@ Deno.serve(async (req) => {
     if (userErr || !userData.user) return json(req, 401, { error: "Unauthorized" });
     const callerId = userData.user.id;
 
-    const { email, user_id } = (await req.json()) as { email?: string; user_id?: string };
-    if (!email) return json(req, 400, { error: "email is required" });
+    const { user_id } = (await req.json()) as { user_id?: string };
+    if (!user_id) return json(req, 400, { error: "user_id is required" });
 
     // Verify caller is an ACTIVE super_admin -- a suspended account's JWT is
     // still live, so status has to be checked explicitly.
@@ -55,16 +55,35 @@ Deno.serve(async (req) => {
     if (!allowed) return json(req, 429, { error: "Too many requests" });
 
     // Target must be a platform admin (super_admin or tenant_admin)
-    if (user_id) {
-      const { data: target } = await admin
-        .from("app_user")
-        .select("role, status")
-        .eq("user_id", user_id)
-        .maybeSingle();
-      if (!target || (target.role !== "super_admin" && target.role !== "tenant_admin")) {
-        return json(req, 400, { error: "Target is not a platform admin." });
-      }
+    const { data: target } = await admin
+      .from("app_user")
+      .select("role, status")
+      .eq("user_id", user_id)
+      .maybeSingle();
+    if (!target || (target.role !== "super_admin" && target.role !== "tenant_admin")) {
+      return json(req, 400, { error: "Target is not a platform admin." });
     }
+
+    // Resolve the real email server-side from user_id, never a client-
+    // supplied string -- app_user.username is deliberately just the local
+    // part of the email (email.split("@")[0], truncated to 32 chars), so a
+    // client trying to reconstruct the address from it can only ever send
+    // GoTrue an invalid, domain-less string. Same pattern already used by
+    // send-password-reset-link for the identical reason.
+    const {
+      data: { user: targetUser },
+      error: getUserErr,
+    } = await admin.auth.admin.getUserById(user_id);
+    if (getUserErr || !targetUser?.email) {
+      return safeError(
+        req,
+        "resend-platform-invite: getUserById",
+        getUserErr,
+        "Failed to resend invitation",
+        400,
+      );
+    }
+    const email = targetUser.email;
 
     const { error: inviteErr } = await admin.auth.admin.inviteUserByEmail(email, {
       redirectTo: `${SITE_URL}/set-password`,
@@ -86,7 +105,7 @@ Deno.serve(async (req) => {
     await admin.from("audit_log").insert({
       actor_user_id: callerId,
       entity_name: "app_user",
-      entity_id: user_id ?? null,
+      entity_id: user_id,
       action_type: "PLATFORM_ADMIN_INVITE_RESENT",
       new_value_json: { email },
       source_ip: getClientIp(req),
