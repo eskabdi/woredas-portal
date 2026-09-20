@@ -317,10 +317,8 @@ export function PlatformUsersTab() {
   // The Edge Function does the real authorization check server-side (caller
   // must be an active super_admin to target a tenant_admin/super_admin);
   // this is just the UI's call site and its own no-op-avoidance, not a
-  // security boundary. Works for a "pending" target too -- the function
-  // checks the account's actual GoTrue confirmation status, not just
-  // app_user.status, so this correctly unblocks someone who confirmed their
-  // invite email but never finished setting a password.
+  // security boundary. Active-account tool only -- a pending target has
+  // never set a password, so use Resend Invite for those instead.
   async function sendPasswordResetLink(u: AdminUserRow) {
     setResetLinkSendingId(u.user_id);
     try {
@@ -499,7 +497,7 @@ export function PlatformUsersTab() {
                             <span className="ml-2 text-xs text-slate-500">/ Resend Invite</span>
                           </DropdownMenuItem>
                         )}
-                        {(u.status === "active" || u.status === "pending") && (
+                        {u.status === "active" && (
                           <DropdownMenuItem
                             disabled={u.user_id === callerId || resetLinkSendingId === u.user_id}
                             onClick={() => sendPasswordResetLink(u)}

@@ -61,8 +61,6 @@ const ERROR_MESSAGES: Record<string, string> = {
     "To change your own password, use the change-password option in the account menu instead.",
   "Cannot send a reset link for this role.":
     "A reset link can't be sent for this role. Ask a platform administrator for help.",
-  "This user has never completed setup. Resend the invitation instead.":
-    "This person hasn't set up their account yet. Resend their invitation instead of a reset link.",
   "This account is not active. Reactivate it before sending a reset link.":
     "This account isn't active. Reactivate it first, then send the reset link.",
   "Could not resolve this user's email address": "Could not find an email address for this user.",
@@ -75,6 +73,12 @@ const ERROR_MESSAGES: Record<string, string> = {
   "Failed to resend invitation": "Failed to resend the invitation. Please try again.",
   "Invite sent but profile setup failed":
     "The invite email was sent, but profile setup failed. Ask an administrator to check this user.",
+  "Cannot resend an invite for this role.":
+    "An invitation can't be resent for this role. Ask a platform administrator for help.",
+  "This user has already completed setup.":
+    "This person has already completed account setup. If they're locked out, use the reset-link action instead.",
+  "Invite resent but profile update failed":
+    "The invite email was resent, but profile setup failed. Ask an administrator to check this user.",
   "Failed to activate account":
     "Could not activate your account. Please try again, or contact your administrator.",
   "Failed to record login": "Could not record your login time.",

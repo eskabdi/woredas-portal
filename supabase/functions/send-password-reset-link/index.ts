@@ -118,7 +118,11 @@ Deno.serve(async (req) => {
     if (!ALLOWED_TARGET_ROLES.has(target.role) && !canTargetPlatformAdmin) {
       return json(req, 400, { error: "Cannot send a reset link for this role." });
     }
-    if (target.status !== "active" && target.status !== "pending") {
+    // Reset link is an active-account tool by design: a pending account has
+    // never set a password at all, so "resetting" it is meaningless -- the
+    // correct action for a pending target is resend-tenant-invite /
+    // resend-platform-invite, which re-sends the original invite link.
+    if (target.status !== "active") {
       return json(req, 400, {
         error: "This account is not active. Reactivate it before sending a reset link.",
       });
@@ -134,23 +138,6 @@ Deno.serve(async (req) => {
         "Could not resolve this user's email address",
         400,
       );
-    }
-
-    // A "pending" account is ambiguous: it could mean "never opened the
-    // invite at all" (the normal case -- send them a fresh invite, not a
-    // reset link) or "confirmed the invite email, then abandoned the flow
-    // before actually setting a password" (a real stuck state this function
-    // exists to unblock: resend-platform-invite/invite-tenant-user both
-    // correctly refuse to re-invite an already-confirmed address, and
-    // nothing else can reach them). auth.users.email_confirmed_at is the
-    // only place that distinction actually lives -- app_user.status alone
-    // can't tell them apart. Once they follow this link and set a new
-    // password, set-password.tsx's unconditional activate-invited-user call
-    // flips them to active -- no separate repair needed here.
-    if (target.status === "pending" && !authUser.user.email_confirmed_at) {
-      return json(req, 400, {
-        error: "This user has never completed setup. Resend the invitation instead.",
-      });
     }
 
     // A fresh, unauthenticated-scope client for the actual send. This hits

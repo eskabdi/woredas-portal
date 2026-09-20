@@ -58,7 +58,7 @@ curl -sS -o /dev/null -w 'PAT: %{http_code}\n' https://api.supabase.com/v1/proje
 
 # Edge Functions: 401 means DEPLOYED (it rejected you with its own error body),
 # 404 {"code":"NOT_FOUND"} means ABSENT. This inversion trips everyone.
-for fn in sign-credential invite-tenant-user invite-platform-admin resend-platform-invite; do
+for fn in sign-credential invite-tenant-user invite-platform-admin resend-platform-invite resend-tenant-invite; do
   printf '%-24s ' "$fn"
   curl -sS -o /dev/null -w '%{http_code}\n' -X POST \
     "https://$REF.supabase.co/functions/v1/$fn" \
