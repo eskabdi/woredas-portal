@@ -153,11 +153,18 @@ Deno.serve(async (req) => {
         );
       }
       if (existing.woreda_id !== woredaId) {
+        // Same fixed message as the ordinary duplicate-email case -- a
+        // distinct string here would let a woreda-A admin learn, from an
+        // arbitrary email address, that it's a pending invite in *some
+        // other* tenant (an existence oracle main didn't previously expose,
+        // since the old unconditional insert collapsed same-woreda and
+        // cross-woreda collisions into one generic failure). The woreda
+        // distinction is still visible server-side, in the log line below.
         return safeError(
           req,
           "invite-tenant-user: re-invite across woredas",
           new Error(`app_user ${newUserId} already pending in a different woreda`),
-          "This email is already invited to a different woreda",
+          "User already registered",
           400,
         );
       }
@@ -166,7 +173,7 @@ Deno.serve(async (req) => {
       // fields (the admin may be correcting a role/detail before the
       // invitee has activated) and refresh invited_at, rather than
       // re-inserting.
-      const { error: updateErr } = await admin
+      const { data: updated, error: updateErr } = await admin
         .from("app_user")
         .update({
           role,
@@ -183,11 +190,15 @@ Deno.serve(async (req) => {
         .eq("user_id", newUserId)
         .select("user_id")
         .maybeSingle();
-      if (updateErr) {
+      // PostgREST returns error: null whether the WHERE clause matched a row
+      // or not -- an empty result here (the row vanished between the lookup
+      // above and this update) must not be read as success. See CLAUDE.md's
+      // "every admin-facing mutation verifies what it actually changed".
+      if (updateErr || !updated) {
         return safeError(
           req,
           "invite-tenant-user: app_user re-invite update",
-          updateErr,
+          updateErr ?? new Error(`app_user ${newUserId} update matched no row`),
           "Invite sent but profile setup failed",
           400,
         );
