@@ -117,13 +117,16 @@ INSA Enforcer Phase 2.3 / Phase 4 Access Control. Generated from `src/config/per
 
 | Permission                | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer | print_officer | custom |
 | ------------------------- | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ | ------------- | ------ |
-| `rental.view`             |             | ✓            | ✓          |                 | ✓              |               | ✓       |        |               |        |
+| `rental.view`             |             | ✓            | ✓          |                 | ✓              | ✓             | ✓       |        |               |        |
 | `rental.create`           |             | ✓            |            |                 | ✓              |               |         |        |               |        |
 | `rental.approve`          |             | ✓            | ✓          |                 |                |               |         |        |               |        |
 | `rental.vacate`           |             | ✓            |            |                 |                |               |         |        |               |        |
 | `rental.report`           |             | ✓            |            |                 |                |               | ✓       |        |               |        |
 | `rental.policy.configure` |             | ✓            |            |                 |                |               |         |        |               |        |
 | `rental.billing`          |             | ✓            |            |                 |                |               |         |        |               |        |
+| `rental.collect`          |             | ✓            |            |                 | ✓              | ✓             |         |        |               |        |
+| `rental.settle`           |             | ✓            |            |                 |                | ✓             |         |        |               |        |
+| `rental.reverse`          |             | ✓            |            |                 |                |               |         |        |               |        |
 
 ### Revenue
 

@@ -1,7 +1,7 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Banknote, Printer, Plus } from "lucide-react";
+import { Banknote, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card } from "@/components/ui/card";
@@ -9,13 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { KebeleFilter } from "@/components/common/KebeleFilter";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
@@ -35,7 +28,6 @@ import {
 } from "@/components/common/TableToolbar";
 import { exportRowsToCsv, exportRowsToPdf, type TableColumn } from "@/utils/tableExport";
 import { useReportBranding } from "@/hooks/useReportBranding";
-import { resolveDecryptedField, DECRYPT_UNVERIFIED_WARNING } from "@/lib/decryptedFieldGuard";
 import { formatEthiopianDateShortOnly } from "@/utils/ethiopianCalendar";
 import { PAYMENT_TYPE_LABEL, CHANNEL_LABEL } from "@/utils/paymentType";
 
@@ -69,7 +61,6 @@ function RevenuePage() {
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [kebeleFilter, setKebeleFilter] = useState("");
-  const [collectOpen, setCollectOpen] = useState(false);
   const { input: q, setInput: setQ, term: qTerm } = useUrlSearchTerm();
 
   const qc = useQueryClient();
@@ -310,20 +301,13 @@ function RevenuePage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader
-        icon={Banknote}
-        titleAm="ገቢ"
-        titleEn="Revenue"
-        actions={
-          <div className="flex items-center gap-2">
-            {hasPermission(P.REVENUE_COLLECT) && (
-              <Button onClick={() => setCollectOpen(true)}>
-                <Plus className="mr-1 h-4 w-4" /> የቤት ኪራይ ሰብስብ / Collect Rental Rent
-              </Button>
-            )}
-          </div>
-        }
-      />
+      <PageHeader icon={Banknote} titleAm="ገቢ" titleEn="Revenue" />
+      <p className="font-am-body text-xs text-slate-500">
+        የቤት ኪራይ ክፍያ አሁን የሚሰበሰበው ከየኪራይ ሂሳብ ገጽ ነው / Rental rent is now collected from each rent
+        account's ledger page, not here — this list keeps showing historical rental payments for
+        reference. Find the account from the rental house's detail page and use "ክፍያ ሰብስብ / Collect
+        Payment" there.
+      </p>
 
       <TableToolbar
         searchValue={q}
@@ -506,228 +490,6 @@ function RevenuePage() {
           onPageSizeChange={setPageSize}
         />
       </Card>
-
-      {collectOpen && (
-        <CollectRentalDialog
-          woredaId={woredaId!}
-          actorUserId={actorUserId}
-          onClose={() => setCollectOpen(false)}
-          onSuccess={() => {
-            setCollectOpen(false);
-            qc.invalidateQueries({ queryKey: ["revenue-payments"] });
-          }}
-        />
-      )}
     </div>
-  );
-}
-
-function CollectRentalDialog({
-  woredaId,
-  actorUserId,
-  onClose,
-  onSuccess,
-}: {
-  woredaId: string;
-  actorUserId: string | null;
-  onClose: () => void;
-  onSuccess: () => void;
-}) {
-  const [requestId, setRequestId] = useState("");
-  const [amount, setAmount] = useState("");
-  const [amountUnverified, setAmountUnverified] = useState(false);
-  const [channel, setChannel] = useState<"cash" | "bank" | "mobile">("cash");
-  const [referenceNo, setReferenceNo] = useState("");
-
-  const { data: approvedRequests } = useQuery({
-    queryKey: ["approved-rental-requests", woredaId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("rental_occupancy_request")
-        .select(
-          `rental_request_id, request_number, rent_amount, request_type,
-           resident:resident_id ( full_name_am, full_name ),
-           house:rental_house_id ( house_number )`,
-        )
-        .eq("woreda_id", woredaId)
-        .eq("status", "approved")
-        .eq("request_type", "new_registration")
-        .order("created_at", { ascending: false })
-        .limit(50);
-      if (error) throw error;
-
-      // rental_occupancy_request_decrypted isn't in the generated types yet
-      // (00000000000024_rental_occupancy_request_decrypted_view.sql) -- same
-      // untyped-client cast pattern already used elsewhere in this codebase
-      // for pre-typegen tables. Fetched separately: the select above embeds
-      // resident/house via FK-derived PostgREST joins, which are not
-      // guaranteed to resolve through a view the same way they do through
-      // the base table. This request-picker auto-fills the collected amount
-      // from rent_amount on selection (below), so it needs the real value.
-      const ids = (data ?? []).map((r) => r.rental_request_id);
-      let decryptedRentById = new Map<string, number>();
-      if (ids.length > 0) {
-        const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
-        const { data: amounts, error: amountsError } = await db
-          .from("rental_occupancy_request_decrypted")
-          .select("rental_request_id, rent_amount_decrypted")
-          .in("rental_request_id", ids);
-        if (amountsError) throw amountsError;
-        decryptedRentById = new Map(
-          (amounts ?? [])
-            .filter(
-              (r: { rent_amount_decrypted: number | null }) => r.rent_amount_decrypted != null,
-            )
-            .map((r: { rental_request_id: string; rent_amount_decrypted: number }) => [
-              r.rental_request_id,
-              r.rent_amount_decrypted,
-            ]),
-        );
-      }
-      return (data ?? []).map((r) => {
-        const rentField = resolveDecryptedField(
-          decryptedRentById.get(r.rental_request_id) ?? null,
-          r.rent_amount,
-        );
-        return {
-          ...r,
-          rent_amount: rentField.value,
-          rent_amount_decrypt_failed: rentField.decryptFailed,
-        };
-      });
-    },
-  });
-
-  const collect = useMutation({
-    mutationFn: async () => {
-      if (!requestId) throw new Error("የኪራይ ጥያቄ ይምረጡ / Select a rental request");
-      const amt = Number(amount);
-      if (!amt || amt <= 0) throw new Error("ትክክለኛ መጠን ያስገቡ / Enter a valid amount");
-      if ((channel === "bank" || channel === "mobile") && !referenceNo.trim())
-        throw new Error("ለባንክ/ሞባይል ማጣቀሻ ቁጥር ያስፈልጋል / Reference # required for bank/mobile");
-
-      const today = new Date().toISOString().slice(0, 10);
-      const { data: pay, error: payErr } = await supabase
-        .from("payment")
-        .insert({
-          woreda_id: woredaId,
-          payment_type: "rental_rent",
-          amount: amt,
-          payment_date: today,
-          channel,
-          reference_no: referenceNo.trim() || null,
-          status: "confirmed",
-          posted_by_user_id: actorUserId,
-          rental_request_id: requestId,
-        } as never)
-        .select("payment_id")
-        .single();
-      if (payErr) throw payErr;
-      const paymentId = (pay as { payment_id: string }).payment_id;
-
-      const { error: recErr } = await supabase.from("receipt").insert({
-        woreda_id: woredaId,
-        payment_id: paymentId,
-        receipt_date: today,
-        total_amount: amt,
-        cash_bank_channel: channel,
-        receipt_number: "",
-      } as never);
-      if (recErr) throw recErr;
-
-      await supabase.from("audit_log").insert({
-        woreda_id: woredaId,
-        actor_user_id: actorUserId,
-        entity_name: "payment",
-        entity_id: paymentId,
-        action_type: "RENTAL_PAYMENT_COLLECTED",
-        new_value_json: {
-          rental_request_id: requestId,
-          amount: amt,
-          channel,
-        } as never,
-      });
-      return paymentId;
-    },
-    onSuccess: () => {
-      toast.success("ክፍያ ተመዝግቧል — ደረሰኝ ተፈጥሯል / Payment recorded — receipt generated");
-      onSuccess();
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>የቤት ኪራይ ክፍያ ሰብስብ / Collect Rental Rent Payment</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3">
-          <div>
-            <Label>የኪራይ ጥያቄ / Rental Request</Label>
-            <select
-              value={requestId}
-              onChange={(e) => {
-                setRequestId(e.target.value);
-                const sel = approvedRequests?.find((r) => r.rental_request_id === e.target.value);
-                if (sel?.rent_amount != null) setAmount(String(sel.rent_amount));
-                setAmountUnverified(!!sel?.rent_amount_decrypt_failed);
-              }}
-              className="mt-1 block h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-            >
-              <option value="">— የተፈቀደ ጥያቄ ይምረጡ / Select an approved request —</option>
-              {(approvedRequests ?? []).map((r) => (
-                <option key={r.rental_request_id} value={r.rental_request_id}>
-                  {r.request_number} · House {r.house?.house_number ?? "?"} ·{" "}
-                  {r.resident?.full_name_am || r.resident?.full_name || "—"}
-                </option>
-              ))}
-            </select>
-          </div>
-          {amountUnverified && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-              <p className="font-am-body">{DECRYPT_UNVERIFIED_WARNING.am}</p>
-              <p>{DECRYPT_UNVERIFIED_WARNING.en}</p>
-            </div>
-          )}
-          <div>
-            <Label>መጠን (ብር) / Amount (ETB)</Label>
-            <Input
-              type="number"
-              min="0"
-              step="0.01"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-            />
-          </div>
-          <div>
-            <Label>ቻናል / Channel</Label>
-            <select
-              value={channel}
-              onChange={(e) => setChannel(e.target.value as "cash" | "bank" | "mobile")}
-              className="mt-1 block h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-            >
-              <option value="cash">ጥሬ ገንዘብ / Cash</option>
-              <option value="bank">ባንክ / Bank</option>
-              <option value="mobile">ሞባይል ገንዘብ / Mobile</option>
-            </select>
-          </div>
-          {channel !== "cash" && (
-            <div>
-              <Label>የማጣቀሻ ቁጥር / Reference No.</Label>
-              <Input value={referenceNo} onChange={(e) => setReferenceNo(e.target.value)} />
-            </div>
-          )}
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            ይቅር / Cancel
-          </Button>
-          <Button onClick={() => collect.mutate()} disabled={collect.isPending}>
-            ክፍያ አረጋግጥ / Confirm Payment
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }

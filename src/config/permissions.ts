@@ -109,6 +109,14 @@ export const P = {
   // another role via the matrix (e.g. a finance_clerk) if the tenant wants
   // that.
   RENTAL_BILLING: "rental.billing",
+  // Phase 3 (Settlement and payments): rental.collect/.settle are ordinary
+  // grantable permissions (same category as RENTAL_BILLING). rental.reverse
+  // is RESERVED (RESERVED_PERMISSION_KEYS below) -- reversing money already
+  // collected is the same risk class as CREDENTIAL_REVOKE, which is also
+  // tenant_admin-only and reserved.
+  RENTAL_COLLECT: "rental.collect",
+  RENTAL_SETTLE: "rental.settle",
+  RENTAL_REVERSE: "rental.reverse",
   REVENUE_VIEW: "revenue.view",
   REVENUE_COLLECT: "revenue.collect",
   REVENUE_RECEIPT_REPRINT: "revenue.receipt_reprint",
@@ -172,6 +180,7 @@ export const RESERVED_PERMISSION_KEYS: Permission[] = [
   P.CREDENTIAL_REVOKE,
   P.CREDENTIAL_CONFIGURE_POLICY,
   P.RENTAL_POLICY_CONFIGURE,
+  P.RENTAL_REVERSE,
 ];
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   super_admin: [
@@ -254,6 +263,9 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     P.SERVICE_COMPLETE,
     P.RENTAL_POLICY_CONFIGURE,
     P.RENTAL_BILLING,
+    P.RENTAL_COLLECT,
+    P.RENTAL_SETTLE,
+    P.RENTAL_REVERSE,
   ],
   supervisor: [
     P.RESIDENT_READ,
@@ -337,6 +349,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     P.CIVIL_READ,
     P.RENTAL_VIEW,
     P.RENTAL_CREATE,
+    P.RENTAL_COLLECT,
     P.SERVICE_CREATE,
     P.SERVICE_READ,
     P.SERVICE_ISSUE,
@@ -382,6 +395,9 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     P.CIVIL_VIEW,
     P.CIVIL_RECORD_PAYMENT,
     P.SERVICE_RECORD_PAYMENT,
+    P.RENTAL_VIEW,
+    P.RENTAL_COLLECT,
+    P.RENTAL_SETTLE,
   ],
   auditor: [
     P.RESIDENT_READ,
