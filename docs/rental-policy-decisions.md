@@ -84,3 +84,23 @@ the signed-off defaults; `default_role_perms('tenant_admin')` includes
 Phase 1 (integrity hardening, AF-01…AF-11) is unblocked. PD-07 and PD-09 are Phase 1
 work items (trigger guard + `workflow_transition` seed row), not yet implemented —
 tracked there, not here.
+
+## Residual risk from PD-07, found during Phase 1 review
+
+PD-07 (self-verification forbidden) is enforced as signed off — see
+`00000000000074_rental_phase1_fsm_review_fixes.sql`. The `workflow-fsm-review` agent
+flagged a real staffing consequence during Phase 1 review: combined with the
+pre-existing verified≠approver rule, completing a `new_registration` now needs three
+*distinct* people holding `rental.create`/`rental.create`/`rental.approve` (submitter,
+verifier, approver) rather than two. `rental.create` is held by `tenant_admin` and
+`registry_clerk`; `rental.approve` by `tenant_admin` and `supervisor`. A woreda staffed
+with exactly one `registry_clerk` and one `tenant_admin` — no second clerk, no
+`supervisor` — can complete **zero** rental requests: the clerk cannot verify their own
+submission, the tenant_admin can verify it, and the tenant_admin is then blocked from
+approving what they just verified. The new `approval_returned → verified` return loop
+does not help — it routes back to the same two people.
+
+This was PD-07's own recommended default, signed off knowingly, and is not silently
+relaxed here. Recorded as a known operational risk: if a woreda reports being unable to
+complete any rental request, check its role staffing against this exact matrix before
+assuming the FSM is broken.

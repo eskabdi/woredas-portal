@@ -166,6 +166,7 @@ function RentalRequestDetailPage() {
   const [checks, setChecks] = useState<Record<string, boolean>>({});
   const [returnReason, setReturnReason] = useState("");
   const [rejectReason, setRejectReason] = useState("");
+  const [approvalReturnReason, setApprovalReturnReason] = useState("");
 
   const passVerification = useMutation({
     mutationFn: async () => {
@@ -227,6 +228,40 @@ function RentalRequestDetailPage() {
     },
     onSuccess: () => {
       toast.success("Returned");
+      qc.invalidateQueries({ queryKey: ["rental-request", requestId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  // PD-09 (docs/rental-policy-decisions.md): the approver's own return path,
+  // distinct from the clerk-level returnRequest above -- gated by
+  // rental.approve, only reachable from 'verified', and reusing the same
+  // return_reason column (this table has no separate approval-return reason
+  // field, and the status value itself already distinguishes which flow set
+  // it).
+  const returnToClerk = useMutation({
+    mutationFn: async () => {
+      if (approvalReturnReason.trim().length < 3) throw new Error("Reason required");
+      const { data, error } = await supabase
+        .from("rental_occupancy_request")
+        .update({ status: "approval_returned", return_reason: approvalReturnReason.trim() })
+        .eq("rental_request_id", requestId)
+        .select("rental_request_id")
+        .maybeSingle();
+      if (error) throw error;
+      if (!data)
+        throw new Error("መመለስ አልተሳካም — ጥያቄው ሁኔታ ተቀይሯል / Return failed — request state changed");
+      await supabase.from("audit_log").insert({
+        woreda_id: woredaId!,
+        actor_user_id: actorUserId,
+        entity_name: "rental_occupancy_request",
+        entity_id: requestId,
+        action_type: "RENTAL_REQUEST_APPROVAL_RETURNED",
+        new_value_json: { reason: approvalReturnReason.trim() } as never,
+      });
+    },
+    onSuccess: () => {
+      toast.success("Returned to clerk");
       qc.invalidateQueries({ queryKey: ["rental-request", requestId] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -316,7 +351,10 @@ function RentalRequestDetailPage() {
 
   const canVerify =
     hasPermission(P.RENTAL_CREATE) &&
-    (req.status === "submitted" || req.status === "under_review" || req.status === "returned");
+    (req.status === "submitted" ||
+      req.status === "under_review" ||
+      req.status === "returned" ||
+      req.status === "approval_returned");
   const canApprove = hasPermission(P.RENTAL_APPROVE) && req.status === "verified";
   const isTermination = req.request_type === "termination";
   // WorkflowStepper renders currentStage as "now", not "up next" -- this must
@@ -328,7 +366,9 @@ function RentalRequestDetailPage() {
       ? "final"
       : req.status === "verified"
         ? "verified"
-        : req.status === "returned" || req.status === "rejected"
+        : req.status === "returned" ||
+            req.status === "rejected" ||
+            req.status === "approval_returned"
           ? req.verified_at
             ? "verified"
             : "submitted"
@@ -349,7 +389,9 @@ function RentalRequestDetailPage() {
       ? { am: "ውድቅ ተደርጓል", en: "Rejected", tone: "danger" }
       : req.status === "returned"
         ? { am: "እርማት ተጠይቋል", en: "Returned", tone: "warning" }
-        : undefined;
+        : req.status === "approval_returned"
+          ? { am: "በአጽዳቂ ተመልሷል", en: "Returned by approver", tone: "warning" }
+          : undefined;
 
   const bp = req.resident?.birth_place;
   const birthPlace =
@@ -618,6 +660,17 @@ function RentalRequestDetailPage() {
                   onChange={(e) => setRejectReason(e.target.value)}
                 />
               </div>
+              <div className="mt-3 space-y-2">
+                <Label className="text-xs">
+                  Return-to-clerk reason (only when returning for correction)
+                </Label>
+                <Textarea
+                  rows={2}
+                  value={approvalReturnReason}
+                  onChange={(e) => setApprovalReturnReason(e.target.value)}
+                  placeholder="Explain what the clerk needs to fix before re-verifying…"
+                />
+              </div>
               <div className="mt-3 flex flex-col gap-2">
                 <Button
                   onClick={() => approve.mutate()}
@@ -625,6 +678,13 @@ function RentalRequestDetailPage() {
                   className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
                 >
                   <CheckCircle2 className="mr-1 h-4 w-4" /> Approve
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => returnToClerk.mutate()}
+                  disabled={returnToClerk.isPending}
+                >
+                  Return to Clerk
                 </Button>
                 <Button
                   variant="destructive"

@@ -396,6 +396,7 @@ function RentalRequestListPage() {
               <option value="under_review">Under review</option>
               <option value="returned">Returned</option>
               <option value="verified">Verified</option>
+              <option value="approval_returned">Returned by approver</option>
               <option value="rejected">Rejected</option>
             </select>
           </>
