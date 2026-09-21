@@ -81,7 +81,7 @@ interface MemberRow {
   work_status: string;
 }
 
-type Frequency = "biweekly" | "quarterly" | "annual";
+type Frequency = "monthly" | "quarterly" | "yearly";
 
 type UploadKey = "contract" | "clearance" | "id_copy" | "photo";
 
@@ -196,7 +196,7 @@ function OccupantRegistrationPage() {
   const [rentAmount, setRentAmount] = useState<string>("");
   const [rentStart, setRentStart] = useState<string>("");
   const [rentEnd, setRentEnd] = useState<string>("");
-  const [frequency, setFrequency] = useState<Frequency>("biweekly");
+  const [frequency, setFrequency] = useState<Frequency>("monthly");
 
   // --- Household roster
   const [members, setMembers] = useState<MemberRow[]>([]);
@@ -816,9 +816,9 @@ function OccupantRegistrationPage() {
               <div className="mt-1 flex flex-wrap gap-2">
                 {(
                   [
-                    { v: "biweekly", am: "በየሁሉ" },
-                    { v: "quarterly", am: "በ3 ወር" },
-                    { v: "annual", am: "በዓመት" },
+                    { v: "monthly", am: "በየወሩ" },
+                    { v: "quarterly", am: "በየሩብ አመት" },
+                    { v: "yearly", am: "በአመት" },
                   ] as const
                 ).map((opt) => (
                   <button
