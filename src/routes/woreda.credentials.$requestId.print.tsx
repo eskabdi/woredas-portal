@@ -189,6 +189,10 @@ class QRBoundary extends React.Component<
 
 const PRINTERS = ["PVC Card Printer-XP80", "Zebra ZC300", "Evolis Primacy 2", "Fargo DTC1250e"];
 const QUALITIES = ["Standard", "High", "Ultra"];
+const ORIENTATION_LABELS: Record<"landscape" | "portrait", { am: string; en: string }> = {
+  landscape: { am: "አግድም", en: "Landscape" },
+  portrait: { am: "ቁመት", en: "Portrait" },
+};
 
 function PrintPage() {
   const { requestId } = Route.useParams();
@@ -594,7 +598,7 @@ function PrintPage() {
         queryKey: ["credential-request", request.credential_request_id],
       });
     } catch (e) {
-      toast.error(`Confirm failed: ${(e as Error).message}`);
+      toast.error(`ማረጋገጥ አልተሳካም / Confirm failed: ${(e as Error).message}`);
     } finally {
       setBusy(false);
     }
@@ -637,7 +641,7 @@ function PrintPage() {
         queryKey: ["credential-request", request.credential_request_id],
       });
     } catch (e) {
-      toast.error(`Retry failed: ${(e as Error).message}`);
+      toast.error(`እንደገና መሞከር አልተሳካም / Retry failed: ${(e as Error).message}`);
     } finally {
       setBusy(false);
     }
@@ -748,7 +752,7 @@ function PrintPage() {
         queryKey: ["credential-request", request.credential_request_id],
       });
     } catch (e) {
-      toast.error(`Print failed: ${(e as Error).message}`);
+      toast.error(`ማተም አልተሳካም / Print failed: ${(e as Error).message}`);
     } finally {
       setBusy(false);
     }
@@ -932,7 +936,9 @@ function PrintPage() {
               )}
               <Button asChild variant="outline">
                 <Link to="/woreda/credentials/$requestId" params={{ requestId }}>
-                  <ArrowLeft className="mr-2 h-4 w-4" /> Back to request
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  <span className="font-am-body">ወደ ጥያቄው ተመለስ</span>
+                  <span className="ml-1 opacity-70">/ Back to request</span>
                 </Link>
               </Button>
             </div>
@@ -989,13 +995,14 @@ function PrintPage() {
                       key={o}
                       type="button"
                       onClick={() => setOrientation(o)}
-                      className={`rounded-md border px-3 py-1.5 text-xs font-medium capitalize transition ${
+                      className={`rounded-md border px-3 py-1.5 text-xs font-medium transition ${
                         orientation === o
                           ? "border-blue-600 bg-blue-50 text-blue-700"
                           : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                       }`}
                     >
-                      {o}
+                      <span className="font-am-body">{ORIENTATION_LABELS[o].am}</span>
+                      <span className="ml-1 opacity-70">/ {ORIENTATION_LABELS[o].en}</span>
                     </button>
                   ))}
                 </div>
@@ -1124,7 +1131,9 @@ function PrintPage() {
 
               <div className="flex items-center gap-2 text-[10px] uppercase tracking-wide text-slate-400">
                 <ShieldCheck className="h-3 w-3" />
-                <span>All prints are audit-logged</span>
+                <span className="font-am-body normal-case">
+                  ሁሉም ህትመቶች ይመዘገባሉ / All prints are audit-logged
+                </span>
               </div>
             </div>
           </section>
@@ -1172,7 +1181,7 @@ function PrintPage() {
                     onValueChange={(v) => setReprintReasonCode(v as ReprintReasonCode)}
                   >
                     <SelectTrigger id="reprint-reason-code" className="mt-1">
-                      <SelectValue placeholder="Select a reason" />
+                      <SelectValue placeholder="ምክንያት ይምረጡ / Select a reason" />
                     </SelectTrigger>
                     <SelectContent>
                       {REPRINT_REASONS.map((r) => (
@@ -1314,7 +1323,10 @@ function PrintPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={busy}>
+              <span className="font-am-body">ይቅር</span>
+              <span className="ml-1 opacity-70">/ Cancel</span>
+            </AlertDialogCancel>
             <AlertDialogAction
               disabled={busy}
               onClick={(e) => {
@@ -1324,7 +1336,8 @@ function PrintPage() {
               className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
             >
               {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Confirm &amp; Print
+              <span className="font-am-body">አረጋግጥ እና አትም</span>
+              <span className="ml-1 opacity-80">/ Confirm &amp; Print</span>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

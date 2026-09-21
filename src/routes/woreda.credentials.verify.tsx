@@ -22,8 +22,9 @@ function VerifyPage() {
       <PermissionGate
         permission={P.CREDENTIAL_VERIFY}
         fallback={
-          <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
-            You do not have permission to verify credentials.
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-800">
+            <p className="font-am-body font-medium">ይህን ገጽ ለማየት ፈቃድ የለዎትም</p>
+            <p className="text-sm">You do not have permission to verify credentials.</p>
           </div>
         }
       >

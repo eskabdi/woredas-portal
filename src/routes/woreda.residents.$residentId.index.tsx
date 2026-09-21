@@ -51,7 +51,11 @@ import {
 import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/integrations/supabase/client";
 import { P } from "@/config/permissions";
-import { formatEthiopianDate, formatEthiopianDateOnly } from "@/utils/ethiopianCalendar";
+import {
+  formatEthiopianDate,
+  formatEthiopianDateOnly,
+  formatEthiopianDateShort,
+} from "@/utils/ethiopianCalendar";
 import { EDUCATION_OPTIONS, OCCUPATION_OPTIONS } from "@/lib/residentConstants";
 
 const LocationDisplayMap = lazy(() => import("@/components/gis/LocationDisplayMap"));
@@ -301,7 +305,7 @@ function ResidentProfilePage() {
       <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-red-800">
         <p className="font-am-body font-medium">ነዋሪ አልተገኘም / Resident not found</p>
         <Button variant="link" onClick={() => navigate({ to: "/woreda/residents" })}>
-          ← Back to list
+          ← ወደ ዝርዝሩ ተመለስ / Back to list
         </Button>
       </div>
     );
@@ -347,7 +351,7 @@ function ResidentProfilePage() {
       await navigator.clipboard.writeText(window.location.href);
       toast.success("አገናኝ ተቀድቷል / Link copied");
     } catch {
-      toast.error("Failed to copy link");
+      toast.error("አገናኙን መቅዳት አልተሳካም / Failed to copy link");
     }
   };
 
@@ -427,14 +431,14 @@ function ResidentProfilePage() {
           labelAm="የተሰጡ ማስረጃዎች"
           labelEn="Issued Credentials"
           primary={String(credentialCountQuery.data ?? 0)}
-          secondary="Active"
+          secondary="ንቁ / Active"
         />
         <SummaryCard
           icon={CalendarClock}
           labelAm="መጨረሻ የተሻሻለበት"
           labelEn="Last Updated"
           primary={r.updated_at ? formatEthiopianDate(new Date(r.updated_at)) : "—"}
-          secondary={r.updated_at ? new Date(r.updated_at).toLocaleDateString() : undefined}
+          secondary={r.updated_at ? formatEthiopianDateShort(new Date(r.updated_at)) : undefined}
         />
       </div>
 
@@ -943,12 +947,12 @@ function formatRelative(iso: string): string {
   const diff = Date.now() - then;
   const min = Math.floor(diff / 60000);
   if (min < 1) return "አሁን / just now";
-  if (min < 60) return `${min}m ago`;
+  if (min < 60) return `ከ${min} ደቂቃ በፊት / ${min}m ago`;
   const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr}h ago`;
+  if (hr < 24) return `ከ${hr} ሰዓት በፊት / ${hr}h ago`;
   const d = Math.floor(hr / 24);
-  if (d < 7) return `${d}d ago`;
-  return new Date(iso).toLocaleDateString();
+  if (d < 7) return `ከ${d} ቀን በፊት / ${d}d ago`;
+  return formatEthiopianDate(new Date(iso));
 }
 
 function QuickAction({

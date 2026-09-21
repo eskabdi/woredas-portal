@@ -118,7 +118,7 @@ function CredentialCertificatePage() {
           <DocRecordFooter
             refLabel="የሰነድ ማጣቀሻ / Document Reference"
             refId={cred?.credential_number ?? data.request_number}
-            printedOn={now.toLocaleDateString("en-GB")}
+            printedOn={`${formatEthiopianDate(now)} / ${now.toLocaleDateString("en-GB")}`}
           />
           <div className="mt-4">
             <SystemAttributionFooter woredaNameAm={branding.data?.nameAm ?? ""} />

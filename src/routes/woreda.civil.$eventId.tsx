@@ -359,7 +359,7 @@ function CivilEventDetailPage() {
       toast.success("ተረጋግጧል / Verified");
       invalidate();
     } catch (e) {
-      toast.error(`Update failed: ${(e as Error).message}`);
+      toast.error(`ማዘመን አልተሳካም / Update failed: ${(e as Error).message}`);
     } finally {
       setBusy(false);
     }
@@ -374,7 +374,7 @@ function CivilEventDetailPage() {
     if (!event || !actorUserId) return;
     const reason = returnReason.trim();
     if (reason.length < 5) {
-      toast.error("Reason must be at least 5 characters");
+      toast.error("ምክንያቱ ቢያንስ 5 ፊደላት ሊኖረው ይገባል / Reason must be at least 5 characters");
       return;
     }
     setBusy(true);
@@ -397,7 +397,7 @@ function CivilEventDetailPage() {
       setReturnReason("");
       invalidate();
     } catch (e) {
-      toast.error(`Return failed: ${(e as Error).message}`);
+      toast.error(`መመለስ አልተሳካም / Return failed: ${(e as Error).message}`);
     } finally {
       setBusy(false);
     }
@@ -418,7 +418,7 @@ function CivilEventDetailPage() {
       toast.success("ለማጽደቅ ተልኳል / Sent for approval");
       invalidate();
     } catch (e) {
-      toast.error(`Update failed: ${(e as Error).message}`);
+      toast.error(`ማዘመን አልተሳካም / Update failed: ${(e as Error).message}`);
     } finally {
       setBusy(false);
     }
@@ -445,7 +445,7 @@ function CivilEventDetailPage() {
       toast.success("ፀድቋል / Approved — payment collection is next");
       invalidate();
     } catch (e) {
-      toast.error(`Approve failed: ${(e as Error).message}`);
+      toast.error(`ማጽደቅ አልተሳካም / Approve failed: ${(e as Error).message}`);
     } finally {
       setBusy(false);
     }
@@ -455,7 +455,7 @@ function CivilEventDetailPage() {
     if (!event || !actorUserId) return;
     const reason = rejectReason.trim();
     if (reason.length < 5) {
-      toast.error("Reason must be at least 5 characters");
+      toast.error("ምክንያቱ ቢያንስ 5 ፊደላት ሊኖረው ይገባል / Reason must be at least 5 characters");
       return;
     }
     setBusy(true);
@@ -471,7 +471,7 @@ function CivilEventDetailPage() {
       setRejectReason("");
       invalidate();
     } catch (e) {
-      toast.error(`Reject failed: ${(e as Error).message}`);
+      toast.error(`ውድቅ ማድረግ አልተሳካም / Reject failed: ${(e as Error).message}`);
     } finally {
       setBusy(false);
     }
@@ -490,7 +490,7 @@ function CivilEventDetailPage() {
       toast.success("እንደገና ለክለሳ ተልኳል / Resubmitted");
       invalidate();
     } catch (e) {
-      toast.error(`Resubmit failed: ${(e as Error).message}`);
+      toast.error(`እንደገና ማስገባት አልተሳካም / Resubmit failed: ${(e as Error).message}`);
     } finally {
       setBusy(false);
     }
@@ -515,7 +515,7 @@ function CivilEventDetailPage() {
           variant="outline"
           onClick={() => navigate({ to: "/woreda/civil" })}
         >
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back
+          <ArrowLeft className="mr-2 h-4 w-4" /> ተመለስ / Back
         </Button>
       </div>
     );
@@ -562,7 +562,7 @@ function CivilEventDetailPage() {
             className="bg-white text-[color:var(--shell-header)] hover:bg-white/90"
             onClick={() => navigate({ to: "/woreda/civil" })}
           >
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back
+            <ArrowLeft className="mr-2 h-4 w-4" /> ተመለስ / Back
           </Button>
         }
       />
@@ -842,7 +842,12 @@ function CivilEventDetailPage() {
               permission={P.CIVIL_APPROVE}
               fallback={
                 <p className="text-sm text-slate-500">
-                  Verified — awaiting a supervisor to accept it into the approval queue.
+                  <span className="font-am-body">
+                    ተረጋግጧል — ተቆጣጣሪ ወደ ማጽደቂያ ወረፋ እስኪያስገባው ድረስ በመጠባበቅ ላይ።
+                  </span>
+                  <span className="ml-1 opacity-80">
+                    / Verified — awaiting a supervisor to accept it into the approval queue.
+                  </span>
                 </p>
               }
             >
@@ -887,17 +892,25 @@ function CivilEventDetailPage() {
                 </>
               )}
               {(eventType === "marriage" || eventType === "divorce") && (
-                <p className="text-xs text-slate-500">
-                  Approving records the event and links it to the parties; payment finalizes
-                  registration.
-                </p>
+                <>
+                  <p className="font-am-body text-sm text-slate-700">
+                    ማጽደቅ ክስተቱን ይመዘግባል እና ከወገኖቹ ጋር ያገናኘዋል፤ ክፍያ ምዝገባውን ያጠናቅቃል።
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Approving records the event and links it to the parties; payment finalizes
+                    registration.
+                  </p>
+                </>
               )}
 
               <PermissionGate
                 permission={P.CIVIL_APPROVE}
                 fallback={
                   <p className="text-sm text-slate-500">
-                    You do not have permission to approve this event.
+                    <span className="font-am-body">ይህን ክስተት የማጽደቅ ፈቃድ የለዎትም።</span>
+                    <span className="ml-1 opacity-80">
+                      / You do not have permission to approve this event.
+                    </span>
                   </p>
                 }
               >
@@ -1042,21 +1055,22 @@ function CivilEventDetailPage() {
       <AlertDialog open={returnOpen} onOpenChange={setReturnOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Return for correction</AlertDialogTitle>
+            <AlertDialogTitle>እርማት እንዲደረግ መልስ / Return for correction</AlertDialogTitle>
             <AlertDialogDescription>
-              Provide a reason (minimum 5 characters). The registrar will be able to resubmit.
+              ምክንያት ያስገቡ (ቢያንስ 5 ፊደላት)። መዝጋቢው እንደገና ማስገባት ይችላል። / Provide a reason (minimum 5
+              characters). The registrar will be able to resubmit.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <Textarea
             value={returnReason}
             onChange={(e) => setReturnReason(e.target.value)}
-            placeholder="Reason…"
+            placeholder="ምክንያት… / Reason…"
             rows={4}
           />
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={busy}>ይቅር / Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleReturn} disabled={busy}>
-              Return
+              መልስ / Return
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1065,25 +1079,26 @@ function CivilEventDetailPage() {
       <AlertDialog open={rejectOpen} onOpenChange={setRejectOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Reject event</AlertDialogTitle>
+            <AlertDialogTitle>ክስተቱን ውድቅ ማድረግ / Reject event</AlertDialogTitle>
             <AlertDialogDescription>
-              This is a terminal action. Provide a reason (minimum 5 characters).
+              ይህ የመጨረሻ እርምጃ ነው። ምክንያት ያስገቡ (ቢያንስ 5 ፊደላት)። / This is a terminal action. Provide a
+              reason (minimum 5 characters).
             </AlertDialogDescription>
           </AlertDialogHeader>
           <Textarea
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
-            placeholder="Reason…"
+            placeholder="ምክንያት… / Reason…"
             rows={4}
           />
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={busy}>ይቅር / Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleReject}
               disabled={busy}
               className="bg-red-600 hover:bg-red-700"
             >
-              Reject
+              ውድቅ / Reject
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1298,7 +1313,7 @@ function PaymentCard({
       toast.success("ክፍያው ተመዝግቧል / Payment recorded");
       onDone();
     } catch (e) {
-      toast.error(`Payment failed: ${(e as Error).message}`);
+      toast.error(`ክፍያ አልተሳካም / Payment failed: ${(e as Error).message}`);
     } finally {
       setBusy(false);
     }

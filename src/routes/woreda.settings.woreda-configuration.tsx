@@ -334,10 +334,17 @@ function SettingsPage() {
                 <Input {...form.register("woreda_name_display_om")} />
               </Field>
               <p className="col-span-full text-xs text-slate-500">
-                Shown as the issuing entity — including as "place of issue" on residence ID cards —
-                instead of the official registry name below. Amharic/English: leave blank to use the
-                registry name. Harari/Oromiffa have no registry equivalent to fall back to — leave
-                blank and that field prints empty on the card.
+                <span className="font-am-body">
+                  ከዚህ በታች ካለው የይፋዊ መዝገብ ስም ይልቅ እንደ ሰጪ አካል — በነዋሪ መታወቂያ ካርድ ላይ "የተሰጠበት ቦታ" ጨምሮ —
+                  ይታያል። አማርኛ/እንግሊዝኛ፦ የመዝገብ ስሙን ለመጠቀም ባዶ ይተውት። ሐረሪ/ኦሮምኛ የሚመለስበት የመዝገብ አቻ ስለሌላቸው ባዶ
+                  ይተውት፣ ያ መስክ ካርዱ ላይ ባዶ ይታተማል።
+                </span>
+                <span className="ml-1 opacity-80">
+                  / Shown as the issuing entity — including as "place of issue" on residence ID
+                  cards — instead of the official registry name below. Amharic/English: leave blank
+                  to use the registry name. Harari/Oromiffa have no registry equivalent to fall back
+                  to — leave blank and that field prints empty on the card.
+                </span>
               </p>
             </div>
           </Card>
@@ -664,11 +671,13 @@ function ImageUploadCard({
   async function onFile(file: File) {
     if (!woredaId) return;
     if (!/^image\/(png|jpeg|jpg)$/.test(file.type)) {
-      toast.error("Only PNG or JPEG allowed");
+      toast.error("PNG ወይም JPEG ብቻ ይፈቀዳል / Only PNG or JPEG allowed");
       return;
     }
     if (file.size > maxBytes) {
-      toast.error(`File too large (max ${Math.round(maxBytes / 1024 / 1024)}MB)`);
+      toast.error(
+        `ፋይሉ በጣም ትልቅ ነው (ከፍተኛ ${Math.round(maxBytes / 1024 / 1024)}ሜባ) / File too large (max ${Math.round(maxBytes / 1024 / 1024)}MB)`,
+      );
       return;
     }
     setUploading(true);
@@ -683,9 +692,9 @@ function ImageUploadCard({
         .upload(path, upload, { upsert: true, contentType: upload.type });
       if (error) throw error;
       onChange(path);
-      toast.success("Uploaded — remember to save");
+      toast.success("ተሰቅሏል — ማስቀመጥዎን አይርሱ / Uploaded — remember to save");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Upload failed");
+      toast.error(e instanceof Error ? e.message : "መስቀል አልተሳካም / Upload failed");
     } finally {
       setUploading(false);
     }
@@ -1149,7 +1158,7 @@ function ServiceTypeDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={saving}>
-            Cancel
+            ይቅር / Cancel
           </Button>
           <Button
             onClick={onSubmit}
@@ -1161,7 +1170,7 @@ function ServiceTypeDialog({
             ) : (
               <Save className="mr-2 h-4 w-4" />
             )}
-            Save
+            አስቀምጥ / Save
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -1243,7 +1252,8 @@ function FeesTab({
             ) : rows.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-5 py-8 text-center text-slate-500">
-                  No fees configured yet.
+                  <span className="font-am-body">እስካሁን ምንም ክፍያ አልተዋቀረም</span>
+                  <span className="ml-1 opacity-80">/ No fees configured yet.</span>
                 </td>
               </tr>
             ) : (
@@ -1397,6 +1407,11 @@ function FeeDialog({
   });
 
   const statuses: FeeForm["status"][] = ["active", "review_required", "inactive"];
+  const statusLabel: Record<FeeForm["status"], string> = {
+    active: "ንቁ / Active",
+    review_required: "ክለሳ ያስፈልጋል / Review Required",
+    inactive: "ቦዝኗል / Inactive",
+  };
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
@@ -1445,7 +1460,7 @@ function FeeDialog({
                   <SelectContent>
                     {statuses.map((s) => (
                       <SelectItem key={s} value={s}>
-                        {s}
+                        {statusLabel[s]}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1456,7 +1471,7 @@ function FeeDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={saving}>
-            Cancel
+            ይቅር / Cancel
           </Button>
           <Button
             onClick={onSubmit}
@@ -1468,7 +1483,7 @@ function FeeDialog({
             ) : (
               <Save className="mr-2 h-4 w-4" />
             )}
-            Save
+            አስቀምጥ / Save
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -274,7 +274,7 @@ function EditResidentPage() {
       <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-red-800">
         <p className="font-am-body font-medium">ነዋሪ አልተገኘም / Resident not found</p>
         <Button variant="link" onClick={() => navigate({ to: "/woreda/residents" })}>
-          ← Back to list
+          ← ወደ ዝርዝሩ ተመለስ / Back to list
         </Button>
       </div>
     );

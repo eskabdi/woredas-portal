@@ -29,7 +29,7 @@ const partySchema = z
     name: z.string().trim().max(200).optional().default(""),
   })
   .refine((v) => v.resident_id || v.name.trim().length > 0, {
-    message: "Select a resident or enter a name",
+    message: "ነዋሪ ይምረጡ ወይም ስም ያስገቡ / Select a resident or enter a name",
     path: ["name"],
   });
 
@@ -54,7 +54,7 @@ const schema = z
     informant_phone: phoneDigitsSchema(),
   })
   .refine((v) => !v.marriage_date || v.marriage_date <= v.event_date, {
-    message: "Marriage date must be before divorce date",
+    message: "የጋብቻ ቀን ከፍቺ ቀን በፊት መሆን አለበት / Marriage date must be before divorce date",
     path: ["marriage_date"],
   });
 
@@ -178,7 +178,7 @@ function DivorceNewPage() {
       toast.success("የፍቺ ምዝገባ ተልኳል / Divorce submitted");
       navigate({ to: "/woreda/civil/$eventId", params: { eventId } });
     },
-    onError: (e) => toast.error(`Submit failed: ${(e as Error).message}`),
+    onError: (e) => toast.error(`ማስገባት አልተሳካም / Submit failed: ${(e as Error).message}`),
   });
 
   const onSubmit = handleSubmit((raw) => {
@@ -211,7 +211,7 @@ function DivorceNewPage() {
         titleEn="New Divorce Registration"
         actions={
           <Button variant="outline" onClick={() => navigate({ to: "/woreda/civil" })}>
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back
+            <ArrowLeft className="mr-2 h-4 w-4" /> ተመለስ / Back
           </Button>
         }
       />
@@ -330,7 +330,7 @@ function DivorceNewPage() {
 
         <div className="flex items-center justify-end gap-3">
           <Button type="button" variant="outline" onClick={() => navigate({ to: "/woreda/civil" })}>
-            Cancel
+            ይቅር / Cancel
           </Button>
           <Button
             type="submit"

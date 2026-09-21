@@ -209,7 +209,7 @@ function HouseholdDetailPage() {
       <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-red-800">
         <p className="font-am-body font-medium">ቤተሰብ አልተገኘም / Household not found</p>
         <Button variant="link" onClick={() => navigate({ to: "/woreda/households" })}>
-          ← Back to list
+          ← ወደ ዝርዝሩ ተመለስ / Back to list
         </Button>
       </div>
     );
@@ -299,19 +299,26 @@ function HouseholdDetailPage() {
               <div className="p-5">
                 <dl className="grid grid-cols-3 gap-x-3 gap-y-2 text-sm">
                   <Row
-                    label="Kebele"
+                    labelAm="ቀበሌ"
+                    labelEn="Kebele"
                     value={
                       kebele ? `${kebele.kebele_number} — ${kebele.kebele_name_am}` : notRecorded()
                     }
                   />
-                  <Row label="House #" value={h.house_number as string} mono />
-                  <Row label="Address" value={(h.address_line as string) || notRecorded()} />
+                  <Row labelAm="ቤት ቁ." labelEn="House #" value={h.house_number as string} mono />
                   <Row
-                    label="Occupancy"
+                    labelAm="አድራሻ"
+                    labelEn="Address"
+                    value={(h.address_line as string) || notRecorded()}
+                  />
+                  <Row
+                    labelAm="ይዞታ"
+                    labelEn="Occupancy"
                     value={<StatusChip status={h.occupancy_status as string} />}
                   />
                   <Row
-                    label="House Type"
+                    labelAm="የቤት ዓይነት"
+                    labelEn="House Type"
                     value={
                       h.house_type
                         ? (HOUSE_TYPE_LABEL[h.house_type as string] ?? (h.house_type as string))
@@ -320,13 +327,15 @@ function HouseholdDetailPage() {
                   />
                   {h.house_type === "other" && (
                     <Row
-                      label="Other (specify)"
+                      labelAm="ሌላ (ይግለጹ)"
+                      labelEn="Other (specify)"
                       value={(h.house_type_other as string) || notRecorded()}
                     />
                   )}
                   {(h.house_type === "rental" || h.house_type === "rented_by_private") && (
                     <Row
-                      label="Rent (ETB)"
+                      labelAm="ኪራይ (ብር)"
+                      labelEn="Rent (ETB)"
                       value={
                         (householdContactQuery.data?.rent_amount_decrypted ?? h.rent_amount) != null
                           ? String(
@@ -357,16 +366,22 @@ function HouseholdDetailPage() {
               <div className="p-5">
                 <dl className="grid grid-cols-3 gap-x-3 gap-y-2 text-sm">
                   <Row
-                    label="Phone"
+                    labelAm="ስልክ"
+                    labelEn="Phone"
                     value={
                       (householdContactQuery.data?.phone_number_decrypted as string) ||
                       notRecorded()
                     }
                     mono
                   />
-                  <Row label="PO Box" value={(h.po_box as string) || notRecorded()} />
                   <Row
-                    label="Email"
+                    labelAm="ፖ.ሳ.ቁ."
+                    labelEn="PO Box"
+                    value={(h.po_box as string) || notRecorded()}
+                  />
+                  <Row
+                    labelAm="ኢሜይል"
+                    labelEn="Email"
                     value={(householdContactQuery.data?.email_decrypted as string) || notRecorded()}
                   />
                 </dl>
@@ -491,7 +506,7 @@ function HouseholdDetailPage() {
           </AlertDialogHeader>
           {setHeadFor && <p className="font-am-body text-sm text-slate-700">{setHeadFor.name}</p>}
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>ይቅር / Cancel</AlertDialogCancel>
             <AlertDialogAction
               disabled={setHeadMutation.isPending}
               onClick={(e) => {
@@ -555,10 +570,23 @@ function getInitials(name: string): string {
     .join("");
 }
 
-function Row({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {
+function Row({
+  labelAm,
+  labelEn,
+  value,
+  mono,
+}: {
+  labelAm: string;
+  labelEn: string;
+  value: React.ReactNode;
+  mono?: boolean;
+}) {
   return (
     <>
-      <dt className="col-span-1 text-xs uppercase tracking-wide text-slate-500">{label}</dt>
+      <dt className="col-span-1 text-xs uppercase tracking-wide text-slate-500">
+        <span className="font-am-body">{labelAm}</span>
+        <span className="ml-1">/ {labelEn}</span>
+      </dt>
       <dd className={`col-span-2 text-slate-800 ${mono ? "font-mono" : ""}`}>{value}</dd>
     </>
   );

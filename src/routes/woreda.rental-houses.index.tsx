@@ -150,6 +150,17 @@ function toViewRow(h: HouseRow): HouseViewRow {
   };
 }
 
+const OCCUPANCY_STATUS_LABEL: Record<string, { am: string; en: string }> = {
+  vacant: { am: "ክፍት", en: "Vacant" },
+  occupied: { am: "ተይዟል", en: "Occupied" },
+  under_maintenance: { am: "እድሳት ላይ", en: "Under maintenance" },
+};
+
+function occupancyStatusLabel(status: string): string {
+  const l = OCCUPANCY_STATUS_LABEL[status];
+  return l ? `${l.am} / ${l.en}` : status;
+}
+
 const EXPORT_COLUMNS: TableColumn<HouseViewRow>[] = [
   { header: "የቤት ቁጥር / House", value: (r) => r.house_number },
   { header: "ቀበሌ / Kebele", value: (r) => r.kebele?.kebele_name_am ?? "" },
@@ -233,11 +244,11 @@ function RentalHouseListPage() {
 
   function buildFilterLabel() {
     const parts: string[] = [];
-    if (qTerm) parts.push(`Search: "${qTerm}"`);
-    if (statusFilter) parts.push(`Status: ${statusFilter}`);
-    if (kebeleFilter) parts.push(`Kebele: ${kebeleFilter}`);
-    if (!sort.isDefault) parts.push(`Sort: ${sort.field} ${sort.dir}`);
-    return parts.length ? parts.join(" • ") : "No filters applied";
+    if (qTerm) parts.push(`ፍለጋ / Search: "${qTerm}"`);
+    if (statusFilter) parts.push(`ሁኔታ / Status: ${statusFilter}`);
+    if (kebeleFilter) parts.push(`ቀበሌ / Kebele: ${kebeleFilter}`);
+    if (!sort.isDefault) parts.push(`ደርድር / Sort: ${sort.field} ${sort.dir}`);
+    return parts.length ? parts.join(" • ") : "ማጣሪያ አልተተገበረም / No filters applied";
   }
 
   async function handleExport(kind: "csv" | "pdf") {
@@ -281,9 +292,9 @@ function RentalHouseListPage() {
           rows: allRows,
         });
       }
-      toast.success("Export complete");
+      toast.success("ወደ ውጪ መላክ ተጠናቋል / Export complete");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Export failed");
+      toast.error(e instanceof Error ? e.message : "ወደ ውጪ መላክ አልተሳካም / Export failed");
     } finally {
       setExporting(false);
     }
@@ -297,7 +308,7 @@ function RentalHouseListPage() {
         icon={Building2}
         titleAm="የቀበሌ የኪራይ ቤቶች"
         titleEn="Kebele Rental Houses"
-        description="Registry of kebele rental units and their occupancy"
+        description="የቀበሌ ኪራይ ቤቶች እና የተያዥ ሁኔታቸው መዝገብ / Registry of kebele rental units and their occupancy"
         actions={
           hasPermission(P.RENTAL_CREATE) && (
             <div className="flex flex-wrap gap-2">
@@ -341,10 +352,10 @@ function RentalHouseListPage() {
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
-              <option value="">All statuses</option>
-              <option value="vacant">Vacant</option>
-              <option value="occupied">Occupied</option>
-              <option value="under_maintenance">Under maintenance</option>
+              <option value="">ሁሉም ሁኔታዎች / All statuses</option>
+              <option value="vacant">ክፍት / Vacant</option>
+              <option value="occupied">ተይዟል / Occupied</option>
+              <option value="under_maintenance">እድሳት ላይ / Under maintenance</option>
             </select>
           </>
         }
@@ -404,7 +415,7 @@ function RentalHouseListPage() {
                               : "outline"
                         }
                       >
-                        {r.occupancy_status}
+                        {occupancyStatusLabel(r.occupancy_status)}
                       </Badge>
                     </td>
                     <td className="px-4 py-2 font-am-body">{r.occupant_name}</td>
@@ -417,7 +428,7 @@ function RentalHouseListPage() {
                         params={{ houseId: r.rental_house_id }}
                         className="text-blue-700 hover:underline"
                       >
-                        Open →
+                        ክፈት / Open →
                       </Link>
                     </td>
                   </tr>

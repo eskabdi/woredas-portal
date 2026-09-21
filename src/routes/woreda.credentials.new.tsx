@@ -25,7 +25,12 @@ import { ResidentSearchPicker } from "@/components/forms/ResidentSearchPicker";
 import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/integrations/supabase/client";
 import { P } from "@/config/permissions";
-import { calculateAgeYears, formatEthiopianDate, parseDateOnly } from "@/utils/ethiopianCalendar";
+import {
+  calculateAgeYears,
+  formatEthiopianDate,
+  formatEthiopianDateOnly,
+  parseDateOnly,
+} from "@/utils/ethiopianCalendar";
 import { sha256Hex } from "@/utils/fileChecksum";
 import {
   POLICE_REPORT_REQUIRED_TYPES,
@@ -73,7 +78,7 @@ const CRED_TYPES = [
 
 const formSchema = z
   .object({
-    resident_id: z.string().uuid("Select a resident"),
+    resident_id: z.string().uuid("ነዋሪ ይምረጡ / Select a resident"),
     request_type: z.enum([
       "new_issue",
       "renewal",
@@ -94,23 +99,29 @@ const formSchema = z
   })
   .refine((v) => v.request_type === "new_issue" || !!v.prior_credential_id, {
     path: ["prior_credential_id"],
-    message: "Select the prior credential",
+    message: "ቀዳሚ ማስረጃ ይምረጡ / Select the prior credential",
   })
   .refine((v) => v.request_type !== "reissue_correction" || !!v.supporting_document_path, {
     path: ["supporting_document_path"],
-    message: "Supporting document is required for corrections",
+    message: "ለእርማት ደጋፊ ሰነድ ያስፈልጋል / Supporting document is required for corrections",
   })
   .refine(
     (v) => !POLICE_REPORT_REQUIRED_TYPES.has(v.request_type) || !!v.police_report_number?.trim(),
-    { path: ["police_report_number"], message: "Police report number is required" },
+    {
+      path: ["police_report_number"],
+      message: "የፖሊስ ሪፖርት ቁጥር ያስፈልጋል / Police report number is required",
+    },
   )
   .refine(
     (v) => v.request_type !== "reissue_correction" || (v.correction_fields?.length ?? 0) > 0,
-    { path: ["correction_fields"], message: "Select at least one field to correct" },
+    {
+      path: ["correction_fields"],
+      message: "ቢያንስ አንድ የሚስተካከል መስክ ይምረጡ / Select at least one field to correct",
+    },
   )
   .refine((v) => v.request_type !== "reissue_correction" || !!v.correction_reason?.trim(), {
     path: ["correction_reason"],
-    message: "A reason is required for a correction",
+    message: "ለእርማት ምክንያት ያስፈልጋል / A reason is required for a correction",
   });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -407,7 +418,7 @@ function NewCredentialRequestPage() {
   const onSubmit = handleSubmit(async (values) => {
     if (!woredaId || !resident || !actorUserId) return;
     if (!resident.current_household_id || !resident.household) {
-      toast.error("Resident is not in a household");
+      toast.error("ነዋሪው በቤተሰብ ውስጥ አይደለም / Resident is not in a household");
       return;
     }
     if (!resident.household.kebele?.kebele_id) {
@@ -584,7 +595,7 @@ function NewCredentialRequestPage() {
       queryClient.invalidateQueries({ queryKey: ["credential-requests"] });
       navigate({ to: "/woreda/credentials" });
     } catch (e) {
-      toast.error(`Submit failed: ${(e as Error).message}`);
+      toast.error(`ማስገባት አልተሳካም / Submit failed: ${(e as Error).message}`);
     } finally {
       setSubmitting(false);
     }
@@ -631,7 +642,8 @@ function NewCredentialRequestPage() {
 
           {residentQuery.isLoading && residentId && (
             <div className="flex items-center gap-2 text-sm text-slate-500">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading resident…
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="font-am-body">ነዋሪ በመጫን ላይ… / Loading resident…</span>
             </div>
           )}
 
@@ -641,8 +653,8 @@ function NewCredentialRequestPage() {
                 {photoSignedUrl ? (
                   <img src={photoSignedUrl} className="h-full w-full object-cover" />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">
-                    No photo
+                  <div className="flex h-full w-full items-center justify-center text-center text-xs text-slate-400">
+                    <span className="font-am-body">ፎቶ የለም / No photo</span>
                   </div>
                 )}
               </div>
@@ -708,7 +720,7 @@ function NewCredentialRequestPage() {
                 params={{ residentId: resident!.resident_id }}
                 className="mt-2 inline-block text-sm font-medium text-red-900 underline"
               >
-                Open resident profile →
+                <span className="font-am-body">የነዋሪ መገለጫ ይክፈቱ / Open resident profile →</span>
               </Link>
             </div>
           )}
@@ -733,7 +745,7 @@ function NewCredentialRequestPage() {
                 params={{ residentId: resident!.resident_id }}
                 className="mt-2 inline-block text-sm font-medium text-red-900 underline"
               >
-                Edit resident profile →
+                <span className="font-am-body">የነዋሪ መገለጫ ያርትዑ / Edit resident profile →</span>
               </Link>
             </div>
           )}
@@ -746,7 +758,7 @@ function NewCredentialRequestPage() {
                 params={{ residentId: resident!.resident_id }}
                 className="mt-2 inline-block text-sm font-medium text-red-900 underline"
               >
-                Edit resident profile →
+                <span className="font-am-body">የነዋሪ መገለጫ ያርትዑ / Edit resident profile →</span>
               </Link>
             </div>
           )}
@@ -915,19 +927,22 @@ function NewCredentialRequestPage() {
                     onValueChange={(v) => field.onChange(v || null)}
                   >
                     <SelectTrigger className="mt-2 font-mono">
-                      <SelectValue placeholder="Select prior credential…" />
+                      <SelectValue placeholder="ቀዳሚ ማስረጃ ይምረጡ / Select prior credential…" />
                     </SelectTrigger>
                     <SelectContent>
                       {(priorCredsQuery.data ?? []).map((c) => (
                         <SelectItem key={c.credential_id} value={c.credential_id}>
                           <span className="font-mono">{c.credential_number}</span> ·{" "}
                           {c.credential_type} · {c.status}
-                          {c.issue_date ? ` · ${c.issue_date}` : ""}
+                          {c.issue_date ? ` · ${formatEthiopianDateOnly(c.issue_date)}` : ""}
                         </SelectItem>
                       ))}
                       {(priorCredsQuery.data ?? []).length === 0 && (
                         <div className="p-3 text-sm text-slate-500">
-                          No prior credentials found for this resident.
+                          <span className="font-am-body">
+                            ለዚህ ነዋሪ ምንም ቀዳሚ ማስረጃ አልተገኘም / No prior credentials found for this
+                            resident.
+                          </span>
                         </div>
                       )}
                     </SelectContent>
@@ -1002,7 +1017,7 @@ function NewCredentialRequestPage() {
                   rows={3}
                   className="mt-2"
                   {...register("correction_reason")}
-                  placeholder="Explain what's wrong and what it should be"
+                  placeholder="ምን እንደተሳሳተ እና ምን መሆን እንዳለበት ያብራሩ / Explain what's wrong and what it should be"
                 />
                 {errors.correction_reason && (
                   <p className="mt-1 text-sm text-red-600">{errors.correction_reason.message}</p>
@@ -1016,7 +1031,9 @@ function NewCredentialRequestPage() {
               <Label className="font-am-body">
                 ፎቶ / Photo <span className="text-red-600">*</span>
               </Label>
-              <p className="mt-0.5 text-xs text-slate-500">JPG or PNG. Max 5MB.</p>
+              <p className="font-am-body mt-0.5 text-xs text-slate-500">
+                JPG ወይም PNG ብቻ፣ ከ5MB በታች / JPG or PNG. Max 5MB.
+              </p>
               {photoAttachment ? (
                 <div className="mt-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2">
                   <div className="flex items-center gap-3">
@@ -1067,7 +1084,9 @@ function NewCredentialRequestPage() {
               ደጋፊ ሰነድ / Supporting Document{" "}
               {requestType === "reissue_correction" && <span className="text-red-600">*</span>}
             </Label>
-            <p className="mt-0.5 text-xs text-slate-500">PDF, JPG, or PNG. Max 5MB.</p>
+            <p className="font-am-body mt-0.5 text-xs text-slate-500">
+              PDF፣ JPG ወይም PNG፣ ከ5MB በታች / PDF, JPG, or PNG. Max 5MB.
+            </p>
             {supportingDocPath ? (
               <div className="mt-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2">
                 <div className="flex items-center gap-3">
@@ -1133,7 +1152,7 @@ function NewCredentialRequestPage() {
                   value={field.value ?? ""}
                   rows={3}
                   className="font-am-body mt-2"
-                  placeholder="Optional notes…"
+                  placeholder="አማራጭ ማስታወሻ / Optional notes…"
                 />
               )}
             />

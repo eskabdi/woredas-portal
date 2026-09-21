@@ -27,6 +27,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
 import { P } from "@/config/permissions";
 import {
+  formatEthiopianDate,
   formatEthiopianDateShort,
   gregorianToEthiopian,
   parseDateOnly,
@@ -57,13 +58,33 @@ function fmtDateTime(iso: string | null | undefined): string {
   if (!iso) return "";
   const d = new Date(iso);
   if (isNaN(d.getTime())) return "";
-  return d.toLocaleString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${formatEthiopianDate(d)} ${hh}:${mm}`;
+}
+
+const OCCUPANCY_STATUS_LABEL: Record<string, { am: string; en: string }> = {
+  vacant: { am: "ክፍት", en: "Vacant" },
+  occupied: { am: "ተይዟል", en: "Occupied" },
+  under_maintenance: { am: "እድሳት ላይ", en: "Under maintenance" },
+};
+
+// Same status set as StatusBadge/STATUS_LABEL in
+// woreda.rental-houses.requests.index.tsx -- keep these two in sync.
+const REQUEST_STATUS_LABEL: Record<string, { am: string; en: string }> = {
+  submitted: { am: "ገብቷል", en: "Submitted" },
+  under_review: { am: "በግምገማ ላይ", en: "Under review" },
+  verified: { am: "ተረጋግጧል", en: "Verified" },
+  returned: { am: "ተመልሷል", en: "Returned" },
+  approval_returned: { am: "በአጽዳቂ ተመልሷል", en: "Returned by approver" },
+  rejected: { am: "ውድቅ ተደርጓል", en: "Rejected" },
+  approved: { am: "ፀድቋል", en: "Approved" },
+};
+
+function statusLabel(map: Record<string, { am: string; en: string }>, status: string | undefined) {
+  if (!status) return "—";
+  const l = map[status];
+  return l ? `${l.am} / ${l.en}` : status;
 }
 
 function KV({ am, en, children }: { am: string; en: string; children: React.ReactNode }) {
@@ -211,7 +232,7 @@ function RentalRequestDetailPage() {
 
   const returnRequest = useMutation({
     mutationFn: async () => {
-      if (returnReason.trim().length < 3) throw new Error("Reason required");
+      if (returnReason.trim().length < 3) throw new Error("ምክንያት ያስፈልጋል / Reason required");
       const { data, error } = await supabase
         .from("rental_occupancy_request")
         .update({ status: "returned", return_reason: returnReason.trim() })
@@ -231,7 +252,7 @@ function RentalRequestDetailPage() {
       });
     },
     onSuccess: () => {
-      toast.success("Returned");
+      toast.success("ተመልሷል / Returned");
       qc.invalidateQueries({ queryKey: ["rental-request", requestId] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -245,7 +266,7 @@ function RentalRequestDetailPage() {
   // it).
   const returnToClerk = useMutation({
     mutationFn: async () => {
-      if (approvalReturnReason.trim().length < 3) throw new Error("Reason required");
+      if (approvalReturnReason.trim().length < 3) throw new Error("ምክንያት ያስፈልጋል / Reason required");
       const { data, error } = await supabase
         .from("rental_occupancy_request")
         .update({ status: "approval_returned", return_reason: approvalReturnReason.trim() })
@@ -265,7 +286,7 @@ function RentalRequestDetailPage() {
       });
     },
     onSuccess: () => {
-      toast.success("Returned to clerk");
+      toast.success("ወደ ፀሐፊ ተመልሷል / Returned to clerk");
       qc.invalidateQueries({ queryKey: ["rental-request", requestId] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -279,7 +300,7 @@ function RentalRequestDetailPage() {
         );
       }
       if (req?.request_type === "termination" && !req?.existing_occupancy_id) {
-        throw new Error("No active occupancy to vacate");
+        throw new Error("የሚለቀቅ ንቁ ኪራይ የለም / No active occupancy to vacate");
       }
       const { data, error } = await supabase
         .from("rental_occupancy_request")
@@ -334,7 +355,7 @@ function RentalRequestDetailPage() {
       });
     },
     onSuccess: () => {
-      toast.success("Approved");
+      toast.success("ፀድቋል / Approved");
       qc.invalidateQueries({ queryKey: ["rental-request", requestId] });
       qc.invalidateQueries({ queryKey: ["rental-house"] });
       qc.invalidateQueries({ queryKey: ["rental-occupancies"] });
@@ -344,7 +365,7 @@ function RentalRequestDetailPage() {
 
   const reject = useMutation({
     mutationFn: async () => {
-      if (rejectReason.trim().length < 3) throw new Error("Reason required");
+      if (rejectReason.trim().length < 3) throw new Error("ምክንያት ያስፈልጋል / Reason required");
       const { data, error } = await supabase
         .from("rental_occupancy_request")
         .update({
@@ -369,7 +390,7 @@ function RentalRequestDetailPage() {
       });
     },
     onSuccess: () => {
-      toast.success("Rejected");
+      toast.success("ውድቅ ተደርጓል / Rejected");
       qc.invalidateQueries({ queryKey: ["rental-request", requestId] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -454,7 +475,7 @@ function RentalRequestDetailPage() {
         titleEn={isTermination ? "Vacate Request" : "Rental Occupancy Request"}
         meta={[
           {
-            label: `${isTermination ? "የመተው ጥያቄ" : "የተከራይ ምዝገባ ጥያቄ"}  •  Created ${fmtDateTime(req.created_at)}`,
+            label: `${isTermination ? "የመተው ጥያቄ" : "የተከራይ ምዝገባ ጥያቄ"}  •  ተፈጠረ / Created ${fmtDateTime(req.created_at)}`,
           },
         ]}
         actions={
@@ -470,7 +491,9 @@ function RentalRequestDetailPage() {
                 : navigate({ to: "/woreda/rental-houses" })
             }
           >
-            <ChevronLeft className="mr-1 h-4 w-4" /> Back
+            <ChevronLeft className="mr-1 h-4 w-4" />
+            <span className="font-am-body">ተመለስ</span>
+            <span className="ml-1 opacity-80">/ Back</span>
           </Button>
         }
       />
@@ -544,7 +567,7 @@ function RentalRequestDetailPage() {
               </KV>
               <KV am="የቤት ሁኔታ" en="Occupancy Status">
                 <Badge variant={req.house?.occupancy_status === "vacant" ? "outline" : "secondary"}>
-                  {req.house?.occupancy_status ?? "—"}
+                  {statusLabel(OCCUPANCY_STATUS_LABEL, req.house?.occupancy_status)}
                 </Badge>
               </KV>
               <KV am="የገባበት ቀን" en="Rent Starting Date">
@@ -554,7 +577,7 @@ function RentalRequestDetailPage() {
                 {req.rent_amount != null ? `${Number(req.rent_amount).toLocaleString()} ETB` : "—"}
                 {req.house?.monthly_rent_standard != null && (
                   <span className="ml-2 text-xs text-slate-400">
-                    (standard {Number(req.house.monthly_rent_standard).toLocaleString()})
+                    (መደበኛ / standard {Number(req.house.monthly_rent_standard).toLocaleString()})
                   </span>
                 )}
               </KV>
@@ -575,13 +598,15 @@ function RentalRequestDetailPage() {
             <Card className="border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
               {req.return_reason && (
                 <div>
-                  <span className="font-semibold">Return reason: </span>
+                  <span className="font-am-body font-semibold">የመመለሻ ምክንያት</span>
+                  <span className="font-semibold"> / Return reason: </span>
                   {req.return_reason}
                 </div>
               )}
               {req.reject_reason && (
                 <div>
-                  <span className="font-semibold">Reject reason: </span>
+                  <span className="font-am-body font-semibold">የውድቅ ምክንያት</span>
+                  <span className="font-semibold"> / Reject reason: </span>
                   {req.reject_reason}
                 </div>
               )}
@@ -593,18 +618,38 @@ function RentalRequestDetailPage() {
         <div className="space-y-4">
           <Card className="p-4">
             <div className="mb-2 flex items-center justify-between">
-              <div className="text-xs uppercase tracking-wide text-slate-500">Status</div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">
+                <span className="font-am-body normal-case">ሁኔታ</span> / Status
+              </div>
               <Badge
                 className="uppercase"
                 variant={req.status === "approved" ? "default" : "outline"}
               >
-                {req.status}
+                {statusLabel(REQUEST_STATUS_LABEL, req.status)}
               </Badge>
             </div>
             <div className="text-xs text-slate-500">
-              {req.request_type === "new_registration"
-                ? "Maker–checker: verify identity, house availability, and amount before approval opens the occupancy."
-                : "Maker–checker: verify termination details before approval closes the active occupancy."}
+              {req.request_type === "new_registration" ? (
+                <>
+                  <span className="font-am-body">
+                    ማከል–አረጋጋጭ፦ ማፅደቁ ኪራይን ከመክፈቱ በፊት ማንነት፣ የቤት አቅርቦት እና መጠን ያረጋግጡ።
+                  </span>{" "}
+                  <span className="opacity-80">
+                    / Maker–checker: verify identity, house availability, and amount before approval
+                    opens the occupancy.
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="font-am-body">
+                    ማከል–አረጋጋጭ፦ ማፅደቁ ንቁ ኪራይን ከመዝጋቱ በፊት የመልቀቂያ ዝርዝሮችን ያረጋግጡ።
+                  </span>{" "}
+                  <span className="opacity-80">
+                    / Maker–checker: verify termination details before approval closes the active
+                    occupancy.
+                  </span>
+                </>
+              )}
             </div>
           </Card>
 
@@ -613,9 +658,16 @@ function RentalRequestDetailPage() {
               <div className="flex items-start gap-2">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
                 <div className="text-sm">
-                  <div className="font-semibold text-red-800">House is occupied</div>
+                  <div className="font-semibold text-red-800">
+                    <span className="font-am-body">ቤቱ ተይዟል</span> / House is occupied
+                  </div>
                   <div className="mt-1 text-red-700">
-                    Approve a vacate on this property first, then this request can be approved.
+                    <span className="font-am-body">
+                      በዚህ ንብረት ላይ መጀመሪያ የመተውን ጥያቄ ያፅድቁ፣ ከዚያ ይህ ጥያቄ ሊፀድቅ ይችላል።
+                    </span>{" "}
+                    <span className="opacity-80">
+                      / Approve a vacate on this property first, then this request can be approved.
+                    </span>
                   </div>
                   {req.house && (
                     <Link
@@ -623,7 +675,7 @@ function RentalRequestDetailPage() {
                       params={{ houseId: req.house.rental_house_id }}
                       className="mt-2 inline-block text-red-700 underline hover:text-red-900"
                     >
-                      Open property →
+                      ንብረቱን ክፈት / Open property →
                     </Link>
                   )}
                 </div>
@@ -649,12 +701,15 @@ function RentalRequestDetailPage() {
                 ))}
               </div>
               <div className="mt-4 space-y-2">
-                <Label className="text-xs">Return with reason (optional)</Label>
+                <Label className="text-xs">
+                  <span className="font-am-body">በምክንያት ይመልሱ (አማራጭ)</span>{" "}
+                  <span className="opacity-80">/ Return with reason (optional)</span>
+                </Label>
                 <Textarea
                   rows={2}
                   value={returnReason}
                   onChange={(e) => setReturnReason(e.target.value)}
-                  placeholder="Explain what needs correction…"
+                  placeholder="ምን መስተካከል እንዳለበት ያብራሩ… / Explain what needs correction…"
                 />
               </div>
               <div className="mt-3 flex flex-col gap-2">
@@ -663,14 +718,17 @@ function RentalRequestDetailPage() {
                   disabled={passVerification.isPending}
                   className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
                 >
-                  <CheckCircle2 className="mr-1 h-4 w-4" /> Pass Verification
+                  <CheckCircle2 className="mr-1 h-4 w-4" />
+                  <span className="font-am-body">ማረጋገጫ አልፍ</span>
+                  <span className="ml-1 opacity-80">/ Pass Verification</span>
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => returnRequest.mutate()}
                   disabled={returnRequest.isPending}
                 >
-                  Return to Submitter
+                  <span className="font-am-body">ወደ አቅራቢው መልስ</span>
+                  <span className="ml-1 opacity-80">/ Return to Submitter</span>
                 </Button>
               </div>
             </Section>
@@ -679,12 +737,27 @@ function RentalRequestDetailPage() {
           {canApprove && (
             <Section icon={ShieldCheck} titleAm="ማጽደቅ" titleEn="Approval">
               <div className="mb-3 text-xs text-slate-600">
-                {isTermination
-                  ? "Approving closes the current active occupancy and marks the house vacant."
-                  : "Approving opens a new active occupancy on this property."}
+                {isTermination ? (
+                  <>
+                    <span className="font-am-body">ማፅደቅ የአሁኑን ንቁ ኪራይ ይዘጋል እና ቤቱን ክፍት ያደርገዋል።</span>{" "}
+                    <span className="opacity-80">
+                      / Approving closes the current active occupancy and marks the house vacant.
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="font-am-body">ማፅደቅ በዚህ ንብረት ላይ አዲስ ንቁ ኪራይ ይከፍታል።</span>{" "}
+                    <span className="opacity-80">
+                      / Approving opens a new active occupancy on this property.
+                    </span>
+                  </>
+                )}
               </div>
               <div className="space-y-2">
-                <Label className="text-xs">Reject reason (only when rejecting)</Label>
+                <Label className="text-xs">
+                  <span className="font-am-body">የውድቅ ምክንያት (ውድቅ ሲደረግ ብቻ)</span>{" "}
+                  <span className="opacity-80">/ Reject reason (only when rejecting)</span>
+                </Label>
                 <Textarea
                   rows={2}
                   value={rejectReason}
@@ -693,13 +766,16 @@ function RentalRequestDetailPage() {
               </div>
               <div className="mt-3 space-y-2">
                 <Label className="text-xs">
-                  Return-to-clerk reason (only when returning for correction)
+                  <span className="font-am-body">ወደ ፀሐፊ የመመለሻ ምክንያት (እርማት ሲፈለግ ብቻ)</span>{" "}
+                  <span className="opacity-80">
+                    / Return-to-clerk reason (only when returning for correction)
+                  </span>
                 </Label>
                 <Textarea
                   rows={2}
                   value={approvalReturnReason}
                   onChange={(e) => setApprovalReturnReason(e.target.value)}
-                  placeholder="Explain what the clerk needs to fix before re-verifying…"
+                  placeholder="ፀሐፊው ከድጋሚ ማረጋገጥ በፊት ምን ማስተካከል እንዳለበት ያብራሩ… / Explain what the clerk needs to fix before re-verifying…"
                 />
               </div>
               <div className="mt-3 flex flex-col gap-2">
@@ -708,21 +784,26 @@ function RentalRequestDetailPage() {
                   disabled={approve.isPending || houseOccupiedConflict}
                   className="bg-[color:var(--color-shell-header)] hover:bg-[color:var(--color-shell-header)]/90"
                 >
-                  <CheckCircle2 className="mr-1 h-4 w-4" /> Approve
+                  <CheckCircle2 className="mr-1 h-4 w-4" />
+                  <span className="font-am-body">አፅድቅ</span>
+                  <span className="ml-1 opacity-80">/ Approve</span>
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => returnToClerk.mutate()}
                   disabled={returnToClerk.isPending}
                 >
-                  Return to Clerk
+                  <span className="font-am-body">ወደ ፀሐፊ መልስ</span>
+                  <span className="ml-1 opacity-80">/ Return to Clerk</span>
                 </Button>
                 <Button
                   variant="destructive"
                   onClick={() => reject.mutate()}
                   disabled={reject.isPending}
                 >
-                  <XCircle className="mr-1 h-4 w-4" /> Reject
+                  <XCircle className="mr-1 h-4 w-4" />
+                  <span className="font-am-body">ውድቅ አድርግ</span>
+                  <span className="ml-1 opacity-80">/ Reject</span>
                 </Button>
               </div>
             </Section>
@@ -732,13 +813,17 @@ function RentalRequestDetailPage() {
             <Card className="p-4">
               <div className="mb-1 font-am-body text-sm font-semibold">የቤት ኪራይ ክፍያ</div>
               <div className="text-xs text-slate-600">
-                Collect the initial rent from the Revenue page. A receipt is generated on payment.
+                <span className="font-am-body">የመጀመሪያውን ኪራይ ከገቢ ገጽ ይሰብስቡ። ደረሰኝ በክፍያ ጊዜ ይፈጠራል።</span>{" "}
+                <span className="opacity-80">
+                  / Collect the initial rent from the Revenue page. A receipt is generated on
+                  payment.
+                </span>
               </div>
               <Link
                 to="/woreda/revenue"
                 className="mt-2 inline-block text-sm text-blue-700 hover:underline"
               >
-                Go to Revenue →
+                ወደ ገቢ ይሂዱ / Go to Revenue →
               </Link>
             </Card>
           )}

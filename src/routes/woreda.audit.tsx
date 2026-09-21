@@ -22,14 +22,14 @@ import {
   useUrlPagination,
   useUrlSearchTerm,
 } from "@/components/common/TablePagination";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { EthiopianDateInput } from "@/components/common/EthiopianDateInput";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
 import { P } from "@/config/permissions";
-import { formatEthiopianDateShort } from "@/utils/ethiopianCalendar";
+import { formatEthiopianDateShort, formatEthiopianDateShortOnly } from "@/utils/ethiopianCalendar";
 import { TableEmptyRow, TableErrorRow, TableSkeletonRows } from "@/components/common/TableStates";
 import {
   TableToolbar,
@@ -64,6 +64,21 @@ const ENTITIES = [
   "woreda_settings",
 ] as const;
 
+const ENTITY_LABEL: Record<(typeof ENTITIES)[number], string> = {
+  resident: "ነዋሪ / Resident",
+  household: "ቤተሰብ / Household",
+  residence_credential: "የመኖሪያ መታወቂያ / Residence Credential",
+  credential_request: "የመታወቂያ ጥያቄ / Credential Request",
+  vital_event: "የሲቪል ምዝገባ ክስተት / Vital Event",
+  payment: "ክፍያ / Payment",
+  receipt: "ደረሰኝ / Receipt",
+  rental_occupancy_request: "የኪራይ ጥያቄ / Rental Occupancy Request",
+  kebele_rental_house: "የቀበሌ ቤት / Kebele Rental House",
+  app_user: "ተጠቃሚ / User",
+  role_permission: "የሚና ፈቃድ / Role Permission",
+  woreda_settings: "የወረዳ ቅንብሮች / Woreda Settings",
+};
+
 interface AuditRow {
   audit_log_id: string;
   entity_name: string;
@@ -87,7 +102,12 @@ function actionTone(action: string) {
   return "bg-slate-50 text-slate-700 border-slate-200";
 }
 
-type DeepLink = { to: string; params?: Record<string, string>; labelEn: string };
+type DeepLink = {
+  to: string;
+  params?: Record<string, string>;
+  labelAm: string;
+  labelEn: string;
+};
 
 /** Map an audit entry to the record or workflow screen it affected. */
 function deepLinkFor(row: { entity_name: string; entity_id: string | null }): DeepLink | null {
@@ -98,56 +118,90 @@ function deepLinkFor(row: { entity_name: string; entity_id: string | null }): De
         ? {
             to: "/woreda/residents/$residentId",
             params: { residentId: id },
+            labelAm: "ነዋሪ ክፈት",
             labelEn: "Open resident",
           }
-        : { to: "/woreda/residents", labelEn: "Open residents" };
+        : { to: "/woreda/residents", labelAm: "ነዋሪዎችን ክፈት", labelEn: "Open residents" };
     case "household":
     case "household_change_log":
       return id
         ? {
             to: "/woreda/households/$householdId",
             params: { householdId: id },
+            labelAm: "ቤተሰብ ክፈት",
             labelEn: "Open household",
           }
-        : { to: "/woreda/households", labelEn: "Open households" };
+        : { to: "/woreda/households", labelAm: "ቤተሰቦችን ክፈት", labelEn: "Open households" };
     case "credential_request":
       return id
         ? {
             to: "/woreda/credentials/$requestId",
             params: { requestId: id },
+            labelAm: "ጥያቄ ክፈት",
             labelEn: "Open request",
           }
-        : { to: "/woreda/credentials", labelEn: "Open credentials" };
+        : { to: "/woreda/credentials", labelAm: "መታወቂያዎችን ክፈት", labelEn: "Open credentials" };
     case "residence_credential":
-      return { to: "/woreda/credentials", labelEn: "Open credentials" };
+      return {
+        to: "/woreda/credentials",
+        labelAm: "መታወቂያዎችን ክፈት",
+        labelEn: "Open credentials",
+      };
     case "vital_event":
       return id
-        ? { to: "/woreda/civil/$eventId", params: { eventId: id }, labelEn: "Open civil event" }
-        : { to: "/woreda/civil", labelEn: "Open civil registry" };
+        ? {
+            to: "/woreda/civil/$eventId",
+            params: { eventId: id },
+            labelAm: "የሲቪል ምዝገባ ክፈት",
+            labelEn: "Open civil event",
+          }
+        : { to: "/woreda/civil", labelAm: "የሲቪል መዝገብ ክፈት", labelEn: "Open civil registry" };
     case "rental_occupancy_request":
       return id
         ? {
             to: "/woreda/rental-houses/requests/$requestId",
             params: { requestId: id },
+            labelAm: "የኪራይ ጥያቄ ክፈት",
             labelEn: "Open occupancy request",
           }
-        : { to: "/woreda/rental-houses/requests", labelEn: "Open requests" };
+        : {
+            to: "/woreda/rental-houses/requests",
+            labelAm: "ጥያቄዎችን ክፈት",
+            labelEn: "Open requests",
+          };
     case "kebele_rental_house":
       return id
         ? {
             to: "/woreda/rental-houses/$houseId",
             params: { houseId: id },
+            labelAm: "የቀበሌ ቤት ክፈት",
             labelEn: "Open rental house",
           }
-        : { to: "/woreda/rental-houses", labelEn: "Open rental houses" };
+        : {
+            to: "/woreda/rental-houses",
+            labelAm: "የቀበሌ ቤቶችን ክፈት",
+            labelEn: "Open rental houses",
+          };
     case "payment":
     case "receipt":
-      return { to: "/woreda/revenue", labelEn: "Open revenue ledger" };
+      return {
+        to: "/woreda/revenue",
+        labelAm: "የገቢ መዝገብ ክፈት",
+        labelEn: "Open revenue ledger",
+      };
     case "app_user":
     case "role_permission":
-      return { to: "/woreda/settings/users-permissions", labelEn: "Open users & permissions" };
+      return {
+        to: "/woreda/settings/users-permissions",
+        labelAm: "ተጠቃሚዎችና ፈቃዶች ክፈት",
+        labelEn: "Open users & permissions",
+      };
     case "woreda_settings":
-      return { to: "/woreda/settings/woreda-configuration", labelEn: "Open woreda configuration" };
+      return {
+        to: "/woreda/settings/woreda-configuration",
+        labelAm: "የወረዳ ቅንብር ክፈት",
+        labelEn: "Open woreda configuration",
+      };
     default:
       return null;
   }
@@ -168,7 +222,7 @@ function AuditDeepLink({
     <Button asChild size="sm" variant={compact ? "ghost" : "outline"} onClick={onNavigate}>
       <Link to={link.to} params={link.params as never}>
         <ExternalLink className="mr-1 h-4 w-4" />
-        {compact ? "Open" : link.labelEn}
+        {compact ? "ክፈት / Open" : `${link.labelAm} / ${link.labelEn}`}
       </Link>
     </Button>
   );
@@ -269,15 +323,17 @@ function AuditTrailPage() {
 
   const filterLabel =
     [
-      filters.q ? `Search: "${filters.q}"` : null,
-      filters.entity ? `Entity: ${filters.entity}` : null,
-      filters.start ? `From: ${filters.start}` : null,
-      filters.end ? `To: ${filters.end}` : null,
-      filters.kebeleId ? `Kebele: ${filters.kebeleId}` : null,
-      !sort.isDefault ? `Sort: ${sort.field} ${sort.dir}` : null,
+      filters.q ? `ፍለጋ / Search: "${filters.q}"` : null,
+      filters.entity
+        ? `ክፍል / Entity: ${ENTITY_LABEL[filters.entity as (typeof ENTITIES)[number]] ?? filters.entity}`
+        : null,
+      filters.start ? `ከ / From: ${formatEthiopianDateShortOnly(filters.start)}` : null,
+      filters.end ? `እስከ / To: ${formatEthiopianDateShortOnly(filters.end)}` : null,
+      filters.kebeleId ? `ቀበሌ / Kebele: ${filters.kebeleId}` : null,
+      !sort.isDefault ? `ደርድር / Sort: ${sort.field} ${sort.dir}` : null,
     ]
       .filter(Boolean)
-      .join(" • ") || "No filters applied";
+      .join(" • ") || "ምንም ማጣሪያ አልተተገበረም / No filters applied";
 
   const exportColumns: TableColumn<AuditRow>[] = [
     { header: "ቀን / Timestamp", value: (r) => new Date(r.action_at).toISOString() },
@@ -348,7 +404,7 @@ function AuditTrailPage() {
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
               {isFetching ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
-              Refresh
+              አድስ / Refresh
             </Button>
           </div>
         }
@@ -360,7 +416,7 @@ function AuditTrailPage() {
           setQ(v);
           setPage(0);
         }}
-        searchPlaceholder="Action, entity, or record ID"
+        searchPlaceholder="ተግባር፣ ክፍል፣ ወይም መለያ / Action, entity, or record ID"
         clearActive={filtersActive}
         onClear={() => {
           setQ("");
@@ -382,32 +438,30 @@ function AuditTrailPage() {
                   setPage(0);
                 }}
               >
-                <option value="">All entities</option>
+                <option value="">ሁሉም ክፍሎች / All entities</option>
                 {ENTITIES.map((e) => (
                   <option key={e} value={e}>
-                    {e}
+                    {ENTITY_LABEL[e]}
                   </option>
                 ))}
               </select>
             </div>
             <div>
               <Label className="font-am-body text-xs">ከ / From</Label>
-              <Input
-                type="date"
+              <EthiopianDateInput
                 value={start}
-                onChange={(e) => {
-                  setStart(e.target.value);
+                onChange={(v) => {
+                  setStart(end && v > end ? end : v);
                   setPage(0);
                 }}
               />
             </div>
             <div>
               <Label className="font-am-body text-xs">እስከ / To</Label>
-              <Input
-                type="date"
+              <EthiopianDateInput
                 value={end}
-                onChange={(e) => {
-                  setEnd(e.target.value);
+                onChange={(v) => {
+                  setEnd(start && v < start ? start : v);
                   setPage(0);
                 }}
               />
@@ -418,7 +472,7 @@ function AuditTrailPage() {
                 setKebeleId(v);
                 setPage(0);
               }}
-              hint="Matches kebele recorded on the changed record"
+              hint="ከተቀየረው መዝገብ ጋር የተመዘገበውን ቀበሌ ያዛምዳል / Matches kebele recorded on the changed record"
             />
           </>
         }
@@ -439,7 +493,7 @@ function AuditTrailPage() {
                 <SortableTh field="action_type" sort={sort}>
                   ተግባር / Action
                 </SortableTh>
-                <th className="px-4 py-2">Record</th>
+                <th className="px-4 py-2">መዝገብ / Record</th>
                 <th className="px-4 py-2"></th>
               </tr>
             </thead>
@@ -483,7 +537,9 @@ function AuditTrailPage() {
                           <div className="text-xs text-slate-500">{r.actor.role}</div>
                         )}
                       </td>
-                      <td className="px-4 py-2 text-slate-700">{r.entity_name}</td>
+                      <td className="px-4 py-2 text-slate-700">
+                        {ENTITY_LABEL[r.entity_name as (typeof ENTITIES)[number]] ?? r.entity_name}
+                      </td>
                       <td className="px-4 py-2">
                         <span
                           className={`inline-flex rounded-md border px-2 py-0.5 text-xs font-medium ${actionTone(r.action_type)}`}
@@ -498,7 +554,7 @@ function AuditTrailPage() {
                         <div className="flex items-center justify-end gap-1">
                           <AuditDeepLink row={r} compact />
                           <Button size="sm" variant="ghost" onClick={() => setDetail(r)}>
-                            <Eye className="mr-1 h-4 w-4" /> View
+                            <Eye className="mr-1 h-4 w-4" /> ይመልከቱ / View
                           </Button>
                         </div>
                       </td>
@@ -526,18 +582,26 @@ function AuditTrailPage() {
           {detail && (
             <div className="space-y-3 text-sm">
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Action" value={detail.action_type} />
-                <Field label="Entity" value={detail.entity_name} />
-                <Field label="Record ID" value={detail.entity_id ?? "—"} mono />
+                <Field label="ተግባር / Action" value={detail.action_type} />
                 <Field
-                  label="Actor"
+                  label="ክፍል / Entity"
+                  value={
+                    ENTITY_LABEL[detail.entity_name as (typeof ENTITIES)[number]] ??
+                    detail.entity_name
+                  }
+                />
+                <Field label="የመዝገብ መለያ / Record ID" value={detail.entity_id ?? "—"} mono />
+                <Field
+                  label="ተጠቃሚ / Actor"
                   value={detail.actor?.full_name ?? detail.actor?.username ?? "System"}
                 />
                 <Field
-                  label="Timestamp"
-                  value={new Date(detail.action_at).toLocaleString("en-GB", { hour12: false })}
+                  label="ቀን / Timestamp"
+                  value={`${formatEthiopianDateShort(new Date(detail.action_at))} ${new Date(
+                    detail.action_at,
+                  ).toLocaleTimeString("en-GB", { hour12: false })}`}
                 />
-                <Field label="Source IP" value={detail.source_ip ?? "—"} />
+                <Field label="የመነሻ አድራሻ / Source IP" value={detail.source_ip ?? "—"} />
               </div>
               <div className="flex items-center justify-between rounded-md border bg-slate-50 px-3 py-2">
                 <p className="font-am-body text-xs text-slate-600">
@@ -546,13 +610,13 @@ function AuditTrailPage() {
                 <AuditDeepLink row={detail} onNavigate={() => setDetail(null)} />
               </div>
               <div>
-                <Badge variant="secondary">Before</Badge>
+                <Badge variant="secondary">በፊት / Before</Badge>
                 <pre className="mt-1 max-h-48 overflow-auto rounded-md bg-slate-900 p-3 text-xs text-slate-100">
                   {JSON.stringify(detail.old_value_json ?? null, null, 2)}
                 </pre>
               </div>
               <div>
-                <Badge variant="secondary">After</Badge>
+                <Badge variant="secondary">በኋላ / After</Badge>
                 <pre className="mt-1 max-h-64 overflow-auto rounded-md bg-slate-900 p-3 text-xs text-slate-100">
                   {JSON.stringify(detail.new_value_json ?? null, null, 2)}
                 </pre>

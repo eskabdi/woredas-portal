@@ -126,7 +126,7 @@ function EditRentalHousePage() {
       });
     },
     onSuccess: () => {
-      toast.success("Saved");
+      toast.success("ተቀምጧል / Saved");
       qc.invalidateQueries({ queryKey: ["rental-house", houseId] });
       qc.invalidateQueries({ queryKey: ["rental-houses"] });
       navigate({ to: "/woreda/rental-houses/$houseId", params: { houseId } });
@@ -182,11 +182,11 @@ function EditRentalHousePage() {
             variant="outline"
             onClick={() => navigate({ to: "/woreda/rental-houses/$houseId", params: { houseId } })}
           >
-            Cancel
+            ሰርዝ / Cancel
           </Button>
           <Button type="submit" disabled={mutation.isPending}>
             <Save className="mr-1 h-4 w-4" />
-            {mutation.isPending ? "Saving…" : "Save"}
+            {mutation.isPending ? "በማስቀመጥ ላይ… / Saving…" : "አስቀምጥ / Save"}
           </Button>
         </div>
       </form>

@@ -234,7 +234,7 @@ function BirthNewPage() {
       toast.success("የልደት ምዝገባ ተልኳል / Birth registration submitted");
       navigate({ to: "/woreda/civil/$eventId", params: { eventId } });
     },
-    onError: (e) => toast.error(`Submit failed: ${(e as Error).message}`),
+    onError: (e) => toast.error(`ማስገባት አልተሳካም / Submit failed: ${(e as Error).message}`),
   });
 
   const onSubmit = handleSubmit((raw) => {
@@ -271,7 +271,7 @@ function BirthNewPage() {
         titleEn="New Birth Registration"
         actions={
           <Button variant="outline" onClick={() => navigate({ to: "/woreda/civil" })}>
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back
+            <ArrowLeft className="mr-2 h-4 w-4" /> ተመለስ / Back
           </Button>
         }
       />
@@ -444,7 +444,10 @@ function BirthNewPage() {
                 ተመሳሳይ ልደት በዚህ ወረዳ ተመዝግቧል / Possible duplicate birth in this woreda
               </p>
               <p className="mt-0.5 text-xs">
-                Same child name and date of birth already registered:
+                <span className="font-am-body">ተመሳሳይ የልጅ ስም እና የልደት ቀን ቀደም ብሎ ተመዝግቧል፦</span>
+                <span className="ml-1 opacity-80">
+                  / Same child name and date of birth already registered:
+                </span>
               </p>
               <ul className="mt-2 space-y-0.5 text-xs">
                 {duplicates.slice(0, 3).map((d) => (
@@ -454,7 +457,10 @@ function BirthNewPage() {
                 ))}
               </ul>
               <p className="mt-2 text-xs">
-                Verify before submitting; proceed only if this is a different child.
+                <span className="font-am-body">ከማስገባትዎ በፊት ያረጋግጡ፤ ይህ የተለየ ልጅ ከሆነ ብቻ ይቀጥሉ።</span>
+                <span className="ml-1 opacity-80">
+                  / Verify before submitting; proceed only if this is a different child.
+                </span>
               </p>
             </div>
           </div>
@@ -462,7 +468,7 @@ function BirthNewPage() {
 
         <div className="flex items-center justify-end gap-3">
           <Button type="button" variant="outline" onClick={() => navigate({ to: "/woreda/civil" })}>
-            Cancel
+            ይቅር / Cancel
           </Button>
           <Button
             type="submit"

@@ -27,7 +27,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { PermissionGate } from "@/components/common/PermissionGate";
 import { P } from "@/config/permissions";
 import { KpiCard } from "@/components/common/KpiCard";
-import { ethiopianMonthLabel } from "@/utils/ethiopianCalendar";
+import { ethiopianMonthLabel, formatEthiopianDateShort } from "@/utils/ethiopianCalendar";
 
 export const Route = createFileRoute("/woreda/dashboard")({
   ssr: false,
@@ -336,7 +336,7 @@ function WoredaDashboard() {
         weekStart.setHours(0, 0, 0, 0);
         const key = weekStart.toISOString().slice(0, 10);
         buckets.set(key, {
-          label: weekStart.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+          label: formatEthiopianDateShort(weekStart),
           count: 0,
           sort: weekStart.getTime(),
         });
@@ -607,12 +607,9 @@ function WoredaDashboard() {
         actor: r.actor_user_id ? (actorNames.get(r.actor_user_id) ?? "—") : "System",
         action: actionLabelAm(r.action_type),
         entity: `${r.entity_name}${r.entity_id ? ` #${r.entity_id.slice(0, 8)}` : ""}`,
-        time: new Date(r.action_at as string).toLocaleString("en-GB", {
-          day: "2-digit",
-          month: "short",
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
+        time: `${formatEthiopianDateShort(new Date(r.action_at as string))} ${new Date(
+          r.action_at as string,
+        ).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false })}`,
       }));
     },
   });

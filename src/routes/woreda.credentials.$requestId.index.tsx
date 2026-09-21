@@ -893,7 +893,7 @@ function CredentialRequestDetailPage() {
                     rel="noopener noreferrer"
                     className="ml-2 text-xs text-blue-600 underline"
                   >
-                    reopen
+                    <span className="font-am-body">እንደገና ክፈት</span> / reopen
                   </a>
                 )}
               </div>
@@ -1004,8 +1004,9 @@ function CredentialRequestDetailPage() {
                     </Button>
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-500">
-                    You don&apos;t have permission to verify this request.
+                  <p className="font-am-body text-xs text-slate-500">
+                    ይህን ጥያቄ የማረጋገጥ ፈቃድ የለዎትም / You don&apos;t have permission to verify this
+                    request.
                   </p>
                 )}
               </>
@@ -1171,8 +1172,9 @@ function CredentialRequestDetailPage() {
                     </Button>
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-500">
-                    You don&apos;t have permission to approve this request.
+                  <p className="font-am-body text-xs text-slate-500">
+                    ይህን ጥያቄ የማጽደቅ ፈቃድ የለዎትም / You don&apos;t have permission to approve this
+                    request.
                   </p>
                 ))}
 
@@ -1275,8 +1277,9 @@ function CredentialRequestDetailPage() {
                 <span className="font-am-body">ጥያቄውን ይመልሱ</span>
                 <span className="ml-2 text-sm text-slate-500">/ Return Request</span>
               </AlertDialogTitle>
-              <AlertDialogDescription>
-                Provide a reason. It will be visible to the intake officer.
+              <AlertDialogDescription className="font-am-body">
+                ምክንያት ያስገቡ፣ ለመቀበያ ባለሙያው ይታያል / Provide a reason. It will be visible to the intake
+                officer.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <div className="space-y-3">
@@ -1323,7 +1326,10 @@ function CredentialRequestDetailPage() {
               </div>
             </div>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
+              <AlertDialogCancel disabled={busy}>
+                <span className="font-am-body">ይቅር</span>
+                <span className="ml-1 opacity-70">/ Cancel</span>
+              </AlertDialogCancel>
               <AlertDialogAction
                 onClick={(e) => {
                   e.preventDefault();
@@ -1336,7 +1342,8 @@ function CredentialRequestDetailPage() {
                 }
               >
                 {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Confirm Return
+                <span className="font-am-body">መመለሱን አረጋግጥ</span>
+                <span className="ml-1 opacity-80">/ Confirm Return</span>
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -1349,8 +1356,8 @@ function CredentialRequestDetailPage() {
                 <span className="font-am-body">በማጽደቅ ደረጃ ይመልሱ</span>
                 <span className="ml-2 text-sm text-slate-500">/ Return at Approval Stage</span>
               </AlertDialogTitle>
-              <AlertDialogDescription>
-                Provide a reason. It will be visible to the clerk.
+              <AlertDialogDescription className="font-am-body">
+                ምክንያት ያስገቡ፣ ለክሌርኩ ይታያል / Provide a reason. It will be visible to the clerk.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <div className="space-y-2">
@@ -1367,7 +1374,10 @@ function CredentialRequestDetailPage() {
               />
             </div>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
+              <AlertDialogCancel disabled={busy}>
+                <span className="font-am-body">ይቅር</span>
+                <span className="ml-1 opacity-70">/ Cancel</span>
+              </AlertDialogCancel>
               <AlertDialogAction
                 onClick={(e) => {
                   e.preventDefault();
@@ -1376,7 +1386,8 @@ function CredentialRequestDetailPage() {
                 disabled={busy || approvalReturnReason.trim().length < 5}
               >
                 {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Confirm Return
+                <span className="font-am-body">መመለሱን አረጋግጥ</span>
+                <span className="ml-1 opacity-80">/ Confirm Return</span>
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -1389,8 +1400,8 @@ function CredentialRequestDetailPage() {
                 <span className="font-am-body">ጥያቄውን ውድቅ ያድርጉ</span>
                 <span className="ml-2 text-sm text-slate-500">/ Reject Request</span>
               </AlertDialogTitle>
-              <AlertDialogDescription>
-                This is final. The request cannot be reopened.
+              <AlertDialogDescription className="font-am-body">
+                ይህ የመጨረሻ ነው፣ ጥያቄው መልሶ ሊከፈት አይችልም / This is final. The request cannot be reopened.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <div className="space-y-2">
@@ -1407,7 +1418,10 @@ function CredentialRequestDetailPage() {
               />
             </div>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
+              <AlertDialogCancel disabled={busy}>
+                <span className="font-am-body">ይቅር</span>
+                <span className="ml-1 opacity-70">/ Cancel</span>
+              </AlertDialogCancel>
               <AlertDialogAction
                 onClick={(e) => {
                   e.preventDefault();
@@ -1417,7 +1431,8 @@ function CredentialRequestDetailPage() {
                 className="bg-red-600 hover:bg-red-700"
               >
                 {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Confirm Reject
+                <span className="font-am-body">ውድቅ ማድረግን አረጋግጥ</span>
+                <span className="ml-1 opacity-80">/ Confirm Reject</span>
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -1911,8 +1926,8 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
                   </Button>
                 </div>
               ) : (
-                <p className="text-xs text-slate-500">
-                  You don&apos;t have permission to collect payments.
+                <p className="font-am-body text-xs text-slate-500">
+                  ክፍያ የመሰብሰብ ፈቃድ የለዎትም / You don&apos;t have permission to collect payments.
                 </p>
               )}
             </>
@@ -2012,7 +2027,9 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
                   </div>
                 </div>
               ) : (
-                <p className="text-sm text-slate-500">Payment record not available.</p>
+                <p className="font-am-body text-sm text-slate-500">
+                  የክፍያ መዝገብ አልተገኘም / Payment record not available.
+                </p>
               )}
             </>
           )}
@@ -2539,8 +2556,8 @@ function IssuanceCard({
               </Button>
             </div>
             {!canPrint && (
-              <p className="text-xs text-amber-700">
-                You do not have permission to confirm issuance.
+              <p className="font-am-body text-xs text-amber-700">
+                የማውጣት ማረጋገጫ ፈቃድ የለዎትም / You do not have permission to confirm issuance.
               </p>
             )}
             {isOffline && <p className="font-am-body text-xs text-amber-700">{offlineReason}</p>}
@@ -2700,8 +2717,8 @@ function RevocationCard({ credentialRowId, onDone }: RevocationCardProps) {
               </Button>
             </div>
             {!canRevoke && (
-              <p className="text-xs text-amber-700">
-                You do not have permission to revoke credentials.
+              <p className="font-am-body text-xs text-amber-700">
+                ማስረጃ የመሻር ፈቃድ የለዎትም / You do not have permission to revoke credentials.
               </p>
             )}
             {canRevoke && isOffline && (
@@ -2754,7 +2771,10 @@ function RevocationCard({ credentialRowId, onDone }: RevocationCardProps) {
             </div>
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={submitting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={submitting}>
+              <span className="font-am-body">ይቅር</span>
+              <span className="ml-1 opacity-70">/ Cancel</span>
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
@@ -2904,8 +2924,8 @@ function SuspendCard({ credentialRowId, onDone }: SuspendCardProps) {
           </Button>
         </div>
         {!canSuspend && (
-          <p className="text-xs text-amber-700">
-            You do not have permission to suspend/lift credentials.
+          <p className="font-am-body text-xs text-amber-700">
+            ማስረጃ የማገድ/የማንሳት ፈቃድ የለዎትም / You do not have permission to suspend/lift credentials.
           </p>
         )}
         {canSuspend && isOffline && (
@@ -2943,7 +2963,10 @@ function SuspendCard({ credentialRowId, onDone }: SuspendCardProps) {
             />
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={submitting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={submitting}>
+              <span className="font-am-body">ይቅር</span>
+              <span className="ml-1 opacity-70">/ Cancel</span>
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();

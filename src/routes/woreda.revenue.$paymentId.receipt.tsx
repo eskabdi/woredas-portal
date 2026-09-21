@@ -254,7 +254,9 @@ function ReceiptPrintPage() {
       link.remove();
       setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
     } catch (e) {
-      toast.error(`Failed to generate the receipt PDF: ${(e as Error).message}`);
+      toast.error(
+        `የደረሰኝ ፒዲኤፍ መፍጠር አልተቻለም / Failed to generate the receipt PDF: ${(e as Error).message}`,
+      );
     } finally {
       setPrinting(false);
     }
@@ -357,7 +359,7 @@ function ReceiptPrintPage() {
           <>
             <Link to="/woreda/revenue">
               <Button variant="outline">
-                <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                <ArrowLeft className="mr-2 h-4 w-4" /> ተመለስ / Back
               </Button>
             </Link>
             <Button onClick={handlePrint} disabled={printing}>
@@ -366,7 +368,7 @@ function ReceiptPrintPage() {
               ) : (
                 <Printer className="mr-2 h-4 w-4" />
               )}
-              Print
+              አትም / Print
             </Button>
           </>
         }
@@ -479,8 +481,8 @@ function ReceiptPage({
   const dateEc = formatEthiopianDate(receiptDateObj);
   const dateGreg = receiptDateObj.toLocaleDateString("en-CA");
   const printedLabel = printedAt
-    ? `${new Date(printedAt).toLocaleDateString("en-CA")} ${new Date(printedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`
-    : dateGreg;
+    ? `${formatEthiopianDate(new Date(printedAt))} (${new Date(printedAt).toLocaleDateString("en-CA")}) ${new Date(printedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`
+    : dateEc;
   const amountFormatted = Number(amount).toLocaleString(undefined, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,

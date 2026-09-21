@@ -32,6 +32,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { EthiopianDateInput } from "@/components/common/EthiopianDateInput";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -92,13 +93,13 @@ function ReportsPage() {
     setStart(preset.start);
     setEnd(preset.end);
     setTab(preset.tab);
-    toast.success(`Preset applied: ${preset.name}`);
+    toast.success(`ማጣሪያ ተተግብሯል / Preset applied: ${preset.name}`);
   }
 
   function createPreset() {
     const name = presetName.trim();
     if (!name) {
-      toast.error("Give the preset a name");
+      toast.error("ለማጣሪያው ስም ይስጡ / Give the preset a name");
       return;
     }
     const next = [
@@ -108,7 +109,7 @@ function ReportsPage() {
     persistPresets(next);
     setPresetName("");
     setPresetDialogOpen(false);
-    toast.success(`Preset saved: ${name}`);
+    toast.success(`ማጣሪያ ተቀምጧል / Preset saved: ${name}`);
   }
 
   const { data, isLoading, isError, isFetching, refetch, agg, tabSections } = useReportsAggregate({
@@ -121,12 +122,12 @@ function ReportsPage() {
   if (!hasPermission(P.REPORT_VIEW)) return <Navigate to="/woreda/dashboard" />;
 
   const rangeLabel = `${formatEthiopianDateShortOnly(start)} – ${formatEthiopianDateShortOnly(end)}`;
-  const periodLabel = `ጊዜ / Period: ${rangeLabel}  (${start} → ${end})`;
+  const periodLabel = `ጊዜ / Period: ${rangeLabel}`;
 
   function tabCsv(tab: string) {
     const t = tabSections[tab]!;
     downloadCsvText(`${tab}-report-${start}_${end}.csv`, sectionsToCsv(t.sections));
-    toast.success("CSV downloaded");
+    toast.success("ሲ.ኤስ.ቪ ወርዷል / CSV downloaded");
   }
 
   function tabPrint(tab: string) {
@@ -147,7 +148,7 @@ function ReportsPage() {
         actions={
           <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
             {isFetching ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
-            Refresh
+            አድስ / Refresh
           </Button>
         }
       />
@@ -156,16 +157,13 @@ function ReportsPage() {
         <div className="flex flex-wrap items-end gap-3">
           <div>
             <Label className="font-am-body text-xs">ከ / From</Label>
-            <Input type="date" value={start} max={end} onChange={(e) => setStart(e.target.value)} />
+            <EthiopianDateInput value={start} onChange={(iso) => setStart(iso > end ? end : iso)} />
           </div>
           <div>
             <Label className="font-am-body text-xs">እስከ / To</Label>
-            <Input
-              type="date"
+            <EthiopianDateInput
               value={end}
-              min={start}
-              max={TODAY}
-              onChange={(e) => setEnd(e.target.value)}
+              onChange={(iso) => setEnd(iso > TODAY ? TODAY : iso < start ? start : iso)}
             />
           </div>
           <KebeleFilter value={kebeleId} onChange={setKebeleId} />
@@ -200,17 +198,20 @@ function ReportsPage() {
                 onChange={(e) => e.target.value && applyPreset(e.target.value)}
               >
                 <option value="">
-                  {presets.length ? "Switch to preset…" : "No presets saved yet"}
+                  {presets.length
+                    ? "ማጣሪያ ይቀይሩ… / Switch to preset…"
+                    : "እስካሁን ምንም ማጣሪያ አልተቀመጠም / No presets saved yet"}
                 </option>
                 {presets.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.name} ({p.start} → {p.end})
+                    {p.name} ({formatEthiopianDateShortOnly(p.start)} →{" "}
+                    {formatEthiopianDateShortOnly(p.end)})
                   </option>
                 ))}
               </select>
             </div>
             <Button type="button" variant="outline" onClick={() => setPresetDialogOpen(true)}>
-              <BookmarkPlus className="mr-1.5 h-4 w-4" /> Save preset
+              <BookmarkPlus className="mr-1.5 h-4 w-4" /> ማጣሪያ አስቀምጥ / Save preset
             </Button>
           </div>
         </div>
@@ -227,7 +228,7 @@ function ReportsPage() {
                 </button>
                 <button
                   type="button"
-                  aria-label={`Delete preset ${p.name}`}
+                  aria-label={`ማጣሪያ ሰርዝ / Delete preset ${p.name}`}
                   className="rounded-full p-1 text-slate-400 hover:bg-slate-200 hover:text-red-600"
                   onClick={() => persistPresets(presets.filter((x) => x.id !== p.id))}
                 >
@@ -246,33 +247,35 @@ function ReportsPage() {
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label className="text-xs">Preset name</Label>
+              <Label className="text-xs">የማጣሪያ ስም / Preset name</Label>
               <Input
                 autoFocus
                 value={presetName}
                 onChange={(e) => setPresetName(e.target.value)}
-                placeholder="e.g. Monthly revenue review"
+                placeholder="ለምሳሌ የወርሃዊ ገቢ ግምገማ / e.g. Monthly revenue review"
                 onKeyDown={(e) => e.key === "Enter" && createPreset()}
               />
             </div>
             <p className="text-xs text-slate-500">
-              Saves period {start} → {end} and the {tab} tab.
+              ጊዜ {formatEthiopianDateShortOnly(start)} → {formatEthiopianDateShortOnly(end)} እና{" "}
+              {tab} ትርን ያስቀምጣል / Saves period {formatEthiopianDateShortOnly(start)} →{" "}
+              {formatEthiopianDateShortOnly(end)} and the {tab} tab.
             </p>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setPresetDialogOpen(false)}>
-              Cancel
+              ይቅር / Cancel
             </Button>
-            <Button onClick={createPreset}>Save preset</Button>
+            <Button onClick={createPreset}>አስቀምጥ / Save preset</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {isError && (
         <Card className="p-4 text-sm text-red-600">
-          Failed to load report data.{" "}
+          የሪፖርት መረጃ መጫን አልተቻለም / Failed to load report data.{" "}
           <button className="underline" onClick={() => refetch()}>
-            Retry
+            እንደገና ይሞክሩ / Retry
           </button>
         </Card>
       )}
@@ -490,7 +493,7 @@ function ChartCard({
         <p className="text-xs text-slate-500">{titleEn}</p>
       </div>
       {loading ? (
-        <div className="p-6 text-sm text-slate-500">Loading…</div>
+        <div className="p-6 text-sm text-slate-500 font-am-body">በመጫን ላይ… / Loading…</div>
       ) : rows.length === 0 ? (
         <div className="p-6 text-center text-sm text-slate-500 font-am-body">
           ለዚህ ጊዜ መረጃ የለም / No data for this period
@@ -526,7 +529,7 @@ function ChartCard({
             <table className="min-w-full text-sm">
               <thead className="bg-slate-50 text-left text-slate-600">
                 <tr>
-                  <th className="px-3 py-2">Label</th>
+                  <th className="px-3 py-2">መለያ / Label</th>
                   <th className="px-3 py-2 text-right">{valueLabel}</th>
                   <th className="px-3 py-2 text-right">%</th>
                 </tr>
@@ -542,7 +545,7 @@ function ChartCard({
                   </tr>
                 ))}
                 <tr className="border-t bg-slate-50 font-medium">
-                  <td className="px-3 py-2">Total</td>
+                  <td className="px-3 py-2">ጠቅላላ / Total</td>
                   <td className="px-3 py-2 text-right">{total.toLocaleString()}</td>
                   <td className="px-3 py-2 text-right">100%</td>
                 </tr>

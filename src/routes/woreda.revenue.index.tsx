@@ -36,6 +36,8 @@ import {
 import { exportRowsToCsv, exportRowsToPdf, type TableColumn } from "@/utils/tableExport";
 import { useReportBranding } from "@/hooks/useReportBranding";
 import { resolveDecryptedField, DECRYPT_UNVERIFIED_WARNING } from "@/lib/decryptedFieldGuard";
+import { formatEthiopianDateShortOnly } from "@/utils/ethiopianCalendar";
+import { PAYMENT_TYPE_LABEL, CHANNEL_LABEL } from "@/utils/paymentType";
 
 export const Route = createFileRoute("/woreda/revenue/")({
   ssr: false,
@@ -268,7 +270,7 @@ function RevenuePage() {
 
   const reprint = useMutation({
     mutationFn: async (row: PaymentRow) => {
-      if (!row.receipt) throw new Error("No receipt for this payment");
+      if (!row.receipt) throw new Error("ለዚህ ክፍያ ደረሰኝ የለም / No receipt for this payment");
       const nowIso = new Date().toISOString();
       if (!row.receipt.printed_at) {
         const { error } = await supabase
@@ -296,7 +298,9 @@ function RevenuePage() {
       window.open(`/woreda/revenue/${row.payment_id}/receipt`, "_blank");
     },
     onSuccess: () => {
-      toast.success("Receipt opened — use the Print button on that page");
+      toast.success(
+        "ደረሰኝ ተከፍቷል — በዚያ ገጽ ላይ ያለውን የአትም አዝራር ይጠቀሙ / Receipt opened — use the Print button on that page",
+      );
       qc.invalidateQueries({ queryKey: ["revenue-payments"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -314,7 +318,7 @@ function RevenuePage() {
           <div className="flex items-center gap-2">
             {hasPermission(P.REVENUE_COLLECT) && (
               <Button onClick={() => setCollectOpen(true)}>
-                <Plus className="mr-1 h-4 w-4" /> Collect Rental Rent
+                <Plus className="mr-1 h-4 w-4" /> የቤት ኪራይ ሰብስብ / Collect Rental Rent
               </Button>
             )}
           </div>
@@ -337,26 +341,26 @@ function RevenuePage() {
         filters={
           <>
             <div>
-              <Label>Payment type</Label>
+              <Label>የክፍያ ዓይነት / Payment type</Label>
               <select
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value as PaymentType | "")}
                 className="mt-1 block h-10 rounded-md border border-input bg-background px-3 text-sm"
               >
-                <option value="">All types</option>
-                <option value="rental_rent">Rental Rent</option>
-                <option value="credential_fee">Credential Fee</option>
-                <option value="service_fee">Service Fee</option>
-                <option value="house_rent">House Rent (legacy)</option>
-                <option value="penalty">Penalty</option>
+                <option value="">ሁሉም ዓይነቶች / All types</option>
+                <option value="rental_rent">የቤት ኪራይ / Rental Rent</option>
+                <option value="credential_fee">የመታወቂያ ክፍያ / Credential Fee</option>
+                <option value="service_fee">የአገልግሎት ክፍያ / Service Fee</option>
+                <option value="house_rent">የቤት ኪራይ (የቀድሞ) / House Rent (legacy)</option>
+                <option value="penalty">ቅጣት / Penalty</option>
               </select>
             </div>
             <div>
-              <Label>Start</Label>
+              <Label>ከ / Start</Label>
               <Input type="date" value={start} onChange={(e) => setStart(e.target.value)} />
             </div>
             <div>
-              <Label>End</Label>
+              <Label>እስከ / End</Label>
               <Input type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
             </div>
             <KebeleFilter
@@ -365,7 +369,7 @@ function RevenuePage() {
                 setKebeleFilter(v);
                 setPage(0);
               }}
-              hint="Matches the household or rental unit kebele"
+              hint="ከቤተሰብ ወይም ከኪራይ ክፍል ቀበሌ ጋር ይዛመዳል / Matches the household or rental unit kebele"
             />
           </>
         }
@@ -373,50 +377,57 @@ function RevenuePage() {
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <Card className="p-4">
-          <div className="text-xs uppercase text-slate-500">Total (filtered)</div>
+          <div className="text-xs uppercase text-slate-500">ጠቅላላ (የተጣራ) / Total (filtered)</div>
           <div className="mt-1 text-2xl font-semibold">
             {reconciliation.grand.toLocaleString()}{" "}
             <span className="text-sm font-normal text-slate-500">ETB</span>
           </div>
         </Card>
         <Card className="p-4 md:col-span-2">
-          <div className="text-xs uppercase text-slate-500">Reconciliation by type / channel</div>
+          <div className="text-xs uppercase text-slate-500">
+            ማስተካከያ በዓይነት / ቻናል / Reconciliation by type / channel
+          </div>
           <div className="mt-2 space-y-1 text-sm">
             {Object.entries(reconciliation.totals).length === 0 && (
               <div className="text-slate-500">No payments in range.</div>
             )}
-            {Object.entries(reconciliation.totals).map(([k, v]) => (
-              <div key={k} className="flex justify-between">
-                <span>{k}</span>
-                <span className="font-medium">{v.toLocaleString()} ETB</span>
-              </div>
-            ))}
+            {Object.entries(reconciliation.totals).map(([k, v]) => {
+              const [type, channel] = k.split("/");
+              return (
+                <div key={k} className="flex justify-between">
+                  <span>
+                    {PAYMENT_TYPE_LABEL[type] ?? type} · {CHANNEL_LABEL[channel] ?? channel}
+                  </span>
+                  <span className="font-medium">{v.toLocaleString()} ETB</span>
+                </div>
+              );
+            })}
           </div>
         </Card>
       </div>
 
       <Card className="overflow-hidden">
         <div className="border-b bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700">
-          Payments
+          ክፍያዎች / Payments
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-slate-50">
               <tr className="text-left text-slate-600">
                 <SortableTh field="payment_date" sort={sort}>
-                  Date
+                  ቀን / Date
                 </SortableTh>
                 <SortableTh field="payment_type" sort={sort}>
-                  Type
+                  ዓይነት / Type
                 </SortableTh>
                 <SortableTh field="amount" sort={sort}>
-                  Amount
+                  መጠን / Amount
                 </SortableTh>
                 <SortableTh field="channel" sort={sort}>
-                  Channel
+                  ቻናል / Channel
                 </SortableTh>
-                <th className="px-4 py-2">Reference</th>
-                <th className="px-4 py-2">Receipt</th>
+                <th className="px-4 py-2">ማጣቀሻ / Reference</th>
+                <th className="px-4 py-2">ደረሰኝ / Receipt</th>
                 <th className="px-4 py-2"></th>
               </tr>
             </thead>
@@ -448,19 +459,21 @@ function RevenuePage() {
                 !paymentsQuery.isError &&
                 pageRows.map((p) => (
                   <tr key={p.payment_id} className="border-t">
-                    <td className="px-4 py-2">{p.payment_date}</td>
+                    <td className="px-4 py-2">{formatEthiopianDateShortOnly(p.payment_date)}</td>
                     <td className="px-4 py-2">
-                      <Badge variant="outline">{p.payment_type}</Badge>
+                      <Badge variant="outline">
+                        {PAYMENT_TYPE_LABEL[p.payment_type] ?? p.payment_type}
+                      </Badge>
                     </td>
                     <td className="px-4 py-2 font-medium">{Number(p.amount).toLocaleString()}</td>
-                    <td className="px-4 py-2">{p.channel}</td>
+                    <td className="px-4 py-2">{CHANNEL_LABEL[p.channel] ?? p.channel}</td>
                     <td className="px-4 py-2">{p.reference_no ?? "—"}</td>
                     <td className="px-4 py-2">
                       {p.receipt ? (
                         <span>
                           {p.receipt.receipt_number}
                           {p.receipt.printed_at && (
-                            <span className="ml-1 text-xs text-slate-500">(printed)</span>
+                            <span className="ml-1 text-xs text-slate-500">(ታትሟል / printed)</span>
                           )}
                         </span>
                       ) : (
@@ -476,7 +489,7 @@ function RevenuePage() {
                           disabled={reprint.isPending}
                         >
                           <Printer className="mr-1 h-4 w-4" />
-                          {p.receipt.printed_at ? "Reprint" : "Print"}
+                          {p.receipt.printed_at ? "እንደገና አትም / Reprint" : "አትም / Print"}
                         </Button>
                       )}
                     </td>
@@ -587,11 +600,11 @@ function CollectRentalDialog({
 
   const collect = useMutation({
     mutationFn: async () => {
-      if (!requestId) throw new Error("Select a rental request");
+      if (!requestId) throw new Error("የኪራይ ጥያቄ ይምረጡ / Select a rental request");
       const amt = Number(amount);
-      if (!amt || amt <= 0) throw new Error("Enter a valid amount");
+      if (!amt || amt <= 0) throw new Error("ትክክለኛ መጠን ያስገቡ / Enter a valid amount");
       if ((channel === "bank" || channel === "mobile") && !referenceNo.trim())
-        throw new Error("Reference # required for bank/mobile");
+        throw new Error("ለባንክ/ሞባይል ማጣቀሻ ቁጥር ያስፈልጋል / Reference # required for bank/mobile");
 
       const today = new Date().toISOString().slice(0, 10);
       const { data: pay, error: payErr } = await supabase
@@ -637,7 +650,7 @@ function CollectRentalDialog({
       return paymentId;
     },
     onSuccess: () => {
-      toast.success("Payment recorded — receipt generated");
+      toast.success("ክፍያ ተመዝግቧል — ደረሰኝ ተፈጥሯል / Payment recorded — receipt generated");
       onSuccess();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -647,11 +660,11 @@ function CollectRentalDialog({
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Collect Rental Rent Payment</DialogTitle>
+          <DialogTitle>የቤት ኪራይ ክፍያ ሰብስብ / Collect Rental Rent Payment</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div>
-            <Label>Rental Request</Label>
+            <Label>የኪራይ ጥያቄ / Rental Request</Label>
             <select
               value={requestId}
               onChange={(e) => {
@@ -662,7 +675,7 @@ function CollectRentalDialog({
               }}
               className="mt-1 block h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
             >
-              <option value="">— Select an approved request —</option>
+              <option value="">— የተፈቀደ ጥያቄ ይምረጡ / Select an approved request —</option>
               {(approvedRequests ?? []).map((r) => (
                 <option key={r.rental_request_id} value={r.rental_request_id}>
                   {r.request_number} · House {r.house?.house_number ?? "?"} ·{" "}
@@ -678,7 +691,7 @@ function CollectRentalDialog({
             </div>
           )}
           <div>
-            <Label>Amount (ETB)</Label>
+            <Label>መጠን (ብር) / Amount (ETB)</Label>
             <Input
               type="number"
               min="0"
@@ -688,30 +701,30 @@ function CollectRentalDialog({
             />
           </div>
           <div>
-            <Label>Channel</Label>
+            <Label>ቻናል / Channel</Label>
             <select
               value={channel}
               onChange={(e) => setChannel(e.target.value as "cash" | "bank" | "mobile")}
               className="mt-1 block h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
             >
-              <option value="cash">Cash</option>
-              <option value="bank">Bank</option>
-              <option value="mobile">Mobile</option>
+              <option value="cash">ጥሬ ገንዘብ / Cash</option>
+              <option value="bank">ባንክ / Bank</option>
+              <option value="mobile">ሞባይል ገንዘብ / Mobile</option>
             </select>
           </div>
           {channel !== "cash" && (
             <div>
-              <Label>Reference No.</Label>
+              <Label>የማጣቀሻ ቁጥር / Reference No.</Label>
               <Input value={referenceNo} onChange={(e) => setReferenceNo(e.target.value)} />
             </div>
           )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
-            Cancel
+            ይቅር / Cancel
           </Button>
           <Button onClick={() => collect.mutate()} disabled={collect.isPending}>
-            Confirm Payment
+            ክፍያ አረጋግጥ / Confirm Payment
           </Button>
         </DialogFooter>
       </DialogContent>
