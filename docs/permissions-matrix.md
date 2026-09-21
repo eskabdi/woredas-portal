@@ -115,13 +115,14 @@ INSA Enforcer Phase 2.3 / Phase 4 Access Control. Generated from `src/config/per
 
 ### Rental Houses
 
-| Permission       | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer | print_officer | custom |
-| ---------------- | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ | ------------- | ------ |
-| `rental.view`    |             | ✓            | ✓          |                 | ✓              |               | ✓       |        |               |        |
-| `rental.create`  |             | ✓            |            |                 | ✓              |               |         |        |               |        |
-| `rental.approve` |             | ✓            | ✓          |                 |                |               |         |        |               |        |
-| `rental.vacate`  |             | ✓            |            |                 |                |               |         |        |               |        |
-| `rental.report`  |             | ✓            |            |                 |                |               | ✓       |        |               |        |
+| Permission                | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer | print_officer | custom |
+| ------------------------- | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ | ------------- | ------ |
+| `rental.view`             |             | ✓            | ✓          |                 | ✓              |               | ✓       |        |               |        |
+| `rental.create`           |             | ✓            |            |                 | ✓              |               |         |        |               |        |
+| `rental.approve`          |             | ✓            | ✓          |                 |                |               |         |        |               |        |
+| `rental.vacate`           |             | ✓            |            |                 |                |               |         |        |               |        |
+| `rental.report`           |             | ✓            |            |                 |                |               | ✓       |        |               |        |
+| `rental.policy.configure` |             | ✓            |            |                 |                |               |         |        |               |        |
 
 ### Revenue
 

@@ -95,6 +95,11 @@ export const P = {
   RENTAL_APPROVE: "rental.approve",
   RENTAL_VACATE: "rental.vacate",
   RENTAL_REPORT: "rental.report",
+  // Kebele Rental Houses Management plan, Phase 0: writes to rental_policy
+  // (due-date rule, reminder cadence, checkpoint blocking behavior, etc.).
+  // Reserved (RESERVED_PERMISSION_KEYS below) -- the same administrative
+  // category as credential.configure_policy.
+  RENTAL_POLICY_CONFIGURE: "rental.policy.configure",
   REVENUE_VIEW: "revenue.view",
   REVENUE_COLLECT: "revenue.collect",
   REVENUE_RECEIPT_REPRINT: "revenue.receipt_reprint",
@@ -143,9 +148,11 @@ export type ConsolePermission = (typeof CP)[keyof typeof CP];
 // no matter which role's default_role_perms() already includes them. Enforced
 // server-side: role_permission's INSERT/UPDATE policies, user_permission_override's
 // CHECK constraint, and tenant_role_permission's CHECK constraint all exclude
-// this exact list (00000000000021, 00000000000036, 00000000000038); this
-// comment and RESERVED_PERMISSION_KEYS below are documentation, not the
-// enforcement itself -- keep both in sync with those constraints by hand.
+// this exact list (00000000000021, 00000000000036, 00000000000037,
+// 00000000000038, 00000000000071); this comment and RESERVED_PERMISSION_KEYS
+// below are documentation, not the enforcement itself -- keep both in sync
+// with those constraints by hand. rental.policy.configure (Kebele Rental
+// Houses plan, Phase 0) joined the list in 00000000000071.
 export const RESERVED_PERMISSION_KEYS: Permission[] = [
   P.PLATFORM_MANAGE,
   P.TENANT_CREATE,
@@ -155,6 +162,7 @@ export const RESERVED_PERMISSION_KEYS: Permission[] = [
   P.CIVIL_APPROVE,
   P.CREDENTIAL_REVOKE,
   P.CREDENTIAL_CONFIGURE_POLICY,
+  P.RENTAL_POLICY_CONFIGURE,
 ];
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   super_admin: [
@@ -235,6 +243,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     P.SERVICE_RECORD_PAYMENT,
     P.SERVICE_ISSUE_LETTER,
     P.SERVICE_COMPLETE,
+    P.RENTAL_POLICY_CONFIGURE,
   ],
   supervisor: [
     P.RESIDENT_READ,
