@@ -9,14 +9,10 @@ import {
   IdCard,
   Image as ImageIcon,
   Loader2,
-  Plus,
   Save,
   Search,
-  ShieldCheck,
-  Trash2,
   UploadCloud,
   UserSearch,
-  Users,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -24,8 +20,6 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,13 +36,6 @@ import { useAuthStore } from "@/stores/authStore";
 import { P } from "@/config/permissions";
 import { Navigate } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
-import { PhoneDigitsInput } from "@/components/forms/PhoneDigitsInput";
-import {
-  isValidPhoneDigits,
-  phoneDigitsToE164,
-  sanitizePhoneDigits,
-  PHONE_DIGITS_ERROR,
-} from "@/lib/phoneNumber";
 
 export const Route = createFileRoute("/woreda/rental-houses/occupants/new")({
   ssr: false,
@@ -62,8 +49,6 @@ interface ResidentMatch {
   resident_number: string;
   full_name_am: string | null;
   full_name: string | null;
-  sex: string | null;
-  phone_number_decrypted: string | null;
 }
 
 interface HouseOption {
@@ -72,16 +57,6 @@ interface HouseOption {
   monthly_rent_standard: number | null;
   kebele: { kebele_name_am: string | null; kebele_number: number | null } | null;
 }
-
-interface MemberRow {
-  id: string;
-  full_name: string;
-  relation: string;
-  age: string;
-  work_status: string;
-}
-
-type Frequency = "biweekly" | "quarterly" | "annual";
 
 type UploadKey = "contract" | "clearance" | "id_copy" | "photo";
 
@@ -156,8 +131,6 @@ function OccupantRegistrationPage() {
   const [residentSearch, setResidentSearch] = useState("");
   const [resident, setResident] = useState<ResidentMatch | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [sex, setSex] = useState<string>("");
-  const [phone, setPhone] = useState<string>("");
 
   // --- Contract
   const [houseId, setHouseId] = useState<string>(houseIdFromSearch ?? "");
@@ -195,11 +168,6 @@ function OccupantRegistrationPage() {
   const ineligible = eligibility.data && !eligibility.data.eligible;
   const [rentAmount, setRentAmount] = useState<string>("");
   const [rentStart, setRentStart] = useState<string>("");
-  const [rentEnd, setRentEnd] = useState<string>("");
-  const [frequency, setFrequency] = useState<Frequency>("biweekly");
-
-  // --- Household roster
-  const [members, setMembers] = useState<MemberRow[]>([]);
 
   // --- Uploads (files are stored on submit and linked to the request)
   const [uploads, setUploads] = useState<Partial<Record<UploadKey, File>>>({});
@@ -226,11 +194,6 @@ function OccupantRegistrationPage() {
     }
     setUploads((u) => ({ ...u, [key]: file }));
   }
-
-  // --- Admin
-  const [verified, setVerified] = useState(false);
-  const [approvalStatus, setApprovalStatus] = useState<"approved" | "pending">("pending");
-  const [notes, setNotes] = useState("");
 
   // Fetch houses for the selector, prefer vacant
   const { data: houses } = useQuery({
@@ -277,9 +240,7 @@ function OccupantRegistrationPage() {
       const db = supabase as unknown as { from: (t: string) => any }; // eslint-disable-line @typescript-eslint/no-explicit-any
       const { data, error } = await db
         .from("resident_decrypted")
-        .select(
-          "resident_id, resident_number, full_name_am, full_name, sex, phone_number_decrypted",
-        )
+        .select("resident_id, resident_number, full_name_am, full_name")
         .eq("woreda_id", woredaId!)
         .eq("active_flag", true)
         .or(
@@ -297,23 +258,8 @@ function OccupantRegistrationPage() {
 
   function pickResident(r: ResidentMatch) {
     setResident(r);
-    setSex(r.sex ?? "");
-    if (r.phone_number_decrypted) setPhone(sanitizePhoneDigits(r.phone_number_decrypted));
     setSearchOpen(false);
     setResidentSearch("");
-  }
-
-  function addMember() {
-    setMembers((m) => [
-      ...m,
-      { id: crypto.randomUUID(), full_name: "", relation: "", age: "", work_status: "" },
-    ]);
-  }
-  function updateMember(id: string, patch: Partial<MemberRow>) {
-    setMembers((m) => m.map((r) => (r.id === id ? { ...r, ...patch } : r)));
-  }
-  function removeMember(id: string) {
-    setMembers((m) => m.filter((r) => r.id !== id));
   }
 
   const mutation = useMutation({
@@ -385,14 +331,8 @@ function OccupantRegistrationPage() {
           resident_id: resident.resident_id,
           rental_house_id: houseId,
           rent_start_date: rentStart,
-          rent_end_date: rentEnd || null,
           rent_amount: amt,
-          payment_frequency: frequency,
-          phone: phoneDigitsToE164(phone),
-          sex,
-          household_members: members,
           uploads: uploadNames,
-          admin: { verified, approval_status: approvalStatus, notes },
         } as never,
       });
 
@@ -425,9 +365,8 @@ function OccupantRegistrationPage() {
     if (!Number(rentAmount) || Number(rentAmount) <= 0)
       errs.push("ትክክለኛ የቤት ኪራይ ዋጋ ያስገቡ / Enter a valid rent amount");
     if (!rentStart) errs.push("የውል መጀመሪያ ቀን ያስፈልጋል / Contract start date required");
-    if (!isValidPhoneDigits(phone)) errs.push(PHONE_DIGITS_ERROR);
     return errs;
-  }, [resident, houseId, rentAmount, rentStart, phone]);
+  }, [resident, houseId, rentAmount, rentStart]);
 
   function openConfirm() {
     if (validationErrors.length > 0) {
@@ -517,7 +456,7 @@ function OccupantRegistrationPage() {
                   </li>
                   <li>
                     <span className="font-medium">Rent:</span>{" "}
-                    {Number(rentAmount || 0).toLocaleString()} ETB / {frequency}
+                    {Number(rentAmount || 0).toLocaleString()} ETB
                   </li>
                   <li>
                     <span className="font-medium">Start:</span> {rentStart || "—"}
@@ -722,25 +661,6 @@ function OccupantRegistrationPage() {
                 className="font-am-body"
               />
             </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <FieldLabel am="ጾታ" en="Sex" />
-                <select
-                  value={sex}
-                  onChange={(e) => setSex(e.target.value)}
-                  className="font-am-body flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                >
-                  <option value="">ምረጥ</option>
-                  <option value="male">ወንድ / Male</option>
-                  <option value="female">ሴት / Female</option>
-                </select>
-              </div>
-              <div>
-                <FieldLabel am="ስልክ ቁጥር" en="Phone" />
-                <PhoneDigitsInput value={phone} onChange={setPhone} />
-              </div>
-            </div>
           </div>
         </Card>
 
@@ -800,214 +720,29 @@ function OccupantRegistrationPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <FieldLabel am="የውል መጀመሪያ" en="Contract Start" />
-                <EthiopianDateInput value={rentStart} onChange={setRentStart} />
-              </div>
-              <div>
-                <FieldLabel am="የውል ማብቂያ" en="Contract End" />
-                <EthiopianDateInput value={rentEnd} onChange={setRentEnd} />
-              </div>
-            </div>
-
             <div>
-              <FieldLabel am="የክፍያ ድግግሞሽ" en="Payment Frequency" />
-              <div className="mt-1 flex flex-wrap gap-2">
-                {(
-                  [
-                    { v: "biweekly", am: "በየሁሉ" },
-                    { v: "quarterly", am: "በ3 ወር" },
-                    { v: "annual", am: "በዓመት" },
-                  ] as const
-                ).map((opt) => (
-                  <button
-                    key={opt.v}
-                    type="button"
-                    onClick={() => setFrequency(opt.v)}
-                    className={cn(
-                      "font-am-body rounded-md border px-4 py-2 text-sm transition",
-                      frequency === opt.v
-                        ? "border-[#0b2a63] bg-[#0b2a63] text-white"
-                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300",
-                    )}
-                  >
-                    {opt.am}
-                  </button>
-                ))}
-              </div>
+              <FieldLabel am="የውል መጀመሪያ" en="Contract Start" />
+              <EthiopianDateInput value={rentStart} onChange={setRentStart} />
             </div>
           </div>
         </Card>
       </div>
 
-      {/* Household roster */}
+      {/* Uploads */}
       <Card className="border-slate-200 p-5">
-        <div className="flex items-center justify-between">
-          <SectionTitle icon={Users} am="አብረው የሚኖሩ የቤተሰብ አባላት" />
-          <button
-            type="button"
-            onClick={addMember}
-            className="inline-flex items-center gap-1 text-sm font-medium text-blue-700 hover:text-blue-900"
-          >
-            <Plus className="h-4 w-4" /> <span className="font-am-body">አባል ጨምር</span>
-          </button>
-        </div>
-        <div className="mt-4 overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="bg-slate-50 text-slate-600">
-              <tr className="text-left">
-                <th className="px-3 py-2 font-am-heading w-12">ተ.ቁ</th>
-                <th className="px-3 py-2 font-am-heading">ሙሉ ስም</th>
-                <th className="px-3 py-2 font-am-heading">ዝምድና</th>
-                <th className="px-3 py-2 font-am-heading w-24">ዕድሜ</th>
-                <th className="px-3 py-2 font-am-heading">የስራ ሁኔታ</th>
-                <th className="px-3 py-2 font-am-heading w-16 text-right">ተግባር</th>
-              </tr>
-            </thead>
-            <tbody>
-              {members.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-3 py-8 text-center text-slate-400 font-am-body">
-                    ምንም አባል አልተጨመረም — "አባል ጨምር" የሚለውን ይጫኑ
-                  </td>
-                </tr>
-              )}
-              {members.map((m, idx) => (
-                <tr key={m.id} className="border-t align-top">
-                  <td className="px-3 py-2 text-slate-500">{idx + 1}</td>
-                  <td className="px-3 py-2">
-                    <Input
-                      value={m.full_name}
-                      onChange={(e) => updateMember(m.id, { full_name: e.target.value })}
-                      className="font-am-body h-9"
-                    />
-                  </td>
-                  <td className="px-3 py-2">
-                    <Input
-                      value={m.relation}
-                      onChange={(e) => updateMember(m.id, { relation: e.target.value })}
-                      className="font-am-body h-9"
-                    />
-                  </td>
-                  <td className="px-3 py-2">
-                    <Input
-                      type="number"
-                      value={m.age}
-                      onChange={(e) => updateMember(m.id, { age: e.target.value })}
-                      className="h-9"
-                    />
-                  </td>
-                  <td className="px-3 py-2">
-                    <Input
-                      value={m.work_status}
-                      onChange={(e) => updateMember(m.id, { work_status: e.target.value })}
-                      className="font-am-body h-9"
-                    />
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    <button
-                      type="button"
-                      onClick={() => removeMember(m.id)}
-                      className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
-                      aria-label="Remove"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <SectionTitle icon={UploadCloud} am="አስፈላጊ ሰነዶች" en="Upload" />
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {UPLOAD_TILES.map((tile) => (
+            <UploadTile
+              key={tile.key}
+              tile={tile}
+              file={uploads[tile.key] ?? null}
+              disabled={mutation.isPending}
+              onChange={(f) => setUpload(tile.key, f)}
+            />
+          ))}
         </div>
       </Card>
-
-      {/* Uploads | Admin */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <Card className="border-slate-200 p-5">
-          <SectionTitle icon={UploadCloud} am="አስፈላጊ ሰነዶች" en="Upload" />
-          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {UPLOAD_TILES.map((tile) => (
-              <UploadTile
-                key={tile.key}
-                tile={tile}
-                file={uploads[tile.key] ?? null}
-                disabled={mutation.isPending}
-                onChange={(f) => setUpload(tile.key, f)}
-              />
-            ))}
-          </div>
-        </Card>
-
-        <Card className="relative overflow-hidden border-slate-200 p-5">
-          <div className="absolute inset-y-0 left-0 w-1.5 bg-orange-500" />
-          <SectionTitle icon={ShieldCheck} am="አስተዳደራዊ ማረጋገጫ" iconClassName="text-orange-600" />
-          <div className="mt-4 space-y-5">
-            <label className="flex cursor-pointer items-start gap-3 rounded-md bg-slate-50 p-3">
-              <Checkbox
-                checked={verified}
-                onCheckedChange={(v) => setVerified(v === true)}
-                className="mt-0.5"
-              />
-              <div>
-                <div className="font-am-body text-sm font-medium text-slate-900">
-                  ኦፊሴላዊ ማረጋገጫ{" "}
-                  <span className="text-slate-500 font-normal">(Official Verification)</span>
-                </div>
-                <div className="font-am-body mt-1 text-xs text-slate-500">
-                  የቀበሌ ሰነዶች በሙሉ ኦርጅናል መሆናቸውን እና የተከራይ ማንነት መረጋገጡን አረጋግጣለሁ።
-                </div>
-              </div>
-            </label>
-
-            <div>
-              <div className="font-am-body text-sm text-slate-700">
-                የምዝገባ ሁኔታ <span className="text-slate-500">(Approval Status)</span>
-              </div>
-              <div className="mt-2 space-y-2">
-                {(
-                  [
-                    { v: "approved", am: "ተፈቅዷል", en: "Approved", color: "text-emerald-700" },
-                    { v: "pending", am: "በጠረት ላይ", en: "Pending", color: "text-orange-600" },
-                  ] as const
-                ).map((opt) => (
-                  <label
-                    key={opt.v}
-                    className={cn(
-                      "flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2 transition",
-                      approvalStatus === opt.v
-                        ? "border-slate-300 bg-white shadow-sm"
-                        : "border-slate-200 bg-white hover:border-slate-300",
-                    )}
-                  >
-                    <input
-                      type="radio"
-                      name="approval"
-                      checked={approvalStatus === opt.v}
-                      onChange={() => setApprovalStatus(opt.v)}
-                      className="h-4 w-4 accent-[#0b2a63]"
-                    />
-                    <span className={cn("font-am-body text-sm font-medium", opt.color)}>
-                      {opt.am} <span className="text-slate-500 font-normal">({opt.en})</span>
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <Label className="font-am-body text-sm text-slate-700">ማስታወሻ ካለ</Label>
-              <Textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="ተጨማሪ አስተያየት እዚህ ይጻፉ..."
-                className="mt-1 font-am-body"
-                rows={4}
-              />
-            </div>
-          </div>
-        </Card>
-      </div>
     </div>
   );
 }

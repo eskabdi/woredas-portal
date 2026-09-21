@@ -172,7 +172,7 @@ function RentalRequestDetailPage() {
       if (!CHECKLIST.every((c) => checks[c.key])) {
         throw new Error("ሁሉንም እርምጃዎች ያረጋግጡ / All checks must pass");
       }
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("rental_occupancy_request")
         .update({
           status: "verified",
@@ -180,8 +180,14 @@ function RentalRequestDetailPage() {
           verified_by_user_id: actorUserId,
           verified_at: new Date().toISOString(),
         })
-        .eq("rental_request_id", requestId);
+        .eq("rental_request_id", requestId)
+        .select("rental_request_id")
+        .maybeSingle();
       if (error) throw error;
+      if (!data)
+        throw new Error(
+          "ማረጋገጥ አልተሳካም — ጥያቄው ሁኔታ ተቀይሯል / Verification failed — request state changed",
+        );
       await supabase.from("audit_log").insert({
         woreda_id: woredaId!,
         actor_user_id: actorUserId,
@@ -201,11 +207,15 @@ function RentalRequestDetailPage() {
   const returnRequest = useMutation({
     mutationFn: async () => {
       if (returnReason.trim().length < 3) throw new Error("Reason required");
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("rental_occupancy_request")
         .update({ status: "returned", return_reason: returnReason.trim() })
-        .eq("rental_request_id", requestId);
+        .eq("rental_request_id", requestId)
+        .select("rental_request_id")
+        .maybeSingle();
       if (error) throw error;
+      if (!data)
+        throw new Error("መመለስ አልተሳካም — ጥያቄው ሁኔታ ተቀይሯል / Return failed — request state changed");
       await supabase.from("audit_log").insert({
         woreda_id: woredaId!,
         actor_user_id: actorUserId,
@@ -232,15 +242,19 @@ function RentalRequestDetailPage() {
       if (req?.request_type === "termination" && !req?.existing_occupancy_id) {
         throw new Error("No active occupancy to vacate");
       }
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("rental_occupancy_request")
         .update({
           status: "approved",
           approved_by_user_id: actorUserId,
           approval_decision_at: new Date().toISOString(),
         })
-        .eq("rental_request_id", requestId);
+        .eq("rental_request_id", requestId)
+        .select("rental_request_id")
+        .maybeSingle();
       if (error) throw error;
+      if (!data)
+        throw new Error("ማፅደቅ አልተሳካም — ጥያቄው ሁኔታ ተቀይሯል / Approval failed — request state changed");
       await supabase.from("audit_log").insert({
         woreda_id: woredaId!,
         actor_user_id: actorUserId,
@@ -265,7 +279,7 @@ function RentalRequestDetailPage() {
   const reject = useMutation({
     mutationFn: async () => {
       if (rejectReason.trim().length < 3) throw new Error("Reason required");
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("rental_occupancy_request")
         .update({
           status: "rejected",
@@ -273,8 +287,12 @@ function RentalRequestDetailPage() {
           approved_by_user_id: actorUserId,
           approval_decision_at: new Date().toISOString(),
         })
-        .eq("rental_request_id", requestId);
+        .eq("rental_request_id", requestId)
+        .select("rental_request_id")
+        .maybeSingle();
       if (error) throw error;
+      if (!data)
+        throw new Error("ውድቅ ማድረግ አልተሳካም — ጥያቄው ሁኔታ ተቀይሯል / Reject failed — request state changed");
       await supabase.from("audit_log").insert({
         woreda_id: woredaId!,
         actor_user_id: actorUserId,
