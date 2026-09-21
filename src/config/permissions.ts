@@ -100,6 +100,15 @@ export const P = {
   // Reserved (RESERVED_PERMISSION_KEYS below) -- the same administrative
   // category as credential.configure_policy.
   RENTAL_POLICY_CONFIGURE: "rental.policy.configure",
+  // Phase 2 (Financial core): invokes generate_rent_charges() -- an
+  // administrative financial action (creates the period's rent charges for
+  // every active account in the tenant), not a per-record CRUD verb, so it
+  // is scoped like RENTAL_POLICY_CONFIGURE rather than folded into
+  // RENTAL_CREATE/RENTAL_APPROVE. Not reserved: unlike RENTAL_POLICY_CONFIGURE
+  // this is an ordinary grantable permission a tenant_admin may hand to
+  // another role via the matrix (e.g. a finance_clerk) if the tenant wants
+  // that.
+  RENTAL_BILLING: "rental.billing",
   REVENUE_VIEW: "revenue.view",
   REVENUE_COLLECT: "revenue.collect",
   REVENUE_RECEIPT_REPRINT: "revenue.receipt_reprint",
@@ -244,6 +253,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     P.SERVICE_ISSUE_LETTER,
     P.SERVICE_COMPLETE,
     P.RENTAL_POLICY_CONFIGURE,
+    P.RENTAL_BILLING,
   ],
   supervisor: [
     P.RESIDENT_READ,

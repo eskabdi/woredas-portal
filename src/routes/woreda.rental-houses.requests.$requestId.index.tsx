@@ -26,7 +26,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
 import { P } from "@/config/permissions";
-import { formatEthiopianDateShort, parseDateOnly } from "@/utils/ethiopianCalendar";
+import {
+  formatEthiopianDateShort,
+  gregorianToEthiopian,
+  parseDateOnly,
+} from "@/utils/ethiopianCalendar";
 
 export const Route = createFileRoute("/woreda/rental-houses/requests/$requestId/")({
   ssr: false,
@@ -285,11 +289,38 @@ function RentalRequestDetailPage() {
           approval_decision_at: new Date().toISOString(),
         })
         .eq("rental_request_id", requestId)
-        .select("rental_request_id")
+        .select("rental_request_id, resulting_occupancy_id")
         .maybeSingle();
       if (error) throw error;
       if (!data)
         throw new Error("ማፅደቅ አልተሳካም — ጥያቄው ሁኔታ ተቀይሯል / Approval failed — request state changed");
+
+      // Phase 2 wiring: turn the newly-active occupancy into a billable
+      // rent account. The EC period is computed here, client-side, via the
+      // same shared utility every other date in this app uses (see
+      // 00000000000076's header for why this cannot move into the DB
+      // trigger that created the occupancy) -- a Pagume start rolls forward
+      // to the following Meskerem per plan section 3.3.
+      if (
+        req?.request_type === "new_registration" &&
+        data.resulting_occupancy_id &&
+        req.rent_start_date
+      ) {
+        const startDate = parseDateOnly(req.rent_start_date);
+        if (startDate) {
+          const eth = gregorianToEthiopian(startDate);
+          const billingStartPeriodKey =
+            eth.month === 13
+              ? `${eth.year + 1}-01`
+              : `${eth.year}-${String(eth.month).padStart(2, "0")}`;
+          const { error: provisionError } = await supabase.rpc("provision_rent_account", {
+            _occupancy_id: data.resulting_occupancy_id,
+            _billing_start_period_key: billingStartPeriodKey,
+          });
+          if (provisionError) throw provisionError;
+        }
+      }
+
       await supabase.from("audit_log").insert({
         woreda_id: woredaId!,
         actor_user_id: actorUserId,

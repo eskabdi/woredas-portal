@@ -300,6 +300,15 @@ function RentalHouseDetailPage() {
               <div className="text-xs text-slate-500">Rent</div>
               <div>{Number(active.rent_amount).toLocaleString()} ETB</div>
             </div>
+            {hasPermission(P.RENTAL_VIEW) && (
+              <Link
+                to="/woreda/rental-accounts/$occupancyId"
+                params={{ occupancyId: active.occupancy_id }}
+                className="ml-auto text-sm font-medium text-blue-700 hover:underline"
+              >
+                የኪራይ ሂሳብ / Rent Ledger →
+              </Link>
+            )}
           </div>
         </Card>
       )}

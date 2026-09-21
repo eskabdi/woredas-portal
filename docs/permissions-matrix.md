@@ -123,6 +123,7 @@ INSA Enforcer Phase 2.3 / Phase 4 Access Control. Generated from `src/config/per
 | `rental.vacate`           |             | ✓            |            |                 |                |               |         |        |               |        |
 | `rental.report`           |             | ✓            |            |                 |                |               | ✓       |        |               |        |
 | `rental.policy.configure` |             | ✓            |            |                 |                |               |         |        |               |        |
+| `rental.billing`          |             | ✓            |            |                 |                |               |         |        |               |        |
 
 ### Revenue
 
