@@ -117,6 +117,12 @@ export const P = {
   RENTAL_COLLECT: "rental.collect",
   RENTAL_SETTLE: "rental.settle",
   RENTAL_REVERSE: "rental.reverse",
+  // Phase 4 (Arrears and repayment plans): all three ordinary/grantable --
+  // defaulting/cancelling an active plan (plan.manage) is supervisory but
+  // not itself money-moving, unlike RENTAL_REVERSE.
+  RENTAL_PLAN_CREATE: "rental.plan.create",
+  RENTAL_PLAN_APPROVE: "rental.plan.approve",
+  RENTAL_PLAN_MANAGE: "rental.plan.manage",
   REVENUE_VIEW: "revenue.view",
   REVENUE_COLLECT: "revenue.collect",
   REVENUE_RECEIPT_REPRINT: "revenue.receipt_reprint",
@@ -266,6 +272,9 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     P.RENTAL_COLLECT,
     P.RENTAL_SETTLE,
     P.RENTAL_REVERSE,
+    P.RENTAL_PLAN_CREATE,
+    P.RENTAL_PLAN_APPROVE,
+    P.RENTAL_PLAN_MANAGE,
   ],
   supervisor: [
     P.RESIDENT_READ,
@@ -297,6 +306,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     P.CIVIL_REJECT,
     P.CIVIL_VIEW,
     P.SERVICE_REJECT,
+    P.RENTAL_PLAN_APPROVE,
+    P.RENTAL_PLAN_MANAGE,
   ],
   civil_registrar: [
     P.RESIDENT_CREATE,
@@ -398,6 +409,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     P.RENTAL_VIEW,
     P.RENTAL_COLLECT,
     P.RENTAL_SETTLE,
+    P.RENTAL_PLAN_CREATE,
   ],
   auditor: [
     P.RESIDENT_READ,

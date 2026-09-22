@@ -189,6 +189,282 @@ export type Database = {
           },
         ]
       }
+      arrears_installment_charge: {
+        Row: {
+          charge_amount_snapshot: number
+          charge_amount_snapshot_enc: string | null
+          created_at: string
+          installment_id: string
+          mapping_id: string
+          rent_charge_id: string
+          status: string
+          woreda_id: string
+        }
+        Insert: {
+          charge_amount_snapshot: number
+          charge_amount_snapshot_enc?: string | null
+          created_at?: string
+          installment_id: string
+          mapping_id?: string
+          rent_charge_id: string
+          status?: string
+          woreda_id: string
+        }
+        Update: {
+          charge_amount_snapshot?: number
+          charge_amount_snapshot_enc?: string | null
+          created_at?: string
+          installment_id?: string
+          mapping_id?: string
+          rent_charge_id?: string
+          status?: string
+          woreda_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "arrears_installment_charge_installment_id_fkey"
+            columns: ["installment_id"]
+            isOneToOne: false
+            referencedRelation: "arrears_repayment_installment"
+            referencedColumns: ["installment_id"]
+          },
+          {
+            foreignKeyName: "arrears_installment_charge_installment_id_fkey"
+            columns: ["installment_id"]
+            isOneToOne: false
+            referencedRelation: "arrears_repayment_installment_decrypted"
+            referencedColumns: ["installment_id"]
+          },
+          {
+            foreignKeyName: "arrears_installment_charge_rent_charge_id_fkey"
+            columns: ["rent_charge_id"]
+            isOneToOne: false
+            referencedRelation: "rent_charge"
+            referencedColumns: ["rent_charge_id"]
+          },
+          {
+            foreignKeyName: "arrears_installment_charge_rent_charge_id_fkey"
+            columns: ["rent_charge_id"]
+            isOneToOne: false
+            referencedRelation: "rent_charge_decrypted"
+            referencedColumns: ["rent_charge_id"]
+          },
+          {
+            foreignKeyName: "arrears_installment_charge_woreda_id_fkey"
+            columns: ["woreda_id"]
+            isOneToOne: false
+            referencedRelation: "woreda"
+            referencedColumns: ["woreda_id"]
+          },
+        ]
+      }
+      arrears_plan_sequence: {
+        Row: {
+          last_value: number
+          seq_year: number
+          woreda_id: string
+        }
+        Insert: {
+          last_value?: number
+          seq_year: number
+          woreda_id: string
+        }
+        Update: {
+          last_value?: number
+          seq_year?: number
+          woreda_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "arrears_plan_sequence_woreda_id_fkey"
+            columns: ["woreda_id"]
+            isOneToOne: false
+            referencedRelation: "woreda"
+            referencedColumns: ["woreda_id"]
+          },
+        ]
+      }
+      arrears_repayment_installment: {
+        Row: {
+          amount: number
+          amount_enc: string | null
+          due_date: string
+          installment_id: string
+          installment_number: number
+          plan_id: string
+          settled_at: string | null
+          settled_by_payment_id: string | null
+          status: string
+          woreda_id: string
+        }
+        Insert: {
+          amount: number
+          amount_enc?: string | null
+          due_date: string
+          installment_id?: string
+          installment_number: number
+          plan_id: string
+          settled_at?: string | null
+          settled_by_payment_id?: string | null
+          status?: string
+          woreda_id: string
+        }
+        Update: {
+          amount?: number
+          amount_enc?: string | null
+          due_date?: string
+          installment_id?: string
+          installment_number?: number
+          plan_id?: string
+          settled_at?: string | null
+          settled_by_payment_id?: string | null
+          status?: string
+          woreda_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "arrears_repayment_installment_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "arrears_repayment_plan"
+            referencedColumns: ["plan_id"]
+          },
+          {
+            foreignKeyName: "arrears_repayment_installment_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "arrears_repayment_plan_decrypted"
+            referencedColumns: ["plan_id"]
+          },
+          {
+            foreignKeyName: "arrears_repayment_installment_settled_by_payment_id_fkey"
+            columns: ["settled_by_payment_id"]
+            isOneToOne: false
+            referencedRelation: "rental_payment"
+            referencedColumns: ["payment_id"]
+          },
+          {
+            foreignKeyName: "arrears_repayment_installment_woreda_id_fkey"
+            columns: ["woreda_id"]
+            isOneToOne: false
+            referencedRelation: "woreda"
+            referencedColumns: ["woreda_id"]
+          },
+        ]
+      }
+      arrears_repayment_plan: {
+        Row: {
+          approval_decision_at: string | null
+          approved_by_user_id: string | null
+          assigned_arrears_amount: number
+          assigned_arrears_amount_enc: string | null
+          created_at: string
+          installment_count: number
+          original_arrears_amount: number
+          original_arrears_amount_enc: string | null
+          plan_id: string
+          plan_number: string
+          reason: string | null
+          rent_account_id: string
+          requested_by_user_id: string | null
+          resident_id: string
+          return_reason: string | null
+          status: string
+          updated_at: string
+          woreda_id: string
+        }
+        Insert: {
+          approval_decision_at?: string | null
+          approved_by_user_id?: string | null
+          assigned_arrears_amount: number
+          assigned_arrears_amount_enc?: string | null
+          created_at?: string
+          installment_count: number
+          original_arrears_amount: number
+          original_arrears_amount_enc?: string | null
+          plan_id?: string
+          plan_number: string
+          reason?: string | null
+          rent_account_id: string
+          requested_by_user_id?: string | null
+          resident_id: string
+          return_reason?: string | null
+          status?: string
+          updated_at?: string
+          woreda_id: string
+        }
+        Update: {
+          approval_decision_at?: string | null
+          approved_by_user_id?: string | null
+          assigned_arrears_amount?: number
+          assigned_arrears_amount_enc?: string | null
+          created_at?: string
+          installment_count?: number
+          original_arrears_amount?: number
+          original_arrears_amount_enc?: string | null
+          plan_id?: string
+          plan_number?: string
+          reason?: string | null
+          rent_account_id?: string
+          requested_by_user_id?: string | null
+          resident_id?: string
+          return_reason?: string | null
+          status?: string
+          updated_at?: string
+          woreda_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "arrears_repayment_plan_approved_by_user_id_fkey"
+            columns: ["approved_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "app_user"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "arrears_repayment_plan_rent_account_id_fkey"
+            columns: ["rent_account_id"]
+            isOneToOne: false
+            referencedRelation: "rent_account"
+            referencedColumns: ["rent_account_id"]
+          },
+          {
+            foreignKeyName: "arrears_repayment_plan_requested_by_user_id_fkey"
+            columns: ["requested_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "app_user"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "arrears_repayment_plan_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "household_member_roster"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "arrears_repayment_plan_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "resident"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "arrears_repayment_plan_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "resident_decrypted"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "arrears_repayment_plan_woreda_id_fkey"
+            columns: ["woreda_id"]
+            isOneToOne: false
+            referencedRelation: "woreda"
+            referencedColumns: ["woreda_id"]
+          },
+        ]
+      }
       attachment: {
         Row: {
           attachment_id: string
@@ -2302,6 +2578,63 @@ export type Database = {
           },
         ]
       }
+      rent_reminder: {
+        Row: {
+          created_at: string
+          delivery_channel: string
+          delivery_status: string
+          reminder_id: string
+          reminder_type: string
+          rent_account_id: string
+          snapshot_amount: number | null
+          snapshot_amount_enc: string | null
+          snapshot_month_count: number | null
+          snapshot_oldest_overdue_period: string | null
+          woreda_id: string
+        }
+        Insert: {
+          created_at?: string
+          delivery_channel?: string
+          delivery_status?: string
+          reminder_id?: string
+          reminder_type: string
+          rent_account_id: string
+          snapshot_amount?: number | null
+          snapshot_amount_enc?: string | null
+          snapshot_month_count?: number | null
+          snapshot_oldest_overdue_period?: string | null
+          woreda_id: string
+        }
+        Update: {
+          created_at?: string
+          delivery_channel?: string
+          delivery_status?: string
+          reminder_id?: string
+          reminder_type?: string
+          rent_account_id?: string
+          snapshot_amount?: number | null
+          snapshot_amount_enc?: string | null
+          snapshot_month_count?: number | null
+          snapshot_oldest_overdue_period?: string | null
+          woreda_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rent_reminder_rent_account_id_fkey"
+            columns: ["rent_account_id"]
+            isOneToOne: false
+            referencedRelation: "rent_account"
+            referencedColumns: ["rent_account_id"]
+          },
+          {
+            foreignKeyName: "rent_reminder_woreda_id_fkey"
+            columns: ["woreda_id"]
+            isOneToOne: false
+            referencedRelation: "woreda"
+            referencedColumns: ["woreda_id"]
+          },
+        ]
+      }
       rental_occupancy: {
         Row: {
           created_at: string
@@ -4351,6 +4684,268 @@ export type Database = {
         }
         Relationships: []
       }
+      arrears_installment_charge_decrypted: {
+        Row: {
+          charge_amount_snapshot: number | null
+          charge_amount_snapshot_decrypted: number | null
+          charge_amount_snapshot_enc: string | null
+          created_at: string | null
+          installment_id: string | null
+          mapping_id: string | null
+          rent_charge_id: string | null
+          status: string | null
+          woreda_id: string | null
+        }
+        Insert: {
+          charge_amount_snapshot?: number | null
+          charge_amount_snapshot_decrypted?: never
+          charge_amount_snapshot_enc?: string | null
+          created_at?: string | null
+          installment_id?: string | null
+          mapping_id?: string | null
+          rent_charge_id?: string | null
+          status?: string | null
+          woreda_id?: string | null
+        }
+        Update: {
+          charge_amount_snapshot?: number | null
+          charge_amount_snapshot_decrypted?: never
+          charge_amount_snapshot_enc?: string | null
+          created_at?: string | null
+          installment_id?: string | null
+          mapping_id?: string | null
+          rent_charge_id?: string | null
+          status?: string | null
+          woreda_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "arrears_installment_charge_installment_id_fkey"
+            columns: ["installment_id"]
+            isOneToOne: false
+            referencedRelation: "arrears_repayment_installment"
+            referencedColumns: ["installment_id"]
+          },
+          {
+            foreignKeyName: "arrears_installment_charge_installment_id_fkey"
+            columns: ["installment_id"]
+            isOneToOne: false
+            referencedRelation: "arrears_repayment_installment_decrypted"
+            referencedColumns: ["installment_id"]
+          },
+          {
+            foreignKeyName: "arrears_installment_charge_rent_charge_id_fkey"
+            columns: ["rent_charge_id"]
+            isOneToOne: false
+            referencedRelation: "rent_charge"
+            referencedColumns: ["rent_charge_id"]
+          },
+          {
+            foreignKeyName: "arrears_installment_charge_rent_charge_id_fkey"
+            columns: ["rent_charge_id"]
+            isOneToOne: false
+            referencedRelation: "rent_charge_decrypted"
+            referencedColumns: ["rent_charge_id"]
+          },
+          {
+            foreignKeyName: "arrears_installment_charge_woreda_id_fkey"
+            columns: ["woreda_id"]
+            isOneToOne: false
+            referencedRelation: "woreda"
+            referencedColumns: ["woreda_id"]
+          },
+        ]
+      }
+      arrears_repayment_installment_decrypted: {
+        Row: {
+          amount: number | null
+          amount_decrypted: number | null
+          amount_enc: string | null
+          due_date: string | null
+          installment_id: string | null
+          installment_number: number | null
+          plan_id: string | null
+          settled_at: string | null
+          settled_by_payment_id: string | null
+          status: string | null
+          woreda_id: string | null
+        }
+        Insert: {
+          amount?: number | null
+          amount_decrypted?: never
+          amount_enc?: string | null
+          due_date?: string | null
+          installment_id?: string | null
+          installment_number?: number | null
+          plan_id?: string | null
+          settled_at?: string | null
+          settled_by_payment_id?: string | null
+          status?: string | null
+          woreda_id?: string | null
+        }
+        Update: {
+          amount?: number | null
+          amount_decrypted?: never
+          amount_enc?: string | null
+          due_date?: string | null
+          installment_id?: string | null
+          installment_number?: number | null
+          plan_id?: string | null
+          settled_at?: string | null
+          settled_by_payment_id?: string | null
+          status?: string | null
+          woreda_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "arrears_repayment_installment_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "arrears_repayment_plan"
+            referencedColumns: ["plan_id"]
+          },
+          {
+            foreignKeyName: "arrears_repayment_installment_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "arrears_repayment_plan_decrypted"
+            referencedColumns: ["plan_id"]
+          },
+          {
+            foreignKeyName: "arrears_repayment_installment_settled_by_payment_id_fkey"
+            columns: ["settled_by_payment_id"]
+            isOneToOne: false
+            referencedRelation: "rental_payment"
+            referencedColumns: ["payment_id"]
+          },
+          {
+            foreignKeyName: "arrears_repayment_installment_woreda_id_fkey"
+            columns: ["woreda_id"]
+            isOneToOne: false
+            referencedRelation: "woreda"
+            referencedColumns: ["woreda_id"]
+          },
+        ]
+      }
+      arrears_repayment_plan_decrypted: {
+        Row: {
+          approval_decision_at: string | null
+          approved_by_user_id: string | null
+          assigned_arrears_amount: number | null
+          assigned_arrears_amount_decrypted: number | null
+          assigned_arrears_amount_enc: string | null
+          created_at: string | null
+          installment_count: number | null
+          original_arrears_amount: number | null
+          original_arrears_amount_decrypted: number | null
+          original_arrears_amount_enc: string | null
+          plan_id: string | null
+          plan_number: string | null
+          reason: string | null
+          rent_account_id: string | null
+          requested_by_user_id: string | null
+          resident_id: string | null
+          return_reason: string | null
+          status: string | null
+          updated_at: string | null
+          woreda_id: string | null
+        }
+        Insert: {
+          approval_decision_at?: string | null
+          approved_by_user_id?: string | null
+          assigned_arrears_amount?: number | null
+          assigned_arrears_amount_decrypted?: never
+          assigned_arrears_amount_enc?: string | null
+          created_at?: string | null
+          installment_count?: number | null
+          original_arrears_amount?: number | null
+          original_arrears_amount_decrypted?: never
+          original_arrears_amount_enc?: string | null
+          plan_id?: string | null
+          plan_number?: string | null
+          reason?: string | null
+          rent_account_id?: string | null
+          requested_by_user_id?: string | null
+          resident_id?: string | null
+          return_reason?: string | null
+          status?: string | null
+          updated_at?: string | null
+          woreda_id?: string | null
+        }
+        Update: {
+          approval_decision_at?: string | null
+          approved_by_user_id?: string | null
+          assigned_arrears_amount?: number | null
+          assigned_arrears_amount_decrypted?: never
+          assigned_arrears_amount_enc?: string | null
+          created_at?: string | null
+          installment_count?: number | null
+          original_arrears_amount?: number | null
+          original_arrears_amount_decrypted?: never
+          original_arrears_amount_enc?: string | null
+          plan_id?: string | null
+          plan_number?: string | null
+          reason?: string | null
+          rent_account_id?: string | null
+          requested_by_user_id?: string | null
+          resident_id?: string | null
+          return_reason?: string | null
+          status?: string | null
+          updated_at?: string | null
+          woreda_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "arrears_repayment_plan_approved_by_user_id_fkey"
+            columns: ["approved_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "app_user"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "arrears_repayment_plan_rent_account_id_fkey"
+            columns: ["rent_account_id"]
+            isOneToOne: false
+            referencedRelation: "rent_account"
+            referencedColumns: ["rent_account_id"]
+          },
+          {
+            foreignKeyName: "arrears_repayment_plan_requested_by_user_id_fkey"
+            columns: ["requested_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "app_user"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "arrears_repayment_plan_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "household_member_roster"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "arrears_repayment_plan_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "resident"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "arrears_repayment_plan_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "resident_decrypted"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "arrears_repayment_plan_woreda_id_fkey"
+            columns: ["woreda_id"]
+            isOneToOne: false
+            referencedRelation: "woreda"
+            referencedColumns: ["woreda_id"]
+          },
+        ]
+      }
       household_decrypted: {
         Row: {
           active_flag: boolean | null
@@ -5089,6 +5684,66 @@ export type Database = {
           },
         ]
       }
+      rent_reminder_decrypted: {
+        Row: {
+          created_at: string | null
+          delivery_channel: string | null
+          delivery_status: string | null
+          reminder_id: string | null
+          reminder_type: string | null
+          rent_account_id: string | null
+          snapshot_amount: number | null
+          snapshot_amount_decrypted: number | null
+          snapshot_amount_enc: string | null
+          snapshot_month_count: number | null
+          snapshot_oldest_overdue_period: string | null
+          woreda_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          delivery_channel?: string | null
+          delivery_status?: string | null
+          reminder_id?: string | null
+          reminder_type?: string | null
+          rent_account_id?: string | null
+          snapshot_amount?: number | null
+          snapshot_amount_decrypted?: never
+          snapshot_amount_enc?: string | null
+          snapshot_month_count?: number | null
+          snapshot_oldest_overdue_period?: string | null
+          woreda_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          delivery_channel?: string | null
+          delivery_status?: string | null
+          reminder_id?: string | null
+          reminder_type?: string | null
+          rent_account_id?: string | null
+          snapshot_amount?: number | null
+          snapshot_amount_decrypted?: never
+          snapshot_amount_enc?: string | null
+          snapshot_month_count?: number | null
+          snapshot_oldest_overdue_period?: string | null
+          woreda_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rent_reminder_rent_account_id_fkey"
+            columns: ["rent_account_id"]
+            isOneToOne: false
+            referencedRelation: "rent_account"
+            referencedColumns: ["rent_account_id"]
+          },
+          {
+            foreignKeyName: "rent_reminder_woreda_id_fkey"
+            columns: ["woreda_id"]
+            isOneToOne: false
+            referencedRelation: "woreda"
+            referencedColumns: ["woreda_id"]
+          },
+        ]
+      }
       rental_occupancy_decrypted: {
         Row: {
           created_at: string | null
@@ -5772,6 +6427,15 @@ export type Database = {
         Args: { _credential_id: string }
         Returns: undefined
       }
+      create_arrears_repayment_plan: {
+        Args: {
+          _installment_count: number
+          _installment_due_dates: string[]
+          _reason: string
+          _rent_account_id: string
+        }
+        Returns: string
+      }
       current_console_permissions: { Args: never; Returns: string[] }
       current_permissions: { Args: never; Returns: string[] }
       decrypt_pii_numeric: {
@@ -5806,11 +6470,16 @@ export type Database = {
         Args: { _due_date: string; _target_period: string }
         Returns: Json
       }
+      generate_rent_reminders: { Args: never; Returns: Json }
       get_civil_kpis: { Args: never; Returns: Json }
       get_credential_kpis: { Args: never; Returns: Json }
       get_credential_live_status: {
         Args: { _credential_number: string }
         Returns: string
+      }
+      get_rent_account_ledger_summary: {
+        Args: { _rent_account_id: string }
+        Returns: Json
       }
       get_service_kpis: { Args: never; Returns: Json }
       get_user_woreda_id: { Args: never; Returns: string }
@@ -5848,6 +6517,7 @@ export type Database = {
         Args: { _bucket_key: string; _window_seconds: number }
         Returns: number
       }
+      refresh_rent_ledger_statuses: { Args: never; Returns: Json }
       rental_eligibility: {
         Args: {
           _rental_house_id: string
@@ -5875,6 +6545,19 @@ export type Database = {
       }
       reverse_rental_payment: {
         Args: { _payment_id: string; _reason: string }
+        Returns: Json
+      }
+      settle_arrears_installments: {
+        Args: {
+          _channel: string
+          _idempotency_key: string
+          _installment_ids: string[]
+          _payer_resident_id: string
+          _payment_amount: number
+          _payment_date: string
+          _plan_id: string
+          _reference_number: string
+        }
         Returns: Json
       }
       settle_rent_payment: {
