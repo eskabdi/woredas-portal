@@ -24,6 +24,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { P } from "@/config/permissions";
 import { OCCUPATION_OPTIONS } from "@/lib/residentConstants";
 import { Navigate } from "@tanstack/react-router";
+import { formatEthiopianDateOnly } from "@/utils/ethiopianCalendar";
 
 export const Route = createFileRoute("/woreda/rental-houses/$houseId/")({
   ssr: false,
@@ -31,7 +32,35 @@ export const Route = createFileRoute("/woreda/rental-houses/$houseId/")({
 });
 
 function fmtDate(d: string | null | undefined) {
-  return d ? d : "—";
+  return d ? formatEthiopianDateOnly(d) : "—";
+}
+
+const OCCUPANCY_STATUS_LABEL: Record<string, { am: string; en: string }> = {
+  vacant: { am: "ክፍት", en: "Vacant" },
+  occupied: { am: "ተይዟል", en: "Occupied" },
+  under_maintenance: { am: "እድሳት ላይ", en: "Under maintenance" },
+};
+
+const OCCUPANCY_HISTORY_STATUS_LABEL: Record<string, { am: string; en: string }> = {
+  active: { am: "ንቁ", en: "Active" },
+  terminated: { am: "ተቋርጧል", en: "Terminated" },
+};
+
+// Same status set as StatusBadge/STATUS_LABEL in
+// woreda.rental-houses.requests.index.tsx -- keep these two in sync.
+const REQUEST_STATUS_LABEL: Record<string, { am: string; en: string }> = {
+  submitted: { am: "ገብቷል", en: "Submitted" },
+  under_review: { am: "በግምገማ ላይ", en: "Under review" },
+  verified: { am: "ተረጋግጧል", en: "Verified" },
+  returned: { am: "ተመልሷል", en: "Returned" },
+  approval_returned: { am: "በአጽዳቂ ተመልሷል", en: "Returned by approver" },
+  rejected: { am: "ውድቅ ተደርጓል", en: "Rejected" },
+  approved: { am: "ፀድቋል", en: "Approved" },
+};
+
+function statusLabel(map: Record<string, { am: string; en: string }>, status: string) {
+  const l = map[status];
+  return l ? `${l.am} / ${l.en}` : status;
 }
 
 interface ResidentBirthPlace {
@@ -203,7 +232,7 @@ function RentalHouseDetailPage() {
                   : "outline"
             }
           >
-            {house.occupancy_status}
+            {statusLabel(OCCUPANCY_STATUS_LABEL, house.occupancy_status)}
           </Badge>
         }
         actions={
@@ -231,17 +260,23 @@ function RentalHouseDetailPage() {
                   })
                 }
               >
-                <Pencil className="mr-1 h-4 w-4" /> Edit
+                <Pencil className="mr-1 h-4 w-4" />
+                <span className="font-am-body">አርትዕ</span>
+                <span className="ml-1 opacity-80">/ Edit</span>
               </Button>
             )}
             {hasPermission(P.RENTAL_CREATE) && house.occupancy_status !== "occupied" && (
               <Button onClick={() => setAssignOpen(true)}>
-                <UserPlus className="mr-1 h-4 w-4" /> Assign occupant
+                <UserPlus className="mr-1 h-4 w-4" />
+                <span className="font-am-body">ተከራይ ይመድቡ</span>
+                <span className="ml-1 opacity-80">/ Assign occupant</span>
               </Button>
             )}
             {hasPermission(P.RENTAL_VACATE) && house.occupancy_status === "occupied" && active && (
               <Button variant="destructive" onClick={() => setVacateOpen(true)}>
-                <UserMinus className="mr-1 h-4 w-4" /> Vacate
+                <UserMinus className="mr-1 h-4 w-4" />
+                <span className="font-am-body">ማስለቀቅ</span>
+                <span className="ml-1 opacity-80">/ Vacate</span>
               </Button>
             )}
           </div>
@@ -250,7 +285,9 @@ function RentalHouseDetailPage() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Card className="p-4">
-          <div className="text-xs uppercase text-slate-500">Occupancy</div>
+          <div className="text-xs uppercase text-slate-500">
+            <span className="font-am-body normal-case">ኪራይ ሁኔታ</span> / Occupancy
+          </div>
           <div className="mt-1">
             <Badge
               variant={
@@ -261,12 +298,14 @@ function RentalHouseDetailPage() {
                     : "outline"
               }
             >
-              {house.occupancy_status}
+              {statusLabel(OCCUPANCY_STATUS_LABEL, house.occupancy_status)}
             </Badge>
           </div>
         </Card>
         <Card className="p-4">
-          <div className="text-xs uppercase text-slate-500">Monthly Rent</div>
+          <div className="text-xs uppercase text-slate-500">
+            <span className="font-am-body normal-case">ወርሃዊ ኪራይ</span> / Monthly Rent
+          </div>
           <div className="mt-1 text-lg font-semibold">
             {house.monthly_rent_standard != null
               ? Number(house.monthly_rent_standard).toLocaleString()
@@ -275,7 +314,9 @@ function RentalHouseDetailPage() {
           </div>
         </Card>
         <Card className="p-4">
-          <div className="text-xs uppercase text-slate-500">Bedrooms</div>
+          <div className="text-xs uppercase text-slate-500">
+            <span className="font-am-body normal-case">የመኝታ ክፍሎች</span> / Bedrooms
+          </div>
           <div className="mt-1 text-lg font-semibold">{house.bedrooms ?? "—"}</div>
         </Card>
       </div>
@@ -287,44 +328,62 @@ function RentalHouseDetailPage() {
           </div>
           <div className="flex flex-wrap items-center gap-6">
             <div>
-              <div className="text-xs text-slate-500">Name</div>
+              <div className="text-xs text-slate-500">
+                <span className="font-am-body">ስም</span> / Name
+              </div>
               <div className="font-am-body">
                 {active.resident?.full_name_am || active.resident?.full_name || "—"}
               </div>
             </div>
             <div>
-              <div className="text-xs text-slate-500">Start</div>
+              <div className="text-xs text-slate-500">
+                <span className="font-am-body">የገባበት ቀን</span> / Start
+              </div>
               <div>{fmtDate(active.rent_start_date)}</div>
             </div>
             <div>
-              <div className="text-xs text-slate-500">Rent</div>
+              <div className="text-xs text-slate-500">
+                <span className="font-am-body">ኪራይ</span> / Rent
+              </div>
               <div>{Number(active.rent_amount).toLocaleString()} ETB</div>
             </div>
+            {hasPermission(P.RENTAL_VIEW) && (
+              <Link
+                to="/woreda/rental-accounts/$occupancyId"
+                params={{ occupancyId: active.occupancy_id }}
+                className="ml-auto text-sm font-medium text-blue-700 hover:underline"
+              >
+                የኪራይ ሂሳብ / Rent Ledger →
+              </Link>
+            )}
           </div>
         </Card>
       )}
 
       <Card className="overflow-hidden">
         <div className="border-b bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700">
-          <ScrollText className="mr-1 inline h-4 w-4" /> Occupancy History
+          <ScrollText className="mr-1 inline h-4 w-4" />
+          <span className="font-am-body">የኪራይ ታሪክ</span>
+          <span className="ml-1 opacity-80">/ Occupancy History</span>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-slate-50">
               <tr className="text-left text-slate-600">
-                <th className="px-4 py-2">Occupant</th>
-                <th className="px-4 py-2">Start</th>
-                <th className="px-4 py-2">End</th>
-                <th className="px-4 py-2">Rent</th>
-                <th className="px-4 py-2">Status</th>
-                <th className="px-4 py-2">Reason</th>
+                <th className="px-4 py-2">ተከራይ / Occupant</th>
+                <th className="px-4 py-2">የገባበት ቀን / Start</th>
+                <th className="px-4 py-2">የወጣበት ቀን / End</th>
+                <th className="px-4 py-2">ኪራይ / Rent</th>
+                <th className="px-4 py-2">ሁኔታ / Status</th>
+                <th className="px-4 py-2">ምክንያት / Reason</th>
               </tr>
             </thead>
             <tbody>
               {(occupancies ?? []).length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-4 py-6 text-center text-slate-500">
-                    No occupancy history.
+                    <span className="font-am-body">የኪራይ ታሪክ የለም።</span>{" "}
+                    <span className="opacity-80">/ No occupancy history.</span>
                   </td>
                 </tr>
               )}
@@ -338,7 +397,7 @@ function RentalHouseDetailPage() {
                   <td className="px-4 py-2">{Number(o.rent_amount).toLocaleString()}</td>
                   <td className="px-4 py-2">
                     <Badge variant={o.status === "active" ? "default" : "secondary"}>
-                      {o.status}
+                      {statusLabel(OCCUPANCY_HISTORY_STATUS_LABEL, o.status)}
                     </Badge>
                   </td>
                   <td className="px-4 py-2">{o.termination_reason ?? "—"}</td>
@@ -351,16 +410,17 @@ function RentalHouseDetailPage() {
 
       <Card className="overflow-hidden">
         <div className="border-b bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700">
-          Workflow Requests
+          <span className="font-am-body">የስራ ፍሰት ጥያቄዎች</span>
+          <span className="ml-1 opacity-80">/ Workflow Requests</span>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead className="bg-slate-50">
               <tr className="text-left text-slate-600">
-                <th className="px-4 py-2">Request #</th>
-                <th className="px-4 py-2">Type</th>
-                <th className="px-4 py-2">Occupant</th>
-                <th className="px-4 py-2">Status</th>
+                <th className="px-4 py-2">ጥያቄ ቁ. / Request #</th>
+                <th className="px-4 py-2">አይነት / Type</th>
+                <th className="px-4 py-2">ተከራይ / Occupant</th>
+                <th className="px-4 py-2">ሁኔታ / Status</th>
                 <th className="px-4 py-2"></th>
               </tr>
             </thead>
@@ -368,19 +428,24 @@ function RentalHouseDetailPage() {
               {(requests ?? []).length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-4 py-6 text-center text-slate-500">
-                    No requests.
+                    <span className="font-am-body">ጥያቄዎች የሉም።</span>{" "}
+                    <span className="opacity-80">/ No requests.</span>
                   </td>
                 </tr>
               )}
               {(requests ?? []).map((r) => (
                 <tr key={r.rental_request_id} className="border-t">
                   <td className="px-4 py-2 font-medium">{r.request_number}</td>
-                  <td className="px-4 py-2">{r.request_type}</td>
+                  <td className="px-4 py-2">
+                    {r.request_type === "termination"
+                      ? "መተው / Termination"
+                      : "አዲስ ምዝገባ / New registration"}
+                  </td>
                   <td className="px-4 py-2 font-am-body">
                     {r.resident?.full_name_am || r.resident?.full_name || "—"}
                   </td>
                   <td className="px-4 py-2">
-                    <Badge variant="outline">{r.status}</Badge>
+                    <Badge variant="outline">{statusLabel(REQUEST_STATUS_LABEL, r.status)}</Badge>
                   </td>
                   <td className="px-4 py-2 text-right">
                     <Link
@@ -388,7 +453,7 @@ function RentalHouseDetailPage() {
                       params={{ requestId: r.rental_request_id }}
                       className="text-blue-700 hover:underline"
                     >
-                      Open →
+                      ክፈት / Open →
                     </Link>
                   </td>
                 </tr>
@@ -549,7 +614,7 @@ function AssignDialog({
               value={residentId}
               onChange={(id) => setResidentId(id)}
               woredaId={woredaId}
-              placeholder="Search resident by name / ID"
+              placeholder="በስም / በመታወቂያ ይፈልጉ / Search resident by name / ID"
             />
           </div>
           <div>
@@ -603,10 +668,12 @@ function AssignDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
-            Cancel
+            <span className="font-am-body">ሰርዝ</span>
+            <span className="ml-1 opacity-80">/ Cancel</span>
           </Button>
           <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
-            Submit Request
+            <span className="font-am-body">ጥያቄ አስገባ</span>
+            <span className="ml-1 opacity-80">/ Submit Request</span>
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -687,24 +754,32 @@ function VacateDialog({
         </DialogHeader>
         <div className="space-y-3">
           <div>
-            <Label>Termination date (ET)</Label>
+            <Label>
+              <span className="font-am-body">የመተው ቀን (ኢት)</span>{" "}
+              <span className="text-xs text-slate-500">/ Termination date (ET)</span>
+            </Label>
             <EthiopianDateInput value={terminationDate} onChange={setTerminationDate} />
           </div>
           <div>
-            <Label>Reason</Label>
+            <Label>
+              <span className="font-am-body">ምክንያት</span>{" "}
+              <span className="text-xs text-slate-500">/ Reason</span>
+            </Label>
             <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} />
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
-            Cancel
+            <span className="font-am-body">ሰርዝ</span>
+            <span className="ml-1 opacity-80">/ Cancel</span>
           </Button>
           <Button
             variant="destructive"
             onClick={() => mutation.mutate()}
             disabled={mutation.isPending}
           >
-            Submit Vacate
+            <span className="font-am-body">ማስለቀቅ አስገባ</span>
+            <span className="ml-1 opacity-80">/ Submit Vacate</span>
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -56,8 +56,10 @@ they are read-only, so run whichever fit in parallel:
 | deploy tooling, `.claude/`, `.env*`, anything after a migration or deploy                                                 | `secret-sweep`              | a deploy token reaching a commit                                                                                                                                      |
 | `workflow_transition`, `enforce_workflow_transition()`, any `*_status_check` constraint, a route that writes a status     | `workflow-fsm-review`       | a working button that starts raising, a gate a transition skips, a resurrectable terminal state, a system transition a user can drive                                 |
 | `permissions.ts`, `seed.sql` grants, `default_role_perms()`, `role_permission`, `tenant_role`, `user_permission_override` | `rbac-escalation-review`    | a permission in one source but not the other two, a reserved power made grantable, `tenant_admin` becoming editable, a custom role that leaks or resolves to defaults |
+| `rent_charge`, `rent_account`, `rental_payment`, `rent_payment_settlement`, `arrears_repayment_plan`/`installment`, `payment_reconciliation_exception`, `generate_rent_charges()`, `rental_policy` | `rental-financial-integrity-review` | a partial-month settlement, a stored arrears figure, a Pagumē charge, a non-atomic payment/settlement write, a monetary column missing the encryption-mirror pattern |
 
-The last two are new with the production-readiness fix task. A migration that
+The last three are new with the production-readiness fix task and the Kebele
+Rental Houses billing module respectively. A migration that
 touches both a status machine and a permission needs both — they check
 different halves of the same change, and the FSM reviewer will not notice that
 `credential.review` was never seeded.

@@ -21,7 +21,7 @@ export const Route = createFileRoute("/woreda/rental-houses/new")({
 
 const schema = z.object({
   kebele_id: z.string().uuid("ቀበሌ ይምረጡ / Select a kebele"),
-  house_number: z.string().trim().min(1, "የቤት ቁጥር ያስፈልጋል").max(50),
+  house_number: z.string().trim().min(1, "የቤት ቁጥር ያስፈልጋል / House number is required").max(50),
   address_line: z.string().trim().max(255).optional().default(""),
   monthly_rent_standard: z.string().trim().min(1, "የቤት ኪራይ መጠን ያስፈልጋል"),
   bedrooms: z.string().trim().optional().default(""),
@@ -170,9 +170,9 @@ function NewRentalHousePage() {
 
             <FieldWrap labelAm="የተያዥ ሁኔታ" labelEn="Occupancy Status">
               <Select {...form.register("occupancy_status")}>
-                <option value="vacant">Vacant</option>
-                <option value="occupied">Occupied</option>
-                <option value="under_maintenance">Under maintenance</option>
+                <option value="vacant">ክፍት / Vacant</option>
+                <option value="occupied">ተይዟል / Occupied</option>
+                <option value="under_maintenance">እድሳት ላይ / Under maintenance</option>
               </Select>
             </FieldWrap>
           </Grid>
@@ -184,11 +184,11 @@ function NewRentalHousePage() {
             variant="outline"
             onClick={() => navigate({ to: "/woreda/rental-houses" })}
           >
-            Cancel
+            ሰርዝ / Cancel
           </Button>
           <Button type="submit" disabled={mutation.isPending}>
             <Save className="mr-1 h-4 w-4" />
-            {mutation.isPending ? "Saving…" : "Save"}
+            {mutation.isPending ? "በማስቀመጥ ላይ… / Saving…" : "አስቀምጥ / Save"}
           </Button>
         </div>
       </form>

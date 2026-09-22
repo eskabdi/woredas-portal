@@ -85,6 +85,12 @@ export const PERMISSION_LABELS: Record<string, string> = {
   "rental.approve": "Approve",
   "rental.vacate": "Vacate",
   "rental.report": "Report",
+  "rental.billing": "Generate Billing",
+  "rental.collect": "Collect Payment",
+  "rental.settle": "Resolve Exceptions",
+  "rental.plan.create": "Create Repayment Plan",
+  "rental.plan.approve": "Approve Repayment Plan",
+  "rental.plan.manage": "Default/Cancel Plan",
   "revenue.view": "View",
   "revenue.collect": "Collect",
   "revenue.receipt_reprint": "Reprint Receipt",
@@ -95,6 +101,7 @@ export const PERMISSION_LABELS: Record<string, string> = {
   "service.issue": "Issue",
   "complaint.manage": "Manage",
   "approval.queue.view": "View Queue",
+  "service.checkpoint_override": "Override Rental Checkpoint",
 };
 
 export function RolesPermissionsTab() {

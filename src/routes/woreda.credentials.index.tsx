@@ -67,15 +67,15 @@ function CredentialsListPage() {
   };
   const filterLabel = (() => {
     const parts: string[] = [];
-    if (activeFilters.q) parts.push(`Search: "${activeFilters.q}"`);
-    if (activeFilters.status !== "all") parts.push(`Status: ${activeFilters.status}`);
+    if (activeFilters.q) parts.push(`ፍለጋ / Search: "${activeFilters.q}"`);
+    if (activeFilters.status !== "all") parts.push(`ሁኔታ / Status: ${activeFilters.status}`);
     if (activeFilters.type !== "all")
-      parts.push(`Type: ${REQUEST_TYPE_LABEL[activeFilters.type] ?? activeFilters.type}`);
-    if (activeFilters.kebele !== "all") parts.push(`Kebele: ${activeFilters.kebele}`);
-    if (activeFilters.officer !== "all") parts.push(`Officer: ${activeFilters.officer}`);
-    if (activeFilters.from) parts.push(`From: ${activeFilters.from}`);
-    if (activeFilters.to) parts.push(`To: ${activeFilters.to}`);
-    return parts.length ? parts.join(" • ") : "All credential requests";
+      parts.push(`ዓይነት / Type: ${REQUEST_TYPE_LABEL[activeFilters.type] ?? activeFilters.type}`);
+    if (activeFilters.kebele !== "all") parts.push(`ቀበሌ / Kebele: ${activeFilters.kebele}`);
+    if (activeFilters.officer !== "all") parts.push(`ባለሙያ / Officer: ${activeFilters.officer}`);
+    if (activeFilters.from) parts.push(`ከ / From: ${activeFilters.from}`);
+    if (activeFilters.to) parts.push(`እስከ / To: ${activeFilters.to}`);
+    return parts.length ? parts.join(" • ") : "ሁሉም የመታወቂያ ጥያቄዎች / All credential requests";
   })();
 
   const exportColumns: TableColumn<ExportRow>[] = [
@@ -147,7 +147,7 @@ function CredentialsListPage() {
         filterLabel,
         titleEn: "Credential Requests",
       });
-      toast.success("CSV export ready");
+      toast.success("CSV ተዘጋጅቷል / CSV export ready");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to export CSV");
     } finally {
@@ -168,7 +168,7 @@ function CredentialsListPage() {
         columns: exportColumns,
         rows,
       });
-      toast.success("PDF export ready");
+      toast.success("PDF ተዘጋጅቷል / PDF export ready");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to export PDF");
     } finally {

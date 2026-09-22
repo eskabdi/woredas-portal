@@ -26,6 +26,7 @@ import { Route as WoredaComplaintsRouteImport } from './routes/woreda.complaints
 import { Route as WoredaCredentialsRouteImport } from './routes/woreda.credentials'
 import { Route as WoredaDashboardRouteImport } from './routes/woreda.dashboard'
 import { Route as WoredaHouseholdsRouteImport } from './routes/woreda.households'
+import { Route as WoredaRentalReportsRouteImport } from './routes/woreda.rental-reports'
 import { Route as WoredaReportsRouteImport } from './routes/woreda.reports'
 import { Route as WoredaResidentsRouteImport } from './routes/woreda.residents'
 import { Route as WoredaRevenueRouteImport } from './routes/woreda.revenue'
@@ -40,6 +41,7 @@ import { Route as WoredaCredentialsNewRouteImport } from './routes/woreda.creden
 import { Route as WoredaCredentialsVerifyRouteImport } from './routes/woreda.credentials.verify'
 import { Route as WoredaHouseholdsIndexRouteImport } from './routes/woreda.households.index'
 import { Route as WoredaHouseholdsNewRouteImport } from './routes/woreda.households.new'
+import { Route as WoredaRentalAccountsOccupancyIdRouteImport } from './routes/woreda.rental-accounts.$occupancyId'
 import { Route as WoredaRentalHousesIndexRouteImport } from './routes/woreda.rental-houses.index'
 import { Route as WoredaRentalHousesNewRouteImport } from './routes/woreda.rental-houses.new'
 import { Route as WoredaReportsIndexRouteImport } from './routes/woreda.reports.index'
@@ -162,6 +164,11 @@ const WoredaHouseholdsRoute = WoredaHouseholdsRouteImport.update({
   path: '/households',
   getParentRoute: () => WoredaRoute,
 } as any)
+const WoredaRentalReportsRoute = WoredaRentalReportsRouteImport.update({
+  id: '/rental-reports',
+  path: '/rental-reports',
+  getParentRoute: () => WoredaRoute,
+} as any)
 const WoredaReportsRoute = WoredaReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
@@ -232,6 +239,12 @@ const WoredaHouseholdsNewRoute = WoredaHouseholdsNewRouteImport.update({
   path: '/new',
   getParentRoute: () => WoredaHouseholdsRoute,
 } as any)
+const WoredaRentalAccountsOccupancyIdRoute =
+  WoredaRentalAccountsOccupancyIdRouteImport.update({
+    id: '/rental-accounts/$occupancyId',
+    path: '/rental-accounts/$occupancyId',
+    getParentRoute: () => WoredaRoute,
+  } as any)
 const WoredaRentalHousesIndexRoute = WoredaRentalHousesIndexRouteImport.update({
   id: '/rental-houses/',
   path: '/rental-houses/',
@@ -454,6 +467,7 @@ export interface FileRoutesByFullPath {
   '/woreda/credentials': typeof WoredaCredentialsRouteWithChildren
   '/woreda/dashboard': typeof WoredaDashboardRoute
   '/woreda/households': typeof WoredaHouseholdsRouteWithChildren
+  '/woreda/rental-reports': typeof WoredaRentalReportsRoute
   '/woreda/reports': typeof WoredaReportsRouteWithChildren
   '/woreda/residents': typeof WoredaResidentsRouteWithChildren
   '/woreda/revenue': typeof WoredaRevenueRouteWithChildren
@@ -464,6 +478,7 @@ export interface FileRoutesByFullPath {
   '/woreda/credentials/new': typeof WoredaCredentialsNewRoute
   '/woreda/credentials/verify': typeof WoredaCredentialsVerifyRoute
   '/woreda/households/new': typeof WoredaHouseholdsNewRoute
+  '/woreda/rental-accounts/$occupancyId': typeof WoredaRentalAccountsOccupancyIdRoute
   '/woreda/rental-houses/new': typeof WoredaRentalHousesNewRoute
   '/woreda/residents/new': typeof WoredaResidentsNewRoute
   '/woreda/services/new': typeof WoredaServicesNewRoute
@@ -520,12 +535,14 @@ export interface FileRoutesByTo {
   '/woreda/audit': typeof WoredaAuditRoute
   '/woreda/complaints': typeof WoredaComplaintsRoute
   '/woreda/dashboard': typeof WoredaDashboardRoute
+  '/woreda/rental-reports': typeof WoredaRentalReportsRoute
   '/verify/letter/$token': typeof VerifyLetterTokenRoute
   '/verify/receipt/$token': typeof VerifyReceiptTokenRoute
   '/woreda/civil/$eventId': typeof WoredaCivilEventIdRoute
   '/woreda/credentials/new': typeof WoredaCredentialsNewRoute
   '/woreda/credentials/verify': typeof WoredaCredentialsVerifyRoute
   '/woreda/households/new': typeof WoredaHouseholdsNewRoute
+  '/woreda/rental-accounts/$occupancyId': typeof WoredaRentalAccountsOccupancyIdRoute
   '/woreda/rental-houses/new': typeof WoredaRentalHousesNewRoute
   '/woreda/residents/new': typeof WoredaResidentsNewRoute
   '/woreda/services/new': typeof WoredaServicesNewRoute
@@ -586,6 +603,7 @@ export interface FileRoutesById {
   '/woreda/credentials': typeof WoredaCredentialsRouteWithChildren
   '/woreda/dashboard': typeof WoredaDashboardRoute
   '/woreda/households': typeof WoredaHouseholdsRouteWithChildren
+  '/woreda/rental-reports': typeof WoredaRentalReportsRoute
   '/woreda/reports': typeof WoredaReportsRouteWithChildren
   '/woreda/residents': typeof WoredaResidentsRouteWithChildren
   '/woreda/revenue': typeof WoredaRevenueRouteWithChildren
@@ -596,6 +614,7 @@ export interface FileRoutesById {
   '/woreda/credentials/new': typeof WoredaCredentialsNewRoute
   '/woreda/credentials/verify': typeof WoredaCredentialsVerifyRoute
   '/woreda/households/new': typeof WoredaHouseholdsNewRoute
+  '/woreda/rental-accounts/$occupancyId': typeof WoredaRentalAccountsOccupancyIdRoute
   '/woreda/rental-houses/new': typeof WoredaRentalHousesNewRoute
   '/woreda/residents/new': typeof WoredaResidentsNewRoute
   '/woreda/services/new': typeof WoredaServicesNewRoute
@@ -657,6 +676,7 @@ export interface FileRouteTypes {
     | '/woreda/credentials'
     | '/woreda/dashboard'
     | '/woreda/households'
+    | '/woreda/rental-reports'
     | '/woreda/reports'
     | '/woreda/residents'
     | '/woreda/revenue'
@@ -667,6 +687,7 @@ export interface FileRouteTypes {
     | '/woreda/credentials/new'
     | '/woreda/credentials/verify'
     | '/woreda/households/new'
+    | '/woreda/rental-accounts/$occupancyId'
     | '/woreda/rental-houses/new'
     | '/woreda/residents/new'
     | '/woreda/services/new'
@@ -723,12 +744,14 @@ export interface FileRouteTypes {
     | '/woreda/audit'
     | '/woreda/complaints'
     | '/woreda/dashboard'
+    | '/woreda/rental-reports'
     | '/verify/letter/$token'
     | '/verify/receipt/$token'
     | '/woreda/civil/$eventId'
     | '/woreda/credentials/new'
     | '/woreda/credentials/verify'
     | '/woreda/households/new'
+    | '/woreda/rental-accounts/$occupancyId'
     | '/woreda/rental-houses/new'
     | '/woreda/residents/new'
     | '/woreda/services/new'
@@ -788,6 +811,7 @@ export interface FileRouteTypes {
     | '/woreda/credentials'
     | '/woreda/dashboard'
     | '/woreda/households'
+    | '/woreda/rental-reports'
     | '/woreda/reports'
     | '/woreda/residents'
     | '/woreda/revenue'
@@ -798,6 +822,7 @@ export interface FileRouteTypes {
     | '/woreda/credentials/new'
     | '/woreda/credentials/verify'
     | '/woreda/households/new'
+    | '/woreda/rental-accounts/$occupancyId'
     | '/woreda/rental-houses/new'
     | '/woreda/residents/new'
     | '/woreda/services/new'
@@ -972,6 +997,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WoredaHouseholdsRouteImport
       parentRoute: typeof WoredaRoute
     }
+    '/woreda/rental-reports': {
+      id: '/woreda/rental-reports'
+      path: '/rental-reports'
+      fullPath: '/woreda/rental-reports'
+      preLoaderRoute: typeof WoredaRentalReportsRouteImport
+      parentRoute: typeof WoredaRoute
+    }
     '/woreda/reports': {
       id: '/woreda/reports'
       path: '/reports'
@@ -1069,6 +1101,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/woreda/households/new'
       preLoaderRoute: typeof WoredaHouseholdsNewRouteImport
       parentRoute: typeof WoredaHouseholdsRoute
+    }
+    '/woreda/rental-accounts/$occupancyId': {
+      id: '/woreda/rental-accounts/$occupancyId'
+      path: '/rental-accounts/$occupancyId'
+      fullPath: '/woreda/rental-accounts/$occupancyId'
+      preLoaderRoute: typeof WoredaRentalAccountsOccupancyIdRouteImport
+      parentRoute: typeof WoredaRoute
     }
     '/woreda/rental-houses/': {
       id: '/woreda/rental-houses/'
@@ -1484,10 +1523,12 @@ interface WoredaRouteChildren {
   WoredaCredentialsRoute: typeof WoredaCredentialsRouteWithChildren
   WoredaDashboardRoute: typeof WoredaDashboardRoute
   WoredaHouseholdsRoute: typeof WoredaHouseholdsRouteWithChildren
+  WoredaRentalReportsRoute: typeof WoredaRentalReportsRoute
   WoredaReportsRoute: typeof WoredaReportsRouteWithChildren
   WoredaResidentsRoute: typeof WoredaResidentsRouteWithChildren
   WoredaRevenueRoute: typeof WoredaRevenueRouteWithChildren
   WoredaServicesRoute: typeof WoredaServicesRouteWithChildren
+  WoredaRentalAccountsOccupancyIdRoute: typeof WoredaRentalAccountsOccupancyIdRoute
   WoredaRentalHousesNewRoute: typeof WoredaRentalHousesNewRoute
   WoredaSettingsUsersPermissionsRoute: typeof WoredaSettingsUsersPermissionsRoute
   WoredaSettingsWoredaConfigurationRoute: typeof WoredaSettingsWoredaConfigurationRoute
@@ -1509,10 +1550,12 @@ const WoredaRouteChildren: WoredaRouteChildren = {
   WoredaCredentialsRoute: WoredaCredentialsRouteWithChildren,
   WoredaDashboardRoute: WoredaDashboardRoute,
   WoredaHouseholdsRoute: WoredaHouseholdsRouteWithChildren,
+  WoredaRentalReportsRoute: WoredaRentalReportsRoute,
   WoredaReportsRoute: WoredaReportsRouteWithChildren,
   WoredaResidentsRoute: WoredaResidentsRouteWithChildren,
   WoredaRevenueRoute: WoredaRevenueRouteWithChildren,
   WoredaServicesRoute: WoredaServicesRouteWithChildren,
+  WoredaRentalAccountsOccupancyIdRoute: WoredaRentalAccountsOccupancyIdRoute,
   WoredaRentalHousesNewRoute: WoredaRentalHousesNewRoute,
   WoredaSettingsUsersPermissionsRoute: WoredaSettingsUsersPermissionsRoute,
   WoredaSettingsWoredaConfigurationRoute:

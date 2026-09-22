@@ -95,6 +95,34 @@ export const P = {
   RENTAL_APPROVE: "rental.approve",
   RENTAL_VACATE: "rental.vacate",
   RENTAL_REPORT: "rental.report",
+  // Kebele Rental Houses Management plan, Phase 0: writes to rental_policy
+  // (due-date rule, reminder cadence, checkpoint blocking behavior, etc.).
+  // Reserved (RESERVED_PERMISSION_KEYS below) -- the same administrative
+  // category as credential.configure_policy.
+  RENTAL_POLICY_CONFIGURE: "rental.policy.configure",
+  // Phase 2 (Financial core): invokes generate_rent_charges() -- an
+  // administrative financial action (creates the period's rent charges for
+  // every active account in the tenant), not a per-record CRUD verb, so it
+  // is scoped like RENTAL_POLICY_CONFIGURE rather than folded into
+  // RENTAL_CREATE/RENTAL_APPROVE. Not reserved: unlike RENTAL_POLICY_CONFIGURE
+  // this is an ordinary grantable permission a tenant_admin may hand to
+  // another role via the matrix (e.g. a finance_clerk) if the tenant wants
+  // that.
+  RENTAL_BILLING: "rental.billing",
+  // Phase 3 (Settlement and payments): rental.collect/.settle are ordinary
+  // grantable permissions (same category as RENTAL_BILLING). rental.reverse
+  // is RESERVED (RESERVED_PERMISSION_KEYS below) -- reversing money already
+  // collected is the same risk class as CREDENTIAL_REVOKE, which is also
+  // tenant_admin-only and reserved.
+  RENTAL_COLLECT: "rental.collect",
+  RENTAL_SETTLE: "rental.settle",
+  RENTAL_REVERSE: "rental.reverse",
+  // Phase 4 (Arrears and repayment plans): all three ordinary/grantable --
+  // defaulting/cancelling an active plan (plan.manage) is supervisory but
+  // not itself money-moving, unlike RENTAL_REVERSE.
+  RENTAL_PLAN_CREATE: "rental.plan.create",
+  RENTAL_PLAN_APPROVE: "rental.plan.approve",
+  RENTAL_PLAN_MANAGE: "rental.plan.manage",
   REVENUE_VIEW: "revenue.view",
   REVENUE_COLLECT: "revenue.collect",
   REVENUE_RECEIPT_REPRINT: "revenue.receipt_reprint",
@@ -115,6 +143,13 @@ export const P = {
   SERVICE_RECORD_PAYMENT: "service.record_payment",
   SERVICE_ISSUE_LETTER: "service.issue_letter",
   SERVICE_COMPLETE: "service.complete",
+  // Phase 5 (Cross-module checkpoint): overriding a rental-arrears block on
+  // a gated service request. Ordinary/grantable -- a supervisory judgment
+  // call, not itself money-moving, so it sits with RENTAL_PLAN_MANAGE's
+  // risk class rather than RENTAL_REVERSE's. The DB trigger also requires
+  // the woreda's rental_policy.emergency_exemption to be true and a
+  // non-empty reason, regardless of who holds this permission.
+  SERVICE_CHECKPOINT_OVERRIDE: "service.checkpoint_override",
   COMPLAINT_MANAGE: "complaint.manage",
   APPROVAL_QUEUE_VIEW: "approval.queue.view",
 } as const;
@@ -143,9 +178,11 @@ export type ConsolePermission = (typeof CP)[keyof typeof CP];
 // no matter which role's default_role_perms() already includes them. Enforced
 // server-side: role_permission's INSERT/UPDATE policies, user_permission_override's
 // CHECK constraint, and tenant_role_permission's CHECK constraint all exclude
-// this exact list (00000000000021, 00000000000036, 00000000000038); this
-// comment and RESERVED_PERMISSION_KEYS below are documentation, not the
-// enforcement itself -- keep both in sync with those constraints by hand.
+// this exact list (00000000000021, 00000000000036, 00000000000037,
+// 00000000000038, 00000000000071); this comment and RESERVED_PERMISSION_KEYS
+// below are documentation, not the enforcement itself -- keep both in sync
+// with those constraints by hand. rental.policy.configure (Kebele Rental
+// Houses plan, Phase 0) joined the list in 00000000000071.
 export const RESERVED_PERMISSION_KEYS: Permission[] = [
   P.PLATFORM_MANAGE,
   P.TENANT_CREATE,
@@ -155,6 +192,8 @@ export const RESERVED_PERMISSION_KEYS: Permission[] = [
   P.CIVIL_APPROVE,
   P.CREDENTIAL_REVOKE,
   P.CREDENTIAL_CONFIGURE_POLICY,
+  P.RENTAL_POLICY_CONFIGURE,
+  P.RENTAL_REVERSE,
 ];
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   super_admin: [
@@ -235,6 +274,15 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     P.SERVICE_RECORD_PAYMENT,
     P.SERVICE_ISSUE_LETTER,
     P.SERVICE_COMPLETE,
+    P.RENTAL_POLICY_CONFIGURE,
+    P.RENTAL_BILLING,
+    P.RENTAL_COLLECT,
+    P.RENTAL_SETTLE,
+    P.RENTAL_REVERSE,
+    P.RENTAL_PLAN_CREATE,
+    P.RENTAL_PLAN_APPROVE,
+    P.RENTAL_PLAN_MANAGE,
+    P.SERVICE_CHECKPOINT_OVERRIDE,
   ],
   supervisor: [
     P.RESIDENT_READ,
@@ -266,6 +314,9 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     P.CIVIL_REJECT,
     P.CIVIL_VIEW,
     P.SERVICE_REJECT,
+    P.RENTAL_PLAN_APPROVE,
+    P.RENTAL_PLAN_MANAGE,
+    P.SERVICE_CHECKPOINT_OVERRIDE,
   ],
   civil_registrar: [
     P.RESIDENT_CREATE,
@@ -318,6 +369,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     P.CIVIL_READ,
     P.RENTAL_VIEW,
     P.RENTAL_CREATE,
+    P.RENTAL_COLLECT,
     P.SERVICE_CREATE,
     P.SERVICE_READ,
     P.SERVICE_ISSUE,
@@ -363,6 +415,10 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     P.CIVIL_VIEW,
     P.CIVIL_RECORD_PAYMENT,
     P.SERVICE_RECORD_PAYMENT,
+    P.RENTAL_VIEW,
+    P.RENTAL_COLLECT,
+    P.RENTAL_SETTLE,
+    P.RENTAL_PLAN_CREATE,
   ],
   auditor: [
     P.RESIDENT_READ,
@@ -479,6 +535,13 @@ export const NAV_PERMISSION_MAP: NavItem[] = [
     icon: "Building2",
     href: "/woreda/rental-houses",
     permission: P.RENTAL_VIEW,
+  },
+  {
+    labelAm: "የኪራይ ፋይናንስ ሪፖርቶች",
+    labelEn: "Rental Financial Reports",
+    icon: "BarChart3",
+    href: "/woreda/rental-reports",
+    permission: P.RENTAL_REPORT,
   },
   {
     labelAm: "አገልግሎት ጥያቄዎች",

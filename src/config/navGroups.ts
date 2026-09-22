@@ -37,6 +37,7 @@ const HREF_TO_GROUP: Record<string, NavGroupKey> = {
   "/woreda/credentials": "credentials",
   "/woreda/credentials/verify": "credentials",
   "/woreda/rental-houses": "rental",
+  "/woreda/rental-reports": "rental",
   "/woreda/approvals": "queues",
   "/woreda/revenue": "revenue",
   "/woreda/reports": "administration",

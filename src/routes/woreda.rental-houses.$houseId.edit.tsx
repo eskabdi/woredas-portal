@@ -25,7 +25,6 @@ const schema = z.object({
   address_line: z.string().trim().max(255).optional().default(""),
   monthly_rent_standard: z.string().trim().min(1),
   bedrooms: z.string().trim().optional().default(""),
-  occupancy_status: z.enum(["vacant", "occupied", "under_maintenance"]),
 });
 type FormInput = z.input<typeof schema>;
 type FormValues = z.output<typeof schema>;
@@ -69,7 +68,6 @@ function EditRentalHousePage() {
 
   const form = useForm<FormInput, unknown, FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { occupancy_status: "vacant" },
   });
 
   useEffect(() => {
@@ -80,7 +78,6 @@ function EditRentalHousePage() {
         address_line: house.address_line ?? "",
         monthly_rent_standard: String(house.monthly_rent_standard ?? ""),
         bedrooms: house.bedrooms != null ? String(house.bedrooms) : "",
-        occupancy_status: house.occupancy_status as "vacant" | "occupied" | "under_maintenance",
       });
     }
   }, [house, form]);
@@ -98,7 +95,12 @@ function EditRentalHousePage() {
         .maybeSingle();
       if (dup) throw new Error("የቤት ቁጥር በዚህ ቀበሌ ውስጥ ተመዝግቧል / House number exists");
 
-      const { error } = await supabase
+      // occupancy_status is deliberately not writable from this form (AF-01):
+      // it is trigger-maintained from the occupancy create/terminate
+      // transactions only, and a manual change here would either be
+      // rejected by that guard (while an active occupancy exists) or drift
+      // from the occupancy the moment one is next created.
+      const { data, error } = await supabase
         .from("kebele_rental_house")
         .update({
           kebele_id: v.kebele_id,
@@ -106,10 +108,13 @@ function EditRentalHousePage() {
           address_line: v.address_line || null,
           monthly_rent_standard: Number(v.monthly_rent_standard),
           bedrooms: v.bedrooms ? Number(v.bedrooms) : null,
-          occupancy_status: v.occupancy_status,
         })
-        .eq("rental_house_id", houseId);
+        .eq("rental_house_id", houseId)
+        .select("rental_house_id")
+        .maybeSingle();
       if (error) throw error;
+      if (!data)
+        throw new Error("ቤቱ አልተገኘም ወይም ማዘመን አልተቻለም / House not found or update did not apply");
 
       await supabase.from("audit_log").insert({
         woreda_id: woredaId!,
@@ -121,7 +126,7 @@ function EditRentalHousePage() {
       });
     },
     onSuccess: () => {
-      toast.success("Saved");
+      toast.success("ተቀምጧል / Saved");
       qc.invalidateQueries({ queryKey: ["rental-house", houseId] });
       qc.invalidateQueries({ queryKey: ["rental-houses"] });
       navigate({ to: "/woreda/rental-houses/$houseId", params: { houseId } });
@@ -169,13 +174,6 @@ function EditRentalHousePage() {
             <FieldWrap labelAm="የመኝታ ክፍሎች" labelEn="Bedrooms">
               <Input type="number" min="0" {...form.register("bedrooms")} />
             </FieldWrap>
-            <FieldWrap labelAm="የተያዥ ሁኔታ" labelEn="Occupancy">
-              <Select {...form.register("occupancy_status")}>
-                <option value="vacant">Vacant</option>
-                <option value="occupied">Occupied</option>
-                <option value="under_maintenance">Under maintenance</option>
-              </Select>
-            </FieldWrap>
           </Grid>
         </Section>
         <div className="flex justify-end gap-2">
@@ -184,11 +182,11 @@ function EditRentalHousePage() {
             variant="outline"
             onClick={() => navigate({ to: "/woreda/rental-houses/$houseId", params: { houseId } })}
           >
-            Cancel
+            ሰርዝ / Cancel
           </Button>
           <Button type="submit" disabled={mutation.isPending}>
             <Save className="mr-1 h-4 w-4" />
-            {mutation.isPending ? "Saving…" : "Save"}
+            {mutation.isPending ? "በማስቀመጥ ላይ… / Saving…" : "አስቀምጥ / Save"}
           </Button>
         </div>
       </form>

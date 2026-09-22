@@ -2,13 +2,22 @@ import { createFileRoute, Navigate, useNavigate, useSearch } from "@tanstack/rea
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { FileText, MessageSquareWarning, Paperclip, Send, User, X } from "lucide-react";
+import {
+  AlertTriangle,
+  FileText,
+  MessageSquareWarning,
+  Paperclip,
+  Send,
+  User,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -40,6 +49,7 @@ import {
   PRIORITY_LABEL,
   type ServiceCategory,
 } from "@/lib/serviceConstants";
+import { ethiopianPeriodLabel } from "@/utils/ethiopianCalendar";
 
 const searchSchema = z.object({
   residentId: z.string().optional(),
@@ -90,6 +100,8 @@ function NewServiceRequestPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [checkpointOverride, setCheckpointOverride] = useState(false);
+  const [checkpointOverrideReason, setCheckpointOverrideReason] = useState("");
 
   const selectedType = useMemo(
     () => (typesQuery.data ?? []).find((t) => t.service_type_id === serviceTypeId) ?? null,
@@ -143,6 +155,35 @@ function NewServiceRequestPage() {
     setKebeleId(r.household?.kebele_id || "");
   }, [residentDetailQuery.data]);
 
+  const checkpointGated = !!selectedType?.rental_checkpoint_gated;
+  const checkpointQuery = useQuery({
+    queryKey: ["rental-checkpoint", residentId],
+    enabled: checkpointGated && !!residentId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("resolve_rental_checkpoint", {
+        _resident_id: residentId,
+      } as never);
+      if (error) throw error;
+      return data as {
+        has_active_occupancy: boolean;
+        has_rent_account?: boolean;
+        overdue_month_count?: number;
+        overdue_total?: number;
+        oldest_overdue_period?: string;
+        has_active_plan?: boolean;
+        active_plan_number?: string;
+        emergency_exemption?: boolean;
+        would_block: boolean;
+      };
+    },
+  });
+  const checkpoint = checkpointGated ? checkpointQuery.data : undefined;
+
+  useEffect(() => {
+    setCheckpointOverride(false);
+    setCheckpointOverrideReason("");
+  }, [residentId, serviceTypeId]);
+
   if (!hasPermission(P.SERVICE_CREATE)) return <Navigate to="/woreda/dashboard" />;
 
   const addFiles = (list: FileList | null) => {
@@ -172,6 +213,14 @@ function NewServiceRequestPage() {
     if (details.trim().length < 10)
       e["details"] = "ቢያንስ 10 ፊደል ያስገቡ / Provide at least 10 characters";
     if (!isValidPhoneDigits(applicantPhone)) e["applicantPhone"] = PHONE_DIGITS_ERROR;
+    if (checkpoint?.would_block) {
+      if (!checkpointOverride) {
+        e["checkpoint"] = "ያልተከፈለ የኪራይ ዕዳ ስላለ ጥያቄው ታግዷል / Blocked by unresolved rental arrears";
+      } else if (checkpointOverrideReason.trim().length === 0) {
+        e["checkpointOverrideReason"] =
+          "ማለፊያውን ለምን እንደተጠቀሙ ምክንያት ያስፈልጋል / A reason is required to override this checkpoint";
+      }
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -196,6 +245,11 @@ function NewServiceRequestPage() {
     fee_amount: selectedType!.requires_payment ? selectedType!.fee_amount : 0,
     request_number: "",
     requested_by_user_id: actorUserId,
+    checkpoint_override: checkpointGated && !!checkpoint?.would_block && checkpointOverride,
+    checkpoint_override_reason:
+      checkpointGated && !!checkpoint?.would_block && checkpointOverride
+        ? checkpointOverrideReason.trim()
+        : null,
   });
 
   const handleSubmit = async () => {
@@ -393,6 +447,85 @@ function NewServiceRequestPage() {
             </Select>
           </FieldWrap>
         </Grid>
+
+        {checkpointGated && residentId && (
+          <div className="mt-4">
+            {checkpointQuery.isLoading ? (
+              <p className="font-am-body text-xs text-slate-500">
+                የኪራይ ሁኔታ በመፈተሽ ላይ… / Checking rental standing…
+              </p>
+            ) : checkpoint?.has_active_occupancy && checkpoint.would_block ? (
+              <div className="space-y-2 rounded-md border border-red-200 bg-red-50 p-3">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+                  <div className="text-sm text-red-900">
+                    <p className="font-am-body font-medium">
+                      ይህ አመልካች/ቤተሰብ {checkpoint.overdue_month_count} ወራት ያልተከፈለ የኪራይ ዕዳ አለበት (
+                      {Number(checkpoint.overdue_total ?? 0).toLocaleString()} ETB) — ከ
+                      {checkpoint.oldest_overdue_period
+                        ? ethiopianPeriodLabel(checkpoint.oldest_overdue_period)
+                        : "—"}{" "}
+                      ጀምሮ
+                    </p>
+                    <p className="mt-0.5 text-xs text-red-700">
+                      / {checkpoint.overdue_month_count} unpaid rental month(s), ETB{" "}
+                      {Number(checkpoint.overdue_total ?? 0).toLocaleString()}, oldest since{" "}
+                      {checkpoint.oldest_overdue_period
+                        ? ethiopianPeriodLabel(checkpoint.oldest_overdue_period)
+                        : "—"}
+                      .{" "}
+                      {checkpoint.has_active_plan
+                        ? `An active repayment plan (${checkpoint.active_plan_number}) exists but does not clear this block under this woreda's policy.`
+                        : "This request is blocked by policy."}
+                    </p>
+                  </div>
+                </div>
+                {errors["checkpoint"] && (
+                  <p className="font-am-body text-xs text-red-700">{errors["checkpoint"]}</p>
+                )}
+                {checkpoint.emergency_exemption && hasPermission(P.SERVICE_CHECKPOINT_OVERRIDE) && (
+                  <div className="space-y-2 border-t border-red-200 pt-2">
+                    <label className="flex items-center gap-2 text-sm text-red-900">
+                      <Checkbox
+                        checked={checkpointOverride}
+                        onCheckedChange={(v) => setCheckpointOverride(Boolean(v))}
+                      />
+                      <span className="font-am-body">
+                        የአስቸኳይ ጊዜ ማለፊያ ተጠቀም / Use emergency override
+                      </span>
+                    </label>
+                    {checkpointOverride && (
+                      <div>
+                        <Textarea
+                          className="font-am-body"
+                          placeholder="ምክንያት / Reason"
+                          value={checkpointOverrideReason}
+                          onChange={(e) => setCheckpointOverrideReason(e.target.value)}
+                        />
+                        {errors["checkpointOverrideReason"] && (
+                          <p className="mt-1 text-xs text-red-700">
+                            {errors["checkpointOverrideReason"]}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : checkpoint?.has_active_occupancy && (checkpoint.overdue_month_count ?? 0) > 0 ? (
+              <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                <p className="font-am-body text-sm text-amber-900">
+                  ያልተከፈለ የኪራይ ዕዳ አለ ({checkpoint.overdue_month_count} ወራት) — አግድ አይደለም
+                  <span className="ml-1 block text-xs text-amber-700">
+                    / {checkpoint.overdue_month_count} unpaid rental month(s) — not blocking, for
+                    visibility only.
+                  </span>
+                </p>
+              </div>
+            ) : null}
+          </div>
+        )}
       </Section>
 
       <Section

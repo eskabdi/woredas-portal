@@ -36,6 +36,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { formatEthiopianDateOnly } from "@/utils/ethiopianCalendar";
 import { EthiopianDateInput } from "@/components/common/EthiopianDateInput";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
@@ -217,11 +218,15 @@ function OccupantRegistrationPage() {
       return;
     }
     if (!tile.types.includes(file.type)) {
-      toast.error(`${tile.en}: unsupported file type — allowed ${tile.hint}`);
+      toast.error(
+        `${tile.am} / ${tile.en}: ያልተደገፈ የፋይል አይነት — የተፈቀደው ${tile.hint} / unsupported file type — allowed ${tile.hint}`,
+      );
       return;
     }
     if (file.size > tile.maxMB * 1024 * 1024) {
-      toast.error(`${tile.en}: file is larger than ${tile.maxMB}MB`);
+      toast.error(
+        `${tile.am} / ${tile.en}: ፋይሉ ከ${tile.maxMB}ሜባ ይበልጣል / file is larger than ${tile.maxMB}MB`,
+      );
       return;
     }
     setUploads((u) => ({ ...u, [key]: file }));
@@ -447,10 +452,15 @@ function OccupantRegistrationPage() {
           to="/woreda/rental-houses"
           className="inline-flex items-center gap-1 hover:text-slate-900"
         >
-          <ArrowLeft className="h-4 w-4" /> Kebele Rental Houses
+          <ArrowLeft className="h-4 w-4" />
+          <span className="font-am-body">የቀበሌ ኪራይ ቤቶች</span>
+          <span className="ml-1 opacity-80">/ Kebele Rental Houses</span>
         </Link>
         <span className="mx-2 text-slate-300">/</span>
-        <span className="text-slate-700">Occupant Registration Form</span>
+        <span className="text-slate-700">
+          <span className="font-am-body">የተከራይ ምዝገባ ቅጽ</span>
+          <span className="ml-1 opacity-80">/ Occupant Registration Form</span>
+        </span>
       </div>
 
       {/* Header */}
@@ -468,7 +478,7 @@ function OccupantRegistrationPage() {
             onClick={() => navigate({ to: "/woreda/rental-houses" })}
             className="font-am-body"
           >
-            ሰርዝ
+            ሰርዝ <span className="font-sans opacity-80">/ Cancel</span>
           </Button>
           <Button
             type="button"
@@ -485,9 +495,9 @@ function OccupantRegistrationPage() {
             )}
             {mutation.isPending
               ? uploadStep
-                ? `ሰነድ እየተላከ… (${uploadStep})`
-                : "እየተመዘገበ..."
-              : "ይመዝገቡ"}
+                ? `ሰነድ እየተላከ… (${uploadStep}) / Uploading document…`
+                : "እየተመዘገበ... / Registering…"
+              : "ይመዝገቡ / Register"}
           </Button>
         </div>
       </div>
@@ -506,24 +516,37 @@ function OccupantRegistrationPage() {
                 <p className="font-am-body">የተከራይ ምዝገባ ጥያቄ ይፈጠራል። መረጃውን ያረጋግጡ።</p>
                 <ul className="space-y-1 text-slate-600">
                   <li>
-                    <span className="font-medium">Occupant:</span>{" "}
+                    <span className="font-medium">
+                      <span className="font-am-body">ተከራይ</span> / Occupant:
+                    </span>{" "}
                     <span className="font-am-body">
                       {resident?.full_name_am || resident?.full_name || "—"}
                     </span>{" "}
                     ({resident?.resident_number})
                   </li>
                   <li>
-                    <span className="font-medium">House:</span> {selectedHouse?.house_number ?? "—"}
+                    <span className="font-medium">
+                      <span className="font-am-body">ቤት</span> / House:
+                    </span>{" "}
+                    {selectedHouse?.house_number ?? "—"}
                   </li>
                   <li>
-                    <span className="font-medium">Rent:</span>{" "}
+                    <span className="font-medium">
+                      <span className="font-am-body">ኪራይ</span> / Rent:
+                    </span>{" "}
                     {Number(rentAmount || 0).toLocaleString()} ETB / {frequency}
                   </li>
                   <li>
-                    <span className="font-medium">Start:</span> {rentStart || "—"}
+                    <span className="font-medium">
+                      <span className="font-am-body">የመጀመሪያ ቀን</span> / Start:
+                    </span>{" "}
+                    {rentStart ? formatEthiopianDateOnly(rentStart) : "—"}
                   </li>
                   <li>
-                    <span className="font-medium">Documents:</span> {Object.keys(uploads).length}{" "}
+                    <span className="font-medium">
+                      <span className="font-am-body">ሰነዶች</span> / Documents:
+                    </span>{" "}
+                    {Object.keys(uploads).length} <span className="font-am-body">ተያይዘዋል</span> /
                     attached
                   </li>
                 </ul>
@@ -532,7 +555,7 @@ function OccupantRegistrationPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={mutation.isPending} className="font-am-body">
-              ተመለስ
+              ተመለስ <span className="font-sans opacity-80">/ Back</span>
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
@@ -543,7 +566,7 @@ function OccupantRegistrationPage() {
               className="bg-[#0b2a63] font-am-body hover:bg-[#0b2a63]/90"
             >
               {mutation.isPending && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
-              አረጋግጥ
+              አረጋግጥ <span className="font-sans opacity-80">/ Confirm</span>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -651,7 +674,7 @@ function OccupantRegistrationPage() {
                       value={residentSearch}
                       maxLength={60}
                       onChange={(e) => setResidentSearch(e.target.value)}
-                      placeholder="Search by name / resident #"
+                      placeholder="በስም / በመለያ ቁጥር ይፈልጉ / Search by name / resident #"
                       className="mb-2"
                     />
                     <div className="max-h-56 overflow-auto">
@@ -667,20 +690,24 @@ function OccupantRegistrationPage() {
                       )}
                       {searchEnabled && search.isFetching && (
                         <div className="flex items-center gap-2 p-2 text-sm text-slate-500">
-                          <Loader2 className="h-4 w-4 animate-spin" /> Searching…
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span className="font-am-body">በመፈለግ ላይ…</span>
+                          <span className="opacity-80">/ Searching…</span>
                         </div>
                       )}
                       {searchEnabled && search.isError && (
                         <div className="p-2 text-sm text-red-600">
                           <div className="flex items-center gap-2">
-                            <AlertCircle className="h-4 w-4" /> Search failed.
+                            <AlertCircle className="h-4 w-4" />
+                            <span className="font-am-body">ፍለጋ አልተሳካም።</span>
+                            <span className="opacity-80">/ Search failed.</span>
                           </div>
                           <button
                             type="button"
                             onClick={() => search.refetch()}
                             className="mt-1 text-xs font-medium underline"
                           >
-                            Retry
+                            እንደገና ሞክር / Retry
                           </button>
                         </div>
                       )}

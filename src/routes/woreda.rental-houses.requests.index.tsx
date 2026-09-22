@@ -27,6 +27,7 @@ import {
 import { TableEmptyRow, TableErrorRow, TableSkeletonRows } from "@/components/common/TableStates";
 import { exportRowsToCsv, exportRowsToPdf, type TableColumn } from "@/utils/tableExport";
 import { useReportBranding } from "@/hooks/useReportBranding";
+import { formatEthiopianDate, parseStoredDate } from "@/utils/ethiopianCalendar";
 
 export const Route = createFileRoute("/woreda/rental-houses/requests/")({
   ssr: false,
@@ -135,9 +136,8 @@ function TabNav() {
 
 function fmtDate(iso: string | null | undefined) {
   if (!iso) return "—";
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  const d = parseStoredDate(iso);
+  return d ? formatEthiopianDate(d) : "—";
 }
 
 const STATUS_LABEL: Record<string, { am: string; en: string; className: string }> = {
@@ -340,9 +340,9 @@ function RentalRequestListPage() {
           rows: allRows,
         });
       }
-      toast.success("Export complete");
+      toast.success("ወደ ውጪ መላክ ተጠናቋል / Export complete");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Export failed");
+      toast.error(e instanceof Error ? e.message : "ወደ ውጪ መላክ አልተሳካም / Export failed");
     } finally {
       setExporting(false);
     }
@@ -356,10 +356,13 @@ function RentalRequestListPage() {
         icon={FileText}
         titleAm="የቤት ኪራይ ጥያቄዎች"
         titleEn="Rental Occupancy Requests"
-        description="All new registration and vacate requests across kebele rental houses"
+        description="ሁሉም አዲስ ምዝገባ እና የመተው ጥያቄዎች በቀበሌ ኪራይ ቤቶች / All new registration and vacate requests across kebele rental houses"
         actions={
           <Button asChild variant="outline">
-            <Link to="/woreda/rental-houses">← Back to Houses</Link>
+            <Link to="/woreda/rental-houses">
+              ← <span className="font-am-body">ወደ ቤቶች ተመለስ</span>{" "}
+              <span className="opacity-80">/ Back to Houses</span>
+            </Link>
           </Button>
         }
       />
@@ -382,21 +385,22 @@ function RentalRequestListPage() {
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
             >
-              <option value="">All types</option>
-              <option value="new_registration">New registration</option>
-              <option value="termination">Vacate</option>
+              <option value="">ሁሉም አይነቶች / All types</option>
+              <option value="new_registration">አዲስ ምዝገባ / New registration</option>
+              <option value="termination">መተው / Vacate</option>
             </select>
             <select
               className="h-10 rounded-md border border-input bg-background px-3 text-sm"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
-              <option value="">All statuses</option>
-              <option value="submitted">Submitted</option>
-              <option value="under_review">Under review</option>
-              <option value="returned">Returned</option>
-              <option value="verified">Verified</option>
-              <option value="rejected">Rejected</option>
+              <option value="">ሁሉም ሁኔታዎች / All statuses</option>
+              <option value="submitted">ገብቷል / Submitted</option>
+              <option value="under_review">በግምገማ ላይ / Under review</option>
+              <option value="returned">ተመልሷል / Returned</option>
+              <option value="verified">ተረጋግጧል / Verified</option>
+              <option value="approval_returned">በአጽዳቂ ተመልሷል / Returned by approver</option>
+              <option value="rejected">ውድቅ ተደርጓል / Rejected</option>
             </select>
           </>
         }
@@ -494,7 +498,7 @@ function RentalRequestListPage() {
                           params={{ requestId: r.rental_request_id }}
                           className="text-blue-700 hover:underline"
                         >
-                          Open →
+                          ክፈት / Open →
                         </Link>
                       </td>
                     </tr>

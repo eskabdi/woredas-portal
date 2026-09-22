@@ -46,7 +46,8 @@ const schema = z
     informant_phone: phoneDigitsSchema(),
   })
   .refine((v) => v.deceased_resident_id || v.deceased_name.trim().length > 0, {
-    message: "Select a registered resident or enter the deceased's name",
+    message:
+      "የተመዘገበ ነዋሪ ይምረጡ ወይም የሟቹን ስም ያስገቡ / Select a registered resident or enter the deceased's name",
     path: ["deceased_name"],
   });
 
@@ -166,7 +167,7 @@ function DeathNewPage() {
       toast.success("የሞት ምዝገባ ተልኳል / Death registration submitted");
       navigate({ to: "/woreda/civil/$eventId", params: { eventId } });
     },
-    onError: (e) => toast.error(`Submit failed: ${(e as Error).message}`),
+    onError: (e) => toast.error(`ማስገባት አልተሳካም / Submit failed: ${(e as Error).message}`),
   });
 
   const onSubmit = handleSubmit((raw) => {
@@ -199,7 +200,7 @@ function DeathNewPage() {
         titleEn="New Death Registration"
         actions={
           <Button variant="outline" onClick={() => navigate({ to: "/woreda/civil" })}>
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back
+            <ArrowLeft className="mr-2 h-4 w-4" /> ተመለስ / Back
           </Button>
         }
       />
@@ -299,7 +300,7 @@ function DeathNewPage() {
 
         <div className="flex items-center justify-end gap-3">
           <Button type="button" variant="outline" onClick={() => navigate({ to: "/woreda/civil" })}>
-            Cancel
+            ይቅር / Cancel
           </Button>
           <Button
             type="submit"

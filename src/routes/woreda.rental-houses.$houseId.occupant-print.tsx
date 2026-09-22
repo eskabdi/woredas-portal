@@ -377,12 +377,10 @@ function RentalOccupantPrintPage() {
             {(occupancies ?? []).map((o) => {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const res = o.resident as any;
-              const start = o.rent_start_date
-                ? new Date(o.rent_start_date).toLocaleDateString("en-GB")
-                : "—";
-              const end = o.termination_date
-                ? new Date(o.termination_date).toLocaleDateString("en-GB")
-                : "እስካሁን · Present";
+              const startDate = o.rent_start_date ? parseDateOnly(o.rent_start_date) : null;
+              const endDate = o.termination_date ? parseDateOnly(o.termination_date) : null;
+              const start = startDate ? formatEthiopianDate(startDate) : "—";
+              const end = endDate ? formatEthiopianDate(endDate) : "እስካሁን · Present";
               return (
                 <tr key={o.occupancy_id} className="border-b border-slate-100">
                   <td className="py-1.5 pr-3">

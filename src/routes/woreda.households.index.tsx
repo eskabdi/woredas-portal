@@ -14,7 +14,7 @@ import {
 import { TableSkeletonRows, TableEmptyRow, TableErrorRow } from "@/components/common/TableStates";
 import { exportRowsToCsv, exportRowsToPdf, type TableColumn } from "@/utils/tableExport";
 import { useReportBranding } from "@/hooks/useReportBranding";
-import { formatEthiopianDateShort } from "@/utils/ethiopianCalendar";
+import { formatEthiopianDateShort, formatEthiopianDateTime } from "@/utils/ethiopianCalendar";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -297,7 +297,7 @@ function HouseholdsListPage() {
         filters={
           <>
             <FilterGroup
-              label="Kebele"
+              label="ቀበሌ / Kebele"
               value={kebeleId}
               onChange={(v) => {
                 setKebeleId(v);
@@ -312,7 +312,7 @@ function HouseholdsListPage() {
               ]}
             />
             <FilterGroup
-              label="Occupancy"
+              label="ይዞታ / Occupancy"
               value={occupancy}
               onChange={(v) => {
                 setOccupancy(v as OccupancyFilter);
@@ -327,7 +327,7 @@ function HouseholdsListPage() {
               ]}
             />
             <FilterGroup
-              label="Type"
+              label="ዓይነት / Type"
               value={houseType}
               onChange={(v) => {
                 setHouseType(v as HouseTypeFilter);
@@ -676,7 +676,10 @@ function ChangeLogDrawer({
       <SheetContent className="w-full sm:max-w-lg">
         <SheetHeader>
           <SheetTitle className="font-am-body">የለውጥ ምዝግብ / Change Log</SheetTitle>
-          <SheetDescription>All recorded changes for this household.</SheetDescription>
+          <SheetDescription>
+            <span className="font-am-body">ለዚህ ቤተሰብ የተመዘገቡ ሁሉም ለውጦች።</span>
+            <span className="ml-1 opacity-80">/ All recorded changes for this household.</span>
+          </SheetDescription>
         </SheetHeader>
         <div className="mt-6 space-y-3">
           {query.isLoading && <Skeleton className="h-16 w-full" />}
@@ -692,7 +695,7 @@ function ChangeLogDrawer({
                   {row.change_type}
                 </span>
                 <span className="text-xs text-slate-500">
-                  {new Date(row.created_at).toLocaleString()}
+                  {formatEthiopianDateTime(new Date(row.created_at))}
                 </span>
               </div>
               {row.clerk_comment && (
