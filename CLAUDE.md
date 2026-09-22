@@ -475,14 +475,14 @@ the target project's `auth.users` — when a template or config table (e.g.
 `id_card_template_field`) is edited live in the DB, sync the same values into
 `seed.sql` or a fresh deploy silently regresses.
 
-The seven `supabase/functions/*` Edge Functions (`sign-credential`,
+The eight `supabase/functions/*` Edge Functions (`sign-credential`,
 `invite-tenant-user`, `invite-platform-admin`, `resend-platform-invite`,
-`activate-invited-user`, `record-login`, `send-password-reset-link`) are a
-separate deploy artifact from the schema — `supabase db push` and seed files
-don't touch them. `scripts/deploy-functions.sh` deploys all seven via the
-Management API (the CLI's `functions deploy` doesn't work from a
-proxied/sandboxed shell — see below). The `/deploy` skill in
-`.claude/skills/deploy/` covers the full deploy and its ordering. All seven
+`resend-tenant-invite`, `activate-invited-user`, `record-login`,
+`send-password-reset-link`) are a separate deploy artifact from the schema —
+`supabase db push` and seed files don't touch them. `scripts/deploy-functions.sh`
+deploys all eight via the Management API (the CLI's `functions deploy` doesn't
+work from a proxied/sandboxed shell — see below). The `/deploy` skill in
+`.claude/skills/deploy/` covers the full deploy and its ordering. All eight
 import shared helpers from `supabase/functions/_shared/` (`response.ts` for
 CORS/JSON/`safeError()`, `rateLimit.ts`, `clientIp.ts`) — see "Edge Function
 errors" above and "Rate limiting" below.
@@ -493,9 +493,10 @@ errors" above and "Rate limiting" below.
 a Postgres-backed fixed-window limiter — Edge Function isolates have no
 cross-invocation memory and this project has no Deno KV, so the counter lives
 in the database. `supabase/functions/_shared/rateLimit.ts`
-(`checkRateLimit()`) wraps the RPC and is called by the three invite
+(`checkRateLimit()`) wraps the RPC and is called by the invite/resend
 functions (`invite-tenant-user`, `invite-platform-admin`,
-`resend-platform-invite`), keyed by the **verified caller `user_id`**, never
+`resend-platform-invite`, `resend-tenant-invite`), keyed by the **verified
+caller `user_id`**, never
 by request-supplied IP (`clientIp.ts` derives IP for audit logging only, not
 as a trust boundary). **Deliberately fail-open**: an RPC error (table
 missing, transient DB failure) allows the request rather than blocking
@@ -689,15 +690,15 @@ break hooks. Don't pin a nitro preset — see the Vercel section.
 Seven review agents, each covering a failure mode this codebase has that a build
 or a typecheck will not catch. Invoke them by name.
 
-| Agent                        | Use it when                                                            | Guards against                                                                                                                          |
-| ---------------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `secret-sweep`                | after any migration or deploy, before pushing                          | a deploy token reaching a commit — see the rule at the top of this file                                                                |
-| `tenant-isolation-review`     | touching a permission, role, migration, RLS policy, or upload path      | cross-tenant reads, a client gate without its seed rows, a missing storage path prefix                                                 |
-| `portal-conventions-review`   | after adding a route or a list/detail page                             | a route missing `ssr: false`, table state in `useState` instead of the URL, non-bilingual labels, Gregorian dates in the woreda portal |
-| `card-print-review`           | touching signing, the print route, the template editor, QR or barcode  | invariants whose failure is only discovered after cards are physically printed                                                         |
-| `rbac-escalation-review`      | touching permissions.ts, seed.sql, `default_role_perms()`, `role_permission`, `tenant_role`, or `user_permission_override` | a permission escalation slipping in via one grant source but not the others                                    |
-| `workflow-fsm-review`         | touching `workflow_transition`, `enforce_workflow_transition()`, a `*_status_check` constraint, or a route writing a status | an unreachable/skippable/resurrectable workflow state                                            |
-| `main-logic-authority-review` | after any merge or rebase against `origin/main`, especially one resolved by hand or by taking main's whole file | a UI-restructuring branch silently altering main's business logic, permissions, or workflow/status literals instead of only layering display changes on top |
+| Agent                         | Use it when                                                                                                                 | Guards against                                                                                                                                              |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `secret-sweep`                | after any migration or deploy, before pushing                                                                               | a deploy token reaching a commit — see the rule at the top of this file                                                                                     |
+| `tenant-isolation-review`     | touching a permission, role, migration, RLS policy, or upload path                                                          | cross-tenant reads, a client gate without its seed rows, a missing storage path prefix                                                                      |
+| `portal-conventions-review`   | after adding a route or a list/detail page                                                                                  | a route missing `ssr: false`, table state in `useState` instead of the URL, non-bilingual labels, Gregorian dates in the woreda portal                      |
+| `card-print-review`           | touching signing, the print route, the template editor, QR or barcode                                                       | invariants whose failure is only discovered after cards are physically printed                                                                              |
+| `rbac-escalation-review`      | touching permissions.ts, seed.sql, `default_role_perms()`, `role_permission`, `tenant_role`, or `user_permission_override`  | a permission escalation slipping in via one grant source but not the others                                                                                 |
+| `workflow-fsm-review`         | touching `workflow_transition`, `enforce_workflow_transition()`, a `*_status_check` constraint, or a route writing a status | an unreachable/skippable/resurrectable workflow state                                                                                                       |
+| `main-logic-authority-review` | after any merge or rebase against `origin/main`, especially one resolved by hand or by taking main's whole file             | a UI-restructuring branch silently altering main's business logic, permissions, or workflow/status literals instead of only layering display changes on top |
 
 They are read-only reviewers (`Bash`, `Read`, `Grep`, `Glob`) — they report, they
 do not push, rewrite history or rotate credentials.
@@ -911,10 +912,10 @@ https://app.example.com/**,http://localhost:5173,http://localhost:5173/**
 Keep these narrow. A pattern like `https://*.vercel.app/**` would let any site
 on that domain receive users' auth tokens.
 
-Invited accounts land on `/set-password`; the three invite Edge Functions
-(`invite-tenant-user`, `invite-platform-admin`, `resend-platform-invite`) are
-what generate those links, so a redirect problem is usually in the function's
-request body rather than in the client.
+Invited accounts land on `/set-password`; the invite Edge Functions
+(`invite-tenant-user`, `invite-platform-admin`, `resend-platform-invite`,
+`resend-tenant-invite`) are what generate those links, so a redirect problem
+is usually in the function's request body rather than in the client.
 
 GoTrue can deliver an invite in two different shapes, and only one of them is
 handled automatically. The classic hash-fragment flow (`#access_token=...`) is

@@ -10,8 +10,10 @@ interface Body {
 }
 
 // Same boundary invite-tenant-user draws: a tenant admin manages staff, not
-// peers or platform admins. Reused here rather than widened, so a tenant
-// admin cannot use this to reset a co-admin's or a super_admin's password.
+// peers or platform admins. A tenant_admin caller is restricted to exactly
+// this set; a super_admin caller gets an additional platform-admin allowance
+// further down (canTargetPlatformAdmin), since only a super_admin has any
+// business resetting a tenant_admin's or another super_admin's password.
 const ALLOWED_TARGET_ROLES = new Set([
   "registry_clerk",
   "civil_registrar",
@@ -105,14 +107,21 @@ Deno.serve(async (req) => {
     const { data: target, error: targetErr } = await targetQuery.maybeSingle();
     if (targetErr || !target) return json(req, 404, { error: "User not found" });
 
-    if (!ALLOWED_TARGET_ROLES.has(target.role)) {
+    // A tenant_admin caller keeps the original staff-only boundary
+    // (invite-tenant-user draws the same line). A super_admin caller is
+    // additionally allowed to target tenant_admin/super_admin -- the
+    // platform-admin console has no other way to reach a stuck admin
+    // account, and only a super_admin (platform-wide by definition) can
+    // reach this branch at all.
+    const canTargetPlatformAdmin =
+      isSuper && (target.role === "tenant_admin" || target.role === "super_admin");
+    if (!ALLOWED_TARGET_ROLES.has(target.role) && !canTargetPlatformAdmin) {
       return json(req, 400, { error: "Cannot send a reset link for this role." });
     }
-    if (target.status === "pending") {
-      return json(req, 400, {
-        error: "This user has never completed setup. Resend the invitation instead.",
-      });
-    }
+    // Reset link is an active-account tool by design: a pending account has
+    // never set a password at all, so "resetting" it is meaningless -- the
+    // correct action for a pending target is resend-tenant-invite /
+    // resend-platform-invite, which re-sends the original invite link.
     if (target.status !== "active") {
       return json(req, 400, {
         error: "This account is not active. Reactivate it before sending a reset link.",
