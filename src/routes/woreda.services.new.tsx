@@ -49,6 +49,14 @@ import {
   PRIORITY_LABEL,
   type ServiceCategory,
 } from "@/lib/serviceConstants";
+import { ETHIOPIAN_MONTHS_AM, ETHIOPIAN_MONTHS_EN } from "@/utils/ethiopianCalendar";
+
+function periodLabel(periodKey: string): string {
+  const [yearStr, monthStr] = periodKey.split("-");
+  const monthIdx = Number(monthStr) - 1;
+  if (Number.isNaN(monthIdx) || monthIdx < 0 || monthIdx > 11) return periodKey;
+  return `${ETHIOPIAN_MONTHS_AM[monthIdx]} / ${ETHIOPIAN_MONTHS_EN[monthIdx]} ${yearStr}`;
+}
 
 const searchSchema = z.object({
   residentId: z.string().optional(),
@@ -461,12 +469,18 @@ function NewServiceRequestPage() {
                     <p className="font-am-body font-medium">
                       ይህ አመልካች/ቤተሰብ {checkpoint.overdue_month_count} ወራት ያልተከፈለ የኪራይ ዕዳ አለበት (
                       {Number(checkpoint.overdue_total ?? 0).toLocaleString()} ETB) — ከ
-                      {checkpoint.oldest_overdue_period} ጀምሮ
+                      {checkpoint.oldest_overdue_period
+                        ? periodLabel(checkpoint.oldest_overdue_period)
+                        : "—"}{" "}
+                      ጀምሮ
                     </p>
                     <p className="mt-0.5 text-xs text-red-700">
                       / {checkpoint.overdue_month_count} unpaid rental month(s), ETB{" "}
                       {Number(checkpoint.overdue_total ?? 0).toLocaleString()}, oldest since{" "}
-                      {checkpoint.oldest_overdue_period}.{" "}
+                      {checkpoint.oldest_overdue_period
+                        ? periodLabel(checkpoint.oldest_overdue_period)
+                        : "—"}
+                      .{" "}
                       {checkpoint.has_active_plan
                         ? `An active repayment plan (${checkpoint.active_plan_number}) exists but does not clear this block under this woreda's policy.`
                         : "This request is blocked by policy."}
