@@ -1,4 +1,4 @@
-# Harari Woreda Connect
+# Harari Woreda Portal
 
 # ወረዳ አስተዳደር ሥርዓት — Woreda Administration ERP
 
