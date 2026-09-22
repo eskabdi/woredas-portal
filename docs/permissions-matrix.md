@@ -127,6 +127,9 @@ INSA Enforcer Phase 2.3 / Phase 4 Access Control. Generated from `src/config/per
 | `rental.collect`          |             | ✓            |            |                 | ✓              | ✓             |         |        |               |        |
 | `rental.settle`           |             | ✓            |            |                 |                | ✓             |         |        |               |        |
 | `rental.reverse`          |             | ✓            |            |                 |                |               |         |        |               |        |
+| `rental.plan.create`      |             | ✓            |            |                 |                | ✓             |         |        |               |        |
+| `rental.plan.approve`     |             | ✓            | ✓          |                 |                |               |         |        |               |        |
+| `rental.plan.manage`      |             | ✓            | ✓          |                 |                |               |         |        |               |        |
 
 ### Revenue
 
@@ -138,20 +141,21 @@ INSA Enforcer Phase 2.3 / Phase 4 Access Control. Generated from `src/config/per
 
 ### Service Requests
 
-| Permission               | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer | print_officer | custom |
-| ------------------------ | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ | ------------- | ------ |
-| `service.create`         |             | ✓            |            | ✓               | ✓              |               |         |        |               |        |
-| `service.read`           |             | ✓            | ✓          | ✓               | ✓              | ✓             | ✓       | ✓      |               |        |
-| `service.verify`         |             | ✓            | ✓          | ✓               | ✓              |               |         |        |               |        |
-| `service.approve`        |             | ✓            | ✓          |                 |                |               |         |        |               |        |
-| `service.issue`          |             | ✓            |            | ✓               | ✓              |               |         |        |               |        |
-| `service.submit`         |             | ✓            |            | ✓               | ✓              |               |         |        |               |        |
-| `service.resubmit`       |             | ✓            |            | ✓               | ✓              |               |         |        |               |        |
-| `service.return`         |             | ✓            |            | ✓               | ✓              |               |         |        |               |        |
-| `service.reject`         |             | ✓            | ✓          |                 |                |               |         |        |               |        |
-| `service.record_payment` |             | ✓            |            |                 |                | ✓             |         |        |               |        |
-| `service.issue_letter`   |             | ✓            |            | ✓               | ✓              |               |         |        |               |        |
-| `service.complete`       |             | ✓            |            | ✓               | ✓              |               |         |        |               |        |
+| Permission                    | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer | print_officer | custom |
+| ----------------------------- | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ | ------------- | ------ |
+| `service.create`              |             | ✓            |            | ✓               | ✓              |               |         |        |               |        |
+| `service.read`                |             | ✓            | ✓          | ✓               | ✓              | ✓             | ✓       | ✓      |               |        |
+| `service.verify`              |             | ✓            | ✓          | ✓               | ✓              |               |         |        |               |        |
+| `service.approve`             |             | ✓            | ✓          |                 |                |               |         |        |               |        |
+| `service.issue`               |             | ✓            |            | ✓               | ✓              |               |         |        |               |        |
+| `service.submit`              |             | ✓            |            | ✓               | ✓              |               |         |        |               |        |
+| `service.resubmit`            |             | ✓            |            | ✓               | ✓              |               |         |        |               |        |
+| `service.return`              |             | ✓            |            | ✓               | ✓              |               |         |        |               |        |
+| `service.reject`              |             | ✓            | ✓          |                 |                |               |         |        |               |        |
+| `service.record_payment`      |             | ✓            |            |                 |                | ✓             |         |        |               |        |
+| `service.issue_letter`        |             | ✓            |            | ✓               | ✓              |               |         |        |               |        |
+| `service.complete`            |             | ✓            |            | ✓               | ✓              |               |         |        |               |        |
+| `service.checkpoint_override` |             | ✓            | ✓          |                 |                |               |         |        |               |        |
 
 ### Complaints
 
@@ -181,23 +185,24 @@ A second, independent permission dimension scoped to the Super Admin Console its
 
 `NAV_PERMISSION_MAP` — a sidebar item renders only if the signed-in user holds its permission (`null` = always visible).
 
-| Label (Amharic / English)              | Route                                   | Required permission   |
-| -------------------------------------- | --------------------------------------- | --------------------- |
-| ዳሽቦርድ / Dashboard                      | `/woreda/dashboard`                     | _(always visible)_    |
-| ነዋሪዎች / Residents                      | `/woreda/residents`                     | `resident.read`       |
-| ቤተሰቦች / Households                     | `/woreda/households`                    | `household.read`      |
-| የነዋሪ መታወቂያ / Credentials               | `/woreda/credentials`                   | `credential.read`     |
-| መታወቂያ ያረጋግጡ / Verify ID                | `/woreda/credentials/verify`            | `credential.verify`   |
-| የኩነት ምዝገባ / Civil Registration         | `/woreda/civil`                         | `civil.read`          |
-| የቀበሌ የኪራይ ቤቶች / Kebele Rental Houses   | `/woreda/rental-houses`                 | `rental.view`         |
-| አገልግሎት ጥያቄዎች / Service Requests        | `/woreda/services`                      | `service.read`        |
-| ቅሬታዎች / Complaints                     | `/woreda/complaints`                    | `service.read`        |
-| የማጽደቅ ወረፋ / Approval Queue             | `/woreda/approvals`                     | `approval.queue.view` |
-| ገቢ / Revenue                           | `/woreda/revenue`                       | `revenue.view`        |
-| ሪፖርቶች / Reports                        | `/woreda/reports`                       | `report.view`         |
-| ኦዲት / Audit Trail                      | `/woreda/audit`                         | `audit.view`          |
-| የወረዳ ውቅር / Woreda Configuration        | `/woreda/settings/woreda-configuration` | `tenant.manage`       |
-| ተጠቃሚዎች እና ፈቃዶች / Users and Permissions | `/woreda/settings/users-permissions`    | `tenant.manage`       |
+| Label (Amharic / English)                   | Route                                   | Required permission   |
+| ------------------------------------------- | --------------------------------------- | --------------------- |
+| ዳሽቦርድ / Dashboard                           | `/woreda/dashboard`                     | _(always visible)_    |
+| ነዋሪዎች / Residents                           | `/woreda/residents`                     | `resident.read`       |
+| ቤተሰቦች / Households                          | `/woreda/households`                    | `household.read`      |
+| የነዋሪ መታወቂያ / Credentials                    | `/woreda/credentials`                   | `credential.read`     |
+| መታወቂያ ያረጋግጡ / Verify ID                     | `/woreda/credentials/verify`            | `credential.verify`   |
+| የኩነት ምዝገባ / Civil Registration              | `/woreda/civil`                         | `civil.read`          |
+| የቀበሌ የኪራይ ቤቶች / Kebele Rental Houses        | `/woreda/rental-houses`                 | `rental.view`         |
+| የኪራይ ፋይናንስ ሪፖርቶች / Rental Financial Reports | `/woreda/rental-reports`                | `rental.report`       |
+| አገልግሎት ጥያቄዎች / Service Requests             | `/woreda/services`                      | `service.read`        |
+| ቅሬታዎች / Complaints                          | `/woreda/complaints`                    | `service.read`        |
+| የማጽደቅ ወረፋ / Approval Queue                  | `/woreda/approvals`                     | `approval.queue.view` |
+| ገቢ / Revenue                                | `/woreda/revenue`                       | `revenue.view`        |
+| ሪፖርቶች / Reports                             | `/woreda/reports`                       | `report.view`         |
+| ኦዲት / Audit Trail                           | `/woreda/audit`                         | `audit.view`          |
+| የወረዳ ውቅር / Woreda Configuration             | `/woreda/settings/woreda-configuration` | `tenant.manage`       |
+| ተጠቃሚዎች እና ፈቃዶች / Users and Permissions      | `/woreda/settings/users-permissions`    | `tenant.manage`       |
 
 ## Admin console navigation
 
