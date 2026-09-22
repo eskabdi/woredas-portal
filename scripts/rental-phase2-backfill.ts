@@ -86,7 +86,9 @@ function billingStartPeriodKey(rentStartDate: string): string {
   return `${e.year}-${pad2(e.month)}`;
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function sqlUuid(v: string): string {
+  if (!UUID_RE.test(v)) throw new Error(`unexpected uuid literal: ${v}`);
   return `'${v}'::uuid`;
 }
 function sqlUuidOrNull(v: string | null): string {
@@ -108,7 +110,7 @@ async function main() {
     SELECT o.occupancy_id, o.woreda_id, o.rental_house_id, o.resident_id, o.household_id,
            o.rent_start_date, o.rent_amount, h.kebele_id
       FROM public.rental_occupancy o
-      JOIN public.kebele_rental_house h ON h.rental_house_id = o.rental_house_id
+      JOIN public.kebele_rental_house h ON h.rental_house_id = o.rental_house_id AND h.woreda_id = o.woreda_id
      WHERE o.status = 'active'
        AND NOT EXISTS (
          SELECT 1 FROM public.rent_account ra
