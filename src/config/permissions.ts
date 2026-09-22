@@ -143,6 +143,13 @@ export const P = {
   SERVICE_RECORD_PAYMENT: "service.record_payment",
   SERVICE_ISSUE_LETTER: "service.issue_letter",
   SERVICE_COMPLETE: "service.complete",
+  // Phase 5 (Cross-module checkpoint): overriding a rental-arrears block on
+  // a gated service request. Ordinary/grantable -- a supervisory judgment
+  // call, not itself money-moving, so it sits with RENTAL_PLAN_MANAGE's
+  // risk class rather than RENTAL_REVERSE's. The DB trigger also requires
+  // the woreda's rental_policy.emergency_exemption to be true and a
+  // non-empty reason, regardless of who holds this permission.
+  SERVICE_CHECKPOINT_OVERRIDE: "service.checkpoint_override",
   COMPLAINT_MANAGE: "complaint.manage",
   APPROVAL_QUEUE_VIEW: "approval.queue.view",
 } as const;
@@ -275,6 +282,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     P.RENTAL_PLAN_CREATE,
     P.RENTAL_PLAN_APPROVE,
     P.RENTAL_PLAN_MANAGE,
+    P.SERVICE_CHECKPOINT_OVERRIDE,
   ],
   supervisor: [
     P.RESIDENT_READ,
@@ -308,6 +316,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     P.SERVICE_REJECT,
     P.RENTAL_PLAN_APPROVE,
     P.RENTAL_PLAN_MANAGE,
+    P.SERVICE_CHECKPOINT_OVERRIDE,
   ],
   civil_registrar: [
     P.RESIDENT_CREATE,
@@ -526,6 +535,13 @@ export const NAV_PERMISSION_MAP: NavItem[] = [
     icon: "Building2",
     href: "/woreda/rental-houses",
     permission: P.RENTAL_VIEW,
+  },
+  {
+    labelAm: "የኪራይ ፋይናንስ ሪፖርቶች",
+    labelEn: "Rental Financial Reports",
+    icon: "BarChart3",
+    href: "/woreda/rental-reports",
+    permission: P.RENTAL_REPORT,
   },
   {
     labelAm: "አገልግሎት ጥያቄዎች",

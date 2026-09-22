@@ -3653,6 +3653,8 @@ export type Database = {
           approval_decision_at: string | null
           approved_by_user_id: string | null
           category: string
+          checkpoint_override: boolean
+          checkpoint_override_reason: string | null
           closed_at: string | null
           created_at: string
           details: string | null
@@ -3695,6 +3697,8 @@ export type Database = {
           approval_decision_at?: string | null
           approved_by_user_id?: string | null
           category?: string
+          checkpoint_override?: boolean
+          checkpoint_override_reason?: string | null
           closed_at?: string | null
           created_at?: string
           details?: string | null
@@ -3737,6 +3741,8 @@ export type Database = {
           approval_decision_at?: string | null
           approved_by_user_id?: string | null
           category?: string
+          checkpoint_override?: boolean
+          checkpoint_override_reason?: string | null
           closed_at?: string | null
           created_at?: string
           details?: string | null
@@ -3943,6 +3949,137 @@ export type Database = {
           },
         ]
       }
+      service_request_checkpoint: {
+        Row: {
+          active_plan_id: string | null
+          checkpoint_id: string
+          has_active_occupancy: boolean
+          has_active_plan: boolean
+          oldest_overdue_period: string | null
+          overdue_month_count: number
+          overdue_total: number
+          overdue_total_enc: string | null
+          override_reason: string | null
+          override_used: boolean
+          rent_account_id: string | null
+          rental_house_id: string | null
+          resident_id: string | null
+          resolved_at: string
+          service_request_id: string
+          woreda_id: string
+          would_block: boolean
+        }
+        Insert: {
+          active_plan_id?: string | null
+          checkpoint_id?: string
+          has_active_occupancy?: boolean
+          has_active_plan?: boolean
+          oldest_overdue_period?: string | null
+          overdue_month_count?: number
+          overdue_total?: number
+          overdue_total_enc?: string | null
+          override_reason?: string | null
+          override_used?: boolean
+          rent_account_id?: string | null
+          rental_house_id?: string | null
+          resident_id?: string | null
+          resolved_at?: string
+          service_request_id: string
+          woreda_id: string
+          would_block?: boolean
+        }
+        Update: {
+          active_plan_id?: string | null
+          checkpoint_id?: string
+          has_active_occupancy?: boolean
+          has_active_plan?: boolean
+          oldest_overdue_period?: string | null
+          overdue_month_count?: number
+          overdue_total?: number
+          overdue_total_enc?: string | null
+          override_reason?: string | null
+          override_used?: boolean
+          rent_account_id?: string | null
+          rental_house_id?: string | null
+          resident_id?: string | null
+          resolved_at?: string
+          service_request_id?: string
+          woreda_id?: string
+          would_block?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_request_checkpoint_active_plan_id_fkey"
+            columns: ["active_plan_id"]
+            isOneToOne: false
+            referencedRelation: "arrears_repayment_plan"
+            referencedColumns: ["plan_id"]
+          },
+          {
+            foreignKeyName: "service_request_checkpoint_active_plan_id_fkey"
+            columns: ["active_plan_id"]
+            isOneToOne: false
+            referencedRelation: "arrears_repayment_plan_decrypted"
+            referencedColumns: ["plan_id"]
+          },
+          {
+            foreignKeyName: "service_request_checkpoint_rent_account_id_fkey"
+            columns: ["rent_account_id"]
+            isOneToOne: false
+            referencedRelation: "rent_account"
+            referencedColumns: ["rent_account_id"]
+          },
+          {
+            foreignKeyName: "service_request_checkpoint_rental_house_id_fkey"
+            columns: ["rental_house_id"]
+            isOneToOne: false
+            referencedRelation: "kebele_rental_house"
+            referencedColumns: ["rental_house_id"]
+          },
+          {
+            foreignKeyName: "service_request_checkpoint_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "household_member_roster"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "service_request_checkpoint_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "resident"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "service_request_checkpoint_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "resident_decrypted"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "service_request_checkpoint_service_request_id_fkey"
+            columns: ["service_request_id"]
+            isOneToOne: true
+            referencedRelation: "service_request"
+            referencedColumns: ["service_request_id"]
+          },
+          {
+            foreignKeyName: "service_request_checkpoint_service_request_id_fkey"
+            columns: ["service_request_id"]
+            isOneToOne: true
+            referencedRelation: "service_request_decrypted"
+            referencedColumns: ["service_request_id"]
+          },
+          {
+            foreignKeyName: "service_request_checkpoint_woreda_id_fkey"
+            columns: ["woreda_id"]
+            isOneToOne: false
+            referencedRelation: "woreda"
+            referencedColumns: ["woreda_id"]
+          },
+        ]
+      }
       service_request_sequence: {
         Row: {
           last_value: number
@@ -4032,6 +4169,7 @@ export type Database = {
           letter_body_template: string | null
           name_am: string
           name_en: string
+          rental_checkpoint_gated: boolean
           required_documents: Json
           requires_approval: boolean
           requires_payment: boolean
@@ -4050,6 +4188,7 @@ export type Database = {
           letter_body_template?: string | null
           name_am: string
           name_en: string
+          rental_checkpoint_gated?: boolean
           required_documents?: Json
           requires_approval?: boolean
           requires_payment?: boolean
@@ -4068,6 +4207,7 @@ export type Database = {
           letter_body_template?: string | null
           name_am?: string
           name_en?: string
+          rental_checkpoint_gated?: boolean
           required_documents?: Json
           requires_approval?: boolean
           requires_payment?: boolean
@@ -6190,6 +6330,140 @@ export type Database = {
           },
         ]
       }
+      service_request_checkpoint_decrypted: {
+        Row: {
+          active_plan_id: string | null
+          checkpoint_id: string | null
+          has_active_occupancy: boolean | null
+          has_active_plan: boolean | null
+          oldest_overdue_period: string | null
+          overdue_month_count: number | null
+          overdue_total: number | null
+          overdue_total_decrypted: number | null
+          overdue_total_enc: string | null
+          override_reason: string | null
+          override_used: boolean | null
+          rent_account_id: string | null
+          rental_house_id: string | null
+          resident_id: string | null
+          resolved_at: string | null
+          service_request_id: string | null
+          woreda_id: string | null
+          would_block: boolean | null
+        }
+        Insert: {
+          active_plan_id?: string | null
+          checkpoint_id?: string | null
+          has_active_occupancy?: boolean | null
+          has_active_plan?: boolean | null
+          oldest_overdue_period?: string | null
+          overdue_month_count?: number | null
+          overdue_total?: number | null
+          overdue_total_decrypted?: never
+          overdue_total_enc?: string | null
+          override_reason?: string | null
+          override_used?: boolean | null
+          rent_account_id?: string | null
+          rental_house_id?: string | null
+          resident_id?: string | null
+          resolved_at?: string | null
+          service_request_id?: string | null
+          woreda_id?: string | null
+          would_block?: boolean | null
+        }
+        Update: {
+          active_plan_id?: string | null
+          checkpoint_id?: string | null
+          has_active_occupancy?: boolean | null
+          has_active_plan?: boolean | null
+          oldest_overdue_period?: string | null
+          overdue_month_count?: number | null
+          overdue_total?: number | null
+          overdue_total_decrypted?: never
+          overdue_total_enc?: string | null
+          override_reason?: string | null
+          override_used?: boolean | null
+          rent_account_id?: string | null
+          rental_house_id?: string | null
+          resident_id?: string | null
+          resolved_at?: string | null
+          service_request_id?: string | null
+          woreda_id?: string | null
+          would_block?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_request_checkpoint_active_plan_id_fkey"
+            columns: ["active_plan_id"]
+            isOneToOne: false
+            referencedRelation: "arrears_repayment_plan"
+            referencedColumns: ["plan_id"]
+          },
+          {
+            foreignKeyName: "service_request_checkpoint_active_plan_id_fkey"
+            columns: ["active_plan_id"]
+            isOneToOne: false
+            referencedRelation: "arrears_repayment_plan_decrypted"
+            referencedColumns: ["plan_id"]
+          },
+          {
+            foreignKeyName: "service_request_checkpoint_rent_account_id_fkey"
+            columns: ["rent_account_id"]
+            isOneToOne: false
+            referencedRelation: "rent_account"
+            referencedColumns: ["rent_account_id"]
+          },
+          {
+            foreignKeyName: "service_request_checkpoint_rental_house_id_fkey"
+            columns: ["rental_house_id"]
+            isOneToOne: false
+            referencedRelation: "kebele_rental_house"
+            referencedColumns: ["rental_house_id"]
+          },
+          {
+            foreignKeyName: "service_request_checkpoint_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "household_member_roster"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "service_request_checkpoint_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "resident"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "service_request_checkpoint_resident_id_fkey"
+            columns: ["resident_id"]
+            isOneToOne: false
+            referencedRelation: "resident_decrypted"
+            referencedColumns: ["resident_id"]
+          },
+          {
+            foreignKeyName: "service_request_checkpoint_service_request_id_fkey"
+            columns: ["service_request_id"]
+            isOneToOne: true
+            referencedRelation: "service_request"
+            referencedColumns: ["service_request_id"]
+          },
+          {
+            foreignKeyName: "service_request_checkpoint_service_request_id_fkey"
+            columns: ["service_request_id"]
+            isOneToOne: true
+            referencedRelation: "service_request_decrypted"
+            referencedColumns: ["service_request_id"]
+          },
+          {
+            foreignKeyName: "service_request_checkpoint_woreda_id_fkey"
+            columns: ["woreda_id"]
+            isOneToOne: false
+            referencedRelation: "woreda"
+            referencedColumns: ["woreda_id"]
+          },
+        ]
+      }
       service_request_decrypted: {
         Row: {
           addressed_to: string | null
@@ -6481,6 +6755,54 @@ export type Database = {
         Args: { _rent_account_id: string }
         Returns: Json
       }
+      get_rental_arrears_aging_report: {
+        Args: { _current_period_key: string }
+        Returns: {
+          bucket_label: string
+          charge_count: number
+          total_amount: number
+        }[]
+      }
+      get_rental_billing_collection_report: {
+        Args: never
+        Returns: {
+          billed_total: number
+          collected_total: number
+          outstanding_total: number
+          period_key: string
+        }[]
+      }
+      get_rental_checkpoint_activity_report: {
+        Args: { _end_date: string; _start_date: string }
+        Returns: {
+          blocked_count: number
+          overridden_count: number
+          passed_count: number
+          total_resolved: number
+        }[]
+      }
+      get_rental_plan_compliance_report: {
+        Args: never
+        Returns: {
+          installments_cancelled: number
+          installments_due: number
+          installments_overdue: number
+          installments_paid: number
+          installments_scheduled: number
+          plan_count: number
+          status: string
+        }[]
+      }
+      get_rental_reconciliation_report: {
+        Args: never
+        Returns: {
+          billed_total: number
+          exception_count: number
+          exception_total: number
+          reversed_total: number
+          settled_total: number
+        }[]
+      }
       get_service_kpis: { Args: never; Returns: Json }
       get_user_woreda_id: { Args: never; Returns: string }
       is_active_app_user: { Args: never; Returns: boolean }
@@ -6526,6 +6848,10 @@ export type Database = {
         }
         Returns: Json
       }
+      rental_period_month_index: {
+        Args: { _period_key: string }
+        Returns: number
+      }
       resolve_civil_fee: { Args: { _event_type: string }; Returns: number }
       resolve_credential_fee: {
         Args: { _request_type: string }
@@ -6538,6 +6864,14 @@ export type Database = {
           _status: string
         }
         Returns: undefined
+      }
+      resolve_rental_checkpoint: {
+        Args: { _resident_id: string }
+        Returns: Json
+      }
+      resolve_rental_checkpoint_core: {
+        Args: { _resident_id: string }
+        Returns: Json
       }
       resolve_service_fee: {
         Args: { _service_type_id: string }

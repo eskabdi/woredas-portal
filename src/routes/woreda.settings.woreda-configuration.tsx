@@ -749,6 +749,7 @@ interface ServiceTypeCatalogRow {
   requires_payment: boolean;
   requires_approval: boolean;
   is_active: boolean;
+  rental_checkpoint_gated: boolean;
 }
 
 function ServiceTypeCatalogTab({
@@ -775,7 +776,7 @@ function ServiceTypeCatalogTab({
       const { data, error } = await supabase
         .from("service_type")
         .select(
-          "service_type_id, code, name_am, name_en, fee_amount, requires_payment, requires_approval, is_active",
+          "service_type_id, code, name_am, name_en, fee_amount, requires_payment, requires_approval, is_active, rental_checkpoint_gated",
         )
         .eq("woreda_id", woredaId as string)
         .eq("category", category)
@@ -870,6 +871,9 @@ function ServiceTypeCatalogTab({
                 <span className="font-am-body">ማጽደቅ ይፈለጋል?</span> / Approval
               </th>
               <th className="px-5 py-3">
+                <span className="font-am-body">የኪራይ ማረጋገጫ</span> / Rental checkpoint
+              </th>
+              <th className="px-5 py-3">
                 <span className="font-am-body">ሁኔታ</span> / Status
               </th>
               <th className="px-5 py-3 text-right">
@@ -880,13 +884,13 @@ function ServiceTypeCatalogTab({
           <tbody>
             {query.isLoading ? (
               <tr>
-                <td colSpan={7} className="px-5 py-8 text-center text-slate-500">
+                <td colSpan={8} className="px-5 py-8 text-center text-slate-500">
                   <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                 </td>
               </tr>
             ) : rows.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-5 py-8 text-center text-slate-500">
+                <td colSpan={8} className="px-5 py-8 text-center text-slate-500">
                   <span className="font-am-body">ገና ምንም አልተመዘገበም</span> / No entries yet.
                 </td>
               </tr>
@@ -906,6 +910,9 @@ function ServiceTypeCatalogTab({
                   </td>
                   <td className="px-5 py-3 text-slate-700">
                     {r.requires_approval ? "አዎ / Yes" : "አይደለም / No"}
+                  </td>
+                  <td className="px-5 py-3 text-slate-700">
+                    {r.rental_checkpoint_gated ? "አዎ / Yes" : "አይደለም / No"}
                   </td>
                   <td className="px-5 py-3">
                     <StatusChip status={r.is_active ? "active" : "inactive"} />
@@ -992,6 +999,7 @@ const serviceTypeSchema = z.object({
   requires_payment: z.boolean(),
   requires_approval: z.boolean(),
   is_active: z.boolean(),
+  rental_checkpoint_gated: z.boolean(),
 });
 type ServiceTypeForm = z.infer<typeof serviceTypeSchema>;
 
@@ -1021,6 +1029,7 @@ function ServiceTypeDialog({
       requires_payment: initial?.requires_payment ?? false,
       requires_approval: initial?.requires_approval ?? true,
       is_active: initial?.is_active ?? true,
+      rental_checkpoint_gated: initial?.rental_checkpoint_gated ?? false,
     },
   });
 
@@ -1038,6 +1047,7 @@ function ServiceTypeDialog({
             requires_payment: values.requires_payment,
             requires_approval: values.requires_approval,
             is_active: values.is_active,
+            rental_checkpoint_gated: values.rental_checkpoint_gated,
           })
           .eq("service_type_id", initial.service_type_id)
           .select("service_type_id")
@@ -1150,6 +1160,25 @@ function ServiceTypeDialog({
                   <Label className="font-am-body text-sm font-normal">
                     ንቁ <span className="text-slate-400">/ Active</span>
                   </Label>
+                  <Switch checked={field.value} onCheckedChange={field.onChange} />
+                </div>
+              )}
+            />
+            <Controller
+              control={form.control}
+              name="rental_checkpoint_gated"
+              render={({ field }) => (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="font-am-body text-sm font-normal">
+                      የኪራይ ዕዳ ማረጋገጫ ተግብር{" "}
+                      <span className="text-slate-400">/ Gate on rental checkpoint</span>
+                    </Label>
+                    <p className="mt-0.5 text-xs text-slate-400">
+                      ያልተከፈለ የኪራይ ዕዳ ካለ በፖሊሲ መሰረት ያግዳል / Blocks (per rental_policy) when the
+                      applicant's household has unpaid rental arrears
+                    </p>
+                  </div>
                   <Switch checked={field.value} onCheckedChange={field.onChange} />
                 </div>
               )}

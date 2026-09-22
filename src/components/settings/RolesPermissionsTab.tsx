@@ -101,6 +101,7 @@ export const PERMISSION_LABELS: Record<string, string> = {
   "service.issue": "Issue",
   "complaint.manage": "Manage",
   "approval.queue.view": "View Queue",
+  "service.checkpoint_override": "Override Rental Checkpoint",
 };
 
 export function RolesPermissionsTab() {

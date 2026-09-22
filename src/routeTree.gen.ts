@@ -26,6 +26,7 @@ import { Route as WoredaComplaintsRouteImport } from './routes/woreda.complaints
 import { Route as WoredaCredentialsRouteImport } from './routes/woreda.credentials'
 import { Route as WoredaDashboardRouteImport } from './routes/woreda.dashboard'
 import { Route as WoredaHouseholdsRouteImport } from './routes/woreda.households'
+import { Route as WoredaRentalReportsRouteImport } from './routes/woreda.rental-reports'
 import { Route as WoredaReportsRouteImport } from './routes/woreda.reports'
 import { Route as WoredaResidentsRouteImport } from './routes/woreda.residents'
 import { Route as WoredaRevenueRouteImport } from './routes/woreda.revenue'
@@ -161,6 +162,11 @@ const WoredaDashboardRoute = WoredaDashboardRouteImport.update({
 const WoredaHouseholdsRoute = WoredaHouseholdsRouteImport.update({
   id: '/households',
   path: '/households',
+  getParentRoute: () => WoredaRoute,
+} as any)
+const WoredaRentalReportsRoute = WoredaRentalReportsRouteImport.update({
+  id: '/rental-reports',
+  path: '/rental-reports',
   getParentRoute: () => WoredaRoute,
 } as any)
 const WoredaReportsRoute = WoredaReportsRouteImport.update({
@@ -461,6 +467,7 @@ export interface FileRoutesByFullPath {
   '/woreda/credentials': typeof WoredaCredentialsRouteWithChildren
   '/woreda/dashboard': typeof WoredaDashboardRoute
   '/woreda/households': typeof WoredaHouseholdsRouteWithChildren
+  '/woreda/rental-reports': typeof WoredaRentalReportsRoute
   '/woreda/reports': typeof WoredaReportsRouteWithChildren
   '/woreda/residents': typeof WoredaResidentsRouteWithChildren
   '/woreda/revenue': typeof WoredaRevenueRouteWithChildren
@@ -528,6 +535,7 @@ export interface FileRoutesByTo {
   '/woreda/audit': typeof WoredaAuditRoute
   '/woreda/complaints': typeof WoredaComplaintsRoute
   '/woreda/dashboard': typeof WoredaDashboardRoute
+  '/woreda/rental-reports': typeof WoredaRentalReportsRoute
   '/verify/letter/$token': typeof VerifyLetterTokenRoute
   '/verify/receipt/$token': typeof VerifyReceiptTokenRoute
   '/woreda/civil/$eventId': typeof WoredaCivilEventIdRoute
@@ -595,6 +603,7 @@ export interface FileRoutesById {
   '/woreda/credentials': typeof WoredaCredentialsRouteWithChildren
   '/woreda/dashboard': typeof WoredaDashboardRoute
   '/woreda/households': typeof WoredaHouseholdsRouteWithChildren
+  '/woreda/rental-reports': typeof WoredaRentalReportsRoute
   '/woreda/reports': typeof WoredaReportsRouteWithChildren
   '/woreda/residents': typeof WoredaResidentsRouteWithChildren
   '/woreda/revenue': typeof WoredaRevenueRouteWithChildren
@@ -667,6 +676,7 @@ export interface FileRouteTypes {
     | '/woreda/credentials'
     | '/woreda/dashboard'
     | '/woreda/households'
+    | '/woreda/rental-reports'
     | '/woreda/reports'
     | '/woreda/residents'
     | '/woreda/revenue'
@@ -734,6 +744,7 @@ export interface FileRouteTypes {
     | '/woreda/audit'
     | '/woreda/complaints'
     | '/woreda/dashboard'
+    | '/woreda/rental-reports'
     | '/verify/letter/$token'
     | '/verify/receipt/$token'
     | '/woreda/civil/$eventId'
@@ -800,6 +811,7 @@ export interface FileRouteTypes {
     | '/woreda/credentials'
     | '/woreda/dashboard'
     | '/woreda/households'
+    | '/woreda/rental-reports'
     | '/woreda/reports'
     | '/woreda/residents'
     | '/woreda/revenue'
@@ -983,6 +995,13 @@ declare module '@tanstack/react-router' {
       path: '/households'
       fullPath: '/woreda/households'
       preLoaderRoute: typeof WoredaHouseholdsRouteImport
+      parentRoute: typeof WoredaRoute
+    }
+    '/woreda/rental-reports': {
+      id: '/woreda/rental-reports'
+      path: '/rental-reports'
+      fullPath: '/woreda/rental-reports'
+      preLoaderRoute: typeof WoredaRentalReportsRouteImport
       parentRoute: typeof WoredaRoute
     }
     '/woreda/reports': {
@@ -1504,6 +1523,7 @@ interface WoredaRouteChildren {
   WoredaCredentialsRoute: typeof WoredaCredentialsRouteWithChildren
   WoredaDashboardRoute: typeof WoredaDashboardRoute
   WoredaHouseholdsRoute: typeof WoredaHouseholdsRouteWithChildren
+  WoredaRentalReportsRoute: typeof WoredaRentalReportsRoute
   WoredaReportsRoute: typeof WoredaReportsRouteWithChildren
   WoredaResidentsRoute: typeof WoredaResidentsRouteWithChildren
   WoredaRevenueRoute: typeof WoredaRevenueRouteWithChildren
@@ -1530,6 +1550,7 @@ const WoredaRouteChildren: WoredaRouteChildren = {
   WoredaCredentialsRoute: WoredaCredentialsRouteWithChildren,
   WoredaDashboardRoute: WoredaDashboardRoute,
   WoredaHouseholdsRoute: WoredaHouseholdsRouteWithChildren,
+  WoredaRentalReportsRoute: WoredaRentalReportsRoute,
   WoredaReportsRoute: WoredaReportsRouteWithChildren,
   WoredaResidentsRoute: WoredaResidentsRouteWithChildren,
   WoredaRevenueRoute: WoredaRevenueRouteWithChildren,

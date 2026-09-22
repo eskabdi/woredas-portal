@@ -17,6 +17,7 @@ export interface ServiceTypeRow {
   letter_body_template: string | null;
   is_active: boolean;
   sort_order: number;
+  rental_checkpoint_gated: boolean;
 }
 
 /** Tenant service catalog (letters + complaint types). */
@@ -33,7 +34,7 @@ export function useServiceTypes(opts?: { category?: ServiceCategory; activeOnly?
       let q = supabase
         .from("service_type")
         .select(
-          "service_type_id, code, category, name_am, name_en, fee_amount, requires_payment, requires_approval, required_documents, letter_body_template, is_active, sort_order",
+          "service_type_id, code, category, name_am, name_en, fee_amount, requires_payment, requires_approval, required_documents, letter_body_template, is_active, sort_order, rental_checkpoint_gated",
         )
         .eq("woreda_id", woredaId!)
         .order("sort_order", { ascending: true })
