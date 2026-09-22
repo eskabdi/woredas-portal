@@ -49,14 +49,7 @@ import {
   PRIORITY_LABEL,
   type ServiceCategory,
 } from "@/lib/serviceConstants";
-import { ETHIOPIAN_MONTHS_AM, ETHIOPIAN_MONTHS_EN } from "@/utils/ethiopianCalendar";
-
-function periodLabel(periodKey: string): string {
-  const [yearStr, monthStr] = periodKey.split("-");
-  const monthIdx = Number(monthStr) - 1;
-  if (Number.isNaN(monthIdx) || monthIdx < 0 || monthIdx > 11) return periodKey;
-  return `${ETHIOPIAN_MONTHS_AM[monthIdx]} / ${ETHIOPIAN_MONTHS_EN[monthIdx]} ${yearStr}`;
-}
+import { ethiopianPeriodLabel } from "@/utils/ethiopianCalendar";
 
 const searchSchema = z.object({
   residentId: z.string().optional(),
@@ -470,7 +463,7 @@ function NewServiceRequestPage() {
                       ይህ አመልካች/ቤተሰብ {checkpoint.overdue_month_count} ወራት ያልተከፈለ የኪራይ ዕዳ አለበት (
                       {Number(checkpoint.overdue_total ?? 0).toLocaleString()} ETB) — ከ
                       {checkpoint.oldest_overdue_period
-                        ? periodLabel(checkpoint.oldest_overdue_period)
+                        ? ethiopianPeriodLabel(checkpoint.oldest_overdue_period)
                         : "—"}{" "}
                       ጀምሮ
                     </p>
@@ -478,7 +471,7 @@ function NewServiceRequestPage() {
                       / {checkpoint.overdue_month_count} unpaid rental month(s), ETB{" "}
                       {Number(checkpoint.overdue_total ?? 0).toLocaleString()}, oldest since{" "}
                       {checkpoint.oldest_overdue_period
-                        ? periodLabel(checkpoint.oldest_overdue_period)
+                        ? ethiopianPeriodLabel(checkpoint.oldest_overdue_period)
                         : "—"}
                       .{" "}
                       {checkpoint.has_active_plan

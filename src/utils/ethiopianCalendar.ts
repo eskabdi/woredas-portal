@@ -203,3 +203,13 @@ export function calculateAgeYears(
   if (m < 0 || (m === 0 && asOf.getDate() < birth.getDate())) age--;
   return age;
 }
+
+/** Renders a rent-billing period key ("YYYY-MM", month 01-12, Pagume never
+ * billed so never appears here) as "<Amharic month> / <English month> YYYY".
+ * Falls back to the raw key for anything that doesn't parse. */
+export function ethiopianPeriodLabel(periodKey: string): string {
+  const [yearStr, monthStr] = periodKey.split("-");
+  const monthIdx = Number(monthStr) - 1;
+  if (Number.isNaN(monthIdx) || monthIdx < 0 || monthIdx > 11) return periodKey;
+  return `${ETHIOPIAN_MONTHS_AM[monthIdx]} / ${ETHIOPIAN_MONTHS_EN[monthIdx]} ${yearStr}`;
+}

@@ -10,24 +10,13 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
 import { P } from "@/config/permissions";
-import {
-  ETHIOPIAN_MONTHS_AM,
-  ETHIOPIAN_MONTHS_EN,
-  gregorianToEthiopian,
-} from "@/utils/ethiopianCalendar";
+import { ethiopianPeriodLabel, gregorianToEthiopian } from "@/utils/ethiopianCalendar";
 import { useState } from "react";
 
 export const Route = createFileRoute("/woreda/rental-reports")({
   ssr: false,
   component: RentalReportsPage,
 });
-
-function periodLabel(periodKey: string): string {
-  const [yearStr, monthStr] = periodKey.split("-");
-  const monthIdx = Number(monthStr) - 1;
-  if (Number.isNaN(monthIdx) || monthIdx < 0 || monthIdx > 11) return periodKey;
-  return `${ETHIOPIAN_MONTHS_AM[monthIdx]} / ${ETHIOPIAN_MONTHS_EN[monthIdx]} ${yearStr}`;
-}
 
 // During Pagume (month 13), the last completed billable month is the
 // preceding Nehase (12) -- BR-24's own termination convention, not the
@@ -177,7 +166,7 @@ function RentalReportsPage() {
                 )}
               {(billingQuery.data ?? []).map((r) => (
                 <tr key={r.period_key} className="border-t">
-                  <td className="px-4 py-2">{periodLabel(r.period_key)}</td>
+                  <td className="px-4 py-2">{ethiopianPeriodLabel(r.period_key)}</td>
                   <td className="px-4 py-2">{Number(r.billed_total).toLocaleString()}</td>
                   <td className="px-4 py-2">{Number(r.collected_total).toLocaleString()}</td>
                   <td className="px-4 py-2">{Number(r.outstanding_total).toLocaleString()}</td>
@@ -190,8 +179,8 @@ function RentalReportsPage() {
 
       <Card className="overflow-hidden">
         <div className="border-b bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700">
-          የዕዳ እድሜ ({periodLabel(agingPeriodKey)} ድረስ) / Arrears Aging (as of{" "}
-          {periodLabel(agingPeriodKey)})
+          የዕዳ እድሜ ({ethiopianPeriodLabel(agingPeriodKey)} ድረስ) / Arrears Aging (as of{" "}
+          {ethiopianPeriodLabel(agingPeriodKey)})
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">

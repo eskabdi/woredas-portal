@@ -25,8 +25,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
 import { P } from "@/config/permissions";
 import {
-  ETHIOPIAN_MONTHS_AM,
-  ETHIOPIAN_MONTHS_EN,
+  ethiopianPeriodLabel,
   ethiopianToGregorian,
   formatEthiopianDateShort,
   gregorianToEthiopian,
@@ -101,13 +100,6 @@ const INSTALLMENT_STATUS_LABEL: Record<string, { am: string; en: string; tone: s
   paid: { am: "ተከፍሏል", en: "Paid", tone: "bg-green-100 text-green-800" },
   cancelled: { am: "ተሰርዟል", en: "Cancelled", tone: "bg-slate-100 text-slate-500" },
 };
-
-function periodLabel(periodKey: string): string {
-  const [yearStr, monthStr] = periodKey.split("-");
-  const monthIdx = Number(monthStr) - 1;
-  if (Number.isNaN(monthIdx) || monthIdx < 0 || monthIdx > 11) return periodKey;
-  return `${ETHIOPIAN_MONTHS_AM[monthIdx]} / ${ETHIOPIAN_MONTHS_EN[monthIdx]} ${yearStr}`;
-}
 
 /** Current-or-next billable (non-Pagume) EC period, for the billing dialog's default. */
 function defaultTargetPeriod(): { year: number; month: number } {
@@ -596,7 +588,7 @@ function RentAccountLedgerPage() {
               <div className="font-am-body text-xs text-slate-500">
                 ክፍያ የሚጀምርበት ጊዜ / Billing starts
               </div>
-              <div>{periodLabel(account.billing_start_period_key)}</div>
+              <div>{ethiopianPeriodLabel(account.billing_start_period_key)}</div>
             </div>
             <div>
               <div className="font-am-body text-xs text-slate-500">ሁኔታ / Status</div>
@@ -681,7 +673,7 @@ function RentAccountLedgerPage() {
                         />
                       )}
                     </td>
-                    <td className="px-4 py-2">{periodLabel(c.ethiopian_period_key)}</td>
+                    <td className="px-4 py-2">{ethiopianPeriodLabel(c.ethiopian_period_key)}</td>
                     <td className="px-4 py-2">{toEth(c.due_date)}</td>
                     <td className="px-4 py-2">{Number(c.total_amount).toLocaleString()}</td>
                     <td className="px-4 py-2">

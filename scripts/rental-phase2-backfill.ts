@@ -114,7 +114,7 @@ async function main() {
      WHERE o.status = 'active'
        AND NOT EXISTS (
          SELECT 1 FROM public.rent_account ra
-          WHERE ra.occupancy_id = o.occupancy_id AND ra.status = 'active'
+          WHERE ra.occupancy_id = o.occupancy_id AND ra.status = 'active' AND ra.woreda_id = o.woreda_id
        )
   `)) as OccupancyRow[];
 
