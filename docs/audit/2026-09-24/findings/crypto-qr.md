@@ -6,7 +6,7 @@
 **Method:** static review of the latest definition of every function involved (all 90 migrations were checked for `CREATE OR REPLACE` or redefinitions); a build and a client-bundle scan; a full-history key search; and reproducible experiments with a throwaway key. The live database and Edge secrets were not reachable, so anything that depends on live state is marked *Needs-live-verification*.
 
 Raw evidence (all under `docs/audit/2026-09-24/raw/`):
-- `crypto-qr-malleability.ts` / `.txt`: signature re-encoding experiment
+- `crypto-qr-malleability.ts.txt` / `.txt`: signature re-encoding experiment
 - `crypto-qr-luhn.py` / `crypto-qr-luhn-vectors.txt`: check-digit vectors
 - `crypto-qr-key-and-base64-scan.txt`: key, bundle and `btoa`/`atob` scan
 
