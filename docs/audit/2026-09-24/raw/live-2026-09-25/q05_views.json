@@ -1,0 +1,125 @@
+{
+ "query": "select c.relname, c.relkind, c.reloptions from pg_class c join pg_namespace n on n.oid = c.relnamespace where c.relkind in ('v','m') and n.nspname = 'public' order by 1",
+ "http_status": "201",
+ "result": [
+  {
+   "relname": "approval_queue_v",
+   "relkind": "v",
+   "reloptions": [
+    "security_invoker=on"
+   ]
+  },
+  {
+   "relname": "arrears_installment_charge_decrypted",
+   "relkind": "v",
+   "reloptions": [
+    "security_invoker=on"
+   ]
+  },
+  {
+   "relname": "arrears_repayment_installment_decrypted",
+   "relkind": "v",
+   "reloptions": [
+    "security_invoker=on"
+   ]
+  },
+  {
+   "relname": "arrears_repayment_plan_decrypted",
+   "relkind": "v",
+   "reloptions": [
+    "security_invoker=on"
+   ]
+  },
+  {
+   "relname": "household_decrypted",
+   "relkind": "v",
+   "reloptions": [
+    "security_invoker=on"
+   ]
+  },
+  {
+   "relname": "household_member_roster",
+   "relkind": "v",
+   "reloptions": [
+    "security_invoker=on"
+   ]
+  },
+  {
+   "relname": "payment_decrypted",
+   "relkind": "v",
+   "reloptions": [
+    "security_invoker=on"
+   ]
+  },
+  {
+   "relname": "payment_reconciliation_exception_decrypted",
+   "relkind": "v",
+   "reloptions": [
+    "security_invoker=on"
+   ]
+  },
+  {
+   "relname": "rent_charge_decrypted",
+   "relkind": "v",
+   "reloptions": [
+    "security_invoker=on"
+   ]
+  },
+  {
+   "relname": "rent_payment_settlement_decrypted",
+   "relkind": "v",
+   "reloptions": [
+    "security_invoker=on"
+   ]
+  },
+  {
+   "relname": "rent_rate_history_decrypted",
+   "relkind": "v",
+   "reloptions": [
+    "security_invoker=on"
+   ]
+  },
+  {
+   "relname": "rent_reminder_decrypted",
+   "relkind": "v",
+   "reloptions": [
+    "security_invoker=on"
+   ]
+  },
+  {
+   "relname": "rental_occupancy_decrypted",
+   "relkind": "v",
+   "reloptions": [
+    "security_invoker=on"
+   ]
+  },
+  {
+   "relname": "rental_occupancy_request_decrypted",
+   "relkind": "v",
+   "reloptions": [
+    "security_invoker=on"
+   ]
+  },
+  {
+   "relname": "resident_decrypted",
+   "relkind": "v",
+   "reloptions": [
+    "security_invoker=on"
+   ]
+  },
+  {
+   "relname": "service_request_checkpoint_decrypted",
+   "relkind": "v",
+   "reloptions": [
+    "security_invoker=on"
+   ]
+  },
+  {
+   "relname": "service_request_decrypted",
+   "relkind": "v",
+   "reloptions": [
+    "security_invoker=on"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,14 @@
+{
+ "endpoint": "https://api.supabase.com/v1/organizations/tfirszscnrzzfvfqdhre",
+ "http_status": "200",
+ "result": {
+  "id": "tfirszscnrzzfvfqdhre",
+  "name": "[REDACTED: owner email]",
+  "plan": "free",
+  "opt_in_tags": [],
+  "allowed_release_channels": [
+   "ga",
+   "preview"
+  ]
+ }
+}

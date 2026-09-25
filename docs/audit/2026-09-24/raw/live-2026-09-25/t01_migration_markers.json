@@ -1,0 +1,18 @@
+{
+ "query": "select (select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r') as public_tables, (select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' and c.relrowsecurity) as rls_on, to_regclass('public.rent_charge') is not null as m71_rent_charge, to_regclass('public.arrears_repayment_plan') is not null as m80_arrears, to_regclass('public.payment_reconciliation_exception') is not null as m8x_recon, to_regclass('public.rental_policy') is not null as rental_policy, exists(select 1 from pg_proc where proname='generate_rent_charges') as generate_rent_charges, exists(select 1 from pg_proc where proname='resolve_rental_checkpoint_core') as checkpoint_core, (select string_agg(proname,',') from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and proname in ('credential_token_signature_r')) as m91_present, exists(select 1 from pg_proc where proname='generate_resident_on_birth_approval' and prosrc like '%r.woreda_id = NEW.woreda_id%') as m90_applied",
+ "http_status": "201",
+ "result": [
+  {
+   "public_tables": 66,
+   "rls_on": 66,
+   "m71_rent_charge": true,
+   "m80_arrears": true,
+   "m8x_recon": true,
+   "rental_policy": true,
+   "generate_rent_charges": true,
+   "checkpoint_core": true,
+   "m91_present": null,
+   "m90_applied": false
+  }
+ ]
+}

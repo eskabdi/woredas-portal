@@ -1,0 +1,24 @@
+{
+ "query": "select role, status, (console_role_id is not null) as has_console_role, count(*) from public.app_user where role in ('super_admin','tenant_admin') group by 1,2,3 order by 1,2,3",
+ "http_status": "201",
+ "result": [
+  {
+   "role": "super_admin",
+   "status": "active",
+   "has_console_role": false,
+   "count": 2
+  },
+  {
+   "role": "tenant_admin",
+   "status": "active",
+   "has_console_role": false,
+   "count": 2
+  },
+  {
+   "role": "tenant_admin",
+   "status": "suspended",
+   "has_console_role": false,
+   "count": 1
+  }
+ ]
+}

@@ -1,0 +1,450 @@
+{
+ "query": "select n.nspname as schema, c.relname as table_name, c.relrowsecurity as rls_enabled, c.relforcerowsecurity as rls_forced from pg_class c join pg_namespace n on n.oid = c.relnamespace where c.relkind = 'r' and n.nspname in ('public','storage') order by 1,2",
+ "http_status": "201",
+ "result": [
+  {
+   "schema": "public",
+   "table_name": "app_user",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "approval",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "arrears_installment_charge",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "arrears_plan_sequence",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "arrears_repayment_installment",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "arrears_repayment_plan",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "attachment",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "audit_log",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "console_role",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "console_role_permission",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "credential_number_sequence",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "credential_policy",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "credential_print_log",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "credential_request",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "credential_request_sequence",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "credential_request_status_history",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "credential_status_history",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "credential_verification_log",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "fee_schedule",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "household",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "household_change_log",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "household_location",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "id_card_template",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "id_card_template_field",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "id_card_template_field_draft",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "kebele",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "kebele_rental_house",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "office",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "payment",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "payment_reconciliation_exception",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "rate_limit_bucket",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "receipt",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "receipt_sequence",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "rent_account",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "rent_account_sequence",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "rent_charge",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "rent_payment_settlement",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "rent_rate_history",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "rent_reminder",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "rental_occupancy",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "rental_occupancy_request",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "rental_payment",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "rental_policy",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "rental_request_document",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "rental_request_sequence",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "residence_credential",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "resident",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "resident_document",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "resident_number_sequence",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "role_permission",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "service_request",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "service_request_attachment",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "service_request_checkpoint",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "service_request_sequence",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "service_request_status_history",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "service_type",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "tenant_module_config",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "tenant_role",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "tenant_role_permission",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "user_permission_override",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "vital_event",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "vital_event_sequence",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "woreda",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "woreda_settings",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "workflow_status_history",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "public",
+   "table_name": "workflow_transition",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "storage",
+   "table_name": "buckets",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "storage",
+   "table_name": "buckets_analytics",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "storage",
+   "table_name": "buckets_vectors",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "storage",
+   "table_name": "migrations",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "storage",
+   "table_name": "objects",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "storage",
+   "table_name": "s3_multipart_uploads",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "storage",
+   "table_name": "s3_multipart_uploads_parts",
+   "rls_enabled": true,
+   "rls_forced": false
+  },
+  {
+   "schema": "storage",
+   "table_name": "vector_indexes",
+   "rls_enabled": true,
+   "rls_forced": false
+  }
+ ]
+}

@@ -1,0 +1,72 @@
+{
+ "query": "select id, public, file_size_limit, allowed_mime_types from storage.buckets order by id",
+ "http_status": "201",
+ "result": [
+  {
+   "id": "attachments",
+   "public": false,
+   "file_size_limit": null,
+   "allowed_mime_types": null
+  },
+  {
+   "id": "credential-request-documents",
+   "public": false,
+   "file_size_limit": null,
+   "allowed_mime_types": null
+  },
+  {
+   "id": "credential-templates",
+   "public": false,
+   "file_size_limit": null,
+   "allowed_mime_types": null
+  },
+  {
+   "id": "rental-request-documents",
+   "public": false,
+   "file_size_limit": 5242880,
+   "allowed_mime_types": [
+    "application/pdf",
+    "image/jpeg",
+    "image/png"
+   ]
+  },
+  {
+   "id": "resident-clearance-letters",
+   "public": false,
+   "file_size_limit": null,
+   "allowed_mime_types": null
+  },
+  {
+   "id": "resident-documents",
+   "public": false,
+   "file_size_limit": 10485760,
+   "allowed_mime_types": [
+    "application/pdf"
+   ]
+  },
+  {
+   "id": "resident-photos",
+   "public": false,
+   "file_size_limit": null,
+   "allowed_mime_types": null
+  },
+  {
+   "id": "service-request-documents",
+   "public": false,
+   "file_size_limit": null,
+   "allowed_mime_types": null
+  },
+  {
+   "id": "staff-assets",
+   "public": false,
+   "file_size_limit": null,
+   "allowed_mime_types": null
+  },
+  {
+   "id": "tenant-assets",
+   "public": false,
+   "file_size_limit": null,
+   "allowed_mime_types": null
+  }
+ ]
+}

@@ -1,0 +1,54 @@
+{
+ "query": "select 'woreda' t, count(*) from public.woreda union all select 'resident', count(*) from public.resident union all select 'household', count(*) from public.household union all select 'residence_credential', count(*) from public.residence_credential union all select 'vital_event', count(*) from public.vital_event union all select 'service_request', count(*) from public.service_request union all select 'rental_occupancy', count(*) from public.rental_occupancy union all select 'payment', count(*) from public.payment union all select 'app_user', count(*) from public.app_user union all select 'tenant_role', count(*) from public.tenant_role union all select 'credential_verification_log', count(*) from public.credential_verification_log union all select 'audit_log', count(*) from public.audit_log",
+ "http_status": "201",
+ "result": [
+  {
+   "t": "woreda",
+   "count": 6
+  },
+  {
+   "t": "resident",
+   "count": 4
+  },
+  {
+   "t": "household",
+   "count": 2
+  },
+  {
+   "t": "residence_credential",
+   "count": 5
+  },
+  {
+   "t": "vital_event",
+   "count": 2
+  },
+  {
+   "t": "service_request",
+   "count": 2
+  },
+  {
+   "t": "rental_occupancy",
+   "count": 1
+  },
+  {
+   "t": "payment",
+   "count": 9
+  },
+  {
+   "t": "app_user",
+   "count": 7
+  },
+  {
+   "t": "tenant_role",
+   "count": 1
+  },
+  {
+   "t": "credential_verification_log",
+   "count": 3
+  },
+  {
+   "t": "audit_log",
+   "count": 282
+  }
+ ]
+}

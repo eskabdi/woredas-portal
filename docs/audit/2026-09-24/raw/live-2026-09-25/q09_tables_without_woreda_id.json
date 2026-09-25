@@ -1,0 +1,39 @@
+{
+ "query": "select table_name from information_schema.tables t where table_schema = 'public' and table_type = 'BASE TABLE' and not exists (select 1 from information_schema.columns c where c.table_schema = 'public' and c.table_name = t.table_name and c.column_name = 'woreda_id') order by 1",
+ "http_status": "201",
+ "result": [
+  {
+   "table_name": "console_role"
+  },
+  {
+   "table_name": "console_role_permission"
+  },
+  {
+   "table_name": "credential_request_status_history"
+  },
+  {
+   "table_name": "credential_status_history"
+  },
+  {
+   "table_name": "id_card_template"
+  },
+  {
+   "table_name": "id_card_template_field"
+  },
+  {
+   "table_name": "id_card_template_field_draft"
+  },
+  {
+   "table_name": "rate_limit_bucket"
+  },
+  {
+   "table_name": "service_request_status_history"
+  },
+  {
+   "table_name": "tenant_role_permission"
+  },
+  {
+   "table_name": "workflow_transition"
+  }
+ ]
+}

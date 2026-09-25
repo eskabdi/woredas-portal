@@ -1,0 +1,1668 @@
+{
+ "query": "select n.nspname, p.proname, p.prosecdef, p.proconfig, pg_get_function_identity_arguments(p.oid) as args, has_function_privilege('anon', p.oid, 'EXECUTE') as anon_exec, has_function_privilege('authenticated', p.oid, 'EXECUTE') as auth_exec from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' order by p.prosecdef desc, p.proname",
+ "http_status": "201",
+ "result": [
+  {
+   "nspname": "public",
+   "proname": "activate_arrears_repayment_plan",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "advance_vital_event_to_registered",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "apply_death_on_approval",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "apply_rental_occupancy_on_approval",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "arrears_installment_charge_amount_sync",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "arrears_repayment_installment_amount_sync",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "arrears_repayment_plan_amount_sync",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "assert_credential_request_office_woreda",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "assert_rental_occupancy_woreda_consistency",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "assert_rental_request_woreda_consistency",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "assert_residence_credential_office_woreda",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "assert_vital_event_woreda_consistency",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "assign_arrears_plan_number",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "assign_credential_number",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "assign_credential_request_number",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "assign_letter_verification_token",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "assign_receipt_number",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "assign_receipt_verification_token",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "assign_rent_account_number",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "assign_rental_request_number",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "assign_resident_number",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "assign_service_request_number",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "assign_vital_event_number",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "audit_app_user_role_change",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "audit_resident_created",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "audit_tenant_role_change",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "audit_tenant_role_permission_change",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "clear_custom_role_on_woreda_change",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "clear_overrides_on_role_promotion",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "clear_overrides_on_woreda_change",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "create_arrears_repayment_plan",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_rent_account_id uuid, _installment_count integer, _installment_due_dates date[], _reason text",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "current_console_permissions",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "current_permissions",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "decrypt_pii_numeric",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_cipher bytea, _woreda_id uuid",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "decrypt_pii_text",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_cipher bytea, _woreda_id uuid",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "default_credential_request_office_id",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "default_residence_credential_office_id",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "derive_woreda_key",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_woreda_id uuid",
+   "anon_exec": false,
+   "auth_exec": false
+  },
+  {
+   "nspname": "public",
+   "proname": "encrypt_pii_numeric",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_value numeric, _woreda_id uuid",
+   "anon_exec": false,
+   "auth_exec": false
+  },
+  {
+   "nspname": "public",
+   "proname": "encrypt_pii_text",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_plain text, _woreda_id uuid",
+   "anon_exec": false,
+   "auth_exec": false
+  },
+  {
+   "nspname": "public",
+   "proname": "enforce_rental_checkpoint",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "enforce_service_request_issuance_gate",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "enforce_service_request_payment_gate",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "enforce_service_request_preconditions",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "enforce_user_permission_override_woreda",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "enforce_vital_event_payment_gate",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "enforce_vital_event_preconditions",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "enforce_workflow_transition",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "entity_approve_perm_ok",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_entity text",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "entity_attach_perm_ok",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_entity text",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "entity_belongs_to_woreda",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_entity text, _entity_id uuid, _woreda_id uuid",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "entity_read_perm_ok",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_entity text",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "force_actor_columns",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "force_household_location_woreda_id",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "generate_rent_charges",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_target_period text, _due_date date",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "generate_rent_reminders",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "generate_residence_credential_on_payment",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "generate_resident_on_birth_approval",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "get_civil_kpis",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "get_credential_kpis",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "get_credential_live_status",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_credential_number text",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "get_rent_account_ledger_summary",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_rent_account_id uuid",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "get_rental_arrears_aging_report",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_current_period_key text",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "get_rental_billing_collection_report",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "get_rental_checkpoint_activity_report",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_start_date date, _end_date date",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "get_rental_plan_compliance_report",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "get_rental_reconciliation_report",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "get_service_kpis",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "get_user_woreda_id",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "guard_arrears_plan_immutable_fields",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "guard_arrears_plan_maker_checker",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "guard_manual_occupancy_status_change",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "guard_rent_charge_immutable_fields",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "guard_rental_payment_insert",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "guard_rental_payment_status_change",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "guard_settlement_amount_matches_charge",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "household_pii_sync",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "is_active_app_user",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "is_super_admin",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "is_tenant_admin",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "log_workflow_status_history",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "log_workflow_transition",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "mirror_household_gps_to_location",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "mirror_location_gps_to_household",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "my_national_id_blind_index",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_id text",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "my_phone_blind_index",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_phone text",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "national_id_blind_index",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_id text, _woreda_id uuid",
+   "anon_exec": false,
+   "auth_exec": false
+  },
+  {
+   "nspname": "public",
+   "proname": "payment_amount_sync",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "payment_reconciliation_exception_amount_sync",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "phone_blind_index",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_phone text, _woreda_id uuid",
+   "anon_exec": false,
+   "auth_exec": false
+  },
+  {
+   "nspname": "public",
+   "proname": "pii_encryption_status",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": false,
+   "auth_exec": false
+  },
+  {
+   "nspname": "public",
+   "proname": "pii_root_key",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public, vault"
+   ],
+   "args": "",
+   "anon_exec": false,
+   "auth_exec": false
+  },
+  {
+   "nspname": "public",
+   "proname": "provision_rent_account",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_occupancy_id uuid, _billing_start_period_key text",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "rate_limit_hit",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_bucket_key text, _window_seconds integer",
+   "anon_exec": false,
+   "auth_exec": false
+  },
+  {
+   "nspname": "public",
+   "proname": "record_rental_checkpoint",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "refresh_rent_ledger_statuses",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "release_arrears_plan_charges",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "rent_charge_amount_sync",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "rent_payment_settlement_amount_sync",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "rent_rate_history_amount_sync",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "rent_reminder_amount_sync",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "rental_eligibility",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_resident_id uuid, _rental_house_id uuid, _request_type text",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "rental_occupancy_amount_sync",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "rental_occupancy_request_amount_sync",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "resident_pii_sync",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "resolve_civil_fee",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_event_type text",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "resolve_credential_fee",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_request_type text",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "resolve_reconciliation_exception",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_exception_id uuid, _status text, _resolution_note text",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "resolve_rental_checkpoint",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_resident_id uuid",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "resolve_rental_checkpoint_core",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_resident_id uuid",
+   "anon_exec": false,
+   "auth_exec": false
+  },
+  {
+   "nspname": "public",
+   "proname": "resolve_service_fee",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_service_type_id uuid",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "reverse_rental_payment",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_payment_id uuid, _reason text",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "seed_office_for_new_woreda",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "seed_rental_policy_for_new_woreda",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "seed_role_permission_for_new_woreda",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "service_request_checkpoint_amount_sync",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "service_request_pii_sync",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "settle_arrears_installments",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_plan_id uuid, _installment_ids uuid[], _payment_amount numeric, _payment_date date, _channel text, _reference_number text, _payer_resident_id uuid, _idempotency_key text",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "settle_rent_payment",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_rent_account_id uuid, _rent_charge_ids uuid[], _payment_amount numeric, _payment_date date, _channel text, _reference_number text, _payer_resident_id uuid, _idempotency_key text",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "user_has_any_perm",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_perms text[]",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "user_has_console_perm",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_perm text",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "user_has_perm",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_perm text",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "user_permission_override_target_role_ok",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_user_id uuid",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "validate_app_user_role",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "validate_credential_fee_amount",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "validate_receipt_amount",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "verify_credential_token",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_token text",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "verify_receipt",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_token text",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "verify_service_letter",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_token text",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "check_credential_print_eligibility",
+   "prosecdef": false,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_credential_id uuid",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "default_role_perms",
+   "prosecdef": false,
+   "proconfig": null,
+   "args": "_role text",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "discard_id_card_template_draft",
+   "prosecdef": false,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "enforce_rental_request_eligibility",
+   "prosecdef": false,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "enforce_rental_request_integrity_guards",
+   "prosecdef": false,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "enforce_workflow_insert",
+   "prosecdef": false,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "gen_letter_verification_token",
+   "prosecdef": false,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "gen_receipt_verification_token",
+   "prosecdef": false,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "guard_console_role_assignment",
+   "prosecdef": false,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "luhn_check_digit",
+   "prosecdef": false,
+   "proconfig": null,
+   "args": "_digits text",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "mark_template_draft_dirty",
+   "prosecdef": false,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "normalize_phone",
+   "prosecdef": false,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "_phone text",
+   "anon_exec": false,
+   "auth_exec": false
+  },
+  {
+   "nspname": "public",
+   "proname": "pin_credential_identity_fields",
+   "prosecdef": false,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "pin_receipt_verification_token",
+   "prosecdef": false,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "pin_tenant_role_woreda_id",
+   "prosecdef": false,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "pin_vital_event_resident",
+   "prosecdef": false,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "prevent_last_super_admin_lockout",
+   "prosecdef": false,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "publish_id_card_template",
+   "prosecdef": false,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "rental_period_month_index",
+   "prosecdef": false,
+   "proconfig": null,
+   "args": "_period_key text",
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "set_tenant_role_permission_updated_at",
+   "prosecdef": false,
+   "proconfig": null,
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "set_updated_at",
+   "prosecdef": false,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "storage_path_woreda_id",
+   "prosecdef": false,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "args": "object_name text",
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "nspname": "public",
+   "proname": "validate_tenant_role_name",
+   "prosecdef": false,
+   "proconfig": null,
+   "args": "",
+   "anon_exec": true,
+   "auth_exec": true
+  }
+ ]
+}

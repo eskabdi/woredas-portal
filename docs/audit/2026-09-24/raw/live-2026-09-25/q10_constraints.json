@@ -1,0 +1,2358 @@
+{
+ "query": "select c.relname as table_name, pc.contype, pc.conname, pg_get_constraintdef(pc.oid) as definition from pg_constraint pc join pg_class c on c.oid=pc.conrelid join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and pc.contype in ('c','u','f','p','x') order by 1,2,3",
+ "http_status": "201",
+ "result": [
+  {
+   "table_name": "app_user",
+   "contype": "c",
+   "conname": "app_user_console_role_scope_check",
+   "definition": "CHECK (((console_role_id IS NULL) OR (role = 'super_admin'::text)))"
+  },
+  {
+   "table_name": "app_user",
+   "contype": "c",
+   "conname": "app_user_role_check",
+   "definition": "CHECK ((role = ANY (ARRAY['super_admin'::text, 'tenant_admin'::text, 'civil_registrar'::text, 'registry_clerk'::text, 'finance_clerk'::text, 'supervisor'::text, 'auditor'::text, 'viewer'::text, 'print_officer'::text, 'custom'::text])))"
+  },
+  {
+   "table_name": "app_user",
+   "contype": "c",
+   "conname": "app_user_status_check",
+   "definition": "CHECK ((status = ANY (ARRAY['active'::text, 'inactive'::text, 'suspended'::text, 'pending'::text])))"
+  },
+  {
+   "table_name": "app_user",
+   "contype": "f",
+   "conname": "app_user_console_role_id_fkey",
+   "definition": "FOREIGN KEY (console_role_id) REFERENCES console_role(console_role_id)"
+  },
+  {
+   "table_name": "app_user",
+   "contype": "f",
+   "conname": "app_user_custom_role_id_fkey",
+   "definition": "FOREIGN KEY (custom_role_id) REFERENCES tenant_role(tenant_role_id)"
+  },
+  {
+   "table_name": "app_user",
+   "contype": "f",
+   "conname": "app_user_invited_by_user_id_fkey",
+   "definition": "FOREIGN KEY (invited_by_user_id) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "app_user",
+   "contype": "f",
+   "conname": "app_user_reports_to_user_id_fkey",
+   "definition": "FOREIGN KEY (reports_to_user_id) REFERENCES app_user(user_id) ON DELETE SET NULL"
+  },
+  {
+   "table_name": "app_user",
+   "contype": "f",
+   "conname": "app_user_user_id_fkey",
+   "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE"
+  },
+  {
+   "table_name": "app_user",
+   "contype": "f",
+   "conname": "app_user_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "app_user",
+   "contype": "p",
+   "conname": "app_user_pkey",
+   "definition": "PRIMARY KEY (user_id)"
+  },
+  {
+   "table_name": "app_user",
+   "contype": "u",
+   "conname": "app_user_username_key",
+   "definition": "UNIQUE (username)"
+  },
+  {
+   "table_name": "approval",
+   "contype": "c",
+   "conname": "approval_decision_check",
+   "definition": "CHECK ((decision = ANY (ARRAY['approved'::text, 'rejected'::text, 'returned'::text])))"
+  },
+  {
+   "table_name": "approval",
+   "contype": "f",
+   "conname": "approval_approver_user_id_fkey",
+   "definition": "FOREIGN KEY (approver_user_id) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "approval",
+   "contype": "f",
+   "conname": "approval_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id) ON DELETE CASCADE"
+  },
+  {
+   "table_name": "approval",
+   "contype": "p",
+   "conname": "approval_pkey",
+   "definition": "PRIMARY KEY (approval_id)"
+  },
+  {
+   "table_name": "arrears_installment_charge",
+   "contype": "c",
+   "conname": "arrears_installment_charge_charge_amount_snapshot_check",
+   "definition": "CHECK ((charge_amount_snapshot > (0)::numeric))"
+  },
+  {
+   "table_name": "arrears_installment_charge",
+   "contype": "c",
+   "conname": "arrears_installment_charge_status_check",
+   "definition": "CHECK ((status = ANY (ARRAY['active'::text, 'cancelled'::text])))"
+  },
+  {
+   "table_name": "arrears_installment_charge",
+   "contype": "f",
+   "conname": "arrears_installment_charge_installment_id_fkey",
+   "definition": "FOREIGN KEY (installment_id) REFERENCES arrears_repayment_installment(installment_id)"
+  },
+  {
+   "table_name": "arrears_installment_charge",
+   "contype": "f",
+   "conname": "arrears_installment_charge_rent_charge_id_fkey",
+   "definition": "FOREIGN KEY (rent_charge_id) REFERENCES rent_charge(rent_charge_id)"
+  },
+  {
+   "table_name": "arrears_installment_charge",
+   "contype": "f",
+   "conname": "arrears_installment_charge_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "arrears_installment_charge",
+   "contype": "p",
+   "conname": "arrears_installment_charge_pkey",
+   "definition": "PRIMARY KEY (mapping_id)"
+  },
+  {
+   "table_name": "arrears_installment_charge",
+   "contype": "u",
+   "conname": "arrears_installment_charge_installment_id_rent_charge_id_key",
+   "definition": "UNIQUE (installment_id, rent_charge_id)"
+  },
+  {
+   "table_name": "arrears_plan_sequence",
+   "contype": "f",
+   "conname": "arrears_plan_sequence_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "arrears_plan_sequence",
+   "contype": "p",
+   "conname": "arrears_plan_sequence_pkey",
+   "definition": "PRIMARY KEY (woreda_id, seq_year)"
+  },
+  {
+   "table_name": "arrears_repayment_installment",
+   "contype": "c",
+   "conname": "arrears_repayment_installment_amount_check",
+   "definition": "CHECK ((amount > (0)::numeric))"
+  },
+  {
+   "table_name": "arrears_repayment_installment",
+   "contype": "c",
+   "conname": "arrears_repayment_installment_installment_number_check",
+   "definition": "CHECK ((installment_number >= 1))"
+  },
+  {
+   "table_name": "arrears_repayment_installment",
+   "contype": "c",
+   "conname": "arrears_repayment_installment_status_check",
+   "definition": "CHECK ((status = ANY (ARRAY['scheduled'::text, 'due'::text, 'paid'::text, 'overdue'::text, 'cancelled'::text])))"
+  },
+  {
+   "table_name": "arrears_repayment_installment",
+   "contype": "f",
+   "conname": "arrears_repayment_installment_plan_id_fkey",
+   "definition": "FOREIGN KEY (plan_id) REFERENCES arrears_repayment_plan(plan_id)"
+  },
+  {
+   "table_name": "arrears_repayment_installment",
+   "contype": "f",
+   "conname": "arrears_repayment_installment_settled_by_payment_id_fkey",
+   "definition": "FOREIGN KEY (settled_by_payment_id) REFERENCES rental_payment(payment_id)"
+  },
+  {
+   "table_name": "arrears_repayment_installment",
+   "contype": "f",
+   "conname": "arrears_repayment_installment_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "arrears_repayment_installment",
+   "contype": "p",
+   "conname": "arrears_repayment_installment_pkey",
+   "definition": "PRIMARY KEY (installment_id)"
+  },
+  {
+   "table_name": "arrears_repayment_installment",
+   "contype": "u",
+   "conname": "arrears_repayment_installment_plan_id_installment_number_key",
+   "definition": "UNIQUE (plan_id, installment_number)"
+  },
+  {
+   "table_name": "arrears_repayment_plan",
+   "contype": "c",
+   "conname": "arrears_repayment_plan_assigned_arrears_amount_check",
+   "definition": "CHECK ((assigned_arrears_amount > (0)::numeric))"
+  },
+  {
+   "table_name": "arrears_repayment_plan",
+   "contype": "c",
+   "conname": "arrears_repayment_plan_installment_count_check",
+   "definition": "CHECK ((installment_count >= 1))"
+  },
+  {
+   "table_name": "arrears_repayment_plan",
+   "contype": "c",
+   "conname": "arrears_repayment_plan_original_arrears_amount_check",
+   "definition": "CHECK ((original_arrears_amount > (0)::numeric))"
+  },
+  {
+   "table_name": "arrears_repayment_plan",
+   "contype": "c",
+   "conname": "arrears_repayment_plan_status_check",
+   "definition": "CHECK ((status = ANY (ARRAY['draft'::text, 'submitted'::text, 'under_review'::text, 'returned'::text, 'approved'::text, 'active'::text, 'completed'::text, 'defaulted'::text, 'cancelled'::text])))"
+  },
+  {
+   "table_name": "arrears_repayment_plan",
+   "contype": "f",
+   "conname": "arrears_repayment_plan_approved_by_user_id_fkey",
+   "definition": "FOREIGN KEY (approved_by_user_id) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "arrears_repayment_plan",
+   "contype": "f",
+   "conname": "arrears_repayment_plan_rent_account_id_fkey",
+   "definition": "FOREIGN KEY (rent_account_id) REFERENCES rent_account(rent_account_id)"
+  },
+  {
+   "table_name": "arrears_repayment_plan",
+   "contype": "f",
+   "conname": "arrears_repayment_plan_requested_by_user_id_fkey",
+   "definition": "FOREIGN KEY (requested_by_user_id) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "arrears_repayment_plan",
+   "contype": "f",
+   "conname": "arrears_repayment_plan_resident_id_fkey",
+   "definition": "FOREIGN KEY (resident_id) REFERENCES resident(resident_id)"
+  },
+  {
+   "table_name": "arrears_repayment_plan",
+   "contype": "f",
+   "conname": "arrears_repayment_plan_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "arrears_repayment_plan",
+   "contype": "p",
+   "conname": "arrears_repayment_plan_pkey",
+   "definition": "PRIMARY KEY (plan_id)"
+  },
+  {
+   "table_name": "arrears_repayment_plan",
+   "contype": "u",
+   "conname": "arrears_repayment_plan_woreda_id_plan_number_key",
+   "definition": "UNIQUE (woreda_id, plan_number)"
+  },
+  {
+   "table_name": "attachment",
+   "contype": "f",
+   "conname": "attachment_uploaded_by_fkey",
+   "definition": "FOREIGN KEY (uploaded_by) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "attachment",
+   "contype": "f",
+   "conname": "attachment_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id) ON DELETE CASCADE"
+  },
+  {
+   "table_name": "attachment",
+   "contype": "p",
+   "conname": "attachment_pkey",
+   "definition": "PRIMARY KEY (attachment_id)"
+  },
+  {
+   "table_name": "audit_log",
+   "contype": "f",
+   "conname": "audit_log_actor_user_id_fkey",
+   "definition": "FOREIGN KEY (actor_user_id) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "audit_log",
+   "contype": "f",
+   "conname": "audit_log_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "audit_log",
+   "contype": "p",
+   "conname": "audit_log_pkey",
+   "definition": "PRIMARY KEY (audit_log_id)"
+  },
+  {
+   "table_name": "console_role",
+   "contype": "f",
+   "conname": "console_role_updated_by_fkey",
+   "definition": "FOREIGN KEY (updated_by) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "console_role",
+   "contype": "p",
+   "conname": "console_role_pkey",
+   "definition": "PRIMARY KEY (console_role_id)"
+  },
+  {
+   "table_name": "console_role",
+   "contype": "u",
+   "conname": "console_role_name_key",
+   "definition": "UNIQUE (name)"
+  },
+  {
+   "table_name": "console_role_permission",
+   "contype": "c",
+   "conname": "console_role_permission_key_check",
+   "definition": "CHECK ((permission_key = ANY (ARRAY['console.tenants.manage'::text, 'console.users.manage'::text, 'console.audit.view'::text, 'console.credential_template.manage'::text, 'console.console_users.manage'::text])))"
+  },
+  {
+   "table_name": "console_role_permission",
+   "contype": "f",
+   "conname": "console_role_permission_console_role_id_fkey",
+   "definition": "FOREIGN KEY (console_role_id) REFERENCES console_role(console_role_id) ON DELETE CASCADE"
+  },
+  {
+   "table_name": "console_role_permission",
+   "contype": "p",
+   "conname": "console_role_permission_pkey",
+   "definition": "PRIMARY KEY (console_role_id, permission_key)"
+  },
+  {
+   "table_name": "credential_number_sequence",
+   "contype": "f",
+   "conname": "credential_number_sequence_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "credential_number_sequence",
+   "contype": "p",
+   "conname": "credential_number_sequence_pkey",
+   "definition": "PRIMARY KEY (woreda_id, seq_year)"
+  },
+  {
+   "table_name": "credential_policy",
+   "contype": "f",
+   "conname": "credential_policy_updated_by_fkey",
+   "definition": "FOREIGN KEY (updated_by) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "credential_policy",
+   "contype": "f",
+   "conname": "credential_policy_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id) ON DELETE CASCADE"
+  },
+  {
+   "table_name": "credential_policy",
+   "contype": "p",
+   "conname": "credential_policy_pkey",
+   "definition": "PRIMARY KEY (credential_policy_id)"
+  },
+  {
+   "table_name": "credential_policy",
+   "contype": "u",
+   "conname": "credential_policy_woreda_id_key",
+   "definition": "UNIQUE (woreda_id)"
+  },
+  {
+   "table_name": "credential_print_log",
+   "contype": "c",
+   "conname": "credential_print_log_print_type_check",
+   "definition": "CHECK ((print_type = ANY (ARRAY['card'::text, 'certificate'::text, 'both'::text])))"
+  },
+  {
+   "table_name": "credential_print_log",
+   "contype": "f",
+   "conname": "credential_print_log_credential_id_fkey",
+   "definition": "FOREIGN KEY (credential_id) REFERENCES residence_credential(credential_id)"
+  },
+  {
+   "table_name": "credential_print_log",
+   "contype": "f",
+   "conname": "credential_print_log_printed_by_user_id_fkey",
+   "definition": "FOREIGN KEY (printed_by_user_id) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "credential_print_log",
+   "contype": "f",
+   "conname": "credential_print_log_reprint_authorized_by_user_id_fkey",
+   "definition": "FOREIGN KEY (reprint_authorized_by_user_id) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "credential_print_log",
+   "contype": "f",
+   "conname": "credential_print_log_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "credential_print_log",
+   "contype": "p",
+   "conname": "credential_print_log_pkey",
+   "definition": "PRIMARY KEY (credential_print_log_id)"
+  },
+  {
+   "table_name": "credential_request",
+   "contype": "c",
+   "conname": "credential_request_credential_type_check",
+   "definition": "CHECK ((credential_type = ANY (ARRAY['card'::text, 'certificate'::text, 'both'::text])))"
+  },
+  {
+   "table_name": "credential_request",
+   "contype": "c",
+   "conname": "credential_request_request_type_check",
+   "definition": "CHECK ((request_type = ANY (ARRAY['new_issue'::text, 'renewal'::text, 'reissue_lost'::text, 'reissue_damaged'::text, 'reissue_stolen'::text, 'reissue_correction'::text])))"
+  },
+  {
+   "table_name": "credential_request",
+   "contype": "c",
+   "conname": "credential_request_status_check",
+   "definition": "CHECK ((status = ANY (ARRAY['draft'::text, 'submitted'::text, 'under_review'::text, 'verified'::text, 'pending_approval'::text, 'returned'::text, 'approval_returned'::text, 'rejected'::text, 'approved'::text, 'awaiting_payment'::text, 'paid'::text, 'printed'::text, 'active'::text])))"
+  },
+  {
+   "table_name": "credential_request",
+   "contype": "f",
+   "conname": "credential_request_approved_by_user_id_fkey",
+   "definition": "FOREIGN KEY (approved_by_user_id) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "credential_request",
+   "contype": "f",
+   "conname": "credential_request_credential_id_fkey",
+   "definition": "FOREIGN KEY (credential_id) REFERENCES residence_credential(credential_id)"
+  },
+  {
+   "table_name": "credential_request",
+   "contype": "f",
+   "conname": "credential_request_household_id_fkey",
+   "definition": "FOREIGN KEY (household_id) REFERENCES household(household_id)"
+  },
+  {
+   "table_name": "credential_request",
+   "contype": "f",
+   "conname": "credential_request_issuing_kebele_id_fkey",
+   "definition": "FOREIGN KEY (issuing_kebele_id) REFERENCES kebele(kebele_id)"
+  },
+  {
+   "table_name": "credential_request",
+   "contype": "f",
+   "conname": "credential_request_office_id_fkey",
+   "definition": "FOREIGN KEY (office_id) REFERENCES office(office_id)"
+  },
+  {
+   "table_name": "credential_request",
+   "contype": "f",
+   "conname": "credential_request_payment_fk",
+   "definition": "FOREIGN KEY (payment_id) REFERENCES payment(payment_id)"
+  },
+  {
+   "table_name": "credential_request",
+   "contype": "f",
+   "conname": "credential_request_prior_credential_id_fkey",
+   "definition": "FOREIGN KEY (prior_credential_id) REFERENCES residence_credential(credential_id)"
+  },
+  {
+   "table_name": "credential_request",
+   "contype": "f",
+   "conname": "credential_request_requested_by_user_id_fkey",
+   "definition": "FOREIGN KEY (requested_by_user_id) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "credential_request",
+   "contype": "f",
+   "conname": "credential_request_resident_id_fkey",
+   "definition": "FOREIGN KEY (resident_id) REFERENCES resident(resident_id)"
+  },
+  {
+   "table_name": "credential_request",
+   "contype": "f",
+   "conname": "credential_request_verified_by_user_id_fkey",
+   "definition": "FOREIGN KEY (verified_by_user_id) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "credential_request",
+   "contype": "f",
+   "conname": "credential_request_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "credential_request",
+   "contype": "p",
+   "conname": "credential_request_pkey",
+   "definition": "PRIMARY KEY (credential_request_id)"
+  },
+  {
+   "table_name": "credential_request",
+   "contype": "u",
+   "conname": "credential_request_woreda_id_request_number_key",
+   "definition": "UNIQUE (woreda_id, request_number)"
+  },
+  {
+   "table_name": "credential_request_sequence",
+   "contype": "f",
+   "conname": "credential_request_sequence_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "credential_request_sequence",
+   "contype": "p",
+   "conname": "credential_request_sequence_pkey",
+   "definition": "PRIMARY KEY (woreda_id, seq_year)"
+  },
+  {
+   "table_name": "credential_request_status_history",
+   "contype": "f",
+   "conname": "credential_request_status_history_changed_by_user_id_fkey",
+   "definition": "FOREIGN KEY (changed_by_user_id) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "credential_request_status_history",
+   "contype": "f",
+   "conname": "credential_request_status_history_credential_request_id_fkey",
+   "definition": "FOREIGN KEY (credential_request_id) REFERENCES credential_request(credential_request_id)"
+  },
+  {
+   "table_name": "credential_request_status_history",
+   "contype": "p",
+   "conname": "credential_request_status_history_pkey",
+   "definition": "PRIMARY KEY (id)"
+  },
+  {
+   "table_name": "credential_status_history",
+   "contype": "f",
+   "conname": "credential_status_history_changed_by_user_id_fkey",
+   "definition": "FOREIGN KEY (changed_by_user_id) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "credential_status_history",
+   "contype": "f",
+   "conname": "credential_status_history_credential_id_fkey",
+   "definition": "FOREIGN KEY (credential_id) REFERENCES residence_credential(credential_id) ON DELETE CASCADE"
+  },
+  {
+   "table_name": "credential_status_history",
+   "contype": "p",
+   "conname": "credential_status_history_pkey",
+   "definition": "PRIMARY KEY (id)"
+  },
+  {
+   "table_name": "credential_verification_log",
+   "contype": "c",
+   "conname": "credential_verification_log_attempted_value_check",
+   "definition": "CHECK ((length(attempted_value) <= 512))"
+  },
+  {
+   "table_name": "credential_verification_log",
+   "contype": "c",
+   "conname": "credential_verification_log_attempted_value_kind_check",
+   "definition": "CHECK ((attempted_value_kind = ANY (ARRAY['token'::text, 'credential_number'::text])))"
+  },
+  {
+   "table_name": "credential_verification_log",
+   "contype": "c",
+   "conname": "credential_verification_log_result_check",
+   "definition": "CHECK ((result = ANY (ARRAY['valid'::text, 'invalid'::text, 'not_found'::text, 'rate_limited'::text])))"
+  },
+  {
+   "table_name": "credential_verification_log",
+   "contype": "f",
+   "conname": "credential_verification_log_matched_credential_id_fkey",
+   "definition": "FOREIGN KEY (matched_credential_id) REFERENCES residence_credential(credential_id)"
+  },
+  {
+   "table_name": "credential_verification_log",
+   "contype": "f",
+   "conname": "credential_verification_log_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "credential_verification_log",
+   "contype": "p",
+   "conname": "credential_verification_log_pkey",
+   "definition": "PRIMARY KEY (id)"
+  },
+  {
+   "table_name": "fee_schedule",
+   "contype": "c",
+   "conname": "fee_schedule_status_check",
+   "definition": "CHECK ((status = ANY (ARRAY['active'::text, 'review_required'::text, 'inactive'::text])))"
+  },
+  {
+   "table_name": "fee_schedule",
+   "contype": "f",
+   "conname": "fee_schedule_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "fee_schedule",
+   "contype": "p",
+   "conname": "fee_schedule_pkey",
+   "definition": "PRIMARY KEY (fee_schedule_id)"
+  },
+  {
+   "table_name": "fee_schedule",
+   "contype": "u",
+   "conname": "fee_schedule_woreda_id_service_type_key",
+   "definition": "UNIQUE (woreda_id, service_type)"
+  },
+  {
+   "table_name": "household",
+   "contype": "c",
+   "conname": "household_house_type_check",
+   "definition": "CHECK ((house_type = ANY (ARRAY['private'::text, 'kebele'::text, 'rental'::text, 'government'::text, 'rented_by_private'::text, 'other'::text])))"
+  },
+  {
+   "table_name": "household",
+   "contype": "c",
+   "conname": "household_occupancy_status_check",
+   "definition": "CHECK ((occupancy_status = ANY (ARRAY['occupied'::text, 'vacant'::text, 'demolished'::text, 'transferred'::text])))"
+  },
+  {
+   "table_name": "household",
+   "contype": "f",
+   "conname": "household_alternate_head_resident_id_fkey",
+   "definition": "FOREIGN KEY (alternate_head_resident_id) REFERENCES resident(resident_id) ON DELETE SET NULL"
+  },
+  {
+   "table_name": "household",
+   "contype": "f",
+   "conname": "household_household_head_resident_id_fkey",
+   "definition": "FOREIGN KEY (household_head_resident_id) REFERENCES resident(resident_id)"
+  },
+  {
+   "table_name": "household",
+   "contype": "f",
+   "conname": "household_kebele_id_fkey",
+   "definition": "FOREIGN KEY (kebele_id) REFERENCES kebele(kebele_id)"
+  },
+  {
+   "table_name": "household",
+   "contype": "f",
+   "conname": "household_spouse_resident_id_fkey",
+   "definition": "FOREIGN KEY (spouse_resident_id) REFERENCES resident(resident_id) ON DELETE SET NULL"
+  },
+  {
+   "table_name": "household",
+   "contype": "f",
+   "conname": "household_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "household",
+   "contype": "p",
+   "conname": "household_pkey",
+   "definition": "PRIMARY KEY (household_id)"
+  },
+  {
+   "table_name": "household",
+   "contype": "u",
+   "conname": "household_kebele_id_house_number_key",
+   "definition": "UNIQUE (kebele_id, house_number)"
+  },
+  {
+   "table_name": "household_change_log",
+   "contype": "f",
+   "conname": "household_change_log_household_id_fkey",
+   "definition": "FOREIGN KEY (household_id) REFERENCES household(household_id)"
+  },
+  {
+   "table_name": "household_change_log",
+   "contype": "f",
+   "conname": "household_change_log_registered_by_user_id_fkey",
+   "definition": "FOREIGN KEY (registered_by_user_id) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "household_change_log",
+   "contype": "f",
+   "conname": "household_change_log_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "household_change_log",
+   "contype": "p",
+   "conname": "household_change_log_pkey",
+   "definition": "PRIMARY KEY (id)"
+  },
+  {
+   "table_name": "household_location",
+   "contype": "f",
+   "conname": "household_location_captured_by_fkey",
+   "definition": "FOREIGN KEY (captured_by) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "household_location",
+   "contype": "f",
+   "conname": "household_location_household_id_fkey",
+   "definition": "FOREIGN KEY (household_id) REFERENCES household(household_id) ON DELETE CASCADE"
+  },
+  {
+   "table_name": "household_location",
+   "contype": "f",
+   "conname": "household_location_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id) ON DELETE CASCADE"
+  },
+  {
+   "table_name": "household_location",
+   "contype": "p",
+   "conname": "household_location_pkey",
+   "definition": "PRIMARY KEY (household_location_id)"
+  },
+  {
+   "table_name": "household_location",
+   "contype": "u",
+   "conname": "household_location_household_id_key",
+   "definition": "UNIQUE (household_id)"
+  },
+  {
+   "table_name": "id_card_template",
+   "contype": "c",
+   "conname": "id_card_template_template_type_check",
+   "definition": "CHECK ((template_type = ANY (ARRAY['card_front'::text, 'card_back'::text])))"
+  },
+  {
+   "table_name": "id_card_template",
+   "contype": "f",
+   "conname": "id_card_template_updated_by_fkey",
+   "definition": "FOREIGN KEY (updated_by) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "id_card_template",
+   "contype": "p",
+   "conname": "id_card_template_pkey",
+   "definition": "PRIMARY KEY (template_type)"
+  },
+  {
+   "table_name": "id_card_template_field",
+   "contype": "c",
+   "conname": "id_card_template_field_binding_mode_check",
+   "definition": "CHECK ((binding_mode = ANY (ARRAY['bound'::text, 'static'::text])))"
+  },
+  {
+   "table_name": "id_card_template_field",
+   "contype": "c",
+   "conname": "id_card_template_field_field_type_check",
+   "definition": "CHECK ((field_type = ANY (ARRAY['text'::text, 'image'::text])))"
+  },
+  {
+   "table_name": "id_card_template_field",
+   "contype": "c",
+   "conname": "id_card_template_field_font_style_check",
+   "definition": "CHECK ((font_style = ANY (ARRAY['normal'::text, 'italic'::text])))"
+  },
+  {
+   "table_name": "id_card_template_field",
+   "contype": "c",
+   "conname": "id_card_template_field_template_type_check",
+   "definition": "CHECK ((template_type = ANY (ARRAY['card_front'::text, 'card_back'::text, 'certificate'::text])))"
+  },
+  {
+   "table_name": "id_card_template_field",
+   "contype": "c",
+   "conname": "id_card_template_field_text_decoration_check",
+   "definition": "CHECK ((text_decoration = ANY (ARRAY['none'::text, 'underline'::text])))"
+  },
+  {
+   "table_name": "id_card_template_field",
+   "contype": "p",
+   "conname": "id_card_template_field_pkey",
+   "definition": "PRIMARY KEY (template_field_id)"
+  },
+  {
+   "table_name": "id_card_template_field",
+   "contype": "u",
+   "conname": "id_card_template_field_template_type_field_key_key",
+   "definition": "UNIQUE (template_type, field_key)"
+  },
+  {
+   "table_name": "id_card_template_field_draft",
+   "contype": "c",
+   "conname": "id_card_template_field_draft_binding_mode_check",
+   "definition": "CHECK ((binding_mode = ANY (ARRAY['bound'::text, 'static'::text])))"
+  },
+  {
+   "table_name": "id_card_template_field_draft",
+   "contype": "c",
+   "conname": "id_card_template_field_draft_field_type_check",
+   "definition": "CHECK ((field_type = ANY (ARRAY['text'::text, 'image'::text])))"
+  },
+  {
+   "table_name": "id_card_template_field_draft",
+   "contype": "c",
+   "conname": "id_card_template_field_draft_font_style_check",
+   "definition": "CHECK ((font_style = ANY (ARRAY['normal'::text, 'italic'::text])))"
+  },
+  {
+   "table_name": "id_card_template_field_draft",
+   "contype": "c",
+   "conname": "id_card_template_field_draft_template_type_check",
+   "definition": "CHECK ((template_type = ANY (ARRAY['card_front'::text, 'card_back'::text, 'certificate'::text])))"
+  },
+  {
+   "table_name": "id_card_template_field_draft",
+   "contype": "c",
+   "conname": "id_card_template_field_draft_text_decoration_check",
+   "definition": "CHECK ((text_decoration = ANY (ARRAY['none'::text, 'underline'::text])))"
+  },
+  {
+   "table_name": "id_card_template_field_draft",
+   "contype": "p",
+   "conname": "id_card_template_field_draft_pkey",
+   "definition": "PRIMARY KEY (template_field_id)"
+  },
+  {
+   "table_name": "id_card_template_field_draft",
+   "contype": "u",
+   "conname": "id_card_template_field_draft_type_key_key",
+   "definition": "UNIQUE (template_type, field_key)"
+  },
+  {
+   "table_name": "kebele",
+   "contype": "c",
+   "conname": "kebele_number_two_digits",
+   "definition": "CHECK ((kebele_number ~ '^[0-9]{1,2}$'::text))"
+  },
+  {
+   "table_name": "kebele",
+   "contype": "f",
+   "conname": "kebele_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id) ON DELETE CASCADE"
+  },
+  {
+   "table_name": "kebele",
+   "contype": "p",
+   "conname": "kebele_pkey",
+   "definition": "PRIMARY KEY (kebele_id)"
+  },
+  {
+   "table_name": "kebele",
+   "contype": "u",
+   "conname": "kebele_woreda_id_kebele_number_key",
+   "definition": "UNIQUE (woreda_id, kebele_number)"
+  },
+  {
+   "table_name": "kebele_rental_house",
+   "contype": "c",
+   "conname": "kebele_rental_house_occupancy_status_check",
+   "definition": "CHECK ((occupancy_status = ANY (ARRAY['vacant'::text, 'occupied'::text, 'under_maintenance'::text, 'archived'::text])))"
+  },
+  {
+   "table_name": "kebele_rental_house",
+   "contype": "f",
+   "conname": "kebele_rental_house_kebele_id_fkey",
+   "definition": "FOREIGN KEY (kebele_id) REFERENCES kebele(kebele_id)"
+  },
+  {
+   "table_name": "kebele_rental_house",
+   "contype": "f",
+   "conname": "kebele_rental_house_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "kebele_rental_house",
+   "contype": "p",
+   "conname": "kebele_rental_house_pkey",
+   "definition": "PRIMARY KEY (rental_house_id)"
+  },
+  {
+   "table_name": "kebele_rental_house",
+   "contype": "u",
+   "conname": "kebele_rental_house_woreda_id_kebele_id_house_number_key",
+   "definition": "UNIQUE (woreda_id, kebele_id, house_number)"
+  },
+  {
+   "table_name": "office",
+   "contype": "f",
+   "conname": "office_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id) ON DELETE CASCADE"
+  },
+  {
+   "table_name": "office",
+   "contype": "p",
+   "conname": "office_pkey",
+   "definition": "PRIMARY KEY (office_id)"
+  },
+  {
+   "table_name": "office",
+   "contype": "u",
+   "conname": "office_woreda_id_key",
+   "definition": "UNIQUE (woreda_id)"
+  },
+  {
+   "table_name": "payment",
+   "contype": "c",
+   "conname": "payment_amount_check",
+   "definition": "CHECK ((amount >= (0)::numeric))"
+  },
+  {
+   "table_name": "payment",
+   "contype": "c",
+   "conname": "payment_channel_check",
+   "definition": "CHECK ((channel = ANY (ARRAY['cash'::text, 'bank'::text, 'mobile'::text])))"
+  },
+  {
+   "table_name": "payment",
+   "contype": "c",
+   "conname": "payment_payment_type_check",
+   "definition": "CHECK ((payment_type = ANY (ARRAY['service_fee'::text, 'house_rent'::text, 'penalty'::text, 'credential_fee'::text, 'rental_rent'::text, 'civil_registration_fee'::text])))"
+  },
+  {
+   "table_name": "payment",
+   "contype": "c",
+   "conname": "payment_source_exclusive_check",
+   "definition": "CHECK (((NOT ((credential_request_id IS NOT NULL) AND (rental_request_id IS NOT NULL))) AND (NOT ((vital_event_id IS NOT NULL) AND ((credential_request_id IS NOT NULL) OR (rental_request_id IS NOT NULL) OR (service_request_id IS NOT NULL))))))"
+  },
+  {
+   "table_name": "payment",
+   "contype": "c",
+   "conname": "payment_status_check",
+   "definition": "CHECK ((status = ANY (ARRAY['pending'::text, 'confirmed'::text, 'reversed'::text])))"
+  },
+  {
+   "table_name": "payment",
+   "contype": "f",
+   "conname": "payment_credential_request_id_fkey",
+   "definition": "FOREIGN KEY (credential_request_id) REFERENCES credential_request(credential_request_id)"
+  },
+  {
+   "table_name": "payment",
+   "contype": "f",
+   "conname": "payment_household_id_fkey",
+   "definition": "FOREIGN KEY (household_id) REFERENCES household(household_id)"
+  },
+  {
+   "table_name": "payment",
+   "contype": "f",
+   "conname": "payment_posted_by_user_id_fkey",
+   "definition": "FOREIGN KEY (posted_by_user_id) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "payment",
+   "contype": "f",
+   "conname": "payment_rental_request_id_fkey",
+   "definition": "FOREIGN KEY (rental_request_id) REFERENCES rental_occupancy_request(rental_request_id)"
+  },
+  {
+   "table_name": "payment",
+   "contype": "f",
+   "conname": "payment_resident_id_fkey",
+   "definition": "FOREIGN KEY (resident_id) REFERENCES resident(resident_id)"
+  },
+  {
+   "table_name": "payment",
+   "contype": "f",
+   "conname": "payment_service_request_id_fkey",
+   "definition": "FOREIGN KEY (service_request_id) REFERENCES service_request(service_request_id)"
+  },
+  {
+   "table_name": "payment",
+   "contype": "f",
+   "conname": "payment_vital_event_id_fkey",
+   "definition": "FOREIGN KEY (vital_event_id) REFERENCES vital_event(vital_event_id)"
+  },
+  {
+   "table_name": "payment",
+   "contype": "f",
+   "conname": "payment_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "payment",
+   "contype": "p",
+   "conname": "payment_pkey",
+   "definition": "PRIMARY KEY (payment_id)"
+  },
+  {
+   "table_name": "payment_reconciliation_exception",
+   "contype": "c",
+   "conname": "payment_reconciliation_excepti_expected_settlement_amount_check",
+   "definition": "CHECK (((expected_settlement_amount IS NULL) OR (expected_settlement_amount >= (0)::numeric)))"
+  },
+  {
+   "table_name": "payment_reconciliation_exception",
+   "contype": "c",
+   "conname": "payment_reconciliation_exception_exception_type_check",
+   "definition": "CHECK ((exception_type = ANY (ARRAY['amount_mismatch'::text, 'duplicate'::text, 'unknown_month'::text, 'other'::text])))"
+  },
+  {
+   "table_name": "payment_reconciliation_exception",
+   "contype": "c",
+   "conname": "payment_reconciliation_exception_received_amount_check",
+   "definition": "CHECK ((received_amount >= (0)::numeric))"
+  },
+  {
+   "table_name": "payment_reconciliation_exception",
+   "contype": "c",
+   "conname": "payment_reconciliation_exception_status_check",
+   "definition": "CHECK ((status = ANY (ARRAY['open'::text, 'under_review'::text, 'resolved'::text, 'rejected'::text])))"
+  },
+  {
+   "table_name": "payment_reconciliation_exception",
+   "contype": "f",
+   "conname": "payment_reconciliation_exception_created_by_fkey",
+   "definition": "FOREIGN KEY (created_by) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "payment_reconciliation_exception",
+   "contype": "f",
+   "conname": "payment_reconciliation_exception_rent_account_id_fkey",
+   "definition": "FOREIGN KEY (rent_account_id) REFERENCES rent_account(rent_account_id)"
+  },
+  {
+   "table_name": "payment_reconciliation_exception",
+   "contype": "f",
+   "conname": "payment_reconciliation_exception_resolved_by_fkey",
+   "definition": "FOREIGN KEY (resolved_by) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "payment_reconciliation_exception",
+   "contype": "f",
+   "conname": "payment_reconciliation_exception_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "payment_reconciliation_exception",
+   "contype": "p",
+   "conname": "payment_reconciliation_exception_pkey",
+   "definition": "PRIMARY KEY (exception_id)"
+  },
+  {
+   "table_name": "rate_limit_bucket",
+   "contype": "p",
+   "conname": "rate_limit_bucket_pkey",
+   "definition": "PRIMARY KEY (bucket_key, window_start)"
+  },
+  {
+   "table_name": "receipt",
+   "contype": "f",
+   "conname": "receipt_payment_id_fkey",
+   "definition": "FOREIGN KEY (payment_id) REFERENCES payment(payment_id)"
+  },
+  {
+   "table_name": "receipt",
+   "contype": "f",
+   "conname": "receipt_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "receipt",
+   "contype": "p",
+   "conname": "receipt_pkey",
+   "definition": "PRIMARY KEY (receipt_id)"
+  },
+  {
+   "table_name": "receipt",
+   "contype": "u",
+   "conname": "receipt_woreda_id_receipt_number_key",
+   "definition": "UNIQUE (woreda_id, receipt_number)"
+  },
+  {
+   "table_name": "receipt_sequence",
+   "contype": "f",
+   "conname": "receipt_sequence_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "receipt_sequence",
+   "contype": "p",
+   "conname": "receipt_sequence_pkey",
+   "definition": "PRIMARY KEY (woreda_id, seq_year)"
+  },
+  {
+   "table_name": "rent_account",
+   "contype": "c",
+   "conname": "rent_account_billing_end_period_key_check",
+   "definition": "CHECK (((billing_end_period_key IS NULL) OR (billing_end_period_key ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'::text)))"
+  },
+  {
+   "table_name": "rent_account",
+   "contype": "c",
+   "conname": "rent_account_billing_start_period_key_check",
+   "definition": "CHECK ((billing_start_period_key ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'::text))"
+  },
+  {
+   "table_name": "rent_account",
+   "contype": "c",
+   "conname": "rent_account_status_check",
+   "definition": "CHECK ((status = ANY (ARRAY['active'::text, 'suspended'::text, 'terminated'::text, 'closed'::text])))"
+  },
+  {
+   "table_name": "rent_account",
+   "contype": "f",
+   "conname": "rent_account_created_by_fkey",
+   "definition": "FOREIGN KEY (created_by) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "rent_account",
+   "contype": "f",
+   "conname": "rent_account_household_id_fkey",
+   "definition": "FOREIGN KEY (household_id) REFERENCES household(household_id)"
+  },
+  {
+   "table_name": "rent_account",
+   "contype": "f",
+   "conname": "rent_account_kebele_id_fkey",
+   "definition": "FOREIGN KEY (kebele_id) REFERENCES kebele(kebele_id)"
+  },
+  {
+   "table_name": "rent_account",
+   "contype": "f",
+   "conname": "rent_account_occupancy_id_fkey",
+   "definition": "FOREIGN KEY (occupancy_id) REFERENCES rental_occupancy(occupancy_id)"
+  },
+  {
+   "table_name": "rent_account",
+   "contype": "f",
+   "conname": "rent_account_rental_house_id_fkey",
+   "definition": "FOREIGN KEY (rental_house_id) REFERENCES kebele_rental_house(rental_house_id)"
+  },
+  {
+   "table_name": "rent_account",
+   "contype": "f",
+   "conname": "rent_account_resident_id_fkey",
+   "definition": "FOREIGN KEY (resident_id) REFERENCES resident(resident_id)"
+  },
+  {
+   "table_name": "rent_account",
+   "contype": "f",
+   "conname": "rent_account_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "rent_account",
+   "contype": "p",
+   "conname": "rent_account_pkey",
+   "definition": "PRIMARY KEY (rent_account_id)"
+  },
+  {
+   "table_name": "rent_account",
+   "contype": "u",
+   "conname": "rent_account_woreda_id_account_number_key",
+   "definition": "UNIQUE (woreda_id, account_number)"
+  },
+  {
+   "table_name": "rent_account_sequence",
+   "contype": "f",
+   "conname": "rent_account_sequence_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "rent_account_sequence",
+   "contype": "p",
+   "conname": "rent_account_sequence_pkey",
+   "definition": "PRIMARY KEY (woreda_id, seq_year)"
+  },
+  {
+   "table_name": "rent_charge",
+   "contype": "c",
+   "conname": "rent_charge_base_rent_amount_check",
+   "definition": "CHECK ((base_rent_amount > (0)::numeric))"
+  },
+  {
+   "table_name": "rent_charge",
+   "contype": "c",
+   "conname": "rent_charge_check",
+   "definition": "CHECK ((total_amount = (base_rent_amount + approved_adjustment_amount)))"
+  },
+  {
+   "table_name": "rent_charge",
+   "contype": "c",
+   "conname": "rent_charge_ethiopian_month_check",
+   "definition": "CHECK (((ethiopian_month >= 1) AND (ethiopian_month <= 12)))"
+  },
+  {
+   "table_name": "rent_charge",
+   "contype": "c",
+   "conname": "rent_charge_ethiopian_period_key_check",
+   "definition": "CHECK ((ethiopian_period_key ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'::text))"
+  },
+  {
+   "table_name": "rent_charge",
+   "contype": "c",
+   "conname": "rent_charge_ethiopian_year_check",
+   "definition": "CHECK ((ethiopian_year > 0))"
+  },
+  {
+   "table_name": "rent_charge",
+   "contype": "c",
+   "conname": "rent_charge_status_check",
+   "definition": "CHECK ((status = ANY (ARRAY['scheduled'::text, 'due'::text, 'overdue'::text, 'paid'::text, 'waived'::text, 'cancelled'::text])))"
+  },
+  {
+   "table_name": "rent_charge",
+   "contype": "c",
+   "conname": "rent_charge_total_amount_check",
+   "definition": "CHECK ((total_amount > (0)::numeric))"
+  },
+  {
+   "table_name": "rent_charge",
+   "contype": "f",
+   "conname": "rent_charge_occupancy_id_fkey",
+   "definition": "FOREIGN KEY (occupancy_id) REFERENCES rental_occupancy(occupancy_id)"
+  },
+  {
+   "table_name": "rent_charge",
+   "contype": "f",
+   "conname": "rent_charge_rent_account_id_fkey",
+   "definition": "FOREIGN KEY (rent_account_id) REFERENCES rent_account(rent_account_id)"
+  },
+  {
+   "table_name": "rent_charge",
+   "contype": "f",
+   "conname": "rent_charge_settled_by_payment_id_fkey",
+   "definition": "FOREIGN KEY (settled_by_payment_id) REFERENCES payment(payment_id)"
+  },
+  {
+   "table_name": "rent_charge",
+   "contype": "f",
+   "conname": "rent_charge_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "rent_charge",
+   "contype": "p",
+   "conname": "rent_charge_pkey",
+   "definition": "PRIMARY KEY (rent_charge_id)"
+  },
+  {
+   "table_name": "rent_charge",
+   "contype": "u",
+   "conname": "rent_charge_rent_account_id_ethiopian_period_key_key",
+   "definition": "UNIQUE (rent_account_id, ethiopian_period_key)"
+  },
+  {
+   "table_name": "rent_payment_settlement",
+   "contype": "c",
+   "conname": "rent_payment_settlement_settlement_amount_check",
+   "definition": "CHECK ((settlement_amount > (0)::numeric))"
+  },
+  {
+   "table_name": "rent_payment_settlement",
+   "contype": "c",
+   "conname": "rent_payment_settlement_status_check",
+   "definition": "CHECK ((status = ANY (ARRAY['active'::text, 'reversed'::text])))"
+  },
+  {
+   "table_name": "rent_payment_settlement",
+   "contype": "f",
+   "conname": "rent_payment_settlement_created_by_fkey",
+   "definition": "FOREIGN KEY (created_by) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "rent_payment_settlement",
+   "contype": "f",
+   "conname": "rent_payment_settlement_payment_id_fkey",
+   "definition": "FOREIGN KEY (payment_id) REFERENCES rental_payment(payment_id)"
+  },
+  {
+   "table_name": "rent_payment_settlement",
+   "contype": "f",
+   "conname": "rent_payment_settlement_rent_charge_id_fkey",
+   "definition": "FOREIGN KEY (rent_charge_id) REFERENCES rent_charge(rent_charge_id)"
+  },
+  {
+   "table_name": "rent_payment_settlement",
+   "contype": "f",
+   "conname": "rent_payment_settlement_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "rent_payment_settlement",
+   "contype": "p",
+   "conname": "rent_payment_settlement_pkey",
+   "definition": "PRIMARY KEY (settlement_id)"
+  },
+  {
+   "table_name": "rent_payment_settlement",
+   "contype": "u",
+   "conname": "rent_payment_settlement_payment_id_rent_charge_id_key",
+   "definition": "UNIQUE (payment_id, rent_charge_id)"
+  },
+  {
+   "table_name": "rent_rate_history",
+   "contype": "c",
+   "conname": "rent_rate_history_effective_period_key_check",
+   "definition": "CHECK ((effective_period_key ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'::text))"
+  },
+  {
+   "table_name": "rent_rate_history",
+   "contype": "c",
+   "conname": "rent_rate_history_monthly_amount_check",
+   "definition": "CHECK ((monthly_amount > (0)::numeric))"
+  },
+  {
+   "table_name": "rent_rate_history",
+   "contype": "c",
+   "conname": "rent_rate_history_status_check",
+   "definition": "CHECK ((status = ANY (ARRAY['active'::text, 'superseded'::text])))"
+  },
+  {
+   "table_name": "rent_rate_history",
+   "contype": "f",
+   "conname": "rent_rate_history_approved_by_fkey",
+   "definition": "FOREIGN KEY (approved_by) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "rent_rate_history",
+   "contype": "f",
+   "conname": "rent_rate_history_rent_account_id_fkey",
+   "definition": "FOREIGN KEY (rent_account_id) REFERENCES rent_account(rent_account_id)"
+  },
+  {
+   "table_name": "rent_rate_history",
+   "contype": "f",
+   "conname": "rent_rate_history_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "rent_rate_history",
+   "contype": "p",
+   "conname": "rent_rate_history_pkey",
+   "definition": "PRIMARY KEY (rent_rate_id)"
+  },
+  {
+   "table_name": "rent_rate_history",
+   "contype": "u",
+   "conname": "rent_rate_history_rent_account_id_effective_period_key_key",
+   "definition": "UNIQUE (rent_account_id, effective_period_key)"
+  },
+  {
+   "table_name": "rent_reminder",
+   "contype": "c",
+   "conname": "rent_reminder_delivery_channel_check",
+   "definition": "CHECK ((delivery_channel = ANY (ARRAY['erp'::text, 'sms'::text, 'print'::text])))"
+  },
+  {
+   "table_name": "rent_reminder",
+   "contype": "c",
+   "conname": "rent_reminder_delivery_status_check",
+   "definition": "CHECK ((delivery_status = ANY (ARRAY['pending'::text, 'sent'::text, 'failed'::text])))"
+  },
+  {
+   "table_name": "rent_reminder",
+   "contype": "c",
+   "conname": "rent_reminder_reminder_type_check",
+   "definition": "CHECK ((reminder_type = ANY (ARRAY['rent_due'::text, 'rent_overdue'::text, 'plan_due'::text, 'plan_overdue'::text, 'escalation'::text])))"
+  },
+  {
+   "table_name": "rent_reminder",
+   "contype": "f",
+   "conname": "rent_reminder_rent_account_id_fkey",
+   "definition": "FOREIGN KEY (rent_account_id) REFERENCES rent_account(rent_account_id)"
+  },
+  {
+   "table_name": "rent_reminder",
+   "contype": "f",
+   "conname": "rent_reminder_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "rent_reminder",
+   "contype": "p",
+   "conname": "rent_reminder_pkey",
+   "definition": "PRIMARY KEY (reminder_id)"
+  },
+  {
+   "table_name": "rental_occupancy",
+   "contype": "c",
+   "conname": "rental_occupancy_rent_amount_check",
+   "definition": "CHECK ((rent_amount > (0)::numeric))"
+  },
+  {
+   "table_name": "rental_occupancy",
+   "contype": "c",
+   "conname": "rental_occupancy_status_check",
+   "definition": "CHECK ((status = ANY (ARRAY['active'::text, 'terminated'::text])))"
+  },
+  {
+   "table_name": "rental_occupancy",
+   "contype": "f",
+   "conname": "rental_occupancy_household_id_fkey",
+   "definition": "FOREIGN KEY (household_id) REFERENCES household(household_id)"
+  },
+  {
+   "table_name": "rental_occupancy",
+   "contype": "f",
+   "conname": "rental_occupancy_originating_request_id_fkey",
+   "definition": "FOREIGN KEY (originating_request_id) REFERENCES rental_occupancy_request(rental_request_id)"
+  },
+  {
+   "table_name": "rental_occupancy",
+   "contype": "f",
+   "conname": "rental_occupancy_rental_house_id_fkey",
+   "definition": "FOREIGN KEY (rental_house_id) REFERENCES kebele_rental_house(rental_house_id)"
+  },
+  {
+   "table_name": "rental_occupancy",
+   "contype": "f",
+   "conname": "rental_occupancy_resident_id_fkey",
+   "definition": "FOREIGN KEY (resident_id) REFERENCES resident(resident_id)"
+  },
+  {
+   "table_name": "rental_occupancy",
+   "contype": "f",
+   "conname": "rental_occupancy_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "rental_occupancy",
+   "contype": "p",
+   "conname": "rental_occupancy_pkey",
+   "definition": "PRIMARY KEY (occupancy_id)"
+  },
+  {
+   "table_name": "rental_occupancy_request",
+   "contype": "c",
+   "conname": "rental_occupancy_request_request_type_check",
+   "definition": "CHECK ((request_type = ANY (ARRAY['new_registration'::text, 'termination'::text])))"
+  },
+  {
+   "table_name": "rental_occupancy_request",
+   "contype": "c",
+   "conname": "rental_occupancy_request_status_check",
+   "definition": "CHECK ((status = ANY (ARRAY['draft'::text, 'submitted'::text, 'under_review'::text, 'verified'::text, 'pending_approval'::text, 'returned'::text, 'approval_returned'::text, 'rejected'::text, 'approved'::text])))"
+  },
+  {
+   "table_name": "rental_occupancy_request",
+   "contype": "f",
+   "conname": "rental_occupancy_request_approved_by_user_id_fkey",
+   "definition": "FOREIGN KEY (approved_by_user_id) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "rental_occupancy_request",
+   "contype": "f",
+   "conname": "rental_occupancy_request_existing_fk",
+   "definition": "FOREIGN KEY (existing_occupancy_id) REFERENCES rental_occupancy(occupancy_id)"
+  },
+  {
+   "table_name": "rental_occupancy_request",
+   "contype": "f",
+   "conname": "rental_occupancy_request_household_id_fkey",
+   "definition": "FOREIGN KEY (household_id) REFERENCES household(household_id)"
+  },
+  {
+   "table_name": "rental_occupancy_request",
+   "contype": "f",
+   "conname": "rental_occupancy_request_rental_house_id_fkey",
+   "definition": "FOREIGN KEY (rental_house_id) REFERENCES kebele_rental_house(rental_house_id)"
+  },
+  {
+   "table_name": "rental_occupancy_request",
+   "contype": "f",
+   "conname": "rental_occupancy_request_requested_by_user_id_fkey",
+   "definition": "FOREIGN KEY (requested_by_user_id) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "rental_occupancy_request",
+   "contype": "f",
+   "conname": "rental_occupancy_request_resident_id_fkey",
+   "definition": "FOREIGN KEY (resident_id) REFERENCES resident(resident_id)"
+  },
+  {
+   "table_name": "rental_occupancy_request",
+   "contype": "f",
+   "conname": "rental_occupancy_request_resulting_fk",
+   "definition": "FOREIGN KEY (resulting_occupancy_id) REFERENCES rental_occupancy(occupancy_id)"
+  },
+  {
+   "table_name": "rental_occupancy_request",
+   "contype": "f",
+   "conname": "rental_occupancy_request_verified_by_user_id_fkey",
+   "definition": "FOREIGN KEY (verified_by_user_id) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "rental_occupancy_request",
+   "contype": "f",
+   "conname": "rental_occupancy_request_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "rental_occupancy_request",
+   "contype": "p",
+   "conname": "rental_occupancy_request_pkey",
+   "definition": "PRIMARY KEY (rental_request_id)"
+  },
+  {
+   "table_name": "rental_occupancy_request",
+   "contype": "u",
+   "conname": "rental_occupancy_request_woreda_id_request_number_key",
+   "definition": "UNIQUE (woreda_id, request_number)"
+  },
+  {
+   "table_name": "rental_payment",
+   "contype": "f",
+   "conname": "rental_payment_payer_resident_id_fkey",
+   "definition": "FOREIGN KEY (payer_resident_id) REFERENCES resident(resident_id)"
+  },
+  {
+   "table_name": "rental_payment",
+   "contype": "f",
+   "conname": "rental_payment_payment_id_fkey",
+   "definition": "FOREIGN KEY (payment_id) REFERENCES payment(payment_id)"
+  },
+  {
+   "table_name": "rental_payment",
+   "contype": "f",
+   "conname": "rental_payment_rent_account_id_fkey",
+   "definition": "FOREIGN KEY (rent_account_id) REFERENCES rent_account(rent_account_id)"
+  },
+  {
+   "table_name": "rental_payment",
+   "contype": "f",
+   "conname": "rental_payment_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "rental_payment",
+   "contype": "p",
+   "conname": "rental_payment_pkey",
+   "definition": "PRIMARY KEY (payment_id)"
+  },
+  {
+   "table_name": "rental_payment",
+   "contype": "u",
+   "conname": "rental_payment_woreda_id_idempotency_key_key",
+   "definition": "UNIQUE (woreda_id, idempotency_key)"
+  },
+  {
+   "table_name": "rental_policy",
+   "contype": "c",
+   "conname": "rental_policy_billing_invocation_mode_check",
+   "definition": "CHECK ((billing_invocation_mode = ANY (ARRAY['manual'::text, 'scheduled'::text])))"
+  },
+  {
+   "table_name": "rental_policy",
+   "contype": "c",
+   "conname": "rental_policy_due_day_check",
+   "definition": "CHECK (((due_day >= 1) AND (due_day <= 30)))"
+  },
+  {
+   "table_name": "rental_policy",
+   "contype": "c",
+   "conname": "rental_policy_due_rule_check",
+   "definition": "CHECK ((due_rule = 'fixed_day_after_period_start'::text))"
+  },
+  {
+   "table_name": "rental_policy",
+   "contype": "c",
+   "conname": "rental_policy_escalation_after_overdue_months_check",
+   "definition": "CHECK ((escalation_after_overdue_months >= 1))"
+  },
+  {
+   "table_name": "rental_policy",
+   "contype": "c",
+   "conname": "rental_policy_plan_compliance_effect_check",
+   "definition": "CHECK ((plan_compliance_effect = ANY (ARRAY['reduce_severity'::text, 'no_effect'::text])))"
+  },
+  {
+   "table_name": "rental_policy",
+   "contype": "c",
+   "conname": "rental_policy_plan_max_installments_check",
+   "definition": "CHECK (((plan_max_installments >= 1) AND (plan_max_installments <= 36)))"
+  },
+  {
+   "table_name": "rental_policy",
+   "contype": "c",
+   "conname": "rental_policy_reminder_channels_check",
+   "definition": "CHECK ((reminder_channels <@ ARRAY['erp'::text, 'sms'::text, 'print'::text]))"
+  },
+  {
+   "table_name": "rental_policy",
+   "contype": "c",
+   "conname": "rental_policy_reminder_days_after_overdue_check",
+   "definition": "CHECK ((reminder_days_after_overdue >= 0))"
+  },
+  {
+   "table_name": "rental_policy",
+   "contype": "c",
+   "conname": "rental_policy_reminder_days_before_due_check",
+   "definition": "CHECK ((reminder_days_before_due >= 0))"
+  },
+  {
+   "table_name": "rental_policy",
+   "contype": "c",
+   "conname": "rental_policy_termination_final_period_rule_check",
+   "definition": "CHECK ((termination_final_period_rule = 'through_termination_month'::text))"
+  },
+  {
+   "table_name": "rental_policy",
+   "contype": "c",
+   "conname": "rental_policy_waiver_max_amount_check",
+   "definition": "CHECK (((waiver_max_amount IS NULL) OR (waiver_max_amount >= (0)::numeric)))"
+  },
+  {
+   "table_name": "rental_policy",
+   "contype": "c",
+   "conname": "rental_policy_waiver_requires_role_check",
+   "definition": "CHECK ((waiver_requires_role = ANY (ARRAY['supervisor'::text, 'tenant_admin'::text])))"
+  },
+  {
+   "table_name": "rental_policy",
+   "contype": "f",
+   "conname": "rental_policy_updated_by_fkey",
+   "definition": "FOREIGN KEY (updated_by) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "rental_policy",
+   "contype": "f",
+   "conname": "rental_policy_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "rental_policy",
+   "contype": "p",
+   "conname": "rental_policy_pkey",
+   "definition": "PRIMARY KEY (rental_policy_id)"
+  },
+  {
+   "table_name": "rental_policy",
+   "contype": "u",
+   "conname": "rental_policy_woreda_id_key",
+   "definition": "UNIQUE (woreda_id)"
+  },
+  {
+   "table_name": "rental_request_document",
+   "contype": "c",
+   "conname": "rental_request_document_document_type_check",
+   "definition": "CHECK ((document_type = ANY (ARRAY['contract'::text, 'clearance'::text, 'id_copy'::text, 'photo'::text, 'other'::text])))"
+  },
+  {
+   "table_name": "rental_request_document",
+   "contype": "f",
+   "conname": "rental_request_document_rental_request_id_fkey",
+   "definition": "FOREIGN KEY (rental_request_id) REFERENCES rental_occupancy_request(rental_request_id) ON DELETE CASCADE"
+  },
+  {
+   "table_name": "rental_request_document",
+   "contype": "f",
+   "conname": "rental_request_document_uploaded_by_user_id_fkey",
+   "definition": "FOREIGN KEY (uploaded_by_user_id) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "rental_request_document",
+   "contype": "f",
+   "conname": "rental_request_document_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "rental_request_document",
+   "contype": "p",
+   "conname": "rental_request_document_pkey",
+   "definition": "PRIMARY KEY (document_id)"
+  },
+  {
+   "table_name": "rental_request_sequence",
+   "contype": "f",
+   "conname": "rental_request_sequence_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "rental_request_sequence",
+   "contype": "p",
+   "conname": "rental_request_sequence_pkey",
+   "definition": "PRIMARY KEY (woreda_id, seq_year)"
+  },
+  {
+   "table_name": "residence_credential",
+   "contype": "c",
+   "conname": "residence_credential_credential_type_check",
+   "definition": "CHECK ((credential_type = ANY (ARRAY['card'::text, 'certificate'::text, 'both'::text])))"
+  },
+  {
+   "table_name": "residence_credential",
+   "contype": "c",
+   "conname": "residence_credential_status_check",
+   "definition": "CHECK ((status = ANY (ARRAY['ready_to_print'::text, 'printing'::text, 'printed'::text, 'active'::text, 'expired'::text, 'suspended'::text, 'revoked'::text, 'replaced'::text])))"
+  },
+  {
+   "table_name": "residence_credential",
+   "contype": "f",
+   "conname": "residence_credential_credential_request_id_fkey",
+   "definition": "FOREIGN KEY (credential_request_id) REFERENCES credential_request(credential_request_id)"
+  },
+  {
+   "table_name": "residence_credential",
+   "contype": "f",
+   "conname": "residence_credential_issuing_kebele_id_fkey",
+   "definition": "FOREIGN KEY (issuing_kebele_id) REFERENCES kebele(kebele_id)"
+  },
+  {
+   "table_name": "residence_credential",
+   "contype": "f",
+   "conname": "residence_credential_issuing_office_id_fkey",
+   "definition": "FOREIGN KEY (issuing_office_id) REFERENCES office(office_id)"
+  },
+  {
+   "table_name": "residence_credential",
+   "contype": "f",
+   "conname": "residence_credential_requested_by_user_id_fkey",
+   "definition": "FOREIGN KEY (requested_by_user_id) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "residence_credential",
+   "contype": "f",
+   "conname": "residence_credential_resident_id_fkey",
+   "definition": "FOREIGN KEY (resident_id) REFERENCES resident(resident_id)"
+  },
+  {
+   "table_name": "residence_credential",
+   "contype": "f",
+   "conname": "residence_credential_revoked_by_user_id_fkey",
+   "definition": "FOREIGN KEY (revoked_by_user_id) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "residence_credential",
+   "contype": "f",
+   "conname": "residence_credential_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "residence_credential",
+   "contype": "p",
+   "conname": "residence_credential_pkey",
+   "definition": "PRIMARY KEY (credential_id)"
+  },
+  {
+   "table_name": "residence_credential",
+   "contype": "u",
+   "conname": "residence_credential_number_woreda_unique",
+   "definition": "UNIQUE (woreda_id, credential_number)"
+  },
+  {
+   "table_name": "residence_credential",
+   "contype": "u",
+   "conname": "residence_credential_serial_number_woreda_unique",
+   "definition": "UNIQUE (woreda_id, serial_number)"
+  },
+  {
+   "table_name": "resident",
+   "contype": "c",
+   "conname": "resident_email_format",
+   "definition": "CHECK (((email IS NULL) OR (email ~* '^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$'::text)))"
+  },
+  {
+   "table_name": "resident",
+   "contype": "c",
+   "conname": "resident_marital_status_check",
+   "definition": "CHECK ((marital_status = ANY (ARRAY['single'::text, 'married'::text, 'divorced'::text, 'widowed'::text])))"
+  },
+  {
+   "table_name": "resident",
+   "contype": "c",
+   "conname": "resident_residency_status_check",
+   "definition": "CHECK ((residency_status = ANY (ARRAY['active'::text, 'suspended'::text, 'deceased'::text])))"
+  },
+  {
+   "table_name": "resident",
+   "contype": "c",
+   "conname": "resident_sex_check",
+   "definition": "CHECK ((sex = ANY (ARRAY['male'::text, 'female'::text])))"
+  },
+  {
+   "table_name": "resident",
+   "contype": "f",
+   "conname": "resident_current_household_id_fkey",
+   "definition": "FOREIGN KEY (current_household_id) REFERENCES household(household_id)"
+  },
+  {
+   "table_name": "resident",
+   "contype": "f",
+   "conname": "resident_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "resident",
+   "contype": "p",
+   "conname": "resident_pkey",
+   "definition": "PRIMARY KEY (resident_id)"
+  },
+  {
+   "table_name": "resident",
+   "contype": "u",
+   "conname": "resident_resident_number_key",
+   "definition": "UNIQUE (resident_number)"
+  },
+  {
+   "table_name": "resident_document",
+   "contype": "c",
+   "conname": "resident_document_content_type_check",
+   "definition": "CHECK ((content_type = 'application/pdf'::text))"
+  },
+  {
+   "table_name": "resident_document",
+   "contype": "f",
+   "conname": "resident_document_household_id_fkey",
+   "definition": "FOREIGN KEY (household_id) REFERENCES household(household_id) ON DELETE SET NULL"
+  },
+  {
+   "table_name": "resident_document",
+   "contype": "f",
+   "conname": "resident_document_resident_id_fkey",
+   "definition": "FOREIGN KEY (resident_id) REFERENCES resident(resident_id)"
+  },
+  {
+   "table_name": "resident_document",
+   "contype": "f",
+   "conname": "resident_document_uploaded_by_user_id_fkey",
+   "definition": "FOREIGN KEY (uploaded_by_user_id) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "resident_document",
+   "contype": "f",
+   "conname": "resident_document_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id) ON DELETE CASCADE"
+  },
+  {
+   "table_name": "resident_document",
+   "contype": "p",
+   "conname": "resident_document_pkey",
+   "definition": "PRIMARY KEY (document_id)"
+  },
+  {
+   "table_name": "resident_number_sequence",
+   "contype": "f",
+   "conname": "resident_number_sequence_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id) ON DELETE CASCADE"
+  },
+  {
+   "table_name": "resident_number_sequence",
+   "contype": "p",
+   "conname": "resident_number_sequence_pkey",
+   "definition": "PRIMARY KEY (woreda_id)"
+  },
+  {
+   "table_name": "role_permission",
+   "contype": "c",
+   "conname": "role_permission_role_name_check",
+   "definition": "CHECK ((role_name = ANY (ARRAY['registry_clerk'::text, 'civil_registrar'::text, 'finance_clerk'::text, 'supervisor'::text, 'auditor'::text, 'viewer'::text, 'print_officer'::text])))"
+  },
+  {
+   "table_name": "role_permission",
+   "contype": "f",
+   "conname": "role_permission_updated_by_fkey",
+   "definition": "FOREIGN KEY (updated_by) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "role_permission",
+   "contype": "f",
+   "conname": "role_permission_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id) ON DELETE CASCADE"
+  },
+  {
+   "table_name": "role_permission",
+   "contype": "p",
+   "conname": "role_permission_pkey",
+   "definition": "PRIMARY KEY (woreda_id, role_name, permission_key)"
+  },
+  {
+   "table_name": "service_request",
+   "contype": "c",
+   "conname": "service_request_category_chk",
+   "definition": "CHECK ((category = ANY (ARRAY['letter'::text, 'complaint'::text])))"
+  },
+  {
+   "table_name": "service_request",
+   "contype": "c",
+   "conname": "service_request_priority_chk",
+   "definition": "CHECK ((priority = ANY (ARRAY['low'::text, 'normal'::text, 'high'::text, 'urgent'::text])))"
+  },
+  {
+   "table_name": "service_request",
+   "contype": "c",
+   "conname": "service_request_status_chk",
+   "definition": "CHECK ((status = ANY (ARRAY['draft'::text, 'submitted'::text, 'under_review'::text, 'verified'::text, 'returned'::text, 'pending_approval'::text, 'approval_returned'::text, 'approved'::text, 'rejected'::text, 'awaiting_payment'::text, 'paid'::text, 'issued'::text, 'completed'::text, 'in_progress'::text, 'resolved'::text, 'closed'::text])))"
+  },
+  {
+   "table_name": "service_request",
+   "contype": "f",
+   "conname": "service_request_approved_by_user_id_fkey",
+   "definition": "FOREIGN KEY (approved_by_user_id) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "service_request",
+   "contype": "f",
+   "conname": "service_request_household_id_fkey",
+   "definition": "FOREIGN KEY (household_id) REFERENCES household(household_id)"
+  },
+  {
+   "table_name": "service_request",
+   "contype": "f",
+   "conname": "service_request_issued_by_user_id_fkey",
+   "definition": "FOREIGN KEY (issued_by_user_id) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "service_request",
+   "contype": "f",
+   "conname": "service_request_kebele_id_fkey",
+   "definition": "FOREIGN KEY (kebele_id) REFERENCES kebele(kebele_id)"
+  },
+  {
+   "table_name": "service_request",
+   "contype": "f",
+   "conname": "service_request_payment_id_fkey",
+   "definition": "FOREIGN KEY (payment_id) REFERENCES payment(payment_id)"
+  },
+  {
+   "table_name": "service_request",
+   "contype": "f",
+   "conname": "service_request_requested_by_user_id_fkey",
+   "definition": "FOREIGN KEY (requested_by_user_id) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "service_request",
+   "contype": "f",
+   "conname": "service_request_resident_id_fkey",
+   "definition": "FOREIGN KEY (resident_id) REFERENCES resident(resident_id)"
+  },
+  {
+   "table_name": "service_request",
+   "contype": "f",
+   "conname": "service_request_service_type_id_fkey",
+   "definition": "FOREIGN KEY (service_type_id) REFERENCES service_type(service_type_id)"
+  },
+  {
+   "table_name": "service_request",
+   "contype": "f",
+   "conname": "service_request_verified_by_user_id_fkey",
+   "definition": "FOREIGN KEY (verified_by_user_id) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "service_request",
+   "contype": "f",
+   "conname": "service_request_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "service_request",
+   "contype": "p",
+   "conname": "service_request_pkey",
+   "definition": "PRIMARY KEY (service_request_id)"
+  },
+  {
+   "table_name": "service_request_attachment",
+   "contype": "f",
+   "conname": "service_request_attachment_service_request_id_fkey",
+   "definition": "FOREIGN KEY (service_request_id) REFERENCES service_request(service_request_id) ON DELETE CASCADE"
+  },
+  {
+   "table_name": "service_request_attachment",
+   "contype": "f",
+   "conname": "service_request_attachment_uploaded_by_user_id_fkey",
+   "definition": "FOREIGN KEY (uploaded_by_user_id) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "service_request_attachment",
+   "contype": "f",
+   "conname": "service_request_attachment_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "service_request_attachment",
+   "contype": "p",
+   "conname": "service_request_attachment_pkey",
+   "definition": "PRIMARY KEY (attachment_id)"
+  },
+  {
+   "table_name": "service_request_checkpoint",
+   "contype": "f",
+   "conname": "service_request_checkpoint_active_plan_id_fkey",
+   "definition": "FOREIGN KEY (active_plan_id) REFERENCES arrears_repayment_plan(plan_id)"
+  },
+  {
+   "table_name": "service_request_checkpoint",
+   "contype": "f",
+   "conname": "service_request_checkpoint_rent_account_id_fkey",
+   "definition": "FOREIGN KEY (rent_account_id) REFERENCES rent_account(rent_account_id)"
+  },
+  {
+   "table_name": "service_request_checkpoint",
+   "contype": "f",
+   "conname": "service_request_checkpoint_rental_house_id_fkey",
+   "definition": "FOREIGN KEY (rental_house_id) REFERENCES kebele_rental_house(rental_house_id)"
+  },
+  {
+   "table_name": "service_request_checkpoint",
+   "contype": "f",
+   "conname": "service_request_checkpoint_resident_id_fkey",
+   "definition": "FOREIGN KEY (resident_id) REFERENCES resident(resident_id)"
+  },
+  {
+   "table_name": "service_request_checkpoint",
+   "contype": "f",
+   "conname": "service_request_checkpoint_service_request_id_fkey",
+   "definition": "FOREIGN KEY (service_request_id) REFERENCES service_request(service_request_id)"
+  },
+  {
+   "table_name": "service_request_checkpoint",
+   "contype": "f",
+   "conname": "service_request_checkpoint_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "service_request_checkpoint",
+   "contype": "p",
+   "conname": "service_request_checkpoint_pkey",
+   "definition": "PRIMARY KEY (checkpoint_id)"
+  },
+  {
+   "table_name": "service_request_checkpoint",
+   "contype": "u",
+   "conname": "service_request_checkpoint_service_request_id_key",
+   "definition": "UNIQUE (service_request_id)"
+  },
+  {
+   "table_name": "service_request_sequence",
+   "contype": "f",
+   "conname": "service_request_sequence_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id) ON DELETE CASCADE"
+  },
+  {
+   "table_name": "service_request_sequence",
+   "contype": "p",
+   "conname": "service_request_sequence_pkey",
+   "definition": "PRIMARY KEY (woreda_id, seq_year)"
+  },
+  {
+   "table_name": "service_request_status_history",
+   "contype": "f",
+   "conname": "service_request_status_history_changed_by_user_id_fkey",
+   "definition": "FOREIGN KEY (changed_by_user_id) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "service_request_status_history",
+   "contype": "f",
+   "conname": "service_request_status_history_service_request_id_fkey",
+   "definition": "FOREIGN KEY (service_request_id) REFERENCES service_request(service_request_id) ON DELETE CASCADE"
+  },
+  {
+   "table_name": "service_request_status_history",
+   "contype": "p",
+   "conname": "service_request_status_history_pkey",
+   "definition": "PRIMARY KEY (id)"
+  },
+  {
+   "table_name": "service_type",
+   "contype": "c",
+   "conname": "service_type_category_chk",
+   "definition": "CHECK ((category = ANY (ARRAY['letter'::text, 'complaint'::text])))"
+  },
+  {
+   "table_name": "service_type",
+   "contype": "f",
+   "conname": "service_type_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id) ON DELETE CASCADE"
+  },
+  {
+   "table_name": "service_type",
+   "contype": "p",
+   "conname": "service_type_pkey",
+   "definition": "PRIMARY KEY (service_type_id)"
+  },
+  {
+   "table_name": "service_type",
+   "contype": "u",
+   "conname": "service_type_code_unique",
+   "definition": "UNIQUE (woreda_id, code)"
+  },
+  {
+   "table_name": "tenant_module_config",
+   "contype": "c",
+   "conname": "tenant_module_config_module_key_check",
+   "definition": "CHECK ((module_key = ANY (ARRAY['credentials'::text, 'civil_registration'::text, 'revenue'::text, 'reports'::text, 'audit'::text, 'rental_houses'::text, 'services'::text, 'approvals'::text])))"
+  },
+  {
+   "table_name": "tenant_module_config",
+   "contype": "f",
+   "conname": "tenant_module_config_updated_by_fkey",
+   "definition": "FOREIGN KEY (updated_by) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "tenant_module_config",
+   "contype": "f",
+   "conname": "tenant_module_config_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "tenant_module_config",
+   "contype": "p",
+   "conname": "tenant_module_config_pkey",
+   "definition": "PRIMARY KEY (woreda_id, module_key)"
+  },
+  {
+   "table_name": "tenant_role",
+   "contype": "f",
+   "conname": "tenant_role_created_by_fkey",
+   "definition": "FOREIGN KEY (created_by) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "tenant_role",
+   "contype": "f",
+   "conname": "tenant_role_updated_by_fkey",
+   "definition": "FOREIGN KEY (updated_by) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "tenant_role",
+   "contype": "f",
+   "conname": "tenant_role_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "tenant_role",
+   "contype": "p",
+   "conname": "tenant_role_pkey",
+   "definition": "PRIMARY KEY (tenant_role_id)"
+  },
+  {
+   "table_name": "tenant_role",
+   "contype": "u",
+   "conname": "tenant_role_woreda_id_name_key",
+   "definition": "UNIQUE (woreda_id, name)"
+  },
+  {
+   "table_name": "tenant_role_permission",
+   "contype": "c",
+   "conname": "tenant_role_permission_no_reserved_keys",
+   "definition": "CHECK ((permission_key <> ALL (ARRAY['credential.approve'::text, 'civil.approve'::text, 'tenant.manage'::text, 'platform.manage'::text, 'tenant.create'::text, 'credential.configure_policy'::text, 'user.manage'::text, 'credential.revoke'::text, 'rental.policy.configure'::text, 'rental.reverse'::text])))"
+  },
+  {
+   "table_name": "tenant_role_permission",
+   "contype": "f",
+   "conname": "tenant_role_permission_tenant_role_id_fkey",
+   "definition": "FOREIGN KEY (tenant_role_id) REFERENCES tenant_role(tenant_role_id) ON DELETE CASCADE"
+  },
+  {
+   "table_name": "tenant_role_permission",
+   "contype": "f",
+   "conname": "tenant_role_permission_updated_by_fkey",
+   "definition": "FOREIGN KEY (updated_by) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "tenant_role_permission",
+   "contype": "p",
+   "conname": "tenant_role_permission_pkey",
+   "definition": "PRIMARY KEY (tenant_role_id, permission_key)"
+  },
+  {
+   "table_name": "user_permission_override",
+   "contype": "c",
+   "conname": "user_permission_override_no_locked_keys",
+   "definition": "CHECK ((permission_key <> ALL (ARRAY['credential.approve'::text, 'civil.approve'::text, 'tenant.manage'::text, 'platform.manage'::text, 'tenant.create'::text, 'credential.configure_policy'::text, 'user.manage'::text, 'credential.revoke'::text, 'rental.policy.configure'::text, 'rental.reverse'::text])))"
+  },
+  {
+   "table_name": "user_permission_override",
+   "contype": "f",
+   "conname": "user_permission_override_updated_by_fkey",
+   "definition": "FOREIGN KEY (updated_by) REFERENCES app_user(user_id) ON DELETE SET NULL"
+  },
+  {
+   "table_name": "user_permission_override",
+   "contype": "f",
+   "conname": "user_permission_override_user_id_fkey",
+   "definition": "FOREIGN KEY (user_id) REFERENCES app_user(user_id) ON DELETE CASCADE"
+  },
+  {
+   "table_name": "user_permission_override",
+   "contype": "f",
+   "conname": "user_permission_override_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id) ON DELETE CASCADE"
+  },
+  {
+   "table_name": "user_permission_override",
+   "contype": "p",
+   "conname": "user_permission_override_pkey",
+   "definition": "PRIMARY KEY (user_id, permission_key)"
+  },
+  {
+   "table_name": "vital_event",
+   "contype": "c",
+   "conname": "vital_event_event_type_check",
+   "definition": "CHECK ((event_type = ANY (ARRAY['birth'::text, 'death'::text, 'marriage'::text, 'divorce'::text])))"
+  },
+  {
+   "table_name": "vital_event",
+   "contype": "c",
+   "conname": "vital_event_status_check",
+   "definition": "CHECK ((status = ANY (ARRAY['draft'::text, 'submitted'::text, 'under_review'::text, 'verified'::text, 'pending_approval'::text, 'returned'::text, 'approval_returned'::text, 'rejected'::text, 'approved'::text, 'awaiting_payment'::text, 'paid'::text, 'registered'::text, 'issued'::text])))"
+  },
+  {
+   "table_name": "vital_event",
+   "contype": "f",
+   "conname": "vital_event_approved_by_user_id_fkey",
+   "definition": "FOREIGN KEY (approved_by_user_id) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "vital_event",
+   "contype": "f",
+   "conname": "vital_event_household_id_fkey",
+   "definition": "FOREIGN KEY (household_id) REFERENCES household(household_id)"
+  },
+  {
+   "table_name": "vital_event",
+   "contype": "f",
+   "conname": "vital_event_issued_by_user_id_fkey",
+   "definition": "FOREIGN KEY (issued_by_user_id) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "vital_event",
+   "contype": "f",
+   "conname": "vital_event_payment_id_fkey",
+   "definition": "FOREIGN KEY (payment_id) REFERENCES payment(payment_id)"
+  },
+  {
+   "table_name": "vital_event",
+   "contype": "f",
+   "conname": "vital_event_requested_by_user_id_fkey",
+   "definition": "FOREIGN KEY (requested_by_user_id) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "vital_event",
+   "contype": "f",
+   "conname": "vital_event_resident_id_fkey",
+   "definition": "FOREIGN KEY (resident_id) REFERENCES resident(resident_id)"
+  },
+  {
+   "table_name": "vital_event",
+   "contype": "f",
+   "conname": "vital_event_verified_by_user_id_fkey",
+   "definition": "FOREIGN KEY (verified_by_user_id) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "vital_event",
+   "contype": "f",
+   "conname": "vital_event_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "vital_event",
+   "contype": "p",
+   "conname": "vital_event_pkey",
+   "definition": "PRIMARY KEY (vital_event_id)"
+  },
+  {
+   "table_name": "vital_event",
+   "contype": "u",
+   "conname": "vital_event_woreda_id_event_type_event_number_key",
+   "definition": "UNIQUE (woreda_id, event_type, event_number)"
+  },
+  {
+   "table_name": "vital_event",
+   "contype": "u",
+   "conname": "vital_event_woreda_number_unique",
+   "definition": "UNIQUE (woreda_id, event_type, event_number)"
+  },
+  {
+   "table_name": "vital_event_sequence",
+   "contype": "f",
+   "conname": "vital_event_sequence_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id)"
+  },
+  {
+   "table_name": "vital_event_sequence",
+   "contype": "p",
+   "conname": "vital_event_sequence_pkey",
+   "definition": "PRIMARY KEY (woreda_id, event_type, seq_year)"
+  },
+  {
+   "table_name": "woreda",
+   "contype": "c",
+   "conname": "woreda_numeric_code_two_digits",
+   "definition": "CHECK (((woreda_numeric_code >= 1) AND (woreda_numeric_code <= 99)))"
+  },
+  {
+   "table_name": "woreda",
+   "contype": "c",
+   "conname": "woreda_status_check",
+   "definition": "CHECK ((status = ANY (ARRAY['active'::text, 'inactive'::text, 'suspended'::text])))"
+  },
+  {
+   "table_name": "woreda",
+   "contype": "p",
+   "conname": "woreda_pkey",
+   "definition": "PRIMARY KEY (woreda_id)"
+  },
+  {
+   "table_name": "woreda",
+   "contype": "u",
+   "conname": "woreda_woreda_code_key",
+   "definition": "UNIQUE (woreda_code)"
+  },
+  {
+   "table_name": "woreda",
+   "contype": "u",
+   "conname": "woreda_woreda_numeric_code_key",
+   "definition": "UNIQUE (woreda_numeric_code)"
+  },
+  {
+   "table_name": "woreda_settings",
+   "contype": "f",
+   "conname": "woreda_settings_updated_by_fkey",
+   "definition": "FOREIGN KEY (updated_by) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "woreda_settings",
+   "contype": "f",
+   "conname": "woreda_settings_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id) ON DELETE CASCADE"
+  },
+  {
+   "table_name": "woreda_settings",
+   "contype": "p",
+   "conname": "woreda_settings_pkey",
+   "definition": "PRIMARY KEY (woreda_id)"
+  },
+  {
+   "table_name": "workflow_status_history",
+   "contype": "f",
+   "conname": "workflow_status_history_changed_by_user_id_fkey",
+   "definition": "FOREIGN KEY (changed_by_user_id) REFERENCES app_user(user_id)"
+  },
+  {
+   "table_name": "workflow_status_history",
+   "contype": "f",
+   "conname": "workflow_status_history_woreda_id_fkey",
+   "definition": "FOREIGN KEY (woreda_id) REFERENCES woreda(woreda_id) ON DELETE CASCADE"
+  },
+  {
+   "table_name": "workflow_status_history",
+   "contype": "p",
+   "conname": "workflow_status_history_pkey",
+   "definition": "PRIMARY KEY (id)"
+  },
+  {
+   "table_name": "workflow_transition",
+   "contype": "c",
+   "conname": "workflow_transition_entity_check",
+   "definition": "CHECK ((entity = ANY (ARRAY['credential_request'::text, 'residence_credential'::text, 'vital_event'::text, 'service_request'::text, 'rental_occupancy_request'::text, 'arrears_repayment_plan'::text])))"
+  },
+  {
+   "table_name": "workflow_transition",
+   "contype": "c",
+   "conname": "workflow_transition_permission_check",
+   "definition": "CHECK (((is_system AND (required_permission IS NULL)) OR ((NOT is_system) AND (required_permission IS NOT NULL))))"
+  },
+  {
+   "table_name": "workflow_transition",
+   "contype": "p",
+   "conname": "workflow_transition_pkey",
+   "definition": "PRIMARY KEY (workflow_transition_id)"
+  },
+  {
+   "table_name": "workflow_transition",
+   "contype": "u",
+   "conname": "workflow_transition_unique",
+   "definition": "UNIQUE (entity, from_status, to_status)"
+  }
+ ]
+}

@@ -33,6 +33,10 @@ for f in sorted(glob.glob("findings/*.json")):
 
 rank = {"FAIL": 0, "PARTIAL": 1, "PASS": 2}
 def decide(es):
+    # Live verification (2026-09-25) is newer primary evidence than any static verdict.
+    for a, s, n, e in es:
+        if a == "live-verification":
+            return s, a
     for a, s, n, e in es:
         if a == "verifier":
             return s, a

@@ -2,7 +2,7 @@
 
 **System:** Woreda Administration ERP (woredas-portal) · **Baseline:** HEAD `9950f16` · **Date:** 2026-09-24 (Meskerem 14, 2019 EC)
 **Status:** As-is description built from code and migrations by the audit. Every gap is stated inline with its finding ID. It replaces nothing yet: `docs/security-functionality.md` is the project's own SFD, and several of its claims are contradicted (see `08-drift-register.md`).
-Live Supabase/Vercel dashboard settings were not visible to the audit; those values are marked **UNVERIFIED — owner to supply**.
+Live Supabase/Vercel settings were read on 2026-09-25 (`10-live-verification.md`); values below marked "live" come from that read-only check.
 
 ---
 
@@ -58,15 +58,15 @@ The full per-route and per-permission matrices are in `authz/route-guard-matrix.
 | Compensating control | CSP `default-src 'self'` | `src/lib/security-headers.ts:48-63` | `script-src 'unsafe-inline'` weakens it (WP-APP-003) |
 | Auth flow | Implicit flow (tokens in URL fragment) | `client.ts` defaults | PKCE not used (WP-AUTH-010) |
 | Client idle timeout | Warn at 20 min, sign-out at 25 min, checked every 15 s, shared across tabs via `localStorage` | `src/config/idleTimeout.ts:7-14`, `src/hooks/useIdleTimeout.ts` | Reload/reopen resets the timer (`useIdleTimeout.ts:79,84`, WP-AUTH-004); not mounted on `/set-password` |
-| Server inactivity / time-box | **UNVERIFIED — owner to supply** (Supabase Auth dashboard; Pro plan feature) | — | C-05 PARTIAL |
-| Access-token lifetime / refresh rotation / reuse detection | **UNVERIFIED — owner to supply** | — | |
-| JWT signing algorithm | **UNVERIFIED — owner to supply** (legacy HS256 secret vs asymmetric keys) | — | E-03 UNVERIFIED |
+| Server inactivity / time-box | **None** (live 2026-09-25: `sessions_inactivity_timeout = 0`, `sessions_timebox = 0`; Pro-plan setting) | `raw/live-2026-09-25/p01_auth_config.json` | C-05 PARTIAL, WP-LIVE-002 |
+| Access-token lifetime / refresh rotation / reuse detection | 3600 s / rotation on / reuse interval 10 s (live) | `p01_auth_config.json` | — |
+| JWT signing algorithm | **ES256 (P-256)** asymmetric signing key; the legacy `anon`/`service_role` API keys are still enabled beside the new publishable/secret keys (live) | `p12_jwks.json`, `p11_…json` | E-03 PARTIAL |
 | Regeneration on login | New session issued by GoTrue on each `signInWithPassword` | GoTrue | — |
 | Privilege change | No session revocation on suspension or role change | — | WP-AUTH-002 |
-| Password policy | 8-character minimum in the browser only; server minimum, leaked-password check **UNVERIFIED** | `ChangePasswordDialog.tsx`, `set-password.tsx` | WP-AUTH-007 |
+| Password policy | 8-character minimum in the browser only; **server minimum 6, no character rules, leaked-password check off** (live) | `ChangePasswordDialog.tsx`, `set-password.tsx`, `p01_auth_config.json` | WP-AUTH-007 |
 | Password change | No current-password re-authentication | `ChangePasswordDialog.tsx` | WP-AUTH-006 |
-| Lockout / CAPTCHA | None in the app; GoTrue rate limits **UNVERIFIED**; no `captchaToken` sent | `login.tsx:96` | WP-AUTH-005 |
-| MFA | Not enforced for any role | — | WP-AUTH-001 |
+| Lockout / CAPTCHA | None in the app; **CAPTCHA off** (live); GoTrue rate limits are defaults (verify 30/h, token refresh 150/h, OTP 30/h, email 25/h); no `captchaToken` sent | `login.tsx:96`, `p01_auth_config.json` | WP-AUTH-005 |
+| MFA | TOTP factor enabled on the project (live), but not enforced for any role (no aal2 check) | `p01_auth_config.json` | WP-AUTH-001 |
 | Sign-out | Global scope everywhere | `signOut()` calls | WP-AUTH-012 (Info) |
 
 ## 4. Encryption in transit (D-04)
@@ -76,7 +76,8 @@ The full per-route and per-permission matrices are in `authz/route-guard-matrix.
 | TLS termination | Inherited: Vercel edge (frontend), Supabase (API, Auth, Storage, Edge Functions) |
 | HSTS | Owned: `max-age=63072000; includeSubDomains` on every SSR document response (`security-headers.ts:77`); no `preload` |
 | Mixed content | None found in `src/` |
-| TLS version / cipher suites of the live host | **UNVERIFIED** — the sandbox egress policy blocked the probe (raw/ops-scope-tls-probe.txt); owner to supply an SSL Labs report for `woredas-portal.vercel.app` |
+| TLS version / cipher suites of the live host | SSL Labs 2026-09-25: **A+ / A** on the two edges, TLS 1.2 and 1.3 only, forward secrecy, no known TLS vulnerabilities (`raw/live-2026-09-25/s01_ssllabs.json`) |
+| Database connections | **SSL not enforced; network access open to 0.0.0.0/0 and ::/0** (live; WP-LIVE-001) |
 | Other headers | `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: SAMEORIGIN` + CSP `frame-ancestors 'self'`, `Permissions-Policy` (camera/geolocation self only) |
 
 ## 5. Encryption at rest and sensitive data (A-08)

@@ -13,15 +13,26 @@ credential teardown after every deploy. Each P0/P1 item has a ready-to-paste pro
 ## Precondition for everything below
 
 **Stand up staging first (WP-OPS-001).** Every fix in this roadmap has to be dry-run and acceptance-tested
-against a copy of the schema. Today the only database is production, holding real residents' data with
-unevidenced backups (WP-OPS-002). Until staging exists, P0 fixes are applied to production under the
+against a copy of the schema. Today the only database is production, on the Supabase Free plan with
+no backups and no PITR (WP-OPS-002, confirmed live 2026-09-25). Until staging exists, P0 fixes are applied to production under the
 three-phase process with a verified backup taken immediately before each apply.
+
+## Free-plan quick wins from the live check (2026-09-25; no purchase needed)
+
+| # | Finding(s) | Action | Owner | Effort |
+|---|---|---|---|---|
+| QW-1 | **WP-LIVE-001** | Enable SSL enforcement for database connections; restrict network access to the operator IPs that need it; rotate the DB password. | Ops | S |
+| QW-2 | **WP-ARC-005** | Delete `SUPABASE_SERVICE_ROLE_KEY` from the Vercel project (Production and Preview) and rotate the key. | Ops | S |
+| QW-3 | **WP-AUTH-005**, **WP-AUTH-007** | Enable CAPTCHA (hCaptcha or Turnstile) and send `captchaToken` from `login.tsx`; raise the server password minimum to at least 8 with character classes. | Ops + FE | S |
+| QW-4 | **WP-OPS-004** | Require the `test` status check on `main` in branch protection. | Ops | S |
+| QW-5 | **WP-LOC-014** | Rename woreda 5 to "Jinala" (additive migration + `seed.sql` + README), once the owner confirms the Amharic form. | DB | S |
+| QW-6 | **WP-API-004** | Pin `verify_jwt` per function in `supabase/config.toml` and redeploy so live state matches the repo. | Edge | S |
 
 ## P0 — within 48 hours (go-live blockers; small and contained)
 
 | # | Finding(s) | Action | Owner | Effort | Depends on |
 |---|---|---|---|---|---|
-| P0-1 | **WP-OPS-002** | Confirm the Supabase plan tier, that daily backups and (ideally) PITR are on, and take and **test-restore** a manual backup. Export the Storage buckets. Record RPO/RTO. | Ops | S | — |
+| P0-1 | **WP-OPS-002** | Confirm the Supabase plan tier, that daily backups and (ideally) PITR are on, and take and **test-restore** a manual backup. Export the Storage buckets. Record RPO/RTO. **Live 2026-09-25: Free plan, no backups, PITR off. Needs the owner's Pro + PITR decision; interim is an owned nightly `pg_dump` + Storage copy with a recorded restore test.** | Ops | S | Owner purchase decision |
 | P0-2 | **WP-VER-001** (Critical; merges WP-DB-003/009/010) | Add a same-woreda re-check to `generate_resident_on_birth_approval()` (mother/father lookups), `rental_eligibility()` and `get_credential_live_status()`; `REVOKE EXECUTE … FROM anon, PUBLIC` on the latter two. **Status 2026-09-25: done in code (migration `00000000000090`, PR #85, commits `f406f22`/`72e5dc5`); not yet applied to production.** | DB | S | P0-1 |
 | P0-3 | **WP-CRY-001** | Make `/v/$token` fail **closed**: show "cannot confirm" (not green) on no row, RPC error or rate-limit; canonicalise the token (strict base64url, low-S) before lookup, or look up by credential number and compare the signature. Same for the staff scanner (WP-CRY-002). | FE + DB | S | — |
 | P0-4 | **WP-DB-001** (merges WP-AUTH-002) | `get_user_woreda_id()` returns NULL unless `status = 'active'`; add the status check to storage policies; on suspension, call the GoTrue admin sign-out for the user (Edge Function); add a status check to `woreda.tsx` like `admin.tsx:31`. | DB + Edge + FE | S | P0-1 |

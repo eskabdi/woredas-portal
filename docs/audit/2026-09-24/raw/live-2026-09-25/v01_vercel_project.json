@@ -1,0 +1,87 @@
+{
+ "endpoint": "GET /v9/projects/{id}",
+ "result": {
+  "name": "woredas-portal",
+  "framework": null,
+  "nodeVersion": "24.x",
+  "buildCommand": "bun run build",
+  "outputDirectory": null,
+  "ssoProtection": {
+   "deploymentType": "all_except_custom_domains"
+  },
+  "passwordProtection": null,
+  "trustedIps": null,
+  "gitForkProtection": true,
+  "skewProtectionMaxAge": null,
+  "serverlessFunctionRegion": "iad1",
+  "directoryListing": false,
+  "autoExposeSystemEnvs": true,
+  "publicSource": null,
+  "security": null,
+  "env_names": [
+   [
+    "SUPABASE_PROJECT_ID",
+    [
+     "development",
+     "preview",
+     "production"
+    ],
+    "encrypted"
+   ],
+   [
+    "SUPABASE_PUBLISHABLE_KEY",
+    [
+     "development",
+     "preview",
+     "production"
+    ],
+    "encrypted"
+   ],
+   [
+    "SUPABASE_SERVICE_ROLE_KEY",
+    [
+     "preview",
+     "production"
+    ],
+    "sensitive"
+   ],
+   [
+    "SUPABASE_URL",
+    [
+     "development",
+     "preview",
+     "production"
+    ],
+    "encrypted"
+   ],
+   [
+    "VITE_SUPABASE_PROJECT_ID",
+    [
+     "development",
+     "preview",
+     "production"
+    ],
+    "encrypted"
+   ],
+   [
+    "VITE_SUPABASE_PUBLISHABLE_KEY",
+    [
+     "development",
+     "preview",
+     "production"
+    ],
+    "encrypted"
+   ],
+   [
+    "VITE_SUPABASE_URL",
+    [
+     "development",
+     "preview",
+     "production"
+    ],
+    "encrypted"
+   ]
+  ],
+  "domains": []
+ }
+}

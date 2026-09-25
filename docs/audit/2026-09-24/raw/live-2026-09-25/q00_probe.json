@@ -1,0 +1,11 @@
+{
+ "query": "select current_user, version(), (select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace where c.relkind='r' and n.nspname='public') as public_tables",
+ "http_status": "201",
+ "result": [
+  {
+   "current_user": "supabase_read_only_user",
+   "version": "PostgreSQL 17.6 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit",
+   "public_tables": 66
+  }
+ ]
+}

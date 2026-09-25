@@ -1,7 +1,7 @@
 # 01 — Project Status Report
 
 **Repository:** `eskabdi/woredas-portal` · **Baseline:** `9950f16` (main, identical to the audit branch) · **Audit date:** 2026-09-24 (Ethiopian calendar: Meskerem 14, 2019 EC)
-**Method:** read-only static audit by 15 specialist agents, adversarial verification of every Critical and High finding, no database access. Anything that depends on live production state is marked *Unverified*.
+**Method:** read-only static audit by 15 specialist agents, adversarial verification of every Critical and High finding, no database access on 2026-09-24; live production state checked read-only on 2026-09-25 (`10-live-verification.md`).
 
 ## 1. Overall position
 
@@ -17,7 +17,9 @@ It is **not ready for production use with real residents' data**. The blockers a
 
 | Verdict | Critical | High | Medium | Low | Info | INSA score (Appendix A) |
 |---|---|---|---|---|---|---|
-| **Not ready** | 1 | 15 | 50 | 58 | 21 | **32.8%** (19/58 scored; 38.0% including Appendix B) |
+| **Not ready** | 1 | 15 | 51 | 61 | 21 | **33.1%** (19.5/59 scored; 38.2% including Appendix B) |
+
+Counts include the live verification of 2026-09-25 (`10-live-verification.md`).
 
 Legend: ✅ working, no blocking finding · 🟡 working with Medium or lower gaps · 🔴 working but carries a Critical or High finding · ⚪ not built or not operational.
 
@@ -31,14 +33,14 @@ Legend: ✅ working, no blocking finding · 🟡 working with Medium or lower ga
 | QR verification (public `/v/$token`) and staff scanner | 1 + scanner | 🔴 | Client-side signature check, live revocation RPC | Verifier **fails open**: a revoked card can show "Verified" (WP-CRY-001). The staff scanner checks revocation only on request (WP-CRY-002). The QR carries readable PII (WP-CRY-003). QR codes point to a vendor subdomain (WP-OPS-008). | 0/1/3 |
 | Civil Registration | 7 | 🔴 | Birth, death, marriage, divorce; birth auto-creates the resident; death revokes credentials | Events can be inserted directly at `approved` (WP-WF-001). Approved content is not frozen (WP-WF-004). Death is incomplete and reversible (WP-WF-006). Cross-woreda parent lookup on birth approval (WP-VER-001). Divorce cannot be paid (WP-WF-008). | 1*/3/2 |
 | Services and Complaints | 6 | 🔴 | Configurable catalog, letter templates with sanitised print, public letter verification | Letters can take the complaint path and still verify (WP-WF-002). Stored XSS in the letter-template editor (WP-APP-001). Letter token not from a CSPRNG (WP-DB-013). | 0/1+1/0 |
-| Kebele Rental Houses (occupancy + financial core) | 10 | 🟡 | Strongest module: one locked SECURITY DEFINER transaction per money movement, idempotency keys, exact-sum settlement, SoD and frozen fields on requests | Due dates stored one day early (WP-LOC-001). Client-chosen billing start and unbilled termination month (WP-WF-013). `rental_eligibility()` answers for residents of any woreda and is probably anon-executable (WP-VER-001). Undocumented (WP-INV-002). | 1*/0/3 |
+| Kebele Rental Houses (occupancy + financial core) | 10 | 🟡 | Strongest module: one locked SECURITY DEFINER transaction per money movement, idempotency keys, exact-sum settlement, SoD and frozen fields on requests | Due dates stored one day early (WP-LOC-001). Client-chosen billing start and unbilled termination month (WP-WF-013). `rental_eligibility()` answers for residents of any woreda and is anon-executable, confirmed live (WP-VER-001). Undocumented (WP-INV-002). | 1*/0/3 |
 | Revenue and Receipts | 3 | 🟡 | Fail-closed fee resolvers, exact-match fee guard, public receipt verification | Payment → receipt → status is three client calls (WP-WF-009). Weak waiver control (WP-WF-010). Receipts not unique per payment (WP-CRY-007). Counters are tenant-writable (WP-DB-006). No EC fiscal year (WP-LOC-003). | 0/0/6 |
 | Approvals inbox, Reports, Dashboard | 5 | 🟡 | Unified approval queue view (`security_invoker`), CSV/PDF export with woreda branding | Report and export read keys not enforced by RLS (WP-DB-004, merged WP-AZ-005). Exports are unaudited (WP-PRV-004). | 0/0/0 + platform |
 | Settings (woreda) | 3 | 🔴 | Users and roles, custom roles, per-user overrides, module toggles, letterhead assets | Any tenant user can overwrite signatures, stamps and logos in Storage (WP-DB-002). Kebele reference data writable by every user (WP-DB-007). Stored XSS sink (WP-APP-001). | 0/2/1 |
 | RBAC and tenant isolation (cross-cutting) | — | 🔴 | RLS on 66/66 tables, three-layer permission chain, drift check in CI, custom roles fail closed | DEFINER functions without a woreda re-check (**WP-VER-001, Critical**). Status ignored by `get_user_woreda_id()` (WP-DB-001). Read permissions not enforced (WP-DB-004). Module toggles UI-only (WP-AZ-004). | 1/3/— |
 | Super Admin console | 7 | 🔴 | Tenant module provisioning, console roles, credential template designer, platform audit | Console permissions (CP) are enforced only in the browser (WP-AZ-001). Tenant creation only via seed/operator SQL (WP-ARC-004). | 0/1/0 |
 | Authentication and session | 3 | 🔴 | Invite, set-password, admin-initiated reset, 25-minute idle logout, self-service password change | No MFA for any role (WP-AUTH-001). Tokens in `localStorage` on an origin shared by public, tenant and admin pages (WP-APP-003, merged WP-AUTH-003; WP-ARC-003). No CAPTCHA or lockout evidence (WP-AUTH-005). | 0/1/— |
-| Operations (environments, backups, CI, monitoring) | — | 🔴 | CI runs lint, build, typecheck, tests and three catalog checks | No staging: production doubles as the test environment (WP-OPS-001). Backups/PITR unevidenced (WP-OPS-002). CI not a required check (WP-OPS-004). No monitoring or SIEM (WP-OPS-006). | 0/2/— |
+| Operations (environments, backups, CI, monitoring) | — | 🔴 | CI runs lint, build, typecheck, tests and the catalog/tenant checks; TLS A+/A (SSL Labs) | No staging (WP-OPS-001). **Free plan: no backups, no PITR** (WP-OPS-002, confirmed live). Direct DB open to all IPs without SSL (WP-LIVE-001). CI not a required check (WP-OPS-004, confirmed). No monitoring, SIEM or WAF rules (WP-OPS-006, WP-INV-003). | 0/2/— |
 
 \* WP-VER-001 is one Critical finding spanning civil registration (`generate_resident_on_birth_approval`), rental (`rental_eligibility`) and credentials (`get_credential_live_status`). It is counted once in the totals.
 
@@ -84,11 +86,9 @@ Go-live requires **all** of the following:
 
 Items 1–6 are small (≤ 1 day each) and can be done within 48 hours. Items 7–9 take about two weeks once staging exists. See `07-remediation-roadmap.md` and the ready-to-paste prompts in `09-fix-prompts.md`.
 
-## 6. Open items not assessable from the repository
+## 6. Open items
 
-- Live schema parity: were migrations 71–89 applied? (Appendix C query 1)
-- Supabase Auth configuration: JWT expiry, refresh-token reuse, sign-up, password policy, leaked-password check, CAPTCHA, rate limits, MFA factors, redirect allow-list.
-- Per-function `verify_jwt`, backups/PITR, region and data residency, TLS configuration, Vercel WAF and preview protection.
-- Live `role_permission` rows for `credential.verify`; super admins with a console role; whether anon has EXECUTE on `rental_eligibility`.
-
-The full list and the queries are in `00-EXECUTIVE-SUMMARY.md` §7 and `reference/appendix-c-catalog-queries.md`.
+The live check on 2026-09-25 resolved the items that could only be read from production (`10-live-verification.md`). Still open:
+- the legal questions (Proclamation 1321/2024, and the legal basis for collecting special-category data);
+- the Amharic spelling that matches "Jinala";
+- the owner's decision on the Pro plan, which gates backups, PITR, staging, leaked-password protection, session limits, log drains and WAF rules.

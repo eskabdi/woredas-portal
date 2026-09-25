@@ -1,0 +1,836 @@
+{
+ "query": "select r.rolname as grantee, c.relname as table_name, concat_ws(',', case when has_table_privilege(r.oid,c.oid,'SELECT') then 'SELECT' end, case when has_table_privilege(r.oid,c.oid,'INSERT') then 'INSERT' end, case when has_table_privilege(r.oid,c.oid,'UPDATE') then 'UPDATE' end, case when has_table_privilege(r.oid,c.oid,'DELETE') then 'DELETE' end, case when has_table_privilege(r.oid,c.oid,'TRUNCATE') then 'TRUNCATE' end) as privileges from pg_class c join pg_namespace n on n.oid=c.relnamespace cross join pg_roles r where n.nspname='public' and c.relkind in ('r','v','m') and r.rolname in ('anon','authenticated') order by c.relname, r.rolname",
+ "http_status": "201",
+ "result": [
+  {
+   "grantee": "anon",
+   "table_name": "app_user",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "app_user",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "approval",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "approval",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "approval_queue_v",
+   "privileges": ""
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "approval_queue_v",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "arrears_installment_charge",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "arrears_installment_charge",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "arrears_installment_charge_decrypted",
+   "privileges": ""
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "arrears_installment_charge_decrypted",
+   "privileges": "SELECT"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "arrears_plan_sequence",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "arrears_plan_sequence",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "arrears_repayment_installment",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "arrears_repayment_installment",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "arrears_repayment_installment_decrypted",
+   "privileges": ""
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "arrears_repayment_installment_decrypted",
+   "privileges": "SELECT"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "arrears_repayment_plan",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "arrears_repayment_plan",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "arrears_repayment_plan_decrypted",
+   "privileges": ""
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "arrears_repayment_plan_decrypted",
+   "privileges": "SELECT"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "attachment",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "attachment",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "audit_log",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "audit_log",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "console_role",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "console_role",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "console_role_permission",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "console_role_permission",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "credential_number_sequence",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "credential_number_sequence",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "credential_policy",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "credential_policy",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "credential_print_log",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "credential_print_log",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "credential_request",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "credential_request",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "credential_request_sequence",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "credential_request_sequence",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "credential_request_status_history",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "credential_request_status_history",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "credential_status_history",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "credential_status_history",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "credential_verification_log",
+   "privileges": ""
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "credential_verification_log",
+   "privileges": "SELECT"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "fee_schedule",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "fee_schedule",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "household",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "household",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "household_change_log",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "household_change_log",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "household_decrypted",
+   "privileges": ""
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "household_decrypted",
+   "privileges": "SELECT"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "household_location",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "household_location",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "household_member_roster",
+   "privileges": ""
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "household_member_roster",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "id_card_template",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "id_card_template",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "id_card_template_field",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "id_card_template_field",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "id_card_template_field_draft",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "id_card_template_field_draft",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "kebele",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "kebele",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "kebele_rental_house",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "kebele_rental_house",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "office",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "office",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "payment",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "payment",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "payment_decrypted",
+   "privileges": ""
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "payment_decrypted",
+   "privileges": "SELECT"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "payment_reconciliation_exception",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "payment_reconciliation_exception",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "payment_reconciliation_exception_decrypted",
+   "privileges": ""
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "payment_reconciliation_exception_decrypted",
+   "privileges": "SELECT"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "rate_limit_bucket",
+   "privileges": ""
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "rate_limit_bucket",
+   "privileges": ""
+  },
+  {
+   "grantee": "anon",
+   "table_name": "receipt",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "receipt",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "receipt_sequence",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "receipt_sequence",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "rent_account",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "rent_account",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "rent_account_sequence",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "rent_account_sequence",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "rent_charge",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "rent_charge",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "rent_charge_decrypted",
+   "privileges": ""
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "rent_charge_decrypted",
+   "privileges": "SELECT"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "rent_payment_settlement",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "rent_payment_settlement",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "rent_payment_settlement_decrypted",
+   "privileges": ""
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "rent_payment_settlement_decrypted",
+   "privileges": "SELECT"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "rent_rate_history",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "rent_rate_history",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "rent_rate_history_decrypted",
+   "privileges": ""
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "rent_rate_history_decrypted",
+   "privileges": "SELECT"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "rent_reminder",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "rent_reminder",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "rent_reminder_decrypted",
+   "privileges": ""
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "rent_reminder_decrypted",
+   "privileges": "SELECT"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "rental_occupancy",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "rental_occupancy",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "rental_occupancy_decrypted",
+   "privileges": ""
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "rental_occupancy_decrypted",
+   "privileges": "SELECT"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "rental_occupancy_request",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "rental_occupancy_request",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "rental_occupancy_request_decrypted",
+   "privileges": ""
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "rental_occupancy_request_decrypted",
+   "privileges": "SELECT"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "rental_payment",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "rental_payment",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "rental_policy",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "rental_policy",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "rental_request_document",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "rental_request_document",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "rental_request_sequence",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "rental_request_sequence",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "residence_credential",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "residence_credential",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "resident",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "resident",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "resident_decrypted",
+   "privileges": ""
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "resident_decrypted",
+   "privileges": "SELECT"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "resident_document",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "resident_document",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "resident_number_sequence",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "resident_number_sequence",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "role_permission",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "role_permission",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "service_request",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "service_request",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "service_request_attachment",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "service_request_attachment",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "service_request_checkpoint",
+   "privileges": ""
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "service_request_checkpoint",
+   "privileges": "SELECT"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "service_request_checkpoint_decrypted",
+   "privileges": ""
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "service_request_checkpoint_decrypted",
+   "privileges": "SELECT"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "service_request_decrypted",
+   "privileges": ""
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "service_request_decrypted",
+   "privileges": "SELECT"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "service_request_sequence",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "service_request_sequence",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "service_request_status_history",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "service_request_status_history",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "service_type",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "service_type",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "tenant_module_config",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "tenant_module_config",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "tenant_role",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "tenant_role",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "tenant_role_permission",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "tenant_role_permission",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "user_permission_override",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "user_permission_override",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "vital_event",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "vital_event",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "vital_event_sequence",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "vital_event_sequence",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "woreda",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "woreda",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "woreda_settings",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "woreda_settings",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "workflow_status_history",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "workflow_status_history",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "anon",
+   "table_name": "workflow_transition",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  },
+  {
+   "grantee": "authenticated",
+   "table_name": "workflow_transition",
+   "privileges": "SELECT,INSERT,UPDATE,DELETE"
+  }
+ ]
+}

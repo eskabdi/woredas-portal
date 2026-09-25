@@ -12,15 +12,15 @@ Scoring: PASS = 1, PARTIAL = 0.5, FAIL = 0; N/A excluded; UNVERIFIED excluded fr
 | Appendix B — Ethiopian Locale | 61.5% (8/13) | 13 | 0 | 0 |
 | B. Stack & Inventory | 40.0% (2/5) | 5 | 0 | 0 |
 | C. Coding & Implementation | 28.6% (2/7) | 7 | 0 | 1 |
-| D. Security Functionality Doc | 25.0% (1/4) | 4 | 1 | 0 |
+| D. Security Functionality Doc | 30.0% (1.5/5) | 5 | 0 | 0 |
 | E. API Security | 25.0% (1.5/6) | 6 | 0 | 0 |
 | F. Testing Scope | 50.0% (1.5/3) | 3 | 0 | 0 |
 | G. Living Documentation | 0.0% (0/1) | 1 | 0 | 0 |
 | H. Project-specific extensions | 35.4% (8.5/24) | 24 | 0 | 0 |
-| **INSA overall (Appendix A: A–H)** | **32.8%** (19/58) | 58 | 1 | 1 |
-| **Combined incl. Appendix B** | **38.0%** (27/71) | 71 | 1 | 1 |
+| **INSA overall (Appendix A: A–H)** | **33.1%** (19.5/59) | 59 | 0 | 1 |
+| **Combined incl. Appendix B** | **38.2%** (27.5/72) | 72 | 0 | 1 |
 
-Status totals: PASS 11, PARTIAL 32, FAIL 28, N/A 1, UNVERIFIED 1 (of 73 controls).
+Status totals: PASS 11, PARTIAL 33, FAIL 28, N/A 1, UNVERIFIED 0 (of 73 controls).
 
 
 ## A. Architecture & Design
@@ -54,7 +54,7 @@ Status totals: PASS 11, PARTIAL 32, FAIL 28, N/A 1, UNVERIFIED 1 (of 73 controls
 | C-02 | XSS prevention: context-aware output encoding; `dangerouslySetInnerHTML` prohibited without sanitisation | **FAIL** | verifier | **appsec** FAIL: 4 HTML sinks: print route, preview and chart style are sanitised or unused. RichTextEditor assigns DB HTML to innerHTML unsanitised (WP-APP-001, stored XSS). The CSP is not strict ('unsafe-inline', WP-APP-003). A hand-ro · **verifier** FAIL: One unsanitised innerHTML sink for stored letter HTML; CSP allows 'unsafe-inline' (WP-APP-001). |
 | C-03 | CSRF protection on every state-changing request | **N/A** | appsec | **appsec** N/A: The auth transport is a bearer JWT in the Authorization header, which the browser never attaches automatically. There are no cookie-authenticated endpoints, no TanStack server functions, and no Edge Function reads cookie |
 | C-04 | Cookies `Secure`, `HttpOnly`, `SameSite=Lax/Strict` | **PARTIAL** | auth-session | **auth-session** PARTIAL: Bearer tokens (access + refresh) in localStorage, not HttpOnly/Secure/SameSite cookies. INSA gap not declared in docs. Compensating controls partially present (connect-src allow-list, object-src none, form-action self) b |
-| C-05 | Session timeout defined (15–30 min inactivity) | **PARTIAL** | auth-session | **auth-session** PARTIAL: Client idle logout exists and is in band, but is bypassed by closing/reopening the tab and not mounted on /set-password. Server-side inactivity timeout / time-box and JWT expiry UNVERIFIED (dashboard). Suspension does no |
+| C-05 | Session timeout defined (15–30 min inactivity) | **PARTIAL** | live-verification | **auth-session** PARTIAL: Client idle logout exists and is in band, but is bypassed by closing/reopening the tab and not mounted on /set-password. Server-side inactivity timeout / time-box and JWT expiry UNVERIFIED (dashboard). Suspension does no · **live-verification** PARTIAL: Live 2026-09-25: JWT expiry is 3600 s and refresh rotation is on, but the server has no inactivity timeout or time-box (0/0; Pro-plan setting). The client-side 25-minute idle logout remains the only timeout (WP-LIVE-002) |
 | C-06 | Strict allow-list input validation (regex, enums) | **FAIL** | appsec | **appsec** FAIL: Enum/status columns are DB-enforced (44 named ADD CONSTRAINT CHECKs plus inline ones), and 14 forms use Zod. FAN (16 digits), phone (+251) and household email are client-only, FAN uniqueness is advisory, free-text length |
 | C-07 | Generic client errors; full stack traces logged server-side only | **PARTIAL** | appsec | **appsec** PARTIAL: PASS elements: all 8 Edge Functions return fixed strings via safeError() and log server-side, SSR crashes render a generic page, and there is no console.log of PII or tokens in src/ (only console.error of Error objects). |
 | C-08 | Secure file uploads: type allow-list, scanning, outside web root, random names | **FAIL** | appsec | **appsec** FAIL: PASS: all 10 buckets private, reads through signed URLs, per-woreda path-prefix RLS (TEN-06), and 7 of 11 upload paths use UUID or timestamp object names. FAIL: 8 of 10 buckets have no server MIME/size limits, SVG or any |
@@ -66,7 +66,7 @@ Status totals: PASS 11, PARTIAL 32, FAIL 28, N/A 1, UNVERIFIED 1 (of 73 controls
 | D-01 | Access control (RBAC/ABAC): which guard/policy enforces each endpoint | **FAIL** | authz | **authz** FAIL: The SFD exists but has no per-route/RPC/Edge matrix, and its enforcement claim is contradicted (WP-AZ-009). The matrix built here shows client guards on most portal routes (exceptions listed in authz.md §7), but 14 permi |
 | D-02 | Input validation strategy per module | **PARTIAL** | appsec | **appsec** PARTIAL: An 'Input validation strategy' section exists but is platform-level, not per module, and overstates the DB layer: it says 'consistently applied' although FAN, phone and household email have no DB constraint, and it says  |
 | D-03 | Session & cookie logic: duration, regeneration on login, flags | **PARTIAL** | auth-session | **auth-session** PARTIAL: Documented idle values match code; JWT expiry, refresh rotation/reuse, inactivity/time-box, password policy, MFA, lockout undocumented; file names stale. Regeneration on login: new GoTrue session per signInWithPassword ( |
-| D-04 | Encryption in transit: TLS 1.2+ enforced | **UNVERIFIED** | ops-scope | **ops-scope** UNVERIFIED: Code-side criteria are met (HSTS on every SSR response, no mixed-content URLs). A live TLS/HSTS probe was blocked by the audit sandbox egress policy (and a proxied result would describe the proxy anyway). Owner to supply |
+| D-04 | Encryption in transit: TLS 1.2+ enforced | **PARTIAL** | live-verification | **live-verification** PARTIAL: Live 2026-09-25: the web tier passes. SSL Labs grades the two production edges A+ and A, TLS 1.2/1.3 only, forward secrecy, no legacy protocols; HSTS max-age 2 years on one edge, absent on the other's sampled response. D · **ops-scope** UNVERIFIED: Code-side criteria are met (HSTS on every SSR response, no mixed-content URLs). A live TLS/HSTS probe was blocked by the audit sandbox egress policy (and a proxied result would describe the proxy anyway). Owner to supply |
 | D-05 | Logging: what is logged vs excluded (passwords, PII) | **FAIL** | privacy-logging | **privacy-logging** FAIL: A 'what is logged / never logged' section exists (docs/security-functionality.md §Logging), and console.* usage is clean (no tokens, passwords or form payloads). But: (a) the logged-event set is incomplete, with no login |
 
 ## E. API Security
@@ -98,7 +98,7 @@ Status totals: PASS 11, PARTIAL 32, FAIL 28, N/A 1, UNVERIFIED 1 (of 73 controls
 
 | ID | Requirement | Status | Owner | Evidence notes (per agent) |
 |---|---|---|---|---|
-| TEN-01 | RLS enabled (and ideally FORCED) on every `public` table | **PARTIAL** | database | **database** PARTIAL: Every public table has RLS enabled in the migrations; none is FORCED. Live relrowsecurity is UNVERIFIED (Appendix C q1). |
+| TEN-01 | RLS enabled (and ideally FORCED) on every `public` table | **PARTIAL** | live-verification | **database** PARTIAL: Every public table has RLS enabled in the migrations; none is FORCED. Live relrowsecurity is UNVERIFIED (Appendix C q1). · **live-verification** PARTIAL: Live 2026-09-25: RLS is enabled on 66 of 66 public tables (matches the migrations). None is FORCED. |
 | TEN-02 | Every tenant table has NOT NULL `woreda_id` and policies scope by caller's woreda (from JWT/profile, not client input) | **FAIL** | verifier | **authz** PARTIAL: Agrees with the database agent. Every policy derives the tenant from get_user_woreda_id(). Client-sent woreda_id values are validated by WITH CHECK, by triggers (overrides, tenant_role pin) or by explicit Edge Function c · **database** PARTIAL: Policies derive woreda server-side (never from the client). woreda_id is NOT NULL on all tenant tables except app_user/audit_log/credential_verification_log (nullable by design). 4 child tables have no woreda_id and are  · **verifier** FAIL: Policies derive woreda server-side, but three SECURITY DEFINER paths trust a client-supplied key across tenants (WP-VER-001). |
 | TEN-03 | INSERT/UPDATE policies have `WITH CHECK` preventing row migration across woredas | **PASS** | database | **database** PASS: Rows cannot be moved to another woreda through RLS. woreda_id moves on app_user/tenant_role are additionally pinned by triggers (migrations 42, 19). |
 | TEN-04 | Views use `security_invoker`; SECURITY DEFINER functions pin `search_path` and re-check tenant | **FAIL** | verifier | **database** PARTIAL: Gaps where tenant re-checks are missing: rental_eligibility (WP-DB-009), get_credential_live_status (WP-DB-010), generate_resident_on_birth_approval (WP-DB-003); decrypt_pii_* check tenant but not permission. · **verifier** FAIL: search_path is pinned on all definer functions (database agent), but tenant re-check is missing in at least three. |
@@ -121,7 +121,7 @@ Status totals: PASS 11, PARTIAL 32, FAIL 28, N/A 1, UNVERIFIED 1 (of 73 controls
 | SEC-01 | No secrets in working tree or git history; no `service_role` in frontend | **PASS** | supplychain | **supplychain** PASS: Regex fallback, since gitleaks/trufflehog are not installed; entropy-only secrets with no known prefix could evade it. The local working clone is shallow (177 commits), so history was verified against a scratch mirror. O |
 | QA-01 | `tsc --noEmit` clean; lint clean; build succeeds | **PARTIAL** | build-quality | **build-quality** PARTIAL: All commands succeed. PARTIAL because lint emits 8 warnings, the typecheck scope excludes supabase/functions and scripts/ (WP-BQ-002), and cleanliness partly depends on 56 inline suppressions (WP-BQ-003). |
 | RT-01 | Every dynamic segment with sibling children uses `$id.index.tsx` | **PASS** | build-quality | **build-quality** PASS: Full verdict table in build-quality.md §3. |
-| OPS-01 | Separate staging and production; backups/PITR; monitoring | **FAIL** | verifier | **ops-scope** FAIL: No separate staging; backups/PITR/RPO/RTO unevidenced (likely free tier); no monitoring or alerting. WP-OPS-001, -002, -006. · **verifier** FAIL: No staging; backups/PITR unevidenced (WP-OPS-001, WP-OPS-002 needs live confirmation). |
+| OPS-01 | Separate staging and production; backups/PITR; monitoring | **FAIL** | live-verification | **live-verification** FAIL: Live 2026-09-25 and owner: Free plan, no backups, PITR off, no staging, no log drain or WAF rules. · **ops-scope** FAIL: No separate staging; backups/PITR/RPO/RTO unevidenced (likely free tier); no monitoring or alerting. WP-OPS-001, -002, -006. · **verifier** FAIL: No staging; backups/PITR unevidenced (WP-OPS-001, WP-OPS-002 needs live confirmation). |
 
 ## Appendix B — Ethiopian Locale
 

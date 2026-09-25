@@ -18,9 +18,9 @@
     "na": 1
   },
   "D. Security Functionality Doc": {
-    "points": 1.0,
-    "scored": 4,
-    "unverified": 1,
+    "points": 1.5,
+    "scored": 5,
+    "unverified": 0,
     "na": 0
   },
   "E. API Security": {
@@ -54,22 +54,21 @@
     "na": 0
   },
   "_overall_appendix_a": {
-    "points": 19.0,
-    "scored": 58,
-    "unverified": 1,
-    "pct": "32.8%"
+    "points": 19.5,
+    "scored": 59,
+    "unverified": 0,
+    "pct": "33.1%"
   },
   "_combined": {
-    "points": 27.0,
-    "scored": 71,
-    "unverified": 1,
-    "pct": "38.0%"
+    "points": 27.5,
+    "scored": 72,
+    "unverified": 0,
+    "pct": "38.2%"
   },
   "_status_totals": {
-    "PARTIAL": 32,
+    "PARTIAL": 33,
     "FAIL": 28,
     "N/A": 1,
-    "UNVERIFIED": 1,
     "PASS": 11
   },
   "_items": {
@@ -97,7 +96,7 @@
     "D-01": "FAIL",
     "D-02": "PARTIAL",
     "D-03": "PARTIAL",
-    "D-04": "UNVERIFIED",
+    "D-04": "PARTIAL",
     "D-05": "FAIL",
     "E-01": "FAIL",
     "E-02": "FAIL",

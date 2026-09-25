@@ -276,3 +276,19 @@ verdict about the live DB means "per the migrations".
 | audit-architecture | CONTRADICTED | A query that forgets a filter still cannot cross tenants | docs/architecture.md:59-63 | True for PostgREST table access; false for DEFINER functions (WP-VER-001) |
 | audit-architecture | CONTRADICTED | attachments bucket serves credential and civil-registration workflows | CLAUDE.md (Storage) | src/routes/woreda.credentials.new.tsx:372 only; 00000000000053:93-98 has no vital_event arm |
 | audit-architecture | CONTRADICTED | SUPABASE_SERVICE_ROLE_KEY required by client.server.ts | .env.example:29-30 | client.server.ts is imported by no module |
+
+## Live verification addendum (2026-09-25)
+
+These claims were checked against production, read-only (`10-live-verification.md`, `raw/live-2026-09-25/`).
+
+| Claim | Source | Live result | Status |
+|---|---|---|---|
+| "52 tables, live-enumerated against production" | CLAUDE.md, docs/erd.md | 66 public tables | CONTRADICTED |
+| Migrations 71–89 (rental financial core) are deployed | audit open item | Tables and functions present | CONFIRMED |
+| RLS on every table | CLAUDE.md, docs/security-functionality.md | 66/66 enabled, none forced | CONFIRMED |
+| "Zero custom roles exist in production" | CLAUDE.md | 1 `tenant_role` row | CONTRADICTED |
+| All Edge Functions run with `verify_jwt = false` | docs/security-hardening.md | false on 6, true on 2 | CONTRADICTED |
+| Woreda 5 is "Jineala" | supabase/seed.sql, README | Owner: official spelling is "Jinala" | CONTRADICTED (data fix needed) |
+| Backups/PITR exist | implied by the go-live declaration's rollback path | Free plan, no backups, PITR off | CONTRADICTED |
+| The service_role key is server-only and unused | CLAUDE.md | Set in Vercel Production/Preview env; no code reads it | CONFIRMED unused, present (WP-ARC-005) |
+| Redirect allow-list is narrow | CLAUDE.md "Auth redirect URLs" | `https://woredas-portal.vercel.app/**`, `http://localhost:5173/**` | CONFIRMED |

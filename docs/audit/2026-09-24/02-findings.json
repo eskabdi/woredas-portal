@@ -1,11 +1,12 @@
 {
   "generated": "2026-09-24",
+  "updated": "2026-09-25 (live verification)",
   "baseline": "9950f16e426eedd586c6fd85f6c328d9923542d1",
   "counts": {
     "Critical": 1,
     "High": 15,
-    "Medium": 50,
-    "Low": 58,
+    "Medium": 51,
+    "Low": 61,
     "Info": 21
   },
   "findings": [
@@ -14,7 +15,7 @@
       "title": "SECURITY DEFINER functions trust a caller-supplied key without re-checking the caller's woreda: cross-tenant reads via the birth-registration trigger, rental_eligibility() and get_credential_live_status()",
       "severity": "Critical",
       "cvss_v3_1": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:L/A:N (6.8; severity set to Critical by audit rule R7, cross-tenant exposure)",
-      "confidence": "Likely",
+      "confidence": "Confirmed",
       "category": "Tenant Isolation",
       "module": "Platform",
       "refs": {
@@ -44,6 +45,24 @@
         ]
       },
       "evidence": [
+        {
+          "path": "raw/live-2026-09-25/t02_wp_ver_001_grants.json",
+          "line": "",
+          "snippet": "rental_eligibility anon_exec=true; get_credential_live_status auth_exec=true",
+          "via": "live-2026-09-25"
+        },
+        {
+          "path": "raw/live-2026-09-25/t01_migration_markers.json",
+          "line": "",
+          "snippet": "m90_applied=false",
+          "via": "live-2026-09-25"
+        },
+        {
+          "path": "raw/live-2026-09-25/t06_cross_woreda_event_refs.json",
+          "line": "",
+          "snippet": "0 rows",
+          "via": "live-2026-09-25"
+        },
         {
           "path": "supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql",
           "line": 141,
@@ -144,7 +163,8 @@
         "WP-DB-010"
       ],
       "reported_by": "verifier",
-      "verification": "verified"
+      "verification": "verified",
+      "live_note": "Live 2026-09-25: anon holds EXECUTE on rental_eligibility(uuid,uuid,text) and authenticated holds EXECUTE on get_credential_live_status(text) (confirmed, was 'probably'). Migration 00000000000090 is not applied. No existing vital_event carries a cross-woreda or dangling resident reference (0 rows), so there is no historical cross-tenant copy to clean up."
     },
     {
       "id": "WP-WF-001",
@@ -556,6 +576,12 @@
       },
       "evidence": [
         {
+          "path": "raw/live-2026-09-25/t03_credential_verify_role_permission.json",
+          "line": "",
+          "snippet": "viewer/auditor/finance_clerk/print_officer is_granted=false in 6 woredas",
+          "via": "live-2026-09-25"
+        },
+        {
           "path": "supabase/migrations/00000000000000_baseline.sql",
           "line": 1569,
           "snippet": "CREATE POLICY credential_request_update ... user_has_any_perm('{credential.issue,credential.approve,credential.verify,payment.collect,revenue.collect}')"
@@ -605,7 +631,8 @@
       "merged_from": [
         "WP-AZ-003"
       ],
-      "verification": "verified"
+      "verification": "verified",
+      "live_note": "Live 2026-09-25: credential.verify is granted to civil_registrar, registry_clerk and supervisor in all 6 woredas, and overridden to false for viewer, auditor, finance_clerk and print_officer. So the read-only-role path is closed in production today by per-woreda overrides only: default_role_perms() still grants credential.verify to viewer and auditor, so a newly created woreda reopens it. The payment.collect path for finance_clerk remains. No finance_clerk account exists yet."
     },
     {
       "status": "Open",
@@ -642,6 +669,12 @@
       },
       "evidence": [
         {
+          "path": "raw/live-2026-09-25/p01_auth_config.json",
+          "line": "",
+          "snippet": "mfa_totp_enroll_enabled: true, mfa_totp_verify_enabled: true",
+          "via": "live-2026-09-25"
+        },
+        {
           "path": "src/routes/login.tsx",
           "line": 96,
           "snippet": "const { data, error } = await supabase.auth.signInWithPassword({ email: values.email, password: values.password });"
@@ -670,7 +703,8 @@
       "effort": "M",
       "reported_by": "audit-auth-session",
       "merged_from": [],
-      "verification": "verified"
+      "verification": "verified",
+      "live_note": "Live 2026-09-25: the TOTP factor is enabled at project level (enroll and verify on; phone and WebAuthn off), but nothing in the app, RLS or Edge Functions requires aal2, so no account is made to enrol. The fix is app-side enforcement, not a platform switch."
     },
     {
       "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:L/A:N (7.1)",
@@ -710,6 +744,12 @@
       "category": "AuthZ",
       "module": "Platform",
       "evidence": [
+        {
+          "path": "raw/live-2026-09-25/t05_app_user_status.json",
+          "line": "",
+          "snippet": "tenant_admin suspended: 1",
+          "via": "live-2026-09-25"
+        },
         {
           "path": "supabase/migrations/00000000000000_baseline.sql",
           "line": 1335,
@@ -767,7 +807,8 @@
       "merged_from": [
         "WP-AUTH-002"
       ],
-      "verification": "verified"
+      "verification": "verified",
+      "live_note": "Live 2026-09-25: one tenant_admin account is currently suspended. Until P0-4 ships, that account keeps tenant-wide read access at the database layer."
     },
     {
       "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N (6.5)",
@@ -948,14 +989,15 @@
       "status": "Open",
       "reported_by": "ops-scope",
       "merged_from": [],
-      "verification": "verified"
+      "verification": "verified",
+      "live_note": "Owner confirmed 2026-09-25: no staging project exists and Pro-tier resources have not been purchased. The account holds two projects (this one and an unrelated one)."
     },
     {
       "id": "WP-OPS-002",
-      "title": "Backups, point-in-time recovery and disaster recovery are unevidenced; indications are that production sits in a free-tier organisation, and Storage objects (scanned legal documents, photos, signatures) have no backup at all",
+      "title": "No database backups and no point-in-time recovery: production runs on the Supabase Free plan, and Storage objects (scanned legal documents, photos, signatures) have no backup at all",
       "severity": "High",
       "cvss_v3_1": "N/A (availability/resilience control)",
-      "confidence": "Needs-live-verification",
+      "confidence": "Confirmed",
       "category": "Config",
       "module": "Platform",
       "refs": {
@@ -979,6 +1021,18 @@
         ]
       },
       "evidence": [
+        {
+          "path": "raw/live-2026-09-25/p02_backups.json",
+          "line": "",
+          "snippet": "pitr_enabled: false, backups: []",
+          "via": "live-2026-09-25"
+        },
+        {
+          "path": "raw/live-2026-09-25/p10_org.json",
+          "line": "",
+          "snippet": "plan: free",
+          "via": "live-2026-09-25"
+        },
         {
           "path": "docs/go-live-declaration.md",
           "line": 180,
@@ -1019,7 +1073,8 @@
       "status": "Open",
       "reported_by": "ops-scope",
       "merged_from": [],
-      "verification": "needs-live-test"
+      "verification": "needs-live-test",
+      "live_note": "Live 2026-09-25: organisation plan = free; GET /database/backups returns backups: [] and pitr_enabled: false (WAL-G is on, but no restorable backup is listed). Owner confirmed: backups and PITR are not set up, and no Pro-tier feature has been purchased on Supabase or Vercel. P0-1 cannot be completed without moving to the Pro plan (daily backups) plus the PITR add-on, or an owned off-platform pg_dump plus Storage copy."
     },
     {
       "id": "WP-CRY-001",
@@ -1388,6 +1443,12 @@
       },
       "evidence": [
         {
+          "path": "raw/live-2026-09-25/t04_super_admin_console_role.json",
+          "line": "",
+          "snippet": "super_admin active, has_console_role=false: 2",
+          "via": "live-2026-09-25"
+        },
+        {
           "path": "supabase/migrations/00000000000012_enforce_console_rbac.sql",
           "line": 39,
           "snippet": "USING (public.user_has_console_perm('console.console_users.manage'))  -- the only RLS use of user_has_console_perm()"
@@ -1472,7 +1533,8 @@
       "merged_from": [
         "WP-API-001"
       ],
-      "verification": "verified"
+      "verification": "verified",
+      "live_note": "Live 2026-09-25: both active super_admin accounts have console_role_id NULL (unrestricted), so no console-scoped super admin exists and the gap has no current exposure. It becomes exploitable as soon as a console role is assigned."
     },
     {
       "id": "WP-WF-007",
@@ -2377,6 +2439,12 @@
       },
       "evidence": [
         {
+          "path": "raw/live-2026-09-25/p01_auth_config.json",
+          "line": "",
+          "snippet": "security_captcha_enabled: false, password_hibp_enabled: false",
+          "via": "live-2026-09-25"
+        },
+        {
           "path": "src/routes/login.tsx",
           "line": 96,
           "snippet": "supabase.auth.signInWithPassword({ email: values.email, password: values.password })  -- no options.captchaToken"
@@ -2405,7 +2473,8 @@
       "effort": "M",
       "reported_by": "audit-auth-session",
       "merged_from": [],
-      "verification": "not individually re-verified (Medium sample FP rate 0/10)"
+      "verification": "not individually re-verified (Medium sample FP rate 0/10)",
+      "live_note": "Live 2026-09-25: CAPTCHA is disabled; leaked-password (HIBP) protection is off; Auth rate limits are platform defaults (verify 30, token refresh 150, OTP 30, email 25 per hour). There is no account lockout."
     },
     {
       "status": "Open",
@@ -2472,7 +2541,7 @@
       "title": "Password policy (8-char minimum) is enforced only in the browser; server-side minimum and breached-password screening are unverified",
       "severity": "Medium",
       "cvss_v3_1": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:L/A:N (4.8)",
-      "confidence": "Needs-live-verification",
+      "confidence": "Confirmed",
       "category": "AuthN",
       "module": "Platform",
       "refs": {
@@ -2498,6 +2567,12 @@
         ]
       },
       "evidence": [
+        {
+          "path": "raw/live-2026-09-25/p01_auth_config.json",
+          "line": "",
+          "snippet": "password_min_length: 6, password_required_characters: null, password_hibp_enabled: false",
+          "via": "live-2026-09-25"
+        },
         {
           "path": "src/routes/set-password.tsx",
           "line": 24,
@@ -2527,7 +2602,8 @@
       "effort": "S",
       "reported_by": "audit-auth-session",
       "merged_from": [],
-      "verification": "not individually re-verified (Medium sample FP rate 0/10)"
+      "verification": "not individually re-verified (Medium sample FP rate 0/10)",
+      "live_note": "Live 2026-09-25: the server minimum is 6 characters with no character-class rule and HIBP off. Anyone calling GoTrue directly (updateUser) can therefore set a 6-character password that the browser form would reject. Leaked-password protection is a Pro-plan setting."
     },
     {
       "id": "WP-AZ-004",
@@ -3010,7 +3086,7 @@
       "title": "No owned or evidenced detection layer: no SIEM/log forwarding, no IDS/IPS, no CSP violation reporting; WAF is dashboard opt-in with no evidence it is enabled; sign-in CAPTCHA not integrated",
       "severity": "Medium",
       "cvss_v3_1": "N/A (missing defence-in-depth)",
-      "confidence": "Needs-live-verification",
+      "confidence": "Confirmed",
       "category": "Logging",
       "module": "Platform",
       "refs": {
@@ -3044,6 +3120,18 @@
         ]
       },
       "evidence": [
+        {
+          "path": "raw/live-2026-09-25/v02_vercel_firewall.json",
+          "line": "",
+          "snippet": "Config not found",
+          "via": "live-2026-09-25"
+        },
+        {
+          "path": "raw/live-2026-09-25/t13_db_settings.json",
+          "line": "",
+          "snippet": "log_statement=ddl; pgaudit in shared_preload_libraries",
+          "via": "live-2026-09-25"
+        },
         {
           "path": "docs/tech-stack.md",
           "line": 85,
@@ -3083,6 +3171,58 @@
       "effort": "M",
       "status": "Open",
       "reported_by": "audit-inventory",
+      "merged_from": [],
+      "verification": "not individually re-verified (Medium sample FP rate 0/10)",
+      "live_note": "Live 2026-09-25: no Vercel Firewall configuration exists for the project (GET /v1/security/firewall/config/active returns not_found), so only Vercel's platform DDoS mitigation applies. On Supabase, pgaudit is loaded with log_statement=ddl and there is no log drain; log drains and custom WAF rules are Pro-tier features that the owner has not enabled."
+    },
+    {
+      "id": "WP-LIVE-001",
+      "title": "Direct Postgres access is open to every IPv4/IPv6 address and does not require SSL",
+      "severity": "Medium",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:H/PR:H/UI:N/S:U/C:H/I:H/A:N (6.1)",
+      "confidence": "Confirmed",
+      "category": "Infrastructure",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "D-04",
+          "OPS-01"
+        ],
+        "owasp_top10": [
+          "A02:2021",
+          "A05:2021"
+        ],
+        "asvs": [
+          "V9.2.1"
+        ],
+        "iso27001": [
+          "A.8.20",
+          "A.8.24"
+        ],
+        "nist_csf": [
+          "PR.DS-02",
+          "PR.IR-01"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "raw/live-2026-09-25/p04_network_restrictions.json",
+          "line": "",
+          "snippet": "dbAllowedCidrs: [0.0.0.0/0], dbAllowedCidrsV6: [::/0], status: applied"
+        },
+        {
+          "path": "raw/live-2026-09-25/p05_ssl_enforcement.json",
+          "line": "",
+          "snippet": "currentConfig: {database: false}"
+        }
+      ],
+      "description": "The project's database network restrictions allow every address (0.0.0.0/0 and ::/0), and SSL enforcement for direct database connections is off, so a client may connect to the direct host and the pooler without TLS. The database password is the only control on this path. The application itself never uses a direct connection (it goes through PostgREST and Edge Functions over HTTPS), so nothing legitimate depends on the open range.",
+      "attack_scenario": "An attacker who obtains the database password (a leaked .env, an operator laptop, a reused password) connects from anywhere as postgres and bypasses RLS entirely; a client that connects without sslmode=require sends credentials and query results in clear text.",
+      "impact": "Full read/write of every tenant's data from any network location given one secret; possible plaintext exposure in transit.",
+      "recommendation": "Enable SSL enforcement (Database settings > SSL Configuration). Restrict network access to the operator IP ranges that genuinely need direct access (or none). Rotate the database password after doing so and keep it out of every .env that does not need it.",
+      "effort": "S",
+      "status": "Open",
+      "reported_by": "live-verification",
       "merged_from": [],
       "verification": "not individually re-verified (Medium sample FP rate 0/10)"
     },
@@ -3165,7 +3305,8 @@
       "status": "Open",
       "reported_by": "audit-locale",
       "merged_from": [],
-      "verification": "not individually re-verified (Medium sample FP rate 0/10)"
+      "verification": "not individually re-verified (Medium sample FP rate 0/10)",
+      "live_note": "Owner decision 2026-09-25: the two Ethiopian '12 o'clock' hours are 06:00 and 18:00. Applied to the owner convention (07:00 = 1:00 ጠዋት, 12:00 = 6:00 ቀትር, 19:00 = 1:00 ማታ, 00:00 = 6:00 ለሊት), the bands to implement are: ጠዋት 12:00 and 1-5 (06:00-11:59), ቀትር 6-11 (12:00-17:59), ማታ 12:00 and 1-5 (18:00-23:59), ለሊት 6-11 (00:00-05:59). This means 06:00 is shown as 12:00 ጠዋት and 18:00 as 12:00 ማታ. Hours are shown in Arabic numerals. The finding stays open until formatEthiopianTime() is implemented."
     },
     {
       "id": "WP-LOC-004",
@@ -3273,7 +3414,7 @@
       "title": "CI is not a required status check on main, and Vercel promotes every push to main to production independently of the CI result",
       "severity": "Medium",
       "cvss_v3_1": "N/A (SDLC control)",
-      "confidence": "Likely",
+      "confidence": "Confirmed",
       "category": "Config",
       "module": "Platform",
       "refs": {
@@ -3297,6 +3438,12 @@
         ]
       },
       "evidence": [
+        {
+          "path": "raw/live-2026-09-25/g01_github_branch_main.json",
+          "line": "",
+          "snippet": "protected: true, required_status_checks: {contexts: [], checks: []}",
+          "via": "live-2026-09-25"
+        },
         {
           "path": "docs/audit/2026-09-24/raw/ops-scope-github-api.txt",
           "line": 13,
@@ -3332,7 +3479,8 @@
       "status": "Open",
       "reported_by": "ops-scope",
       "merged_from": [],
-      "verification": "not individually re-verified (Medium sample FP rate 0/10)"
+      "verification": "not individually re-verified (Medium sample FP rate 0/10)",
+      "live_note": "Live 2026-09-25: main is a protected branch, but required_status_checks.contexts and checks are empty, so the CI job named test is not required before merge."
     },
     {
       "id": "WP-OPS-005",
@@ -4692,7 +4840,8 @@
       "effort": "M",
       "reported_by": "audit-privacy-logging",
       "merged_from": [],
-      "verification": "not individually re-verified (Medium sample FP rate 0/10)"
+      "verification": "not individually re-verified (Medium sample FP rate 0/10)",
+      "live_note": "Owner statement 2026-09-25: ethnicity is collected so the government has population data and can support minorities. The owner also clarified that 'region' is only the administrative location (state), not a sensitive attribute. This records a purpose for ethnicity, but not yet a legal basis. Still open: the statutory provision or mandate relied on (legal counsel), whether the field can be optional with 'prefer not to say', and a purpose for religion, cause of death and divorce grounds, which the owner did not address. The protection gaps (plaintext, readable by every tenant user, copied into audit_log and localStorage) are unchanged."
     },
     {
       "id": "WP-CRY-007",
@@ -5141,6 +5290,43 @@
       "verification": "not individually re-verified (Medium sample FP rate 0/10)"
     },
     {
+      "id": "WP-LIVE-002",
+      "title": "No server-side session limit: refresh tokens never expire by time or inactivity, and a password change does not require re-authentication",
+      "severity": "Low",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:L/I:L/A:N (3.7)",
+      "confidence": "Confirmed",
+      "category": "Authentication",
+      "module": "Authentication and session",
+      "refs": {
+        "insa": [
+          "C-05",
+          "E-03"
+        ],
+        "asvs": [
+          "V3.3.1",
+          "V3.3.2"
+        ],
+        "owasp_top10": [
+          "A07:2021"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "raw/live-2026-09-25/p01_auth_config.json",
+          "line": "",
+          "snippet": "sessions_timebox: 0, sessions_inactivity_timeout: 0, sessions_single_per_user: false, jwt_exp: 3600, refresh_token_rotation_enabled: true, security_update_password_require_reauthentication: false"
+        }
+      ],
+      "description": "Access tokens last one hour and refresh-token rotation is on (reuse interval 10 s), which is sound. But the Auth server enforces no session time-box and no inactivity timeout, so a stolen refresh token keeps a session alive indefinitely; the 25-minute idle logout is client-side only and ends when the tab is closed. Changing a password needs neither the current password nor re-authentication. Session time-box and inactivity timeout are Pro-plan Auth settings; the owner states no Pro-tier setting has been enabled.",
+      "impact": "A session obtained from a shared or stolen device outlives the client idle timer.",
+      "recommendation": "On the Pro plan, set an inactivity timeout of 30 minutes and a time-box of 8-12 hours for staff. Enable 'require re-authentication on password change'. Until then, keep the client idle logout and revoke sessions on suspension (WP-AUTH-002).",
+      "effort": "S",
+      "status": "Open (needs Pro plan)",
+      "reported_by": "live-verification",
+      "merged_from": [],
+      "verification": "not individually re-verified (Medium sample FP rate 0/10)"
+    },
+    {
       "id": "WP-LOC-012",
       "title": "'Today' comes from the UTC date: registration dates, the 'not in the future' checks and rent payment dates are one day behind from 00:00 to 03:00 EAT",
       "severity": "Low",
@@ -5437,10 +5623,10 @@
     },
     {
       "id": "WP-API-004",
-      "title": "Gateway JWT verification (verify_jwt) is undetermined: docs say false, repo deploy path yields true, fallback path forces false",
+      "title": "Gateway JWT verification (verify_jwt) is off on 6 of 8 Edge Functions and differs by who deployed last",
       "severity": "Low",
       "cvss_v3_1": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N (3.7)",
-      "confidence": "Needs-live-verification",
+      "confidence": "Confirmed",
       "category": "Config",
       "module": "Platform",
       "refs": {
@@ -5466,6 +5652,12 @@
         ]
       },
       "evidence": [
+        {
+          "path": "raw/live-2026-09-25/p03_functions.json",
+          "line": "",
+          "snippet": "verify_jwt false x6, true x2",
+          "via": "live-2026-09-25"
+        },
         {
           "path": "supabase/config.toml",
           "line": 1,
@@ -5501,7 +5693,8 @@
       "status": "Open",
       "reported_by": "audit-api-edge",
       "merged_from": [],
-      "verification": "not individually re-verified (Medium sample FP rate 0/10)"
+      "verification": "not individually re-verified (Medium sample FP rate 0/10)",
+      "live_note": "Live 2026-09-25: verify_jwt=false on invite-tenant-user, invite-platform-admin, resend-platform-invite, sign-credential, activate-invited-user and record-login; verify_jwt=true on send-password-reset-link and resend-tenant-invite. Every function still authenticates in code via GoTrue."
     },
     {
       "id": "WP-API-009",
@@ -5873,7 +6066,7 @@
       "title": "The SSR tier is configured to receive the service_role key although no code uses it",
       "severity": "Low",
       "cvss_v3_1": "N/A (unnecessary secret exposure; conditional on the value being set in Vercel)",
-      "confidence": "Likely",
+      "confidence": "Confirmed",
       "category": "Config",
       "module": "Platform",
       "refs": {
@@ -5895,6 +6088,12 @@
         ]
       },
       "evidence": [
+        {
+          "path": "raw/live-2026-09-25/v01_vercel_project.json",
+          "line": "",
+          "snippet": "SUPABASE_SERVICE_ROLE_KEY targets [preview, production], type sensitive",
+          "via": "live-2026-09-25"
+        },
         {
           "path": ".env.example",
           "line": 30,
@@ -5919,7 +6118,8 @@
       "status": "Open",
       "reported_by": "audit-architecture",
       "merged_from": [],
-      "verification": "not individually re-verified (Medium sample FP rate 0/10)"
+      "verification": "not individually re-verified (Medium sample FP rate 0/10)",
+      "live_note": "Live 2026-09-25: SUPABASE_SERVICE_ROLE_KEY is set in Vercel for Production and Preview (type 'sensitive', write-only). No code reads it. Remove it from Vercel and rotate the key."
     },
     {
       "status": "Open",
@@ -6869,6 +7069,41 @@
       "verification": "not individually re-verified (Medium sample FP rate 0/10)"
     },
     {
+      "id": "WP-LIVE-003",
+      "title": "Five SECURITY INVOKER helper functions have a mutable search_path (Supabase security advisor)",
+      "severity": "Low",
+      "confidence": "Confirmed",
+      "category": "Database",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "TEN-02"
+        ],
+        "asvs": [
+          "V14.2.1"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "raw/live-2026-09-25/p06_advisors_security.json",
+          "line": "",
+          "snippet": "function_search_path_mutable: luhn_check_digit, rental_period_month_index, default_role_perms, set_tenant_role_permission_updated_at, validate_tenant_role_name"
+        },
+        {
+          "path": "raw/live-2026-09-25/q03_functions.json",
+          "line": "",
+          "snippet": "prosecdef=false, proconfig=null for all five"
+        }
+      ],
+      "description": "The security advisor flags five functions without a pinned search_path. All five are SECURITY INVOKER, so a caller can only shadow objects inside their own privileges; the risk is low, but default_role_perms() feeds the permission chain and luhn_check_digit() the credential number, so both should resolve names deterministically. The advisor's other warnings (79 anon- and 120 authenticated-executable SECURITY DEFINER functions) are almost all trigger functions, which cannot be called directly; the only unintended anon-callable DEFINER RPC is rental_eligibility (WP-VER-001). rate_limit_bucket has RLS on and no policy, which is correct because it has no client grants.",
+      "recommendation": "CREATE OR REPLACE each with SET search_path = '' and schema-qualified references in the next additive migration.",
+      "effort": "S",
+      "status": "Open",
+      "reported_by": "live-verification",
+      "merged_from": [],
+      "verification": "not individually re-verified (Medium sample FP rate 0/10)"
+    },
+    {
       "id": "WP-LOC-006",
       "title": "Dashboard 'monthly' chart counts Gregorian months but labels them with EC month names",
       "severity": "Low",
@@ -7175,6 +7410,55 @@
       "verification": "not individually re-verified (Medium sample FP rate 0/10)"
     },
     {
+      "id": "WP-LOC-014",
+      "title": "Woreda 5 is spelled 'Jineala' in the seed and live database; the owner's official spelling is 'Jinala'",
+      "severity": "Low",
+      "cvss_v3_1": "",
+      "confidence": "Confirmed",
+      "category": "Docs",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "ET-11",
+          "ET-09"
+        ],
+        "owasp_top10": [],
+        "owasp_api": [],
+        "asvs": [],
+        "iso27001": [],
+        "nist_csf": []
+      },
+      "evidence": [
+        {
+          "path": "raw/live-2026-09-25/t09_woreda_names.json",
+          "line": "",
+          "snippet": "Jineala | ጂንኤላ",
+          "via": "live-2026-09-25"
+        },
+        {
+          "path": "README.md",
+          "line": 58,
+          "snippet": "| 5         | JINEALA     | Jineala          | ጂናኤላ             | 14, 15, 16     |"
+        },
+        {
+          "path": "supabase/seed.sql",
+          "line": 74,
+          "snippet": "... 'JINEALA', 'Jineala', 'ጂንኤላ', 'active', ... '5')"
+        }
+      ],
+      "description": "The six woreda codes, the English names, woreda_numeric_code 1-6 and the 19-kebele mapping in supabase/seed.sql match the README spec table exactly. The one mismatch is the Amharic name of woreda 5: ጂናኤላ in the README, ጂንኤላ in the seed. The seed value is what prints on every credential, letter and receipt letterhead for that woreda.",
+      "attack_scenario": "Not a security exploit.",
+      "impact": "Possible misspelling of an official woreda name on printed documents.",
+      "recommendation": "Have the owner confirm the official spelling, then correct either README.md or seed.sql (plus the live woreda row, with a woreda_settings display-name override if one is used).",
+      "secure_fix_example": "",
+      "effort": "S",
+      "status": "Open",
+      "reported_by": "audit-locale",
+      "merged_from": [],
+      "verification": "not individually re-verified (Medium sample FP rate 0/10)",
+      "live_note": "Owner decision 2026-09-25: the official English spelling is 'Jinala'. The live woreda row and supabase/seed.sql both say 'Jineala' (Amharic ጂንኤላ; README ጂናኤላ), and that name prints on every credential, letter and receipt for the woreda. Fix: an additive migration updating woreda_name_en (and woreda_settings display overrides, if any), the same change in seed.sql, and the README. The Amharic form matching 'Jinala' also needs the owner's confirmation before it is changed."
+    },
+    {
       "id": "WP-OPS-009",
       "title": "Staging seed design cannot exercise tenant isolation or most roles: one woreda, 4 of 9 roles, one shared password, no teardown",
       "severity": "Low",
@@ -7297,7 +7581,7 @@
       "title": "Hosting location and cross-border transfer of Ethiopian residents' PII are undocumented (Supabase region recorded as eu-west-1; Vercel functions region unspecified)",
       "severity": "Low",
       "cvss_v3_1": "N/A",
-      "confidence": "Needs-live-verification",
+      "confidence": "Confirmed",
       "category": "Privacy",
       "module": "Platform",
       "refs": {
@@ -7318,6 +7602,18 @@
       },
       "evidence": [
         {
+          "path": "raw/live-2026-09-25/p08_project.json",
+          "line": "",
+          "snippet": "region: eu-west-1",
+          "via": "live-2026-09-25"
+        },
+        {
+          "path": "raw/live-2026-09-25/v01_vercel_project.json",
+          "line": "",
+          "snippet": "serverlessFunctionRegion: iad1",
+          "via": "live-2026-09-25"
+        },
+        {
           "path": "docs/fix-task-v3-execution-notes.md",
           "line": 18,
           "snippet": "(woreda-portal-DB, eu-west-1, ACTIVE_HEALTHY) via the Management API"
@@ -7337,7 +7633,8 @@
       "status": "Open",
       "reported_by": "ops-scope",
       "merged_from": [],
-      "verification": "not individually re-verified (Medium sample FP rate 0/10)"
+      "verification": "not individually re-verified (Medium sample FP rate 0/10)",
+      "live_note": "Live 2026-09-25: the database and Storage are in AWS eu-west-1 (Ireland); Vercel server functions run in iad1 (Washington, D.C., USA). Residents' PII is therefore stored in the EU and processed in transit through the US. The owner stated that 'region' in the data model is only the administrative location (Harari regional state), which is separate from this hosting question."
     },
     {
       "id": "WP-OPS-012",
@@ -9303,44 +9600,29 @@
       "verification": "not individually re-verified (Medium sample FP rate 0/10)"
     },
     {
-      "id": "WP-LOC-014",
-      "title": "Jineala's Amharic name differs between README (ጂናኤላ) and seed/database (ጂንኤላ)",
+      "id": "WP-LIVE-004",
+      "title": "Performance advisor: 123 unindexed foreign keys, 13 tables with multiple permissive policies, 2 RLS policies re-evaluating auth functions per row",
       "severity": "Info",
-      "cvss_v3_1": "",
       "confidence": "Confirmed",
-      "category": "Docs",
+      "category": "Quality",
       "module": "Platform",
       "refs": {
         "insa": [
-          "ET-11",
-          "ET-09"
-        ],
-        "owasp_top10": [],
-        "owasp_api": [],
-        "asvs": [],
-        "iso27001": [],
-        "nist_csf": []
+          "A-07"
+        ]
       },
       "evidence": [
         {
-          "path": "README.md",
-          "line": 58,
-          "snippet": "| 5         | JINEALA     | Jineala          | ጂናኤላ             | 14, 15, 16     |"
-        },
-        {
-          "path": "supabase/seed.sql",
-          "line": 74,
-          "snippet": "... 'JINEALA', 'Jineala', 'ጂንኤላ', 'active', ... '5')"
+          "path": "raw/live-2026-09-25/p07_advisors_performance.json",
+          "line": "",
+          "snippet": "unindexed_foreign_keys 123 · multiple_permissive_policies 13 · auth_rls_initplan 2 · duplicate_index 1 · unused_index 8"
         }
       ],
-      "description": "The six woreda codes, the English names, woreda_numeric_code 1-6 and the 19-kebele mapping in supabase/seed.sql match the README spec table exactly. The one mismatch is the Amharic name of woreda 5: ጂናኤላ in the README, ጂንኤላ in the seed. The seed value is what prints on every credential, letter and receipt letterhead for that woreda.",
-      "attack_scenario": "Not a security exploit.",
-      "impact": "Possible misspelling of an official woreda name on printed documents.",
-      "recommendation": "Have the owner confirm the official spelling, then correct either README.md or seed.sql (plus the live woreda row, with a woreda_settings display-name override if one is used).",
-      "secure_fix_example": "",
-      "effort": "S",
+      "description": "With 4 residents and 9 payments in production the effect is invisible today, but unindexed foreign keys make every RLS-joined lookup and cascading check a sequential scan as data grows, and multiple permissive policies on one table are OR-ed and each evaluated.",
+      "recommendation": "Before real data volume, index the foreign keys used by RLS joins and workflow lookups, merge overlapping permissive policies, and wrap auth.uid()/helper calls in policies as (select ...) per the advisor.",
+      "effort": "M",
       "status": "Open",
-      "reported_by": "audit-locale",
+      "reported_by": "live-verification",
       "merged_from": [],
       "verification": "not individually re-verified (Medium sample FP rate 0/10)"
     },

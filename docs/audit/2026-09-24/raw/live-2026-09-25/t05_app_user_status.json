@@ -1,0 +1,26 @@
+{
+ "query": "select role, status, count(*) from public.app_user group by 1,2 order by 1,2",
+ "http_status": "201",
+ "result": [
+  {
+   "role": "registry_clerk",
+   "status": "active",
+   "count": 2
+  },
+  {
+   "role": "super_admin",
+   "status": "active",
+   "count": 2
+  },
+  {
+   "role": "tenant_admin",
+   "status": "active",
+   "count": 2
+  },
+  {
+   "role": "tenant_admin",
+   "status": "suspended",
+   "count": 1
+  }
+ ]
+}

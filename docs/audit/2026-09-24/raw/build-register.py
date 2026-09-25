@@ -58,9 +58,24 @@ for fid in list(out):
     if v and v["verdict"] == "needs-live-test":
         out[fid]["confidence"] = "Needs-live-verification"
 
+# Live verification (2026-09-25) is the newest primary evidence, so it is applied
+# last: it may set confidence/severity/title/status and appends a dated note and
+# its evidence. Its own new findings (WP-LIVE-*) are already in `out` above.
+live = json.load(open("findings/live-verification.json")) if os.path.exists("findings/live-verification.json") else {}
+for u in live.get("updates", []):
+    x = out.get(u["id"])
+    if not x:
+        raise SystemExit(f"live-verification update for unknown finding {u['id']}")
+    for k in ("severity", "confidence", "title", "status"):
+        if u.get(k):
+            x[k] = u[k]
+    x["live_note"] = u.get("live_note", "")
+    x["evidence"] = [dict(e, via="live-2026-09-25") for e in u.get("evidence", [])] + (x.get("evidence") or [])
+
 order = {s: i for i, s in enumerate(SEV)}
 final = sorted(out.values(), key=lambda x: (order.get(x.get("severity"), 9), x.get("module", ""), x["id"]))
-json.dump({"generated": "2026-09-24", "baseline": "9950f16e426eedd586c6fd85f6c328d9923542d1",
+json.dump({"generated": "2026-09-24", "updated": "2026-09-25 (live verification)",
+           "baseline": "9950f16e426eedd586c6fd85f6c328d9923542d1",
            "counts": dict(collections.Counter(x["severity"] for x in final)), "findings": final},
           open("02-findings.json", "w"), ensure_ascii=False, indent=2)
 
@@ -77,7 +92,11 @@ L = ["# 02 — Findings Register", "",
 L += [f"| {s} | {cnt.get(s, 0)} |" for s in SEV]
 L += [f"| **Total** | **{len(final)}** |", "",
       "Confidence: *Confirmed* = proven from code/migrations; *Likely* = strong evidence, exploit path needs one "
-      "unverified assumption; *Needs-live-verification* = depends on live DB / dashboard state the audit could not read.", ""]
+      "unverified assumption; *Needs-live-verification* = depends on live DB / dashboard state the audit could not read.",
+      "",
+      "**Live verification, 2026-09-25.** Findings marked *Live verification* were re-checked against the production "
+      "Supabase project, Vercel project, GitHub and SSL Labs (read-only), and against the owner's answers of the same day. "
+      "See `10-live-verification.md` and `raw/live-2026-09-25/`.", ""]
 
 L += ["## Index (Critical and High)", "", "| ID | Severity | Module | Title | Confidence |", "|---|---|---|---|---|"]
 for x in final:
@@ -118,6 +137,8 @@ for m in modorder:
         for k, lab in (("description", "Description"), ("attack_scenario", "Attack scenario"), ("impact", "Impact"), ("recommendation", "Recommendation")):
             if x.get(k):
                 L.append(f"- **{lab}:** {cell(x[k])}")
+        if x.get("live_note"):
+            L.append(f"- **Live verification (2026-09-25):** {cell(x['live_note'])}")
         L.append(f"- **Effort:** {x.get('effort','')} · **Status:** {x.get('status','Open')}")
         L.append("")
 open("02-findings-register.md", "w").write("\n".join(L) + "\n")

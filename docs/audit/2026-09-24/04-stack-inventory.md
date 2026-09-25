@@ -103,7 +103,7 @@ The audit brief expects "8 roles". The code defines **9 built-in roles plus a te
 
 Boundary caveats:
 
-1. `role_permission` per-tenant rows, `user_permission_override` rows and custom roles are live data and **UNVERIFIED** here.
+1. `role_permission` per-tenant rows, `user_permission_override` rows and custom roles are live data. Checked 2026-09-25: 1 custom role (`tenant_role`) exists; `credential.verify` rows as in `10-live-verification.md`. Production runs Postgres 17.6 on the Supabase Free plan in eu-west-1, with extensions pg_stat_statements, pgcrypto, supabase_vault and uuid-ossp; Vercel functions run in iad1 on Node 24.x.
 2. Module gating (`tenant_module_config`) is a third axis, and one of its keys, `rental_houses`, is not enforced anywhere (**WP-INV-005**).
 3. The prose actor list in `docs/tech-stack.md:71-78` omits `print_officer` and `custom`.
 

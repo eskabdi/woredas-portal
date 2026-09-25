@@ -6,18 +6,20 @@ All findings after adversarial verification (`findings/verifier.md`) and de-dupl
 |---|---|
 | Critical | 1 |
 | High | 15 |
-| Medium | 50 |
-| Low | 58 |
+| Medium | 51 |
+| Low | 61 |
 | Info | 21 |
-| **Total** | **145** |
+| **Total** | **149** |
 
 Confidence: *Confirmed* = proven from code/migrations; *Likely* = strong evidence, exploit path needs one unverified assumption; *Needs-live-verification* = depends on live DB / dashboard state the audit could not read.
+
+**Live verification, 2026-09-25.** Findings marked *Live verification* were re-checked against the production Supabase project, Vercel project, GitHub and SSL Labs (read-only), and against the owner's answers of the same day. See `10-live-verification.md` and `raw/live-2026-09-25/`.
 
 ## Index (Critical and High)
 
 | ID | Severity | Module | Title | Confidence |
 |---|---|---|---|---|
-| [WP-VER-001](#wp-ver-001) | Critical | Platform | SECURITY DEFINER functions trust a caller-supplied key without re-checking the caller's woreda: cross-tenant reads via the birth-registration trigger, rental_eligibility() and get_credential_live_status() | Likely |
+| [WP-VER-001](#wp-ver-001) | Critical | Platform | SECURITY DEFINER functions trust a caller-supplied key without re-checking the caller's woreda: cross-tenant reads via the birth-registration trigger, rental_eligibility() and get_credential_live_status() | Confirmed |
 | [WP-WF-001](#wp-wf-001) | High | Civil Registration | Workflow INSERT guard covers only the credential tables: civil events and service requests can be created directly at approved, awaiting_payment, registered or issued | Confirmed |
 | [WP-WF-004](#wp-wf-004) | High | Civil Registration | Approved content is not frozen: the subject of an approved request (resident, event type, event details, letter subject) can be changed before the side effect fires | Confirmed |
 | [WP-WF-006](#wp-wf-006) | High | Civil Registration | Registered deaths are neither complete nor irreversible: only 'active' credentials are revoked, and any resident.update holder can set the deceased resident back to active | Confirmed |
@@ -27,7 +29,7 @@ Confidence: *Confirmed* = proven from code/migrations; *Likely* = strong evidenc
 | [WP-DB-001](#wp-db-001) | High | Platform | get_user_woreda_id() ignores app_user.status: suspended, pending and inactive staff keep tenant-wide data access | Confirmed |
 | [WP-DB-004](#wp-db-004) | High | Platform | Read permissions (resident.read, household.read, civil.read, payment.read, audit.view ...) are not enforced by SELECT RLS | Confirmed |
 | [WP-OPS-001](#wp-ops-001) | High | Platform | No staging environment: production is also the development, test and verification environment (real PII, real accounts, committed test writes) | Confirmed |
-| [WP-OPS-002](#wp-ops-002) | High | Platform | Backups, point-in-time recovery and disaster recovery are unevidenced; indications are that production sits in a free-tier organisation, and Storage objects (scanned legal documents, photos, signatures) have no backup at all | Needs-live-verification |
+| [WP-OPS-002](#wp-ops-002) | High | Platform | No database backups and no point-in-time recovery: production runs on the Supabase Free plan, and Storage objects (scanned legal documents, photos, signatures) have no backup at all | Confirmed |
 | [WP-CRY-001](#wp-cry-001) | High | QR | Public ID-card verifier fails open: a revoked card can be shown as 'Verified' by re-encoding its token, or whenever the registry lookup misses or errors | Confirmed |
 | [WP-WF-002](#wp-wf-002) | High | Services | Service-request FSM ignores category: letters can take the complaint path (pending_approval -> in_progress -> resolved -> closed), which skips approval SoD and payment, and the public verifier accepts resolved/closed | Confirmed |
 | [WP-APP-001](#wp-app-001) | High | Settings | Stored XSS: letter-template editor writes unsanitised service_type.letter_body_html into the live DOM via innerHTML | Confirmed |
@@ -38,16 +40,17 @@ Confidence: *Confirmed* = proven from code/migrations; *Likely* = strong evidenc
 
 ### WP-VER-001
 **SECURITY DEFINER functions trust a caller-supplied key without re-checking the caller's woreda: cross-tenant reads via the birth-registration trigger, rental_eligibility() and get_credential_live_status()**  
-Severity **Critical** · Confidence Likely · Category Tenant Isolation · Reported by `verifier` · Verification: verified · Merged: WP-DB-003, WP-DB-009, WP-DB-010, WP-DB-003, WP-DB-009, WP-DB-010
+Severity **Critical** · Confidence Confirmed · Category Tenant Isolation · Reported by `verifier` · Verification: verified · Merged: WP-DB-003, WP-DB-009, WP-DB-010, WP-DB-003, WP-DB-009, WP-DB-010
   
 Refs: insa: TEN-02, TEN-04, A-08, E-06; owasp_top10: A01:2021; owasp_api: API1:2023; asvs: V4.2.1, V4.1.3; iso27001: A.8.3, A.5.15; nist_csf: PR.AA-05, PR.DS-01
 
 - **CVSS:** CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:L/A:N (6.8; severity set to Critical by audit rule R7, cross-tenant exposure)
-- **Evidence:** `supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql:141` — `SELECT ethnicity, religion, current_household_id ... FROM public.resident WHERE resident_id = v_mother_id;  -- SECURITY DEFINER, no woreda predicate`; `supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql:163` — `COALESCE(d->>'mother_name', (SELECT full_name_am FROM public.resident WHERE resident_id = v_mother_id)),`; `supabase/migrations/00000000000032_task2_tenant_scoped_definer_triggers.sql:68` — `Out of scope for this task ... mother-lookup reads inside generate_resident_on_birth_approval() ... no woreda check ... which is Task 14.`; `supabase/migrations/00000000000031_rental_eligibility.sql:74` — `SELECT r.woreda_id, h.house_type INTO v_woreda_id, v_house_type FROM public.resident r ... WHERE r.resident_id = _resident_id;  -- woreda taken from the target,`; `supabase/migrations/00000000000031_rental_eligibility.sql:197` — `GRANT EXECUTE ON FUNCTION public.rental_eligibility(uuid, uuid, text) TO authenticated;`; `supabase/migrations/00000000000000_baseline.sql:1323` — `get_credential_live_status(_credential_number text) ... SECURITY DEFINER ... WHERE credential_number = _credential_number`
+- **Evidence:** `raw/live-2026-09-25/t02_wp_ver_001_grants.json:` — `rental_eligibility anon_exec=true; get_credential_live_status auth_exec=true` (via live-2026-09-25); `raw/live-2026-09-25/t01_migration_markers.json:` — `m90_applied=false` (via live-2026-09-25); `raw/live-2026-09-25/t06_cross_woreda_event_refs.json:` — `0 rows` (via live-2026-09-25); `supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql:141` — `SELECT ethnicity, religion, current_household_id ... FROM public.resident WHERE resident_id = v_mother_id;  -- SECURITY DEFINER, no woreda predicate`; `supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql:163` — `COALESCE(d->>'mother_name', (SELECT full_name_am FROM public.resident WHERE resident_id = v_mother_id)),`; `supabase/migrations/00000000000032_task2_tenant_scoped_definer_triggers.sql:68` — `Out of scope for this task ... mother-lookup reads inside generate_resident_on_birth_approval() ... no woreda check ... which is Task 14.`
 - **Description:** Three SECURITY DEFINER functions bypass RLS and look up a row by a key that the caller controls, without checking that the row belongs to the caller's woreda. (1) generate_resident_on_birth_approval() copies a mother's ethnicity, religion, household id and Amharic name from any woreda into a new resident in the event's woreda. The gap was explicitly deferred in migration 32 and never closed by the Task 14 migrations. (2) rental_eligibility() reports a resident's kebele-house occupancy, household-head status and in-flight rental request number for any woreda. It is granted to authenticated and probably to anon. (3) get_credential_live_status() returns the status of any credential number in any woreda. This reopens the enumeration that migration 34 closed for verify_credential_token(). Merges WP-DB-003, WP-DB-009 and WP-DB-010.
 - **Attack scenario:** A civil registrar in woreda A obtains one tenant-B resident UUID, for example from a document or a former colleague. They insert a birth event directly at awaiting_payment (WP-WF-001), with event_details.mother_resident_id set to that UUID. The routine fee is recorded and the paid -> registered system transition fires, which writes B's special-category data into a woreda-A resident row. The same UUID passed to /rest/v1/rpc/rental_eligibility returns B's rental standing. Separately, any staff member in any woreda can loop get_credential_live_status over the 13-digit Luhn key space and map other woredas' issued and revoked cards.
 - **Impact:** Cross-tenant disclosure of special-category PII (ethnicity, religion), identity data and housing status. This breaks the platform's core isolation promise that RLS alone keeps tenants apart. Because the foreign data is copied into a resident row, it persists and spreads through exports and audit logs.
 - **Recommendation:** In every SECURITY DEFINER function that takes an id, re-derive the caller's woreda (get_user_woreda_id(), status-checked per WP-DB-001) and add AND woreda_id = <caller or NEW.woreda_id> to every lookup. Reject rather than silently skip on a mismatch. Extend enforce_vital_event_preconditions() so that mother_resident_id (and any *_resident_id inside event_details) must belong to NEW.woreda_id. Drop get_credential_live_status() (it has no callers), or give it the same staff/same-woreda predicate as verify_credential_token(). Add the woreda predicate plus a permission check (rental.view) to rental_eligibility(), and REVOKE EXECUTE FROM anon explicitly. Add a CI lint that flags SECURITY DEFINER bodies which SELECT from tenant tables without a woreda predicate.
+- **Live verification (2026-09-25):** Live 2026-09-25: anon holds EXECUTE on rental_eligibility(uuid,uuid,text) and authenticated holds EXECUTE on get_credential_live_status(text) (confirmed, was 'probably'). Migration 00000000000090 is not applied. No existing vital_event carries a cross-woreda or dangling resident reference (0 rows), so there is no historical cross-tenant copy to clean up.
 - **Effort:** S · **Status:** Fixed in code, pending deploy: migration 00000000000090_p0_2_definer_woreda_scope.sql + CI check check:definer-tenant-predicate (branch claude/read-and-execute-ipi0yo). Not yet applied to production; apply after P0-1 backup and verify with the queries at the end of the migration.
 
 ### WP-AUTH-001
@@ -57,11 +60,12 @@ Severity **High** · Confidence Confirmed · Category AuthN · Reported by `audi
 Refs: insa: C-05, D-03, E-03; owasp_top10: A07:2021; owasp_api: API2:2023; asvs: V4.3.1, V2.2.1; iso27001: A.8.5, A.8.2; nist_csf: PR.AA-03
 
 - **CVSS:** CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N (7.4)
-- **Evidence:** `src/routes/login.tsx:96` — `const { data, error } = await supabase.auth.signInWithPassword({ email: values.email, password: values.password });`; `src/routes/login.tsx:144` — `if (appUser.role === "super_admin") { navigate({ to: "/admin/dashboard" }); }`; `docs/audit/2026-09-24/raw/auth-session-evidence.txt:0` — `## MFA / AAL usage (expect empty) -> (no matches) for auth.mfa|getAuthenticatorAssuranceLevel|aal2 across src/ and supabase/`; `src/components/ui/input-otp.tsx:1` — `shadcn OTP input primitive exists but is imported by no route or component`
+- **Evidence:** `raw/live-2026-09-25/p01_auth_config.json:` — `mfa_totp_enroll_enabled: true, mfa_totp_verify_enabled: true` (via live-2026-09-25); `src/routes/login.tsx:96` — `const { data, error } = await supabase.auth.signInWithPassword({ email: values.email, password: values.password });`; `src/routes/login.tsx:144` — `if (appUser.role === "super_admin") { navigate({ to: "/admin/dashboard" }); }`; `docs/audit/2026-09-24/raw/auth-session-evidence.txt:0` — `## MFA / AAL usage (expect empty) -> (no matches) for auth.mfa|getAuthenticatorAssuranceLevel|aal2 across src/ and supabase/`; `src/components/ui/input-otp.tsx:1` — `shadcn OTP input primitive exists but is imported by no route or component`
 - **Description:** Sign-in is a single password factor for every role. No code path enrols a factor (supabase.auth.mfa.enroll/challenge/verify), reads the assurance level (getAuthenticatorAssuranceLevel), or requires aal2 in any RLS policy or RPC. A super_admin (console_role_id NULL = unrestricted) reads every tenant's resident PII, including decrypted national-ID views, and provisions tenants and admins; a tenant_admin controls a whole woreda. Even if TOTP were switched on in the Supabase dashboard, nothing in the app or the database would require it, so it would be optional per user.
 - **Attack scenario:** A phished, reused or guessed password of a super_admin (credential stuffing against /auth/v1/token is rate-limited only per IP, see WP-AUTH-005) is sufficient to open /admin with platform-wide read of all woredas and the ability to invite new super admins.
 - **Impact:** Full cross-tenant confidentiality/integrity compromise from one stolen password; no second barrier for the most privileged accounts.
 - **Recommendation:** Enable TOTP (and optionally WebAuthn) in Supabase Auth. Add an MFA enrolment + challenge step after signInWithPassword for super_admin and tenant_admin (mandatory) and optionally for finance/civil roles. Enforce server-side: add `(auth.jwt()->>'aal') = 'aal2'` to is_super_admin()/is_tenant_admin() (or a RESTRICTIVE policy on sensitive tables) and check aal in privileged Edge Functions, so a password-only session cannot use privileged paths even if the UI step is skipped.
+- **Live verification (2026-09-25):** Live 2026-09-25: the TOTP factor is enabled at project level (enroll and verify on; phone and WebAuthn off), but nothing in the app, RLS or Edge Functions requires aal2, so no account is made to enrol. The fix is app-side enforcement, not a platform switch.
 - **Effort:** M · **Status:** Open
 
 ### WP-DB-001
@@ -71,11 +75,12 @@ Severity **High** · Confidence Confirmed · Category AuthZ · Reported by `audi
 Refs: insa: TEN-02, D-01, C-05; owasp_top10: A01:2021; owasp_api: API1:2023, API5:2023; asvs: V4.1.3, V4.2.1, V3.3.1; iso27001: A.5.18, A.8.2; nist_csf: PR.AA-05
 
 - **CVSS:** CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:L/A:N (7.1)
-- **Evidence:** `supabase/migrations/00000000000000_baseline.sql:1335` — `CREATE OR REPLACE FUNCTION public.get_user_woreda_id() ... SELECT woreda_id FROM public.app_user WHERE user_id = auth.uid();`; `supabase/migrations/00000000000011_status_check_admin_helpers.sql:3` — `is_super_admin() and is_tenant_admin() (baseline.sql) check only 'role', never 'status' ... A suspended super_admin or tenant_admin therefore still passes`; `supabase/migrations/00000000000000_baseline.sql:1626` — `CREATE POLICY resident_select ON public.resident ... USING ((is_super_admin() OR (woreda_id = get_user_woreda_id())))`; `supabase/migrations/00000000000023_pii_encryption.sql:352` — `caller_woreda   := public.get_user_woreda_id();`; `src/components/settings/UsersRolesTab.tsx:254` — `async function suspendUserAction(user) { ... .from("app_user").update({ status: "suspended" })`; `docs/audit/2026-09-24/raw/audit-database-status-ungated-policies.txt:1` — `TOTAL 52 policy clauses on 43 tables; write-capable: audit_log, 6 sequence tables, kebele, service_request_status_history; plus 36 storage.objects policies`
+- **Evidence:** `raw/live-2026-09-25/t05_app_user_status.json:` — `tenant_admin suspended: 1` (via live-2026-09-25); `supabase/migrations/00000000000000_baseline.sql:1335` — `CREATE OR REPLACE FUNCTION public.get_user_woreda_id() ... SELECT woreda_id FROM public.app_user WHERE user_id = auth.uid();`; `supabase/migrations/00000000000011_status_check_admin_helpers.sql:3` — `is_super_admin() and is_tenant_admin() (baseline.sql) check only 'role', never 'status' ... A suspended super_admin or tenant_admin therefore still passes`; `supabase/migrations/00000000000000_baseline.sql:1626` — `CREATE POLICY resident_select ON public.resident ... USING ((is_super_admin() OR (woreda_id = get_user_woreda_id())))`; `supabase/migrations/00000000000023_pii_encryption.sql:352` — `caller_woreda   := public.get_user_woreda_id();`; `src/components/settings/UsersRolesTab.tsx:254` — `async function suspendUserAction(user) { ... .from("app_user").update({ status: "suspended" })`
 - **Description:** Migration 11 fixed is_super_admin()/is_tenant_admin() to require status='active', and user_has_perm() already did, but get_user_woreda_id() was never given the same check. It is the only tenant predicate in 52 policy clauses on 43 tables, all 36 tenant storage.objects policies, and decrypt_pii_text()/decrypt_pii_numeric(). Suspending a user in the UI only sets app_user.status='suspended'. It does not ban the GoTrue user or revoke the refresh token.
 - **Attack scenario:** A clerk is suspended after misconduct but keeps a valid refresh token. Calling PostgREST directly (GET /rest/v1/resident_decrypted?select=*) still returns every resident in the woreda, including decrypted national ID and phone number. The clerk can also download or delete scanned documents in storage, write the credential/receipt counter tables, and insert audit_log rows. An invited user who is still 'pending' gets the same read access.
 - **Impact:** Taking a staff member's access away does not work at the database layer: any pending, suspended or inactive account keeps confidentiality exposure of the whole tenant's PII, plus limited integrity impact.
 - **Recommendation:** Make get_user_woreda_id() return NULL unless status='active', which fixes every dependent policy at once. Also make suspension a server-side action that bans the auth user or revokes their sessions (Edge Function using auth.admin.updateUserById with ban_duration, or signOut(scope: global)).
+- **Live verification (2026-09-25):** Live 2026-09-25: one tenant_admin account is currently suspended. Until P0-4 ships, that account keeps tenant-wide read access at the database layer.
 - **Effort:** S · **Status:** Open
 
 ### WP-DB-004
@@ -104,20 +109,22 @@ Refs: insa: OPS-01, F-03; owasp_top10: A05:2021; owasp_api: API8:2023; asvs: V14
 - **Attack scenario:** A defect in a probe, a mis-scoped cleanup DELETE, or an agent session holding the account-level SUPABASE_ACCESS_TOKEN acts directly on real residents' PII, financial records and the audit trail. Test data, gaps in official number sequences (non-transactional nextval) and hand-written audit rows are indistinguishable from genuine operations for a later investigator.
 - **Impact:** INSA Phase 6 (F-03) and OPS-01 cannot be satisfied: there is nowhere to seed test credentials except production, and a penetration test cannot be run without either testing production or waiting for an environment that does not exist. Integrity of the production audit trail and numbering is weakened by test activity.
 - **Recommendation:** Provision the staging Supabase + Vercel projects described in docs/staging-runbook.md before any external security test or go-live sign-off. Point previews, local development and all probes/harnesses at staging only; remove the production ref as a default from scripts/run-live-probes.py and the acceptance-harness skill; remove http://localhost:5173 from the production ALLOWED_ORIGINS (set it only on staging via an env var). Prohibit committed test writes and manual audit_log inserts in production by written policy.
+- **Live verification (2026-09-25):** Owner confirmed 2026-09-25: no staging project exists and Pro-tier resources have not been purchased. The account holds two projects (this one and an unrelated one).
 - **Effort:** M · **Status:** Open
 
 ### WP-OPS-002
-**Backups, point-in-time recovery and disaster recovery are unevidenced; indications are that production sits in a free-tier organisation, and Storage objects (scanned legal documents, photos, signatures) have no backup at all**  
-Severity **High** · Confidence Needs-live-verification · Category Config · Reported by `ops-scope` · Verification: needs-live-test
+**No database backups and no point-in-time recovery: production runs on the Supabase Free plan, and Storage objects (scanned legal documents, photos, signatures) have no backup at all**  
+Severity **High** · Confidence Confirmed · Category Config · Reported by `ops-scope` · Verification: needs-live-test
   
 Refs: insa: OPS-01; owasp_top10: A05:2021; iso27001: A.8.13, A.5.30, A.8.14; nist_csf: PR.DS-11 (CSF 2.0), RC.RP-03 (CSF 2.0), PR.IP-4 (CSF 1.1)
 
 - **CVSS:** N/A (availability/resilience control)
-- **Evidence:** `docs/go-live-declaration.md:180` — `staging-project creation call failed cleanly at the account's free-tier project cap`; `docs/go-live-declaration.md:263` — `### Rollback path  (:265-289 covers frontend redeploy, additive migrations and Edge Function redeploy only; no data restore)`; `docs/system-review-2026-09.md:435` — `**Backup/restore evidence** | ... no restore drill is recorded. | Perform and document one point-in-time restore.`; `scripts/dump-storage.sql:12` — `It does NOT copy the stored files themselves. Objects already uploaded -- resident photos, credential templates, woreda logos -- have to be moved separately`; `scripts/dump-data.sql:8` — `It is limited to configuration and lookup data, not operational records like residents, credentials or payments.`; `(repository-wide):0` — `grep -i 'PITR|point-in-time|RPO|RTO|disaster' over docs/, scripts/, CLAUDE.md, .claude/ returns no backup tier, RPO, RTO or DR plan`
+- **Evidence:** `raw/live-2026-09-25/p02_backups.json:` — `pitr_enabled: false, backups: []` (via live-2026-09-25); `raw/live-2026-09-25/p10_org.json:` — `plan: free` (via live-2026-09-25); `docs/go-live-declaration.md:180` — `staging-project creation call failed cleanly at the account's free-tier project cap`; `docs/go-live-declaration.md:263` — `### Rollback path  (:265-289 covers frontend redeploy, additive migrations and Edge Function redeploy only; no data restore)`; `docs/system-review-2026-09.md:435` — `**Backup/restore evidence** | ... no restore drill is recorded. | Perform and document one point-in-time restore.`; `scripts/dump-storage.sql:12` — `It does NOT copy the stored files themselves. Objects already uploaded -- resident photos, credential templates, woreda logos -- have to be moved separately`
 - **Description:** No document states the Supabase plan, the backup mechanism, the retention period, whether point-in-time recovery (PITR) is enabled, a recovery point objective (RPO) or recovery time objective (RTO), or any restore test. The go-live 'Rollback path' covers code artifacts only. Two separate documents record that a project-creation call failed on the account's free-tier project cap, which suggests (but does not prove) that the production project is in a free-tier organisation. On Supabase, PITR is a paid add-on; daily backups with short retention are a paid-plan feature; free projects can be paused for inactivity; and database backups do not contain Storage object bytes in any plan. The repository's dump scripts export reference data and bucket/policy DDL only, explicitly not operational records or stored files.
 - **Attack scenario:** Accidental mass DELETE (hard-DELETE policies exist, see WP-DB-011), a destructive migration applied through the Management API, a compromised account-level PAT, or project deletion leaves no restorable copy of residents, civil events, payments or the scanned documents in the 10 private buckets.
 - **Impact:** Potential permanent loss of the civil registry, credential records and legal document scans for all six woredas; no defined RPO/RTO means no one has committed to how much data loss or downtime is acceptable.
 - **Recommendation:** Owner to confirm (screenshot of Billing and Database > Backups) the plan and backup settings. Minimum for a government registry: Pro plan or higher with the PITR add-on (RPO in minutes), a documented RPO/RTO, a scheduled off-platform copy of all 10 Storage buckets (the scripts/migrate-storage.mjs pattern pointed at a separate account or object store), a logical pg_dump to separate storage under a separate credential, and a restore drill into the staging project at least quarterly with the result recorded.
+- **Live verification (2026-09-25):** Live 2026-09-25: organisation plan = free; GET /database/backups returns backups: [] and pitr_enabled: false (WAL-G is on, but no restorable backup is listed). Owner confirmed: backups and PITR are not set up, and no Pro-tier feature has been purchased on Supabase or Vercel. P0-1 cannot be completed without moving to the Pro plan (daily backups) plus the PITR add-on, or an owned off-platform pg_dump plus Storage copy.
 - **Effort:** M · **Status:** Open
 
 ### WP-API-002
@@ -238,11 +245,12 @@ Severity **Medium** · Confidence Confirmed · Category AuthN · Reported by `au
 Refs: insa: C-05, D-03; owasp_top10: A07:2021; owasp_api: API2:2023, API4:2023; asvs: V2.2.1, V7.2.1; iso27001: A.8.5, A.8.15; nist_csf: PR.AA-03, DE.CM-03
 
 - **CVSS:** CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:L/A:N (6.5)
-- **Evidence:** `src/routes/login.tsx:96` — `supabase.auth.signInWithPassword({ email: values.email, password: values.password })  -- no options.captchaToken`; `supabase/functions/send-password-reset-link/index.ts:165` — `await anon.auth.resetPasswordForEmail(targetEmail, { redirectTo: '${SITE_URL}/set-password' })  -- no captchaToken either`; `docs/testing-scope.md:52` — `- [ ] **Supabase → Auth → Rate Limits** — lower sign-in/OTP rate limits ... - [ ] **Supabase → Auth → Attack protection** — enable CAPTCHA and leaked password p`; `src/routes/login.tsx:101` — `setSubmitError(error?.message ?? "Sign-in failed");  -- failed attempt is not recorded anywhere app-side`
+- **Evidence:** `raw/live-2026-09-25/p01_auth_config.json:` — `security_captcha_enabled: false, password_hibp_enabled: false` (via live-2026-09-25); `src/routes/login.tsx:96` — `supabase.auth.signInWithPassword({ email: values.email, password: values.password })  -- no options.captchaToken`; `supabase/functions/send-password-reset-link/index.ts:165` — `await anon.auth.resetPasswordForEmail(targetEmail, { redirectTo: '${SITE_URL}/set-password' })  -- no captchaToken either`; `docs/testing-scope.md:52` — `- [ ] **Supabase → Auth → Rate Limits** — lower sign-in/OTP rate limits ... - [ ] **Supabase → Auth → Attack protection** — enable CAPTCHA and leaked password p`; `src/routes/login.tsx:101` — `setSubmitError(error?.message ?? "Sign-in failed");  -- failed attempt is not recorded anywhere app-side`
 - **Description:** The browser calls GoTrue's /auth/v1/token directly. The app adds no client throttle, no CAPTCHA token and no per-account lockout (GoTrue itself has none; it only rate-limits per IP). If CAPTCHA protection is turned on in the dashboard, both login.tsx and send-password-reset-link would start failing because neither passes captchaToken, so the recommended control in docs/security-hardening.md:64-67 cannot be enabled as-is. The operator checklist items for rate limits and attack protection are still unchecked. Failed sign-ins are not written to audit_log (only GoTrue's own auth.audit_log_entries, if retained). Login-side enumeration is not an issue: GoTrue returns the same 'Invalid login credentials' for unknown email and wrong password, and the 'not provisioned'/'not active' messages only appear after a correct password.
 - **Attack scenario:** Distributed password spraying of known staff emails (the login placeholder itself shows the @eharari.gov.et pattern) from many IPs stays under per-IP limits indefinitely; no lockout, CAPTCHA or alert fires.
 - **Impact:** Online guessing/credential stuffing against a single-factor login (see WP-AUTH-001) is limited only by per-IP rate limits of unknown value.
 - **Recommendation:** Add Turnstile/hCaptcha to login.tsx and pass options.captchaToken; for send-password-reset-link, either call /recover with a server-side captcha bypass strategy or use admin.generateLink + own mail. Then enable CAPTCHA in Auth > Attack Protection. Lower Auth rate limits (sign-in/sign-up per IP, token refresh, email sends). Add an app-level failed-attempt counter or a GoTrue auth hook / log drain alert on repeated 'invalid_credentials' per email; consider progressive delay per account.
+- **Live verification (2026-09-25):** Live 2026-09-25: CAPTCHA is disabled; leaked-password (HIBP) protection is off; Auth rate limits are platform defaults (verify 30, token refresh 150, OTP 30, email 25 per hour). There is no account lockout.
 - **Effort:** M · **Status:** Open
 
 ### WP-AUTH-006
@@ -261,16 +269,17 @@ Refs: insa: D-03; owasp_top10: A07:2021; owasp_api: API2:2023; asvs: V2.1.6, V3.
 
 ### WP-AUTH-007
 **Password policy (8-char minimum) is enforced only in the browser; server-side minimum and breached-password screening are unverified**  
-Severity **Medium** · Confidence Needs-live-verification · Category AuthN · Reported by `audit-auth-session` · Verification: not individually re-verified (Medium sample FP rate 0/10)
+Severity **Medium** · Confidence Confirmed · Category AuthN · Reported by `audit-auth-session` · Verification: not individually re-verified (Medium sample FP rate 0/10)
   
 Refs: insa: D-03; owasp_top10: A07:2021; owasp_api: API2:2023; asvs: V2.1.1, V2.1.7, V2.1.9; iso27001: A.5.17; nist_csf: PR.AA-01
 
 - **CVSS:** CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:L/A:N (4.8)
-- **Evidence:** `src/routes/set-password.tsx:24` — `password: z.string().min(8, "Password must be at least 8 characters"),`; `src/components/common/ChangePasswordDialog.tsx:47` — `if (password.length < 8) {`; `src/routes/login.tsx:35` — `password: z.string().min(6, "Password must be at least 6 characters"),  -- login-side only; implies accounts with 6-7 char passwords are expected to exist`; `docs/testing-scope.md:54` — `- [ ] **Supabase → Auth → Attack protection** — enable CAPTCHA and leaked       password protection.`
+- **Evidence:** `raw/live-2026-09-25/p01_auth_config.json:` — `password_min_length: 6, password_required_characters: null, password_hibp_enabled: false` (via live-2026-09-25); `src/routes/set-password.tsx:24` — `password: z.string().min(8, "Password must be at least 8 characters"),`; `src/components/common/ChangePasswordDialog.tsx:47` — `if (password.length < 8) {`; `src/routes/login.tsx:35` — `password: z.string().min(6, "Password must be at least 6 characters"),  -- login-side only; implies accounts with 6-7 char passwords are expected to exist`; `docs/testing-scope.md:54` — `- [ ] **Supabase → Auth → Attack protection** — enable CAPTCHA and leaked       password protection.`
 - **Description:** The 8-character minimum lives in zod/JS only. GoTrue's own minimum (Auth > Providers > Email > Minimum password length) defaults to 6 and is not in the repo; a direct PUT /auth/v1/user with a 6-character password succeeds unless it was raised. Leaked-password (HaveIBeenPwned) protection is listed as an open operator action. No forced composition rules exist (good, per NIST 800-63B). No maximum is enforced client-side (GoTrue rejects >72 bytes).
 - **Attack scenario:** A user bypasses the dialog (browser console) and sets a 6-character or known-breached password, which is then guessable under WP-AUTH-005.
 - **Impact:** Weak or breached passwords possible on single-factor accounts.
 - **Recommendation:** Set Minimum password length >= 12 (ASVS L2) or at least 8 in the dashboard, enable Leaked password protection, keep composition rules off; mirror the same value in a shared client constant; align login.tsx min to not leak policy (or drop the min there). Record the values in the SFD.
+- **Live verification (2026-09-25):** Live 2026-09-25: the server minimum is 6 characters with no character-class rule and HIBP off. Anyone calling GoTrue directly (updateUser) can therefore set a 6-character password that the browser form would reject. Leaked-password protection is a Pro-plan setting.
 - **Effort:** S · **Status:** Open
 
 ### WP-AZ-004
@@ -359,17 +368,32 @@ Refs: insa: B-02, B-03, E-05; owasp_top10: A06:2021, A08:2021; owasp_api: API10:
 
 ### WP-INV-003
 **No owned or evidenced detection layer: no SIEM/log forwarding, no IDS/IPS, no CSP violation reporting; WAF is dashboard opt-in with no evidence it is enabled; sign-in CAPTCHA not integrated**  
-Severity **Medium** · Confidence Needs-live-verification · Category Logging · Reported by `audit-inventory` · Verification: not individually re-verified (Medium sample FP rate 0/10)
+Severity **Medium** · Confidence Confirmed · Category Logging · Reported by `audit-inventory` · Verification: not individually re-verified (Medium sample FP rate 0/10)
   
 Refs: insa: B-05, A-06, D-05, OPS-01; owasp_top10: A09:2021, A05:2021; owasp_api: API8:2023; asvs: V7.1.1, V7.2.1, V14.4.3; iso27001: A.8.15, A.8.16, A.8.20; nist_csf: DE.CM-1, DE.AE-3, PR.PT-4
 
 - **CVSS:** N/A (missing defence-in-depth)
-- **Evidence:** `docs/tech-stack.md:85` — `No dedicated WAF/IDS-IPS/SIEM product sits in front of this app`; `docs/security-hardening.md:52` — `1. **Firewall / WAF** — Security tab: enable the managed WAF ruleset (OWASP core rules)`; `docs/security-hardening.md:66` — `2. **Auth → Attack protection** — enable CAPTCHA on sign-in (Turnstile or hCaptcha) and **leaked password protection**`; `src/routes/login.tsx:96` — `const { data, error } = await supabase.auth.signInWithPassword({ email: values.email, password: values.password, });`; `src/lib/security-headers.ts:50` — `"default-src 'self'", ... "form-action 'self'", (no report-uri / report-to directive)`; `.github/workflows/ci.yml:30` — `- run: bun install --frozen-lockfile   (no dependency/secret/SAST scan step in the workflow)`
+- **Evidence:** `raw/live-2026-09-25/v02_vercel_firewall.json:` — `Config not found` (via live-2026-09-25); `raw/live-2026-09-25/t13_db_settings.json:` — `log_statement=ddl; pgaudit in shared_preload_libraries` (via live-2026-09-25); `docs/tech-stack.md:85` — `No dedicated WAF/IDS-IPS/SIEM product sits in front of this app`; `docs/security-hardening.md:52` — `1. **Firewall / WAF** — Security tab: enable the managed WAF ruleset (OWASP core rules)`; `docs/security-hardening.md:66` — `2. **Auth → Attack protection** — enable CAPTCHA on sign-in (Turnstile or hCaptcha) and **leaked password protection**`; `src/routes/login.tsx:96` — `const { data, error } = await supabase.auth.signInWithPassword({ email: values.email, password: values.password, });`
 - **Description:** Security infrastructure as found (full table in inventory.md section 5): TLS termination, L3/L4 DDoS mitigation and load balancing are inherited from Vercel's edge and Supabase's managed platform; HSTS/CSP/frame/permissions headers are owned (src/lib/security-headers.ts); rate limiting is owned for five Edge Functions (rate_limit_hit) and otherwise inherited from GoTrue defaults; an in-database audit_log is owned. The WAF is an optional Vercel Firewall ruleset that docs/security-hardening.md lists as a to-do dashboard click, with no evidence in the repo that it was enabled. No IDS/IPS, SIEM, log drain, alerting or CSP report endpoint exists anywhere in code, config or docs (grep for sentry/datadog/log drain/report-uri/report-to returned nothing). The recommended Supabase CAPTCHA is not integrated: login.tsx calls signInWithPassword without options.captchaToken, so if CAPTCHA were enabled in the dashboard every sign-in would fail - which implies it is off. Leaked-password protection, auth rate limits and Postgres network restrictions are dashboard-only settings whose state cannot be seen from the repo.
 - **Attack scenario:** A credential-stuffing or slow brute-force campaign against /login (the anon key is public), or a scripted enumeration of the public verification RPCs, generates no alert anywhere; the only record is Supabase/Vercel platform logs with short default retention that nobody reviews.
 - **Impact:** Attacks and abuse are undetectable in near-real-time; incident response depends on platform log retention; INSA B-05 cannot be evidenced as more than 'inherited/absent'.
 - **Recommendation:** (1) Enable Vercel Firewall managed rules and record a screenshot/export as evidence. (2) Configure Supabase log drains (or Vercel log drains) to a SIEM or at least a retained log store with alerts on auth failures, 401/403 spikes on Edge Functions and rate_limit_hit denials. (3) Add a CSP report-to endpoint. (4) Either integrate Turnstile/hCaptcha into login.tsx (captchaToken) and then enable it in Supabase Auth, or document the compensating control. (5) Record each item as Owned/Inherited/Absent in docs/security-hardening.md with evidence.
+- **Live verification (2026-09-25):** Live 2026-09-25: no Vercel Firewall configuration exists for the project (GET /v1/security/firewall/config/active returns not_found), so only Vercel's platform DDoS mitigation applies. On Supabase, pgaudit is loaded with log_statement=ddl and there is no log drain; log drains and custom WAF rules are Pro-tier features that the owner has not enabled.
 - **Effort:** M · **Status:** Open
+
+### WP-LIVE-001
+**Direct Postgres access is open to every IPv4/IPv6 address and does not require SSL**  
+Severity **Medium** · Confidence Confirmed · Category Infrastructure · Reported by `live-verification` · Verification: not individually re-verified (Medium sample FP rate 0/10)
+  
+Refs: insa: D-04, OPS-01; owasp_top10: A02:2021, A05:2021; asvs: V9.2.1; iso27001: A.8.20, A.8.24; nist_csf: PR.DS-02, PR.IR-01
+
+- **CVSS:** CVSS:3.1/AV:N/AC:H/PR:H/UI:N/S:U/C:H/I:H/A:N (6.1)
+- **Evidence:** `raw/live-2026-09-25/p04_network_restrictions.json:` — `dbAllowedCidrs: [0.0.0.0/0], dbAllowedCidrsV6: [::/0], status: applied`; `raw/live-2026-09-25/p05_ssl_enforcement.json:` — `currentConfig: {database: false}`
+- **Description:** The project's database network restrictions allow every address (0.0.0.0/0 and ::/0), and SSL enforcement for direct database connections is off, so a client may connect to the direct host and the pooler without TLS. The database password is the only control on this path. The application itself never uses a direct connection (it goes through PostgREST and Edge Functions over HTTPS), so nothing legitimate depends on the open range.
+- **Attack scenario:** An attacker who obtains the database password (a leaked .env, an operator laptop, a reused password) connects from anywhere as postgres and bypasses RLS entirely; a client that connects without sslmode=require sends credentials and query results in clear text.
+- **Impact:** Full read/write of every tenant's data from any network location given one secret; possible plaintext exposure in transit.
+- **Recommendation:** Enable SSL enforcement (Database settings > SSL Configuration). Restrict network access to the operator IP ranges that genuinely need direct access (or none). Rotate the database password after doing so and keep it out of every .env that does not need it.
+- **Effort:** S · **Status:** Open
 
 ### WP-LOC-002
 **No Ethiopian clock: every local time is shown on the Western 24-hour clock, including receipts and the audit trail**  
@@ -382,6 +406,7 @@ Refs: insa: ET-05
 - **Attack scenario:** Not a security exploit. Staff or residents reading official timestamps can misread them by six hours. Example: an audit reviewer checking when a record changed, or a resident disputing a receipt time.
 - **Impact:** Timestamps on official documents (receipts) and in the audit trail can be misread by six hours. The owner's Ethiopian-clock convention is not met anywhere in the product.
 - **Recommendation:** Add formatEthiopianTime(date) to ethiopianCalendar.ts, implementing EtHour = ((h + 6) mod 12) or 12. Period labels: ጠዋት for 06:00-11:59 local, ቀትር for 12:00-12:59 and ከሰዓት for the afternoon if the owner wants it, ማታ for 18:00-23:59, ለሊት for 00:00-05:59. Confirm the exact bands and labels with the owner; the checklist only fixes the four anchor points. Route formatEthiopianDateTime() and the call sites listed above through it. Show the Western time second, e.g. '1:00 ማታ (19:00)'. Add unit tests for the four anchor vectors: 07:00 → 1:00 ጠዋት, 12:00 → 6:00 ቀትር, 19:00 → 1:00 ማታ, 00:00 → 6:00 ለሊት.
+- **Live verification (2026-09-25):** Owner decision 2026-09-25: the two Ethiopian '12 o'clock' hours are 06:00 and 18:00. Applied to the owner convention (07:00 = 1:00 ጠዋት, 12:00 = 6:00 ቀትር, 19:00 = 1:00 ማታ, 00:00 = 6:00 ለሊት), the bands to implement are: ጠዋት 12:00 and 1-5 (06:00-11:59), ቀትር 6-11 (12:00-17:59), ማታ 12:00 and 1-5 (18:00-23:59), ለሊት 6-11 (00:00-05:59). This means 06:00 is shown as 12:00 ጠዋት and 18:00 as 12:00 ማታ. Hours are shown in Arabic numerals. The finding stays open until formatEthiopianTime() is implemented.
 - **Effort:** S · **Status:** Open
 
 ### WP-LOC-004
@@ -399,16 +424,17 @@ Refs: insa: ET-01
 
 ### WP-OPS-004
 **CI is not a required status check on main, and Vercel promotes every push to main to production independently of the CI result**  
-Severity **Medium** · Confidence Likely · Category Config · Reported by `ops-scope` · Verification: not individually re-verified (Medium sample FP rate 0/10)
+Severity **Medium** · Confidence Confirmed · Category Config · Reported by `ops-scope` · Verification: not individually re-verified (Medium sample FP rate 0/10)
   
 Refs: insa: G-01, QA-01; owasp_top10: A08:2021; asvs: V14.1.1; iso27001: A.8.25, A.8.32; nist_csf: PR.PS-06 (CSF 2.0)
 
 - **CVSS:** N/A (SDLC control)
-- **Evidence:** `docs/audit/2026-09-24/raw/ops-scope-github-api.txt:13` — `"protected": true, "required_status_checks": { "enforcement_level": "everyone", "contexts": [], "checks": [] }`; `docs/audit/2026-09-24/raw/ops-scope-github-api.txt:25` — `CI push success 9950f16e main 2026-09-22T23:41:15Z  (and :129 Production 9950f16e 2026-09-22T23:41:51Z vercel[bot])`; `CLAUDE.md:113` — `every PR and push to 'main' — all required to pass before a PR is mergeable;`; `docs/architecture.md:497` — `all required to pass before a PR is even mergeable, independent of the review requirement above.`; `.github/workflows/ci.yml:3` — `on: pull_request / push: branches: [main]  (single job 'test'; no deploy job, no environment protection)`
+- **Evidence:** `raw/live-2026-09-25/g01_github_branch_main.json:` — `protected: true, required_status_checks: {contexts: [], checks: []}` (via live-2026-09-25); `docs/audit/2026-09-24/raw/ops-scope-github-api.txt:13` — `"protected": true, "required_status_checks": { "enforcement_level": "everyone", "contexts": [], "checks": [] }`; `docs/audit/2026-09-24/raw/ops-scope-github-api.txt:25` — `CI push success 9950f16e main 2026-09-22T23:41:15Z  (and :129 Production 9950f16e 2026-09-22T23:41:51Z vercel[bot])`; `CLAUDE.md:113` — `every PR and push to 'main' — all required to pass before a PR is mergeable;`; `docs/architecture.md:497` — `all required to pass before a PR is even mergeable, independent of the review requirement above.`; `.github/workflows/ci.yml:3` — `on: pull_request / push: branches: [main]  (single job 'test'; no deploy job, no environment protection)`
 - **Description:** The public GitHub API shows main is protected, but its required-status-check list is empty (no contexts, no checks). That means the CI workflow runs but is not configured as a merge gate, which contradicts CLAUDE.md and docs/architecture.md. Separately, the Vercel GitHub integration (vercel[bot], active since 2026-09-20) creates the Production deployment for a main commit within about 40 seconds of the push, in parallel with CI rather than after it. Review-requirement sub-rules are not visible without an admin token. Confidence is 'Likely' because the unauthenticated branch summary is authoritative for required checks but not for every protection sub-rule.
 - **Attack scenario:** A PR with failing lint, typecheck, tests, the role-permission drift check or the fee catalogue check (two failed PR runs appear in the recent history) can be merged by anyone with write access who satisfies the review rule, and it reaches production immediately.
 - **Impact:** The documented quality gates (QA-01, the RBAC drift guard, the fee-catalogue guards that protect fail-closed resolvers) are advisory, not enforced. Production can run code that CI rejected.
 - **Recommendation:** In GitHub Settings > Branches > main, add the 'test' job (workflow 'CI') as a required status check, require branches to be up to date, and enable 'Do not allow bypassing'. Either configure Vercel to deploy production only after checks pass, or move production promotion into a GitHub Actions job with `needs: test` and a protected `production` environment with required reviewers. Share a screenshot or `gh api .../branches/main/protection` output as evidence.
+- **Live verification (2026-09-25):** Live 2026-09-25: main is a protected branch, but required_status_checks.contexts and checks are empty, so the CI job named test is not required before merge.
 - **Effort:** S · **Status:** Open
 
 ### WP-OPS-005
@@ -523,17 +549,18 @@ Refs: insa: B-02, SEC-01; owasp_top10: A06:2021-Vulnerable and Outdated Componen
 - **Effort:** S · **Status:** Open
 
 ### WP-API-004
-**Gateway JWT verification (verify_jwt) is undetermined: docs say false, repo deploy path yields true, fallback path forces false**  
-Severity **Low** · Confidence Needs-live-verification · Category Config · Reported by `audit-api-edge` · Verification: not individually re-verified (Medium sample FP rate 0/10)
+**Gateway JWT verification (verify_jwt) is off on 6 of 8 Edge Functions and differs by who deployed last**  
+Severity **Low** · Confidence Confirmed · Category Config · Reported by `audit-api-edge` · Verification: not individually re-verified (Medium sample FP rate 0/10)
   
 Refs: insa: E-03, E-02; owasp_top10: A05:2021; owasp_api: API8:2023, API2:2023; asvs: V14.1.1; iso27001: A.8.9; nist_csf: PR.PS-01
 
 - **CVSS:** CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N (3.7)
-- **Evidence:** `supabase/config.toml:1` — `project_id = "woredas-portal"  (no [functions.<name>] verify_jwt entries)`; `scripts/deploy-functions.sh:40` — `supabase functions deploy "${FUNCTIONS[@]}" --use-api --project-ref "$REF"   (no --no-verify-jwt)`; `CLAUDE.md:1123` — `-F "metadata={\"name\":\"$FN\",\"entrypoint_path\":\"index.ts\",\"verify_jwt\":false};type=application/json"`; `docs/security-hardening.md:41` — `'verify_jwt:false' — the auth is in the function body`; `supabase/functions/sign-credential/index.ts:72` — `if (!PRIVATE_KEY_PEM) return json(req, 500, { error: "Signing key not configured" });   // before any auth check`
+- **Evidence:** `raw/live-2026-09-25/p03_functions.json:` — `verify_jwt false x6, true x2` (via live-2026-09-25); `supabase/config.toml:1` — `project_id = "woredas-portal"  (no [functions.<name>] verify_jwt entries)`; `scripts/deploy-functions.sh:40` — `supabase functions deploy "${FUNCTIONS[@]}" --use-api --project-ref "$REF"   (no --no-verify-jwt)`; `CLAUDE.md:1123` — `-F "metadata={\"name\":\"$FN\",\"entrypoint_path\":\"index.ts\",\"verify_jwt\":false};type=application/json"`; `docs/security-hardening.md:41` — `'verify_jwt:false' — the auth is in the function body`; `supabase/functions/sign-credential/index.ts:72` — `if (!PRIVATE_KEY_PEM) return json(req, 500, { error: "Signing key not configured" });   // before any auth check`
 - **Description:** No repository artefact pins verify_jwt. The CLI path in scripts/deploy-functions.sh deploys with the CLI default (true); the documented Management-API fallback in CLAUDE.md deploys with false; docs/security-hardening.md asserts all functions run with false. The live value may therefore differ per function depending on who deployed last and how. Authentication is still enforced in every function body via GoTrue getUser() (all 8 verified), so this is not an auth bypass. With verify_jwt=false, unauthenticated traffic reaches function code: sign-credential answers 500 "Signing key not configured" before checking any credential, and every request costs an isolate plus (for tokens that look valid) a GoTrue round-trip, with no pre-auth throttling.
 - **Attack scenario:** An unauthenticated scanner probes /functions/v1/sign-credential and learns whether HARARI_EC_PRIVATE_KEY is set; a flood of junk-token requests is absorbed by function isolates and GoTrue rather than the gateway.
 - **Impact:** Configuration drift and minor information disclosure; slightly larger unauthenticated attack surface.
 - **Recommendation:** Pin the intended value in supabase/config.toml ([functions.<name>] verify_jwt = true for all eight, unless the project has moved to asymmetric JWT signing keys, in which case document why false). Move the signing-key presence check after authentication. Record the live per-function value (GET /v1/projects/{ref}/functions) in the deploy verification step.
+- **Live verification (2026-09-25):** Live 2026-09-25: verify_jwt=false on invite-tenant-user, invite-platform-admin, resend-platform-invite, sign-credential, activate-invited-user and record-login; verify_jwt=true on send-password-reset-link and resend-tenant-invite. Every function still authenticates in code via GoTrue.
 - **Effort:** S · **Status:** Open
 
 ### WP-API-009
@@ -618,16 +645,17 @@ Refs: insa: C-02; owasp_top10: A03:2021; asvs: V5.2.1; iso27001: A.8.28
 
 ### WP-ARC-005
 **The SSR tier is configured to receive the service_role key although no code uses it**  
-Severity **Low** · Confidence Likely · Category Config · Reported by `audit-architecture` · Verification: not individually re-verified (Medium sample FP rate 0/10)
+Severity **Low** · Confidence Confirmed · Category Config · Reported by `audit-architecture` · Verification: not individually re-verified (Medium sample FP rate 0/10)
   
 Refs: insa: A-06, SEC-02; owasp_top10: A05:2021; asvs: V14.1.3; iso27001: A.8.24; nist_csf: PR.DS-01 (CSF 2.0)
 
 - **CVSS:** N/A (unnecessary secret exposure; conditional on the value being set in Vercel)
-- **Evidence:** `.env.example:30` — `SUPABASE_SERVICE_ROLE_KEY=  (comment :29 'Required by src/integrations/supabase/client.server.ts')`; `src/integrations/supabase/client.server.ts:10` — `const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;`; `src/:0` — `grep: no module imports client.server (the module is dead code)`
+- **Evidence:** `raw/live-2026-09-25/v01_vercel_project.json:` — `SUPABASE_SERVICE_ROLE_KEY targets [preview, production], type sensitive` (via live-2026-09-25); `.env.example:30` — `SUPABASE_SERVICE_ROLE_KEY=  (comment :29 'Required by src/integrations/supabase/client.server.ts')`; `src/integrations/supabase/client.server.ts:10` — `const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;`; `src/:0` — `grep: no module imports client.server (the module is dead code)`
 - **Description:** .env.example tells operators that the service_role key is required, but client.server.ts is imported by nothing. If the key is set in the Vercel project environment as instructed, a key that bypasses RLS sits in an execution environment that never needs it, including preview deployments.
 - **Attack scenario:** A future SSR bug, dependency compromise or preview-deployment misconfiguration reads process.env and exposes a key that bypasses RLS on every tenant.
 - **Impact:** Needless expansion of where the most powerful data-plane secret lives. If it leaked, that would be a cross-tenant compromise (R7 Critical on exposure).
 - **Recommendation:** Remove SUPABASE_SERVICE_ROLE_KEY from the Vercel environment, including previews, and from .env.example until server code needs it. Confirm in the Vercel dashboard and rotate the key if it has ever been set on preview deployments.
+- **Live verification (2026-09-25):** Live 2026-09-25: SUPABASE_SERVICE_ROLE_KEY is set in Vercel for Production and Preview (type 'sensitive', write-only). No code reads it. Remove it from Vercel and rotate the key.
 - **Effort:** S · **Status:** Open
 
 ### WP-AUTH-009
@@ -837,6 +865,17 @@ Refs: insa: G-01; owasp_top10: A04:2021; asvs: V1.1.2; iso27001: A.5.37; nist_cs
 - **Recommendation:** Correct the listed statements; replace hard-coded counts (tables, buckets, routes, functions, agents) with pointers to generated sources or add a doc-drift CI check for the counts.
 - **Effort:** S · **Status:** Open
 
+### WP-LIVE-003
+**Five SECURITY INVOKER helper functions have a mutable search_path (Supabase security advisor)**  
+Severity **Low** · Confidence Confirmed · Category Database · Reported by `live-verification` · Verification: not individually re-verified (Medium sample FP rate 0/10)
+  
+Refs: insa: TEN-02; asvs: V14.2.1
+
+- **Evidence:** `raw/live-2026-09-25/p06_advisors_security.json:` — `function_search_path_mutable: luhn_check_digit, rental_period_month_index, default_role_perms, set_tenant_role_permission_updated_at, validate_tenant_role_name`; `raw/live-2026-09-25/q03_functions.json:` — `prosecdef=false, proconfig=null for all five`
+- **Description:** The security advisor flags five functions without a pinned search_path. All five are SECURITY INVOKER, so a caller can only shadow objects inside their own privileges; the risk is low, but default_role_perms() feeds the permission chain and luhn_check_digit() the credential number, so both should resolve names deterministically. The advisor's other warnings (79 anon- and 120 authenticated-executable SECURITY DEFINER functions) are almost all trigger functions, which cannot be called directly; the only unintended anon-callable DEFINER RPC is rental_eligibility (WP-VER-001). rate_limit_bucket has RLS on and no policy, which is correct because it has no client grants.
+- **Recommendation:** CREATE OR REPLACE each with SET search_path = '' and schema-qualified references in the next additive migration.
+- **Effort:** S · **Status:** Open
+
 ### WP-LOC-006
 **Dashboard 'monthly' chart counts Gregorian months but labels them with EC month names**  
 Severity **Low** · Confidence Confirmed · Category Locale · Reported by `audit-locale` · Verification: not individually re-verified (Medium sample FP rate 0/10)
@@ -902,6 +941,20 @@ Refs: insa: ET-01
 - **Recommendation:** Owner decision: either keep Gregorian YY and document it as a deliberate choice, or add a SQL ethiopian_year(date) helper and switch the non-credential numbers to EC YY with the reset at Meskerem 1 (or Hamle 1). The credential number format must not change without the card-print-review invariants being revisited.
 - **Effort:** M · **Status:** Open
 
+### WP-LOC-014
+**Woreda 5 is spelled 'Jineala' in the seed and live database; the owner's official spelling is 'Jinala'**  
+Severity **Low** · Confidence Confirmed · Category Docs · Reported by `audit-locale` · Verification: not individually re-verified (Medium sample FP rate 0/10)
+  
+Refs: insa: ET-11, ET-09
+
+- **Evidence:** `raw/live-2026-09-25/t09_woreda_names.json:` — `Jineala | ጂንኤላ` (via live-2026-09-25); `README.md:58` — `| 5         | JINEALA     | Jineala          | ጂናኤላ             | 14, 15, 16     |`; `supabase/seed.sql:74` — `... 'JINEALA', 'Jineala', 'ጂንኤላ', 'active', ... '5')`
+- **Description:** The six woreda codes, the English names, woreda_numeric_code 1-6 and the 19-kebele mapping in supabase/seed.sql match the README spec table exactly. The one mismatch is the Amharic name of woreda 5: ጂናኤላ in the README, ጂንኤላ in the seed. The seed value is what prints on every credential, letter and receipt letterhead for that woreda.
+- **Attack scenario:** Not a security exploit.
+- **Impact:** Possible misspelling of an official woreda name on printed documents.
+- **Recommendation:** Have the owner confirm the official spelling, then correct either README.md or seed.sql (plus the live woreda row, with a woreda_settings display-name override if one is used).
+- **Live verification (2026-09-25):** Owner decision 2026-09-25: the official English spelling is 'Jinala'. The live woreda row and supabase/seed.sql both say 'Jineala' (Amharic ጂንኤላ; README ጂናኤላ), and that name prints on every credential, letter and receipt for the woreda. Fix: an additive migration updating woreda_name_en (and woreda_settings display overrides, if any), the same change in seed.sql, and the README. The Amharic form matching 'Jinala' also needs the owner's confirmation before it is changed.
+- **Effort:** S · **Status:** Open
+
 ### WP-OPS-009
 **Staging seed design cannot exercise tenant isolation or most roles: one woreda, 4 of 9 roles, one shared password, no teardown**  
 Severity **Low** · Confidence Confirmed · Category Config · Reported by `ops-scope` · Verification: not individually re-verified (Medium sample FP rate 0/10)
@@ -931,15 +984,16 @@ Refs: insa: F-03, PRV-01; owasp_top10: A01:2021; iso27001: A.5.34, A.8.11; nist_
 
 ### WP-OPS-011
 **Hosting location and cross-border transfer of Ethiopian residents' PII are undocumented (Supabase region recorded as eu-west-1; Vercel functions region unspecified)**  
-Severity **Low** · Confidence Needs-live-verification · Category Privacy · Reported by `ops-scope` · Verification: not individually re-verified (Medium sample FP rate 0/10)
+Severity **Low** · Confidence Confirmed · Category Privacy · Reported by `ops-scope` · Verification: not individually re-verified (Medium sample FP rate 0/10)
   
 Refs: insa: A-04, PRV-01; iso27001: A.5.31, A.5.34; nist_csf: GV.OC-03 (CSF 2.0)
 
 - **CVSS:** N/A
-- **Evidence:** `docs/fix-task-v3-execution-notes.md:18` — `(woreda-portal-DB, eu-west-1, ACTIVE_HEALTHY) via the Management API`; `docs/architecture.md:9` — `## Deployment topology  (diagram names Vercel and Supabase; no region, jurisdiction or data-residency statement)`
+- **Evidence:** `raw/live-2026-09-25/p08_project.json:` — `region: eu-west-1` (via live-2026-09-25); `raw/live-2026-09-25/v01_vercel_project.json:` — `serverlessFunctionRegion: iad1` (via live-2026-09-25); `docs/fix-task-v3-execution-notes.md:18` — `(woreda-portal-DB, eu-west-1, ACTIVE_HEALTHY) via the Management API`; `docs/architecture.md:9` — `## Deployment topology  (diagram names Vercel and Supabase; no region, jurisdiction or data-residency statement)`
 - **Description:** The only record of where the data lives is a passing mention in an execution note: eu-west-1 (Ireland). No deployment document states the hosting jurisdiction, the Vercel function region, the SMTP relay location, or a legal basis for holding a national civil registry outside Ethiopia. Whether Ethiopia's Personal Data Protection Proclamation (No. 1321/2024) or INSA hosting guidance permits this is a legal determination for the owner, not something this audit decides.
 - **Impact:** Possible regulatory non-compliance; the A-04 deployment architecture is incomplete.
 - **Recommendation:** Record the region of every data-holding service (Supabase, Vercel, SMTP relay, the future backup store) in the deployment diagram, and obtain and file the owner's or INSA's determination on data residency.
+- **Live verification (2026-09-25):** Live 2026-09-25: the database and Storage are in AWS eu-west-1 (Ireland); Vercel server functions run in iad1 (Washington, D.C., USA). Residents' PII is therefore stored in the EU and processed in transit through the US. The owner stated that 'region' in the data model is only the administrative location (Harari regional state), which is separate from this hosting question.
 - **Effort:** S · **Status:** Open
 
 ### WP-OPS-012
@@ -1159,18 +1213,16 @@ Refs: insa: B-03; owasp_top10: A05:2021; iso27001: A.5.19, A.5.14; nist_csf: ID.
 - **Recommendation:** Name the SMTP provider, data shared, and secret location in docs/tech-stack.md; complete the DMARC ramp to p=quarantine/p=reject.
 - **Effort:** S · **Status:** Open
 
-### WP-LOC-014
-**Jineala's Amharic name differs between README (ጂናኤላ) and seed/database (ጂንኤላ)**  
-Severity **Info** · Confidence Confirmed · Category Docs · Reported by `audit-locale` · Verification: not individually re-verified (Medium sample FP rate 0/10)
+### WP-LIVE-004
+**Performance advisor: 123 unindexed foreign keys, 13 tables with multiple permissive policies, 2 RLS policies re-evaluating auth functions per row**  
+Severity **Info** · Confidence Confirmed · Category Quality · Reported by `live-verification` · Verification: not individually re-verified (Medium sample FP rate 0/10)
   
-Refs: insa: ET-11, ET-09
+Refs: insa: A-07
 
-- **Evidence:** `README.md:58` — `| 5         | JINEALA     | Jineala          | ጂናኤላ             | 14, 15, 16     |`; `supabase/seed.sql:74` — `... 'JINEALA', 'Jineala', 'ጂንኤላ', 'active', ... '5')`
-- **Description:** The six woreda codes, the English names, woreda_numeric_code 1-6 and the 19-kebele mapping in supabase/seed.sql match the README spec table exactly. The one mismatch is the Amharic name of woreda 5: ጂናኤላ in the README, ጂንኤላ in the seed. The seed value is what prints on every credential, letter and receipt letterhead for that woreda.
-- **Attack scenario:** Not a security exploit.
-- **Impact:** Possible misspelling of an official woreda name on printed documents.
-- **Recommendation:** Have the owner confirm the official spelling, then correct either README.md or seed.sql (plus the live woreda row, with a woreda_settings display-name override if one is used).
-- **Effort:** S · **Status:** Open
+- **Evidence:** `raw/live-2026-09-25/p07_advisors_performance.json:` — `unindexed_foreign_keys 123 · multiple_permissive_policies 13 · auth_rls_initplan 2 · duplicate_index 1 · unused_index 8`
+- **Description:** With 4 residents and 9 payments in production the effect is invisible today, but unindexed foreign keys make every RLS-joined lookup and cascading check a sequential scan as data grows, and multiple permissive policies on one table are OR-ed and each evaluated.
+- **Recommendation:** Before real data volume, index the foreign keys used by RLS joins and workflow lookups, merge overlapping permissive policies, and wrap auth.uid()/helper calls in policies as (select ...) per the advisor.
+- **Effort:** M · **Status:** Open
 
 ### WP-OPS-013
 **Live TLS version and HSTS delivery could not be verified from the audit environment; code sets HSTS (2 years, includeSubDomains, no preload)**  
@@ -1331,11 +1383,12 @@ Severity **High** · Confidence Likely · Category AuthZ · Reported by `audit-w
 Refs: insa: MC-02, RBAC-01; owasp_top10: A01:2021; owasp_api: API5:2023, API3:2023; asvs: V4.1.3, V4.2.1; iso27001: A.5.15, A.8.2; nist_csf: PR.AA-05
 
 - **CVSS:** CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:N (6.5)
-- **Evidence:** `supabase/migrations/00000000000000_baseline.sql:1569` — `CREATE POLICY credential_request_update ... user_has_any_perm('{credential.issue,credential.approve,credential.verify,payment.collect,revenue.collect}')`; `supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:109` — `WHEN 'viewer' THEN ARRAY['resident.read',...,'credential.verify',...]`; `supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:108` — `WHEN 'auditor' THEN ARRAY[...,'credential.verify',...]`; `supabase/migrations/00000000000025_workflow_engine.sql:34` — `'credential.verify' already gates the public ID-lookup screen and is deliberately held by viewer and auditor`; `supabase/migrations/00000000000000_baseline.sql:1569` — `credential_request_update ... '{credential.issue,credential.approve,credential.verify,payment.collect,revenue.collect}'` (via WP-AZ-003); `supabase/migrations/00000000000000_baseline.sql:1560` — `cred_req_history_insert ... user_has_any_perm(ARRAY['credential.issue','credential.approve','credential.verify',...])` (via WP-AZ-003)
+- **Evidence:** `raw/live-2026-09-25/t03_credential_verify_role_permission.json:` — `viewer/auditor/finance_clerk/print_officer is_granted=false in 6 woredas` (via live-2026-09-25); `supabase/migrations/00000000000000_baseline.sql:1569` — `CREATE POLICY credential_request_update ... user_has_any_perm('{credential.issue,credential.approve,credential.verify,payment.collect,revenue.collect}')`; `supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:109` — `WHEN 'viewer' THEN ARRAY['resident.read',...,'credential.verify',...]`; `supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:108` — `WHEN 'auditor' THEN ARRAY[...,'credential.verify',...]`; `supabase/migrations/00000000000025_workflow_engine.sql:34` — `'credential.verify' already gates the public ID-lookup screen and is deliberately held by viewer and auditor`; `supabase/migrations/00000000000000_baseline.sql:1569` — `credential_request_update ... '{credential.issue,credential.approve,credential.verify,payment.collect,revenue.collect}'` (via WP-AZ-003)
 - **Description:** The baseline credential_request_update policy is still the latest definition. It admits any user holding credential.verify, which migration 25 itself describes as the public ID-lookup permission held by the read-only viewer and auditor roles, and also payment.collect/revenue.collect holders. The FSM stops these users from changing status, but they can rewrite every other column: resident_id, request_type, credential_type, issuing_kebele_id, verification_checklist, return_reason/reject_reason and payment_id. They can also claim verified_by_user_id, which force_actor_columns pins to them, so a read-only user can be recorded as the request's verifier.
 - **Attack scenario:** An auditor PATCHes /credential_request?credential_request_id=eq.<approved-id> {resident_id:<other resident>}. The request is later paid and the card is minted for the other resident (see WP-WF-004). Or a viewer PATCHes verified_by_user_id on a request that the approver verified personally. The pin records the viewer as verifier, and the approver's self-approval then passes the maker != checker check.
 - **Impact:** In-tenant privilege escalation: roles meant to be read-only can change ID issuance requests, and a read-only user can stand in as the second person in the four-eyes control.
 - **Recommendation:** Rewrite credential_request_update to require the workflow verbs that actually need row writes (credential.submit/review/resubmit/return/reject/approve/record_payment/confirm_print/activate), and never credential.verify. Review residence_credential_update the same way (see WP-WF-012). Then fix WP-WF-004 so that even legitimate updaters cannot change subject fields after verification.
+- **Live verification (2026-09-25):** Live 2026-09-25: credential.verify is granted to civil_registrar, registry_clerk and supervisor in all 6 woredas, and overridden to false for viewer, auditor, finance_clerk and print_officer. So the read-only-role path is closed in production today by per-woreda overrides only: default_role_perms() still grants credential.verify to viewer and auditor, so a newly created woreda reopens it. The payment.collect path for finance_clerk remains. No finance_clerk account exists yet.
 - **Effort:** S · **Status:** Open
 
 ### WP-AZ-006
@@ -1689,11 +1742,12 @@ Severity **High** · Confidence Confirmed · Category AuthZ · Reported by `audi
 Refs: owasp_top10: A01:2021; owasp_api: API5:2023; asvs: V4.1.1, V4.1.3, V4.2.1; iso27001: A.5.15, A.8.2, A.8.3; nist_csf: PR.AA-05; insa: D-01, E-06, B-04, RBAC-01
 
 - **CVSS:** CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:L (6.7)
-- **Evidence:** `supabase/migrations/00000000000012_enforce_console_rbac.sql:39` — `USING (public.user_has_console_perm('console.console_users.manage'))  -- the only RLS use of user_has_console_perm()`; `supabase/migrations/00000000000012_enforce_console_rbac.sql:150` — `IF NOT public.user_has_console_perm('console.console_users.manage') THEN  -- trigger, console_role_id column only`; `supabase/migrations/00000000000010_id_card_template_draft.sql:125` — `IF NOT public.is_super_admin() THEN RAISE EXCEPTION 'Only super_admin may publish the ID card template';`; `supabase/migrations/00000000000000_baseline.sql:1589` — `CREATE POLICY template_write_super_admin ON public.id_card_template_field ... USING (is_super_admin())`; `supabase/migrations/00000000000000_baseline.sql:1651` — `CREATE POLICY tenant_module_config_write_super_admin ... USING (is_super_admin()) WITH CHECK (is_super_admin())`; `supabase/migrations/00000000000000_baseline.sql:1550` — `app_user_super_admin_write ... FOR ALL ... USING (is_super_admin())`
+- **Evidence:** `raw/live-2026-09-25/t04_super_admin_console_role.json:` — `super_admin active, has_console_role=false: 2` (via live-2026-09-25); `supabase/migrations/00000000000012_enforce_console_rbac.sql:39` — `USING (public.user_has_console_perm('console.console_users.manage'))  -- the only RLS use of user_has_console_perm()`; `supabase/migrations/00000000000012_enforce_console_rbac.sql:150` — `IF NOT public.user_has_console_perm('console.console_users.manage') THEN  -- trigger, console_role_id column only`; `supabase/migrations/00000000000010_id_card_template_draft.sql:125` — `IF NOT public.is_super_admin() THEN RAISE EXCEPTION 'Only super_admin may publish the ID card template';`; `supabase/migrations/00000000000000_baseline.sql:1589` — `CREATE POLICY template_write_super_admin ON public.id_card_template_field ... USING (is_super_admin())`; `supabase/migrations/00000000000000_baseline.sql:1651` — `CREATE POLICY tenant_module_config_write_super_admin ... USING (is_super_admin()) WITH CHECK (is_super_admin())`
 - **Description:** The console-role feature (migration 09) presents named console roles such as a template editor or tenant manager as an access boundary inside /admin. Only one of the five CP keys, console.console_users.manage, is checked on the server, and only for the console_role* tables and the app_user.console_role_id column. The other four (console.tenants.manage, console.users.manage, console.audit.view, console.credential_template.manage) exist only as <ConsolePermissionGate>/hasConsolePermission() checks in React. Every table and RPC they are meant to protect tests is_super_admin(), which is true for any active super_admin whatever their console_role_id. The service-role Edge Functions invite-platform-admin (tenant_admin path), resend-platform-invite, invite-tenant-user and sign-credential also accept any super_admin without a console-scope check.
 - **Attack scenario:** A super_admin scoped to a 'Template Editor' console role (console.credential_template.manage only) calls PostgREST directly with their own JWT: PATCH /rest/v1/app_user?user_id=eq.<victim> to suspend or re-role any user in any woreda, PATCH tenant_module_config to disable a woreda's modules, GET /rest/v1/audit_log and /resident_decrypted for every woreda, or POST /functions/v1/invite-platform-admin {role:'tenant_admin', woredaId:X} to mint a tenant admin for any woreda.
 - **Impact:** Console roles do not restrict anything a scoped super_admin can do with a direct API call. That includes cross-tenant reads of all PII, tenant configuration, user administration and minting tenant admins. Operators who rely on console roles for separation of duties at platform level are not getting it. Live exposure depends on whether any console_role is currently assigned (Needs-live-verification: SELECT count(*) FROM app_user WHERE console_role_id IS NOT NULL).
 - **Recommendation:** Enforce each CP key where the power is exercised. For tenant_module_config, woreda, id_card_template*, credential-templates storage and publish/discard RPCs, replace is_super_admin() with user_has_console_perm('<key>'). For app_user writes by super_admin, require console.users.manage. For platform-wide SELECTs on audit_log, require console.audit.view. Add the matching check to invite-platform-admin, resend-platform-invite and invite-tenant-user (super_admin branch). Add a CI drift check that every CP key is referenced by at least one policy or function.
+- **Live verification (2026-09-25):** Live 2026-09-25: both active super_admin accounts have console_role_id NULL (unrestricted), so no console-scoped super admin exists and the gap has no current exposure. It becomes exploitable as soon as a console role is assigned.
 - **Effort:** M · **Status:** Open
 
 ### WP-ARC-004
@@ -1837,6 +1891,7 @@ Refs: insa: A-08, PRV-01, CLS-01; owasp_top10: A04:2021; owasp_api: API3:2023; a
 - **Attack scenario:** Any tenant account, including a print officer, lists residents by religion or ethnicity through PostgREST, or re-identifies individuals from a kebele-level report where the count is 1-2.
 - **Impact:** Discrimination and profiling risk for residents. This is a likely non-compliance with the Proclamation's sensitive-data conditions and with data minimisation.
 - **Recommendation:** Get a written decision from the system owner and legal counsel on the legal mandate for each special-category field. If there is no mandate, make the field optional with 'prefer not to say', or remove it. If it is mandated, restrict it: exclude it from default selects, add column-level REVOKE SELECT (ethnicity, religion) with access through a permission-gated RPC or view, encrypt it with the Phase C mechanism, exclude it from drafts and prints unless required, and suppress report cells below a threshold (e.g. <5). Record the lawful basis and purpose in a Record of Processing.
+- **Live verification (2026-09-25):** Owner statement 2026-09-25: ethnicity is collected so the government has population data and can support minorities. The owner also clarified that 'region' is only the administrative location (state), not a sensitive attribute. This records a purpose for ethnicity, but not yet a legal basis. Still open: the statutory provision or mandate relied on (legal counsel), whether the field can be optional with 'prefer not to say', and a purpose for religion, cause of death and divorce grounds, which the owner did not address. The protection gaps (plaintext, readable by every tenant user, copied into audit_log and localStorage) are unchanged.
 - **Effort:** M · **Status:** Open
 
 ### WP-DB-016
@@ -1949,6 +2004,21 @@ Refs: insa: MC-03; owasp_top10: A01:2021, A04:2021; owasp_api: API3:2023; asvs: 
 - **Impact:** Cash-handling fraud and reconciliation gaps outside the rental module, which already has the proper controls.
 - **Recommendation:** Generalise guard_rental_payment_status_change() to all payment types. Make status/amount/type changes possible only through a reversal RPC that requires a reason, reverser != poster, and writes audit. Either retire the free-form 'penalty'/'house_rent' types or require them to be linked to an obligation and priced by the fee guard.
 - **Effort:** M · **Status:** Open
+
+## Module: Authentication and session
+
+### WP-LIVE-002
+**No server-side session limit: refresh tokens never expire by time or inactivity, and a password change does not require re-authentication**  
+Severity **Low** · Confidence Confirmed · Category Authentication · Reported by `live-verification` · Verification: not individually re-verified (Medium sample FP rate 0/10)
+  
+Refs: insa: C-05, E-03; asvs: V3.3.1, V3.3.2; owasp_top10: A07:2021
+
+- **CVSS:** CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:L/I:L/A:N (3.7)
+- **Evidence:** `raw/live-2026-09-25/p01_auth_config.json:` — `sessions_timebox: 0, sessions_inactivity_timeout: 0, sessions_single_per_user: false, jwt_exp: 3600, refresh_token_rotation_enabled: true, security_update_passw`
+- **Description:** Access tokens last one hour and refresh-token rotation is on (reuse interval 10 s), which is sound. But the Auth server enforces no session time-box and no inactivity timeout, so a stolen refresh token keeps a session alive indefinitely; the 25-minute idle logout is client-side only and ends when the tab is closed. Changing a password needs neither the current password nor re-authentication. Session time-box and inactivity timeout are Pro-plan Auth settings; the owner states no Pro-tier setting has been enabled.
+- **Impact:** A session obtained from a shared or stolen device outlives the client idle timer.
+- **Recommendation:** On the Pro plan, set an inactivity timeout of 30 minutes and a time-box of 8-12 hours for staff. Enable 'require re-authentication on password change'. Until then, keep the client idle logout and revoke sessions on suspension (WP-AUTH-002).
+- **Effort:** S · **Status:** Open (needs Pro plan)
 
 ## Module: Households
 

@@ -1,0 +1,9 @@
+{
+ "endpoint": "GET /v1/security/firewall/config/active",
+ "result": {
+  "error": {
+   "code": "not_found",
+   "message": "Config not found"
+  }
+ }
+}

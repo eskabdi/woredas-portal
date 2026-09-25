@@ -1,0 +1,5 @@
+{
+ "query": "with refs as (select ve.vital_event_id, ve.woreda_id, ve.status, e.key as ref_key, e.value as ref_value from public.vital_event ve, jsonb_each_text(ve.event_details) e where jsonb_typeof(ve.event_details)='object' and e.key like '%\\_resident\\_id' escape '\\' union all select ve.vital_event_id, ve.woreda_id, ve.status, p.party||'.resident_id', ve.event_details #>> array[p.party,'resident_id'] from public.vital_event ve, (values ('spouse1'),('spouse2')) p(party) where jsonb_typeof(ve.event_details -> p.party)='object') select refs.status, refs.ref_key, count(*) from refs where nullif(btrim(refs.ref_value),'') is not null and not exists (select 1 from public.resident r where r.resident_id::text = lower(btrim(refs.ref_value)) and r.woreda_id = refs.woreda_id) group by 1,2 order by 1,2",
+ "http_status": "201",
+ "result": []
+}
