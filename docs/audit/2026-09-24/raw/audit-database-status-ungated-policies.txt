@@ -1,0 +1,95 @@
+Policies whose tenant branch depends ONLY on get_user_woreda_id() (no status-checking helper: user_has_perm/user_has_any_perm/is_tenant_admin/entity_*_perm_ok).
+get_user_woreda_id() (baseline.sql:1335) does not check app_user.status, so these admit pending/suspended/inactive users.
+
+app_user | SELECT | app_user_self_read | using | supabase/migrations/00000000000000_baseline.sql:1549
+arrears_plan_sequence | SELECT | arrears_plan_sequence_select | using | supabase/migrations/00000000000084_rental_review_regression_fixes.sql:185
+audit_log | INSERT | audit_log_tenant_insert | with_check | supabase/migrations/00000000000000_baseline.sql:1552
+audit_log | SELECT | audit_log_tenant_read | using | supabase/migrations/00000000000000_baseline.sql:1553
+credential_number_sequence | ALL | credential_seq_tenant | using | supabase/migrations/00000000000000_baseline.sql:1554
+credential_number_sequence | ALL | credential_seq_tenant | with_check | supabase/migrations/00000000000000_baseline.sql:1554
+credential_policy | SELECT | credential_policy_select | using | supabase/migrations/00000000000048_task11_schema_gaps.sql:396
+credential_print_log | SELECT | credential_print_log_select | using | supabase/migrations/00000000000000_baseline.sql:1557
+credential_request | SELECT | credential_request_select | using | supabase/migrations/00000000000000_baseline.sql:1568
+credential_request_sequence | ALL | cred_req_seq_tenant | using | supabase/migrations/00000000000000_baseline.sql:1559
+credential_request_sequence | ALL | cred_req_seq_tenant | with_check | supabase/migrations/00000000000000_baseline.sql:1559
+credential_request_status_history | SELECT | cred_req_history_select | using | supabase/migrations/00000000000000_baseline.sql:1563
+credential_status_history | SELECT | credential_status_history_read | using | supabase/migrations/00000000000000_baseline.sql:1573
+credential_verification_log | SELECT | credential_verification_log_tenant_read | using | supabase/migrations/00000000000034_task3_harden_credential_verification.sql:115
+fee_schedule | SELECT | fee_schedule_select | using | supabase/migrations/00000000000000_baseline.sql:1578
+household | SELECT | household_select | using | supabase/migrations/00000000000000_baseline.sql:1586
+household_change_log | SELECT | household_change_log_select | using | supabase/migrations/00000000000000_baseline.sql:1582
+household_location | SELECT | household_location_select | using | supabase/migrations/00000000000048_task11_schema_gaps.sql:163
+kebele | ALL | kebele_tenant_isolation | using | supabase/migrations/00000000000000_baseline.sql:1596
+kebele | ALL | kebele_tenant_isolation | with_check | supabase/migrations/00000000000000_baseline.sql:1596
+kebele_rental_house | SELECT | kebele_rental_house_select | using | supabase/migrations/00000000000000_baseline.sql:1594
+office | SELECT | office_select | using | supabase/migrations/00000000000048_task11_schema_gaps.sql:75
+payment | SELECT | payment_select | using | supabase/migrations/00000000000000_baseline.sql:1599
+receipt | SELECT | receipt_select | using | supabase/migrations/00000000000000_baseline.sql:1604
+receipt_sequence | ALL | receipt_seq_tenant | using | supabase/migrations/00000000000000_baseline.sql:1601
+receipt_sequence | ALL | receipt_seq_tenant | with_check | supabase/migrations/00000000000000_baseline.sql:1601
+rent_account_sequence | SELECT | rent_account_sequence_select | using | supabase/migrations/00000000000084_rental_review_regression_fixes.sql:180
+rental_occupancy | SELECT | rental_occupancy_select | using | supabase/migrations/00000000000000_baseline.sql:1612
+rental_occupancy_request | SELECT | rental_occupancy_request_select | using | supabase/migrations/00000000000000_baseline.sql:1608
+rental_policy | SELECT | rental_policy_select | using | supabase/migrations/00000000000071_rental_phase0_policy.sql:198
+rental_request_document | SELECT | rental_request_document_select | using | supabase/migrations/00000000000000_baseline.sql:1616
+rental_request_sequence | ALL | rental_request_sequence_tenant | using | supabase/migrations/00000000000000_baseline.sql:1618
+rental_request_sequence | ALL | rental_request_sequence_tenant | with_check | supabase/migrations/00000000000000_baseline.sql:1618
+residence_credential | SELECT | residence_credential_select | using | supabase/migrations/00000000000000_baseline.sql:1621
+resident | SELECT | resident_select | using | supabase/migrations/00000000000000_baseline.sql:1626
+resident_number_sequence | ALL | resident_number_sequence_tenant | using | supabase/migrations/00000000000000_baseline.sql:1623
+resident_number_sequence | ALL | resident_number_sequence_tenant | with_check | supabase/migrations/00000000000000_baseline.sql:1623
+role_permission | SELECT | role_permission_select_same_woreda | using | supabase/migrations/00000000000000_baseline.sql:1629
+service_request | SELECT | service_request_select | using | supabase/migrations/00000000000000_baseline.sql:1644
+service_request_attachment | SELECT | service_request_attachment_select | using | supabase/migrations/00000000000000_baseline.sql:1633
+service_request_sequence | SELECT | service_request_sequence_read | using | supabase/migrations/00000000000000_baseline.sql:1635
+service_request_status_history | INSERT | service_request_status_history_insert | with_check | supabase/migrations/00000000000000_baseline.sql:1636
+service_request_status_history | SELECT | service_request_status_history_select | using | supabase/migrations/00000000000000_baseline.sql:1639
+service_type | SELECT | service_type_select | using | supabase/migrations/00000000000000_baseline.sql:1648
+tenant_module_config | SELECT | tenant_module_config_read | using | supabase/migrations/00000000000000_baseline.sql:1650
+tenant_role | SELECT | tenant_role_read | using | supabase/migrations/00000000000038_task13_tenant_role_schema.sql:66
+tenant_role_permission | SELECT | tenant_role_permission_read | using | supabase/migrations/00000000000038_task13_tenant_role_schema.sql:74
+vital_event | SELECT | vital_event_select | using | supabase/migrations/00000000000000_baseline.sql:1655
+vital_event_sequence | ALL | vital_event_seq_tenant | using | supabase/migrations/00000000000000_baseline.sql:1652
+vital_event_sequence | ALL | vital_event_seq_tenant | with_check | supabase/migrations/00000000000000_baseline.sql:1652
+woreda_settings | SELECT | woreda_settings_select | using | supabase/migrations/00000000000000_baseline.sql:1659
+workflow_status_history | SELECT | workflow_status_history_select | using | supabase/migrations/00000000000058_task14a_civil_registration_fsm.sql:54
+
+TOTAL 52 policy clauses on 43 tables; write-capable: ['audit_log', 'credential_number_sequence', 'credential_request_sequence', 'kebele', 'receipt_sequence', 'rental_request_sequence', 'resident_number_sequence', 'service_request_status_history', 'vital_event_sequence']
+
+storage.objects policies with no permission helper (woreda-prefix only):
+  DELETE objects.attachments_delete_scoped supabase/migrations/00000000000049_task11_review_hardening.sql:112
+  INSERT objects.attachments_insert_scoped supabase/migrations/00000000000048_task11_schema_gaps.sql:353
+  SELECT objects.attachments_select_scoped supabase/migrations/00000000000048_task11_schema_gaps.sql:350
+  UPDATE objects.attachments_update_scoped supabase/migrations/00000000000049_task11_review_hardening.sql:116
+  DELETE objects.clearance_delete_scoped supabase/migrations/00000000000001_storage.sql:55
+  INSERT objects.clearance_insert_scoped supabase/migrations/00000000000001_storage.sql:58
+  SELECT objects.clearance_select_scoped supabase/migrations/00000000000001_storage.sql:61
+  UPDATE objects.clearance_update_scoped supabase/migrations/00000000000001_storage.sql:64
+  DELETE objects.credreq_docs_delete_scoped supabase/migrations/00000000000001_storage.sql:73
+  INSERT objects.credreq_docs_insert_scoped supabase/migrations/00000000000001_storage.sql:76
+  SELECT objects.credreq_docs_select_scoped supabase/migrations/00000000000001_storage.sql:79
+  UPDATE objects.credreq_docs_update_scoped supabase/migrations/00000000000001_storage.sql:82
+  DELETE objects.rentalreq_docs_delete_scoped supabase/migrations/00000000000001_storage.sql:85
+  INSERT objects.rentalreq_docs_insert_scoped supabase/migrations/00000000000001_storage.sql:88
+  SELECT objects.rentalreq_docs_select_scoped supabase/migrations/00000000000001_storage.sql:91
+  UPDATE objects.rentalreq_docs_update_scoped supabase/migrations/00000000000001_storage.sql:94
+  DELETE objects.resident_documents_delete_scoped supabase/migrations/00000000000004_resident_documents.sql:130
+  INSERT objects.resident_documents_insert_scoped supabase/migrations/00000000000004_resident_documents.sql:122
+  SELECT objects.resident_documents_select_scoped supabase/migrations/00000000000004_resident_documents.sql:118
+  UPDATE objects.resident_documents_update_scoped supabase/migrations/00000000000004_resident_documents.sql:126
+  DELETE objects.resident_photos_delete_scoped supabase/migrations/00000000000001_storage.sql:97
+  INSERT objects.resident_photos_insert_scoped supabase/migrations/00000000000001_storage.sql:100
+  SELECT objects.resident_photos_select_scoped supabase/migrations/00000000000001_storage.sql:103
+  UPDATE objects.resident_photos_update_scoped supabase/migrations/00000000000001_storage.sql:106
+  DELETE objects.service_docs_delete supabase/migrations/00000000000001_storage.sql:109
+  INSERT objects.service_docs_insert supabase/migrations/00000000000001_storage.sql:112
+  SELECT objects.service_docs_select supabase/migrations/00000000000001_storage.sql:115
+  UPDATE objects.service_docs_update supabase/migrations/00000000000001_storage.sql:118
+  DELETE objects.staff_assets_delete_scoped supabase/migrations/00000000000014_app_user_staff_fields.sql:28
+  INSERT objects.staff_assets_insert_scoped supabase/migrations/00000000000014_app_user_staff_fields.sql:31
+  SELECT objects.staff_assets_select_scoped supabase/migrations/00000000000014_app_user_staff_fields.sql:34
+  UPDATE objects.staff_assets_update_scoped supabase/migrations/00000000000014_app_user_staff_fields.sql:37
+  DELETE objects.tenant_assets_delete_scoped supabase/migrations/00000000000001_storage.sql:121
+  INSERT objects.tenant_assets_insert_scoped supabase/migrations/00000000000001_storage.sql:124
+  SELECT objects.tenant_assets_select_scoped supabase/migrations/00000000000001_storage.sql:127
+  UPDATE objects.tenant_assets_update_scoped supabase/migrations/00000000000001_storage.sql:130

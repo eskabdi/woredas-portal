@@ -1,0 +1,16 @@
+# ops-scope: live TLS/header probe attempts 2026-09-24T17:43:41Z
+$ curl -sSI https://woredas-portal.vercel.app/
+curl: (56) CONNECT tunnel failed, response 403
+HTTP/1.1 403 Forbidden
+Content-Type: text/plain; charset=utf-8
+X-Content-Type-Options: nosniff
+Content-Length: 83
+$ curl -sSI http://woredas-portal.vercel.app/
+HTTP/1.1 403 Forbidden
+x-deny-reason: host_not_allowed
+content-length: 112
+$ curl -sSI https://<prod-ref>.supabase.co/auth/v1/health
+curl: (56) CONNECT tunnel failed, response 403
+HTTP/1.1 403 Forbidden
+Proxy status recentRelayFailures: connect_rejected 'gateway answered 403 to CONNECT (policy denial)' for woredas-portal.vercel.app:443
+Conclusion: egress policy of the audit sandbox denies both production hosts; no TLS/header evidence obtainable. Not retried per proxy README. openssl s_client not attempted (same CONNECT path; proxy re-terminates TLS anyway, so any result would describe the proxy, not Vercel).

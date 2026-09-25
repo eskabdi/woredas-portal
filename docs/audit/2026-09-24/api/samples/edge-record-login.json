@@ -1,0 +1,106 @@
+{
+ "generated_by": "audit-api-edge 2026-09-24",
+ "as_is": true,
+ "synthetic_values": "All ids, names, tokens and numbers are synthetic placeholders; no production data.",
+ "endpoint": "POST /functions/v1/record-login",
+ "classification": "Private (self-scoped)",
+ "auth": "bearer JWT; caller own row only; no status check",
+ "responses": {
+  "200": {
+   "emitted": true,
+   "response": {
+    "success": true
+   },
+   "evidence": "supabase/functions/record-login/index.ts:57",
+   "request": {
+    "headers": {
+     "Authorization": "Bearer <user access token>",
+     "apikey": "<publishable key>",
+     "Content-Type": "application/json"
+    },
+    "body": {}
+   }
+  },
+  "400": {
+   "emitted": false,
+   "reason": "Not emitted."
+  },
+  "401": [
+   {
+    "emitted": true,
+    "response": {
+     "error": "Missing authorization header"
+    },
+    "evidence": "supabase/functions/record-login/index.ts:26",
+    "request": {
+     "headers": {
+      "apikey": "<publishable key>"
+     },
+     "body": {}
+    },
+    "note": "Reached only if gateway verify_jwt=false; with verify_jwt=true the platform gateway answers first (body shape platform-defined, Needs-live-verification)."
+   },
+   {
+    "emitted": true,
+    "response": {
+     "error": "Unauthorized"
+    },
+    "evidence": "supabase/functions/record-login/index.ts:38",
+    "request": {
+     "headers": {
+      "Authorization": "Bearer <expired or revoked token>"
+     }
+    }
+   }
+  ],
+  "403": {
+   "emitted": false,
+   "reason": "Not emitted - suspended accounts are updated too."
+  },
+  "404": {
+   "emitted": true,
+   "response": {
+    "error": "No app_user profile found"
+   },
+   "evidence": "supabase/functions/record-login/index.ts:55"
+  },
+  "405": {
+   "emitted": true,
+   "response": {
+    "error": "Method not allowed"
+   },
+   "evidence": "supabase/functions/record-login/index.ts:22",
+   "request": {
+    "method": "GET"
+   }
+  },
+  "409": {
+   "emitted": false,
+   "reason": "Not emitted."
+  },
+  "422": {
+   "emitted": false,
+   "reason": "Not emitted."
+  },
+  "429": {
+   "emitted": false,
+   "reason": "No limiter."
+  },
+  "500": [
+   {
+    "emitted": true,
+    "response": {
+     "error": "Failed to record login"
+    },
+    "evidence": "supabase/functions/record-login/index.ts:47-54"
+   },
+   {
+    "emitted": true,
+    "response": {
+     "error": "Internal error"
+    },
+    "evidence": "supabase/functions/record-login/index.ts:58-59"
+   }
+  ]
+ }
+}

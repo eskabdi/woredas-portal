@@ -1,0 +1,128 @@
+src/components/admin/PlatformUsersTab.tsx:236:      toast.error(e instanceof Error ? e.message : "Export failed");
+src/components/admin/PlatformUsersTab.tsx:269:    if (error) return toast.error(error.message);
+src/components/admin/PlatformUsersTab.tsx:289:    if (error) return toast.error(error.message);
+src/components/admin/PlatformUsersTab.tsx:832:    if (error) return toast.error(error.message);
+src/components/admin/PlatformUsersTab.tsx:869:    if (error) return toast.error(error.message);
+src/components/admin/PlatformUsersTab.tsx:901:    if (error) return toast.error(error.message);
+src/components/services/ServiceRequestList.tsx:315:      toast.error(`Export failed: ${(e as Error).message}`);
+src/components/common/OfflineStatusBar.tsx:33:          toast.success(result.message);
+src/components/common/OfflineStatusBar.tsx:35:          toast.error(`ማመሳሰል አልተሳካም (እንደገና ይሞከራል) / Sync failed, will retry: ${result.message}`);
+src/components/common/OfflineStatusBar.tsx:37:          toast.error(`ተቀባይነት አላገኘም / Rejected: ${result.message}`, { duration: 10_000 });
+src/components/settings/CustomRolesTab.tsx:89:    if (error) toast.error(error instanceof Error ? error.message : "Failed to update role");
+src/components/settings/CustomRolesTab.tsx:200:      toast.error(error instanceof Error ? error.message : "Failed to create role");
+src/components/settings/CustomRolesTab.tsx:289:    if (error) toast.error(error instanceof Error ? error.message : "Failed to save");
+src/components/settings/LetterTemplatesTab.tsx:96:      toast.error(`ማስቀመጥ አልተሳካም / Save failed: ${e instanceof Error ? e.message : "unknown"}`),
+src/components/settings/RolesPermissionsTab.tsx:167:      toast.error(error.message);
+src/components/settings/UsersRolesTab.tsx:242:      toast.error(error.message);
+src/components/settings/UsersRolesTab.tsx:261:    if (error) return toast.error(error.message);
+src/components/settings/UsersRolesTab.tsx:701:      toast.error(e instanceof Error ? e.message : "Upload failed");
+src/components/residents/ResidentActions.tsx:125:    onError: (e: Error) => toast.error(e.message),
+src/components/residents/ResidentActions.tsx:147:    onError: (e: Error) => toast.error(e.message),
+src/components/residents/ResidentActions.tsx:165:    onError: (e: Error) => toast.error(e.message),
+src/components/residents/ResidentActions.tsx:183:    onError: (e: Error) => toast.error(e.message),
+src/components/residents/ResidentActions.tsx:491:    onError: (e: Error) => toast.error(e.message),
+src/components/residents/ResidentProfileTabs.tsx:832:      toast.error(`ስቀላ አልተሳካም / Upload failed: ${(e as Error).message}`);
+src/components/residents/ResidentProfileTabs.tsx:872:      toast.error(`መሰረዝ አልተሳካም / Delete failed: ${(e as Error).message}`);
+src/components/print/PrintDocumentShell.tsx:100:      toast.error(`Failed to generate the document PDF: ${(e as Error).message}`);
+src/components/forms/ResidentWizardSteps.tsx:227:      toast.error(`ፎቶ መጫን አልተሳካም / Upload failed: ${(e as Error).message}`);
+src/components/forms/ResidentWizardSteps.tsx:307:      toast.error(`ፋይል መጫን አልተሳካም / Upload failed: ${(e as Error).message}`);
+src/routes/woreda.services.$requestId.index.tsx:246:      toast.error(`Action failed: ${(e as Error).message}`);
+src/routes/woreda.services.$requestId.index.tsx:361:      toast.error(`Payment failed: ${(e as Error).message}`);
+src/routes/woreda.services.$requestId.index.tsx:398:      toast.error(`Upload failed: ${(e as Error).message}`);
+src/routes/woreda.services.$requestId.index.tsx:1260:      toast.error(`Payment failed: ${(e as Error).message}`);
+src/routes/woreda.credentials.index.tsx:152:      toast.error(e instanceof Error ? e.message : "Failed to export CSV");
+src/routes/woreda.credentials.index.tsx:173:      toast.error(e instanceof Error ? e.message : "Failed to export PDF");
+src/routes/woreda.rental-houses.$houseId.index.tsx:595:    onError: (e: Error) => toast.error(e.message),
+src/routes/woreda.rental-houses.$houseId.index.tsx:743:    onError: (e: Error) => toast.error(e.message),
+src/routes/woreda.credentials.$requestId.index.tsx:475:      toast.error(`Update failed: ${(e as Error).message}`);
+src/routes/woreda.credentials.$requestId.index.tsx:530:      toast.error(`Return failed: ${(e as Error).message}`);
+src/routes/woreda.credentials.$requestId.index.tsx:573:      toast.error(`Resubmit failed: ${(e as Error).message}`);
+src/routes/woreda.credentials.$requestId.index.tsx:643:      toast.error(`Approve failed: ${(e as Error).message}`);
+src/routes/woreda.credentials.$requestId.index.tsx:687:      toast.error(`Return failed: ${(e as Error).message}`);
+src/routes/woreda.credentials.$requestId.index.tsx:731:      toast.error(`Reject failed: ${(e as Error).message}`);
+src/routes/woreda.credentials.$requestId.index.tsx:1750:      toast.error(`Payment failed: ${(e as Error).message}`);
+src/routes/woreda.credentials.$requestId.index.tsx:2453:      toast.error((e as Error).message);
+src/routes/woreda.credentials.$requestId.index.tsx:2670:      toast.error((e as Error).message);
+src/routes/woreda.credentials.$requestId.index.tsx:2883:      toast.error((e as Error).message);
+src/routes/woreda.households.new.tsx:130:    onError: (e: Error) => toast.error(e.message),
+src/routes/woreda.rental-houses.new.tsx:107:    onError: (err: Error) => toast.error(err.message),
+src/routes/woreda.residents.index.tsx:334:      toast.error(e instanceof Error ? e.message : "Export failed");
+src/routes/woreda.residents.index.tsx:355:      toast.error(e instanceof Error ? e.message : "Export failed");
+src/routes/woreda.residents.index.tsx:658:    onError: (e: Error) => toast.error(e.message),
+src/routes/woreda.residents.index.tsx:680:    onError: (e: Error) => toast.error(e.message),
+src/routes/woreda.residents.index.tsx:698:    onError: (e: Error) => toast.error(e.message),
+src/routes/woreda.residents.index.tsx:716:    onError: (e: Error) => toast.error(e.message),
+src/routes/woreda.residents.index.tsx:1025:    onError: (e: Error) => toast.error(e.message),
+src/routes/woreda.civil.marriage.new.tsx:173:    onError: (e) => toast.error(`ማስገባት አልተሳካም / Submit failed: ${(e as Error).message}`),
+src/routes/woreda.civil.death.new.tsx:170:    onError: (e) => toast.error(`ማስገባት አልተሳካም / Submit failed: ${(e as Error).message}`),
+src/routes/woreda.households.$householdId.index.tsx:182:    onError: (e: Error) => toast.error(e.message),
+src/routes/woreda.services.new.tsx:292:          toast.error(`${pf.file.name}: ${up.error.message}`);
+src/routes/woreda.services.new.tsx:334:      toast.error(`ማስገባት አልተሳካም / Submit failed: ${(e as Error).message}`);
+src/routes/woreda.credentials.new.tsx:382:      toast.error(`ፋይል መጫን አልተሳካም / Upload failed: ${(e as Error).message}`);
+src/routes/woreda.credentials.new.tsx:412:      toast.error(`ፎቶ መጫን አልተሳካም / Photo upload failed: ${(e as Error).message}`);
+src/routes/woreda.credentials.new.tsx:598:      toast.error(`ማስገባት አልተሳካም / Submit failed: ${(e as Error).message}`);
+src/routes/woreda.civil.index.tsx:307:      toast.error(e instanceof Error ? e.message : "Failed to export CSV");
+src/routes/woreda.civil.index.tsx:328:      toast.error(e instanceof Error ? e.message : "Failed to export PDF");
+src/routes/admin.console-roles.tsx:138:    if (error) return toast.error(error.message);
+src/routes/admin.console-roles.tsx:156:    if (error) return toast.error(error.message);
+src/routes/admin.console-roles.tsx:360:      toast.error(error?.message ?? "Failed to create role");
+src/routes/admin.console-roles.tsx:374:      toast.error(permError.message);
+src/routes/admin.console-roles.tsx:473:    if (error) return toast.error(error.message);
+src/routes/woreda.civil.$eventId.tsx:362:      toast.error(`ማዘመን አልተሳካም / Update failed: ${(e as Error).message}`);
+src/routes/woreda.civil.$eventId.tsx:400:      toast.error(`መመለስ አልተሳካም / Return failed: ${(e as Error).message}`);
+src/routes/woreda.civil.$eventId.tsx:421:      toast.error(`ማዘመን አልተሳካም / Update failed: ${(e as Error).message}`);
+src/routes/woreda.civil.$eventId.tsx:448:      toast.error(`ማጽደቅ አልተሳካም / Approve failed: ${(e as Error).message}`);
+src/routes/woreda.civil.$eventId.tsx:474:      toast.error(`ውድቅ ማድረግ አልተሳካም / Reject failed: ${(e as Error).message}`);
+src/routes/woreda.civil.$eventId.tsx:493:      toast.error(`እንደገና ማስገባት አልተሳካም / Resubmit failed: ${(e as Error).message}`);
+src/routes/woreda.civil.$eventId.tsx:1316:      toast.error(`ክፍያ አልተሳካም / Payment failed: ${(e as Error).message}`);
+src/routes/woreda.residents.$residentId.edit.tsx:224:        toast.error(`ማዘመን አልተሳካም / Update failed: ${error.message}`);
+src/routes/woreda.residents.$residentId.edit.tsx:256:      toast.error(`ስህተት / Error: ${(e as Error).message}`);
+src/routes/woreda.audit.tsx:367:      toast.error(e instanceof Error ? e.message : "Failed to export CSV");
+src/routes/woreda.audit.tsx:388:      toast.error(e instanceof Error ? e.message : "Failed to export PDF");
+src/routes/woreda.rental-houses.$houseId.edit.tsx:134:    onError: (err: Error) => toast.error(err.message),
+src/routes/admin.tenants.$woredaId.provision.tsx:179:      toast.error(e instanceof Error ? e.message : "Failed");
+src/routes/woreda.rental-accounts.$occupancyId.tsx:278:    onError: (e: Error) => toast.error(e.message),
+src/routes/woreda.rental-accounts.$occupancyId.tsx:328:    onError: (e: Error) => toast.error(e.message),
+src/routes/woreda.rental-accounts.$occupancyId.tsx:349:    onError: (e: Error) => toast.error(e.message),
+src/routes/woreda.rental-accounts.$occupancyId.tsx:393:    onError: (e: Error) => toast.error(e.message),
+src/routes/woreda.rental-accounts.$occupancyId.tsx:416:    onError: (e: Error) => toast.error(e.message),
+src/routes/woreda.rental-accounts.$occupancyId.tsx:441:    onError: (e: Error) => toast.error(e.message),
+src/routes/woreda.rental-accounts.$occupancyId.tsx:459:    onError: (e: Error) => toast.error(e.message),
+src/routes/woreda.rental-accounts.$occupancyId.tsx:480:    onError: (e: Error) => toast.error(e.message),
+src/routes/woreda.rental-accounts.$occupancyId.tsx:501:    onError: (e: Error) => toast.error(e.message),
+src/routes/woreda.rental-accounts.$occupancyId.tsx:553:    onError: (e: Error) => toast.error(e.message),
+src/routes/woreda.households.index.tsx:227:      toast.error(e instanceof Error ? e.message : "Export failed");
+src/routes/woreda.households.index.tsx:248:      toast.error(e instanceof Error ? e.message : "Export failed");
+src/routes/woreda.households.index.tsx:558:    onError: (e: Error) => toast.error(e.message),
+src/routes/admin.tenants.index.tsx:279:      toast.error(e instanceof Error ? e.message : "Export failed");
+src/routes/woreda.rental-houses.occupants.new.tsx:422:      toast.error(`ምዝገባ አልተሳካም / Registration failed — ${e.message}`);
+src/routes/woreda.settings.woreda-configuration.tsx:697:      toast.error(e instanceof Error ? e.message : "መስቀል አልተሳካም / Upload failed");
+src/routes/woreda.rental-houses.requests.index.tsx:345:      toast.error(e instanceof Error ? e.message : "ወደ ውጪ መላክ አልተሳካም / Export failed");
+src/routes/woreda.residents.new.tsx:119:          toast.error(`ምዝገባ አልተሳካም / Registration failed: ${error.message}`);
+src/routes/woreda.residents.new.tsx:127:      toast.error(`ስህተት / Error: ${(e as Error).message}`);
+src/routes/woreda.civil.divorce.new.tsx:181:    onError: (e) => toast.error(`ማስገባት አልተሳካም / Submit failed: ${(e as Error).message}`),
+src/routes/woreda.revenue.index.tsx:224:      toast.error(e instanceof Error ? e.message : "Failed to export CSV");
+src/routes/woreda.revenue.index.tsx:244:      toast.error(e instanceof Error ? e.message : "Failed to export PDF");
+src/routes/woreda.revenue.index.tsx:297:    onError: (e: Error) => toast.error(e.message),
+src/routes/admin.credential-template.tsx:381:        toast.error(error.message);
+src/routes/admin.credential-template.tsx:405:      toast.error(error.message);
+src/routes/admin.credential-template.tsx:484:      toast.error(`Upload failed: ${upErr.message}`);
+src/routes/admin.credential-template.tsx:499:      toast.error(`Save failed: ${dbErr.message}`);
+src/routes/admin.credential-template.tsx:553:      toast.error(`Save failed: ${(e as Error).message}`);
+src/routes/admin.credential-template.tsx:576:      toast.error(`Publish failed: ${(e as Error).message}`);
+src/routes/admin.credential-template.tsx:596:      toast.error(`Discard failed: ${(e as Error).message}`);
+src/routes/admin.audit.tsx:305:      toast.error(e instanceof Error ? e.message : "Failed to export CSV");
+src/routes/admin.audit.tsx:326:      toast.error(e instanceof Error ? e.message : "Failed to export PDF");
+src/routes/woreda.civil.birth.new.tsx:237:    onError: (e) => toast.error(`ማስገባት አልተሳካም / Submit failed: ${(e as Error).message}`),
+src/routes/woreda.credentials.$requestId.print.tsx:601:      toast.error(`ማረጋገጥ አልተሳካም / Confirm failed: ${(e as Error).message}`);
+src/routes/woreda.credentials.$requestId.print.tsx:644:      toast.error(`እንደገና መሞከር አልተሳካም / Retry failed: ${(e as Error).message}`);
+src/routes/woreda.credentials.$requestId.print.tsx:755:      toast.error(`ማተም አልተሳካም / Print failed: ${(e as Error).message}`);
+src/routes/woreda.rental-houses.index.tsx:297:      toast.error(e instanceof Error ? e.message : "ወደ ውጪ መላክ አልተሳካም / Export failed");
+src/routes/woreda.households.$householdId.edit.tsx:203:    onError: (e: Error) => toast.error(e.message),
+src/routes/admin.tenants.$woredaId.index.tsx:127:      toast.error(error.message);
+src/routes/admin.tenants.$woredaId.index.tsx:139:    if (auditError) toast.error(`Config saved, but audit logging failed: ${auditError.message}`);
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:230:    onError: (e: Error) => toast.error(e.message),
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:258:    onError: (e: Error) => toast.error(e.message),
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:292:    onError: (e: Error) => toast.error(e.message),
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:363:    onError: (e: Error) => toast.error(e.message),
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:396:    onError: (e: Error) => toast.error(e.message),

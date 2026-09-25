@@ -1,0 +1,324 @@
+{
+  "agent": "audit-supplychain",
+  "head": "9950f16e426eedd586c6fd85f6c328d9923542d1",
+  "date": "2026-09-24",
+  "findings": [
+    {
+      "id": "WP-SUP-001",
+      "title": "Dependency and secret scanning are not automated: no bun audit step in CI and no Dependabot/Renovate, while docs state the tree is clean",
+      "severity": "Medium",
+      "cvss_v3_1": "",
+      "confidence": "Confirmed",
+      "category": "Supply Chain",
+      "module": "Platform",
+      "refs": {
+        "insa": ["B-02", "SEC-01"],
+        "owasp_top10": ["A06:2021-Vulnerable and Outdated Components", "A08:2021-Software and Data Integrity Failures"],
+        "owasp_api": ["API8:2023"],
+        "asvs": ["V14.2.1", "V14.2.4"],
+        "iso27001": ["A.8.8", "A.8.28"],
+        "nist_csf": ["ID.RA-01", "PR.PS-02"]
+      },
+      "evidence": [
+        {"path": ".github/workflows/ci.yml", "line": 30, "snippet": "- run: bun install --frozen-lockfile"},
+        {"path": ".github/workflows/ci.yml", "line": 31, "snippet": "- run: bun run lint   (steps 31-41: lint, build, tsc, test, drift/catalog checks; no `bun audit`, no secret scan)"},
+        {"path": ".github", "line": 0, "snippet": "only .github/workflows/ci.yml exists; no .github/dependabot.yml, no renovate.json"},
+        {"path": "docs/testing-scope.md", "line": 83, "snippet": "**Dependency-vulnerability scanning has been run**: `bun audit` against `bun.lock` ... reports no vulnerabilities as of this pass."},
+        {"path": "docs/audit/2026-09-24/raw/supplychain-bun-audit.txt", "line": 2, "snippet": "js-yaml >=4.0.0 <4.3.2 ... high ... 1 vulnerabilities (1 high)"}
+      ],
+      "description": "Vulnerability scanning is a manual, point-in-time step. CI (the only gate a PR must pass) never runs `bun audit`, never runs a secret scanner, and no dependency-update bot is configured. The consequence is already visible: docs/testing-scope.md:83-85 records `bun audit` as clean, but today it reports one High advisory (WP-SUP-002). Nothing surfaced that change. The no-secrets-in-history result (SEC-01 PASS) likewise depends on a manual `secret-sweep` subagent run, not on CI or GitHub push protection.",
+      "attack_scenario": "A new advisory lands against a runtime dependency (for example supabase-js, jspdf, pdfjs-dist or html5-qrcode, all of which parse untrusted input in the browser). Nobody reruns `bun audit`, so the vulnerable version stays in production indefinitely. Separately, a developer pastes an `sbp_` token into a script and pushes it. With no CI secret scan and no push protection, it is caught only if someone remembers to run secret-sweep.",
+      "impact": "Known-vulnerable components can stay deployed with no signal. Leaked credentials depend on human diligence to be caught. B-02's 'no known Critical/High CVEs unaddressed' cannot be shown to hold over time.",
+      "recommendation": "Add a `bun audit --audit-level=high` step to ci.yml, or a scheduled workflow so build-only advisories do not block every PR. Add .github/dependabot.yml (the npm ecosystem reads bun.lock in current Dependabot) or Renovate with the bun manager, and keep bunfig.toml's minimumReleaseAge. Add gitleaks (SHA-pinned action) to CI and enable GitHub secret scanning with push protection. Update docs/testing-scope.md to cite the automated check rather than a one-off result.",
+      "secure_fix_example": "      - run: bun audit --audit-level=high\n      - uses: gitleaks/gitleaks-action@<full-sha> # vX.Y.Z\n        env: { GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} }",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-SUP-002",
+      "title": "Known High advisory GHSA-2883-xcg3-v3hh (js-yaml 4.3.1, CPU-exhaustion DoS) in the dependency tree; build/dev-time only",
+      "severity": "Low",
+      "cvss_v3_1": "7.5 (advisory base score, AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H); environmental score for this repo ~0 because no untrusted YAML reaches it",
+      "confidence": "Confirmed",
+      "category": "Supply Chain",
+      "module": "Platform",
+      "refs": {
+        "insa": ["B-02"],
+        "owasp_top10": ["A06:2021-Vulnerable and Outdated Components"],
+        "owasp_api": [],
+        "asvs": ["V14.2.1"],
+        "iso27001": ["A.8.8"],
+        "nist_csf": ["ID.RA-01"]
+      },
+      "evidence": [
+        {"path": "bun.lock", "line": 843, "snippet": "\"js-yaml\": [\"js-yaml@4.3.1\", ..."},
+        {"path": "bun.lock", "line": 173, "snippet": "\"@eslint/eslintrc\": [\"@eslint/eslintrc@3.3.6\", ... \"js-yaml\": \"^4.3.0\""},
+        {"path": "bun.lock", "line": 1173, "snippet": "\"xmlbuilder2\": [\"xmlbuilder2@4.0.3\", ... \"js-yaml\": \"^4.1.1\""},
+        {"path": "node_modules/@tanstack/start-plugin-core/dist/esm/build-sitemap.js", "line": 0, "snippet": "only consumer of xmlbuilder2 in start-plugin-core (Vite build-time sitemap generation)"},
+        {"path": "docs/audit/2026-09-24/raw/supplychain-bun-audit.txt", "line": 2, "snippet": "js-yaml >=4.0.0 <4.3.2 / eslint > @eslint/eslintrc > js-yaml / @tanstack/react-start > @tanstack/start-plugin-core > xmlbuilder2 > js-yaml / high"}
+      ],
+      "description": "`bun audit` reports one High advisory, and it is the only one. js-yaml 4.3.1's maxTotalMergeKeys limit does not bound CPU for empty merge sources (CWE-400/407). The fix is in 4.3.2. It reaches the tree through two paths: ESLint's config loader (dev-only) and the TanStack Start Vite plugin's sitemap builder (build-time). Neither path is in the browser bundle or the Nitro server runtime, and neither parses attacker-controlled YAML.",
+      "attack_scenario": "Only a malicious YAML file fed to ESLint or the build could trigger it, for example a hostile PR in CI. The effect is a slow or hung CI job, not code execution or data exposure.",
+      "impact": "Negligible runtime risk. It does make the B-02 criterion 'no known Critical/High CVEs unaddressed' fail literally until the advisory is fixed or formally risk-accepted.",
+      "recommendation": "Run `bun update js-yaml` once 4.3.2 is older than the 24h minimumReleaseAge. Both parents' semver ranges (^4.3.0, ^4.1.1) already allow it, so no package.json change is needed. Otherwise record a documented risk acceptance (dev/build-only, trusted input) in the B-02 register.",
+      "secure_fix_example": "bun update js-yaml   # resolves to >=4.3.2 within existing ranges; commit the bun.lock diff",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-SUP-003",
+      "title": "react-leaflet and @react-leaflet/core ship under Hippocratic-2.1 (non-OSI, ethical-use licence) in the client bundle of a government civil registry",
+      "severity": "Low",
+      "cvss_v3_1": "",
+      "confidence": "Confirmed",
+      "category": "Supply Chain",
+      "module": "Households",
+      "refs": {
+        "insa": ["B-02"],
+        "owasp_top10": [],
+        "owasp_api": [],
+        "asvs": ["V14.2.4"],
+        "iso27001": ["A.5.32"],
+        "nist_csf": ["GV.SC-05"]
+      },
+      "evidence": [
+        {"path": "package.json", "line": 73, "snippet": "\"react-leaflet\": \"^5.0.0\","},
+        {"path": "node_modules/react-leaflet/package.json", "line": 0, "snippet": "\"license\": \"Hippocratic-2.1\" (react-leaflet 5.0.0; @react-leaflet/core 3.0.0 same)"},
+        {"path": "src/components/gis/LocationPickerMap.tsx", "line": 0, "snippet": "imports react-leaflet (household/rental location capture)"},
+        {"path": "src/components/gis/LocationDisplayMap.tsx", "line": 0, "snippet": "imports react-leaflet"},
+        {"path": "docs/audit/2026-09-24/raw/supplychain-licenses.txt", "line": 1, "snippet": "total packages: 524 ... 2 Hippocratic-2.1"}
+      ],
+      "description": "Of the 524 installed packages, 435 are MIT, 28 ISC, 24 Apache-2.0, 16 BSD, plus a few MIT-0/0BSD/Unlicense/BlueOak. There is no GPL, AGPL, LGPL, SSPL or BUSL, so the copyleft/SaaS concern the method checks for does not apply. The one licence needing legal review is Hippocratic-2.1 on react-leaflet and its core, both runtime dependencies bundled to every browser. Hippocratic-2.1 is not OSI-approved. It conditions the grant on the licensee not violating human-rights standards (UN UDHR, ILO norms, and so on) and gives the licensor enforcement and termination rights. That clause deserves review for a government resident and ID registry. Other non-permissive entries are informational: MPL-2.0 lightningcss (build-time, file-level copyleft, unmodified), CC-BY-4.0 caniuse-lite (build data), Python-2.0 argparse (dev), and dompurify (MPL-2.0 OR Apache-2.0, transitive via jspdf).",
+      "attack_scenario": "Not a security exploit. The risk is licence compliance: a procurement or INSA reviewer flags a non-OSI conditional licence in a state system, or a licensor asserts termination.",
+      "impact": "Possible procurement or legal blocker, and a forced map-component replacement late in the programme.",
+      "recommendation": "Have the system owner's legal counsel review Hippocratic-2.1 for this deployment and record the decision. If it is unacceptable, replace react-leaflet with direct Leaflet usage (leaflet itself is BSD-2-Clause, already a dependency) through a small wrapper hook. Add a licence allow-list check to CI.",
+      "secure_fix_example": "",
+      "effort": "M",
+      "status": "Open"
+    },
+    {
+      "id": "WP-SUP-004",
+      "title": "actions/checkout referenced by mutable tag (@v4) although the same workflow documents SHA-pinning as the policy",
+      "severity": "Low",
+      "cvss_v3_1": "",
+      "confidence": "Confirmed",
+      "category": "Supply Chain",
+      "module": "Platform",
+      "refs": {
+        "insa": ["B-02"],
+        "owasp_top10": ["A08:2021-Software and Data Integrity Failures"],
+        "owasp_api": [],
+        "asvs": ["V14.2.4"],
+        "iso27001": ["A.8.30"],
+        "nist_csf": ["GV.SC-07"]
+      },
+      "evidence": [
+        {"path": ".github/workflows/ci.yml", "line": 15, "snippet": "- uses: actions/checkout@v4"},
+        {"path": ".github/workflows/ci.yml", "line": 16, "snippet": "# SHA-pinned rather than @v2: a moved tag on a third-party action runs arbitrary code in this job"},
+        {"path": ".github/workflows/ci.yml", "line": 20, "snippet": "- uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0"}
+      ],
+      "description": "setup-bun is pinned to a full commit SHA, with a comment explaining why (the tj-actions tag-move compromise). actions/checkout is still on the mutable @v4 tag. The blast radius is small: workflow permissions are `contents: read` (ci.yml:8-9) and no secrets are passed to the job. It is still an inconsistency with the repo's own stated policy.",
+      "attack_scenario": "The v4 tag is repointed to malicious code (an upstream compromise). The next CI run executes it with the job's GITHUB_TOKEN (read-only) and can tamper with build or test results.",
+      "impact": "CI integrity only. No deploy credentials are in this workflow.",
+      "recommendation": "Pin actions/checkout to a full commit SHA with a version comment, and let Dependabot's github-actions ecosystem keep it current.",
+      "secure_fix_example": "      - uses: actions/checkout@<40-char-sha> # v4.x.y",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-SUP-005",
+      "title": "SessionStart hook installs bun via unpinned `curl | bash` and runs `bun install` without --frozen-lockfile",
+      "severity": "Low",
+      "cvss_v3_1": "",
+      "confidence": "Confirmed",
+      "category": "Supply Chain",
+      "module": "Platform",
+      "refs": {
+        "insa": ["B-02"],
+        "owasp_top10": ["A08:2021-Software and Data Integrity Failures"],
+        "owasp_api": [],
+        "asvs": ["V14.2.4"],
+        "iso27001": ["A.8.30"],
+        "nist_csf": ["GV.SC-07"]
+      },
+      "evidence": [
+        {"path": ".claude/hooks/session-start.sh", "line": 28, "snippet": "curl -fsSL https://bun.sh/install | bash"},
+        {"path": ".claude/hooks/session-start.sh", "line": 34, "snippet": "\"$BUN\" install"},
+        {"path": "package.json", "line": 6, "snippet": "\"packageManager\": \"bun@1.3.11\","}
+      ],
+      "description": "In remote agent sessions (CLAUDE_CODE_REMOTE=true), when bun is missing the hook pipes the latest bun installer from the network into bash. There is no version pin, although package.json and CI pin 1.3.11, and there is no checksum. It then runs a plain `bun install`, which can re-resolve and rewrite bun.lock if package.json and the lockfile have drifted. CI uses --frozen-lockfile (ci.yml:30). This affects developer and agent containers only, not production. bunfig.toml's minimumReleaseAge guard still applies.",
+      "attack_scenario": "The bun.sh installer endpoint is compromised or serves a different major version. The agent container runs it with the session's environment, which during deploy work can hold SUPABASE_ACCESS_TOKEN or VERCEL_TOKEN.",
+      "impact": "Code execution in a developer or agent environment that may hold account-level deploy tokens. Lockfile drift is also possible.",
+      "recommendation": "Install the pinned version (`curl -fsSL https://bun.sh/install | bash -s \"bun-v1.3.11\"`), or verify a checksum of the release zip. Use `bun install --frozen-lockfile` in the hook to match CI.",
+      "secure_fix_example": "curl -fsSL https://bun.sh/install | bash -s \"bun-v1.3.11\"\n\"$BUN\" install --frozen-lockfile",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-SUP-006",
+      "title": "Account-level Management API token is placed on the curl/subprocess command line in operator scripts (visible via ps and /proc/<pid>/cmdline); the probe script also uses a fixed /tmp path",
+      "severity": "Low",
+      "cvss_v3_1": "",
+      "confidence": "Confirmed",
+      "category": "Config",
+      "module": "Platform",
+      "refs": {
+        "insa": ["SEC-01"],
+        "owasp_top10": ["A05:2021-Security Misconfiguration"],
+        "owasp_api": [],
+        "asvs": ["V14.3.3", "V6.4.1"],
+        "iso27001": ["A.8.24", "A.5.17"],
+        "nist_csf": ["PR.DS-01"]
+      },
+      "evidence": [
+        {"path": "scripts/phase-c-create-vault-key.sh", "line": 78, "snippet": "-H \"Authorization: Bearer $SUPABASE_ACCESS_TOKEN\" \\"},
+        {"path": "scripts/phase-c-apply-migration.sh", "line": 56, "snippet": "-H \"Authorization: Bearer $SUPABASE_ACCESS_TOKEN\" \\"},
+        {"path": "scripts/phase-c-backfill.sh", "line": 81, "snippet": "-H \"Authorization: Bearer $SUPABASE_ACCESS_TOKEN\" \\"},
+        {"path": "scripts/phase-c-apply-migration-024.sh", "line": 48, "snippet": "-H \"Authorization: Bearer $SUPABASE_ACCESS_TOKEN\" \\"},
+        {"path": "scripts/run-phase-c-dryrun.sh", "line": 58, "snippet": "-H \"Authorization: Bearer $SUPABASE_ACCESS_TOKEN\" \\"},
+        {"path": "scripts/apply-workflow-migrations.sh", "line": 135, "snippet": "-H \"Authorization: Bearer $SUPABASE_ACCESS_TOKEN\" \\"},
+        {"path": "scripts/run-live-probes.py", "line": 74, "snippet": "f\"Authorization: Bearer {token}\","},
+        {"path": "scripts/run-live-probes.py", "line": 63, "snippet": "payload_path = \"/tmp/_probe_payload.json\""},
+        {"path": ".claude/skills/deploy/SKILL.md", "line": 98, "snippet": "vercel deploy --prod --yes --archive=tgz --token=\"$VERCEL_TOKEN\""}
+      ],
+      "description": "All seven Management API scripts read the token from the environment, never hard-code it, and never echo it. They follow the CLAUDE.md rule, and the in-repo secret scans are clean. But the expanded token becomes a curl argv element, and `vercel --token=` does the same. On a shared or multi-user host any local user can read other processes' arguments, and process-accounting or EDR tools often log them. SUPABASE_ACCESS_TOKEN has control-plane rights over every project on the account. run-live-probes.py also writes SQL payloads to a predictable /tmp path, which is a symlink/race hazard on shared /tmp. The payload is SQL, not the token.",
+      "attack_scenario": "An operator runs a migration script on a shared jump host. A co-tenant user polls `ps -eo args` and captures the sbp_ token for the account.",
+      "impact": "Disclosure of an account-level deploy credential. The precondition (a shared host) makes it Low.",
+      "recommendation": "Pass the header through stdin or a config file so the token is not in argv. Use `curl -H @-` or `curl --config -` fed from a here-string, or `-H @<(printf 'Authorization: Bearer %s' \"$SUPABASE_ACCESS_TOKEN\")`. Use the VERCEL_TOKEN env var, which the Vercel CLI reads natively, instead of --token. Use tempfile.mkstemp() in run-live-probes.py.",
+      "secure_fix_example": "curl -sS -X POST \"$URL\" -H @- --data-binary @\"$PAYLOAD\" <<<\"Authorization: Bearer $SUPABASE_ACCESS_TOKEN\"",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-SUP-007",
+      "title": "Pre-release and unmaintained components: nitro 3.0.260603-beta builds the production server; html5-qrcode 2.3.8 (last published 2023-04) handles camera QR decoding; several majors behind",
+      "severity": "Info",
+      "cvss_v3_1": "",
+      "confidence": "Confirmed",
+      "category": "Supply Chain",
+      "module": "Platform",
+      "refs": {
+        "insa": ["B-02"],
+        "owasp_top10": ["A06:2021-Vulnerable and Outdated Components"],
+        "owasp_api": [],
+        "asvs": ["V14.2.1"],
+        "iso27001": ["A.8.8"],
+        "nist_csf": ["ID.AM-02"]
+      },
+      "evidence": [
+        {"path": "package.json", "line": 104, "snippet": "\"nitro\": \"3.0.260603-beta\","},
+        {"path": "package.json", "line": 61, "snippet": "\"html5-qrcode\": \"^2.3.8\","},
+        {"path": "src/components/verification/HararildScanner.tsx", "line": 0, "snippet": "imports html5-qrcode (camera scanner for credential verification)"},
+        {"path": "docs/audit/2026-09-24/raw/supplychain-bun-outdated.txt", "line": 1, "snippet": "39 outdated; majors behind: zod 3.25.76 -> 4.6.5, recharts 2.15.4 -> 3.10.1, pdfjs-dist 5.4.296 -> 6.3.289, react-pdf 10 -> 11, lucide-react 0.575 -> 1.47, framer-motion 12 -> 13, typescript 5.9 -> 7.0, vitest 4 -> 5, eslint 9 -> 10"}
+      ],
+      "description": "No known advisory affects these versions today (bun audit lists only js-yaml). The Nitro server entry that wraps every document response with security headers (src/server.ts) is built by a date-stamped beta. html5-qrcode has had no release since April 2023 (npm time.modified 2023-04-15) and runs in the browser against camera input. The minor/patch backlog is small: supabase-js 2.112.3 -> 2.117.1, react 19.2.8 -> 19.3.0, and TanStack patches.",
+      "attack_scenario": "",
+      "impact": "Higher chance of unpatched defects, and no upstream fix path if html5-qrcode is ever found vulnerable.",
+      "recommendation": "Track nitro to a stable 3.x release. Plan a replacement for html5-qrcode (for example the maintained @zxing/browser or the native BarcodeDetector with a fallback). Apply the in-range patch updates on a regular cadence through the bot from WP-SUP-001.",
+      "secure_fix_example": "",
+      "effort": "M",
+      "status": "Open"
+    },
+    {
+      "id": "WP-SUP-008",
+      "title": ".gitignore:59 `.env*` overrides the `!.env.example` negation at :27; project ref hard-coded in a tracked skill",
+      "severity": "Info",
+      "cvss_v3_1": "",
+      "confidence": "Confirmed",
+      "category": "Config",
+      "module": "Platform",
+      "refs": {
+        "insa": ["SEC-01"],
+        "owasp_top10": [],
+        "owasp_api": [],
+        "asvs": [],
+        "iso27001": [],
+        "nist_csf": []
+      },
+      "evidence": [
+        {"path": ".gitignore", "line": 27, "snippet": "!.env.example"},
+        {"path": ".gitignore", "line": 59, "snippet": ".env*"},
+        {"path": ".claude/skills/acceptance-harness/SKILL.md", "line": 54, "snippet": "URL=\"https://tugz…[project ref].supabase.co\""}
+      ],
+      "description": "`git check-ignore --no-index -v .env.example` resolves to `.gitignore:59:.env*`, so the later pattern re-ignores the template. It stays in the repo only because it is already tracked. This is fail-safe, since it ignores more rather than less, but the negation is dead and confusing. The Supabase project ref in the acceptance-harness skill is not a secret (it is in every built client bundle), but it pins a tracked file to one environment.",
+      "attack_scenario": "",
+      "impact": "Hygiene only.",
+      "recommendation": "Drop the trailing `.env*` line (or move `!.env.example` after it). Read the project ref from an env var in the skill.",
+      "secure_fix_example": "",
+      "effort": "S",
+      "status": "Open"
+    }
+  ],
+  "checklist": [
+    {
+      "id": "B-02",
+      "status": "PARTIAL",
+      "evidence": "bun.lock present (lockfileVersion 1; 582 package entries, 582 with sha512 integrity; 0 git+/github:/http/file: sources); 524 installed packages inventoried (raw/supplychain-licenses.txt); `bun audit` = 1 High (js-yaml 4.3.1, GHSA-2883-xcg3-v3hh, build/dev-time only) in raw/supplychain-bun-audit.txt; `bun outdated` in raw/supplychain-bun-outdated.txt; install scripts: only core-js postinstall, blocked by bun (`bun pm untrusted`), no trustedDependencies; CI `bun install --frozen-lockfile` (ci.yml:30).",
+      "note": "CVE part: inventory complete and lockfile integrity good, but one High advisory is not yet addressed or formally risk-accepted, and no automated scanning exists (WP-SUP-001/002). npm audit/ls not applicable: no package-lock.json by design (.gitignore:22)."
+    },
+    {
+      "id": "SEC-01",
+      "status": "PASS",
+      "evidence": "raw/supplychain-secrets-scan.txt. Working tree: 0 real secrets (only pattern text in .claude/agents/secret-sweep.md and CLAUDE.md, the public verification key in src/config/credentialCryptoConfig.ts, and empty .env.example). Full history via a mirror clone (417 commits, 77 heads + 83 PR refs, from 4bf20c1 2026-08-17): 0 JWTs, sbp_/sb_secret_/sk_live/AKIA/ghp_/vcp_ tokens, PEM private keys, JWK d members or KEY=value assignments; MII… blobs are an RSA SPKI public key; 0 in commit messages; no .env/.pem/.key/p.json/payload.json/settings.local.json ever committed. No service_role in the frontend: only client.server.ts reads process.env.SUPABASE_SERVICE_ROLE_KEY, it is imported by nothing, and .output/public contains no SERVICE_ROLE reference.",
+      "note": "Regex fallback, since gitleaks/trufflehog are not installed; entropy-only secrets with no known prefix could evade it. The local working clone is shallow (177 commits), so history was verified against a scratch mirror. Operational exposure (argv) noted as WP-SUP-006."
+    }
+  ],
+  "drift": [
+    {
+      "claim": "`bun audit` against bun.lock reports no vulnerabilities as of this pass.",
+      "source": "docs/testing-scope.md:83-85",
+      "verdict": "CONTRADICTED",
+      "evidence": "bun audit (bun 1.3.11, 2026-09-24): 1 high, js-yaml >=4.0.0 <4.3.2 (GHSA-2883-xcg3-v3hh). A point-in-time claim that has gone stale."
+    },
+    {
+      "claim": "package-lock.json was removed; bun.lock is the only lockfile and `bun audit` is the dependency check the build reflects.",
+      "source": "CLAUDE.md:77-84; docs/tech-stack.md:44-47",
+      "verdict": "CONFIRMED",
+      "evidence": "Only bun.lock exists; package-lock.json is gitignored at .gitignore:22; history shows it was added and later removed. However, `bun audit` is not run by CI (ci.yml:30-41)."
+    },
+    {
+      "claim": "`client.server.ts` (service role key) is currently imported by nothing.",
+      "source": "CLAUDE.md:213",
+      "verdict": "CONFIRMED",
+      "evidence": "rg 'client\\.server' matches only the file's own usage comment (client.server.ts:35)."
+    },
+    {
+      "claim": "The SessionStart hook prefers bun; the npm fallback is a fallback, not an equivalent.",
+      "source": "CLAUDE.md:973-975",
+      "verdict": "CONTRADICTED",
+      "evidence": ".claude/hooks/session-start.sh:20-34 has no npm fallback any more; it installs bun via curl|bash (:28) and runs `bun install` (:34)."
+    },
+    {
+      "claim": "This repo has no test suite.",
+      "source": "CLAUDE.md:902",
+      "verdict": "CONTRADICTED",
+      "evidence": "vitest suite exists and runs in CI (ci.yml:37 `bun run test`; package.json:14); CLAUDE.md's own Commands section describes it."
+    },
+    {
+      "claim": "SHA-pinned third-party actions (moved-tag risk).",
+      "source": ".github/workflows/ci.yml:16-19",
+      "verdict": "CONTRADICTED",
+      "evidence": "Applied to oven-sh/setup-bun only (ci.yml:20); actions/checkout@v4 at ci.yml:15 is tag-referenced."
+    },
+    {
+      "claim": "The two deploy tokens never enter the repository; `.env` is gitignored.",
+      "source": "CLAUDE.md:6-60",
+      "verdict": "CONFIRMED",
+      "evidence": "No sbp_/Vercel token or .env in the tree or in any of the 417 commits across all refs (raw/supplychain-secrets-scan.txt); .gitignore:25-26,32-39."
+    },
+    {
+      "claim": "Stack versions (React 19.2.8, supabase-js 2.112.3, html2canvas-pro 2.4.0, pdfjs-dist 5.4.296, nitro 3.0.260603-beta, ...); dompurify only transitive.",
+      "source": "docs/audit/2026-09-24/00-context/shared-context.md:52-57",
+      "verdict": "CONFIRMED",
+      "evidence": "bun outdated 'Current' column matches; `rg dompurify src` = 0 matches."
+    }
+  ],
+  "artifacts": [
+    "docs/audit/2026-09-24/raw/supplychain-bun-audit.txt",
+    "docs/audit/2026-09-24/raw/supplychain-bun-audit.json",
+    "docs/audit/2026-09-24/raw/supplychain-bun-outdated.txt",
+    "docs/audit/2026-09-24/raw/supplychain-licenses.txt",
+    "docs/audit/2026-09-24/raw/supplychain-install-scripts.txt",
+    "docs/audit/2026-09-24/raw/supplychain-secrets-scan.txt"
+  ]
+}

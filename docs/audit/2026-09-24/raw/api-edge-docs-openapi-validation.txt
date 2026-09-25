@@ -1,0 +1,5 @@
+docs/openapi.yaml (OpenAPI 3.0.3, project-authored) validated with openapi-spec-validator OpenAPIV30SpecValidator (installed in session scratchpad, not in repo). Error count then errors:
+3
+- ['paths', '/activate-invited-user', 'post', 'requestBody'] {'required': False} is not valid under any of the given schemas
+- ['paths', '/record-login', 'post', 'requestBody'] {'required': False} is not valid under any of the given schemas
+- ['paths', '/record-login', 'post', 'responses', '200'] {'content': {'application/json': {'schema': {'$ref': '#/components/schemas/SuccessBody'}, 'example': {'success': True}}}} is not valid under any of th

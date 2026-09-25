@@ -1,0 +1,653 @@
+# 09 — Fix Prompts (P0 and P1)
+
+One ready-to-paste prompt per P0/P1 item of `07-remediation-roadmap.md`. Each prompt is self-contained: paste it into Claude Code (or Lovable) in the woredas-portal repo. The shared rules block is repeated inside every prompt on purpose.
+
+## P0-1 — Confirm and test backups before any fix (WP-OPS-002)
+
+Owner: Ops (dashboard; no code)
+
+```text
+Fix P0-1 from the 2026-09-24 security audit of eskabdi/woredas-portal: Confirm and test backups before any fix (WP-OPS-002).
+
+Context: Findings: WP-OPS-002 (High, needs live verification). Evidence: no backup/PITR/RPO/RTO anywhere in the repo; `docs/staging-runbook.md` and `docs/architecture.md` mention a free-tier cap; nothing backs up the 10 Storage buckets.
+
+Task (checklist for the system owner, not a code change):
+1. In the Supabase dashboard record the plan tier, whether daily backups and Point-in-Time Recovery are enabled, retention days, and the project region.
+2. Take a manual backup (or `pg_dump` via the Management API read path) and restore it into a scratch project; record the time taken (RTO) and the backup age (RPO).
+3. Export every Storage bucket (`credential-request-documents`, `credential-templates`, `rental-request-documents`, `resident-clearance-letters`, `resident-photos`, `service-request-documents`, `tenant-assets`, `resident-documents`, `staff-assets`, `attachments`) to encrypted off-platform storage.
+4. Write `docs/backup-and-recovery.md` with the tier, schedule, RPO/RTO targets, the restore-test date and the owner. No credentials in the document.
+
+Acceptance: a dated restore test recorded in `docs/backup-and-recovery.md`; row counts of `resident`, `payment`, `receipt`, `residence_credential` match between source and restored copy; bucket object counts match.
+
+Rules (non-negotiable, from CLAUDE.md and the 2026-09-24 audit):
+- Work on a new branch; never push to main. Read CLAUDE.md first.
+- Schema changes go in ONE new, additive migration `supabase/migrations/000000000000NN_<snake_case_name>.sql` (next free number). Never edit an applied migration; change a function only with `CREATE OR REPLACE` (no `DROP FUNCTION`; to retire one, `REVOKE EXECUTE … FROM PUBLIC, anon, authenticated` and replace its body with a raise). snake_case SQL, camelCase TypeScript.
+- Every SECURITY DEFINER function: `SET search_path = ''`, fully-qualified names, re-derive the caller's woreda with `public.get_user_woreda_id()` and permission with `public.user_has_perm()`; never trust a client-supplied `woreda_id`, role or actor id. Every RLS policy for INSERT/UPDATE carries `WITH CHECK`.
+- Frontend: parameterised Supabase client calls only (no string-built PostgREST filters), Zod allow-list validation, errors shown through `translateError()` (generic copy, no raw DB text), bilingual Amharic-first labels, Ethiopian-calendar dates with Arabic numerals.
+- Dry-run the migration wrapped in `BEGIN … ROLLBACK` against staging (or, until staging exists, production immediately after a verified backup), apply, then verify by querying `pg_policies` / `pg_proc` / `information_schema` / `pg_constraint` — never infer success from the apply call. Use the `fsm-migration` skill. A schema change and the frontend that depends on it ship as one deploy unit.
+- Deployment credentials (`SUPABASE_ACCESS_TOKEN`, `VERCEL_TOKEN`) come from the session environment only; never written to a file, never printed; `unset` them and delete `p.json`/`payload.json` afterwards; run the `secret-sweep` agent before pushing.
+- If the change adds or renames a permission: update `src/config/permissions.ts` AND add `CREATE OR REPLACE FUNCTION public.default_role_perms()` in the same migration, plus a `role_permission` backfill for existing woredas; run `bun run check:role-perms-drift` and `bun run generate:permissions-doc`.
+- Update living docs in the same PR: `docs/erd.md`, `docs/dfd.md`, `docs/security-functionality.md`, `docs/openapi.yaml` / `docs/audit/2026-09-24/api/openapi.yaml` where affected, and mark the finding Fixed in `docs/audit/2026-09-24/02-findings-register.md` with the commit.
+- Before opening the PR run: `bun run lint`, `bunx tsc --noEmit`, `bun run test`, `bun run check:role-perms-drift`, `bun run check:fee-catalog`, `bun run check:service-type-catalog`, and the repo `review` skill (it dispatches tenant-isolation-review, rbac-escalation-review, workflow-fsm-review as relevant).
+```
+
+## P0-2 — Close cross-woreda reads in SECURITY DEFINER functions (WP-VER-001, Critical)
+
+Owner: DB
+
+```text
+Fix P0-2 from the 2026-09-24 security audit of eskabdi/woredas-portal: Close cross-woreda reads in SECURITY DEFINER functions (WP-VER-001, Critical).
+
+Context: Findings: WP-VER-001 (merges WP-DB-003, WP-DB-009, WP-DB-010). Evidence: `supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql:141,163` (mother lookup by `mother_resident_id` with no woreda predicate in `generate_resident_on_birth_approval()`), `00000000000031_rental_eligibility.sql:74,197` (`rental_eligibility()` no woreda/permission check, EXECUTE not revoked from anon), `00000000000000_baseline.sql:1323` (`get_credential_live_status()` returns status for any credential number).
+
+Task:
+1. `CREATE OR REPLACE` `public.generate_resident_on_birth_approval()` so every lookup of `resident`/`household` by a supplied id adds `AND woreda_id = NEW.woreda_id`; raise `check_violation` ('mother_resident_id does not belong to this woreda') when the id is set but not found.
+2. `CREATE OR REPLACE` `public.enforce_vital_event_preconditions()` so `mother_resident_id`, `father_resident_id` and any `*_resident_id` inside `event_details` must belong to `NEW.woreda_id` at insert/update time.
+3. `CREATE OR REPLACE` `public.rental_eligibility(...)`: require `public.get_user_woreda_id() IS NOT NULL`, the house/resident rows to be in that woreda, and `public.user_has_perm('rental.view')` (or the existing rental read key); `REVOKE EXECUTE ON FUNCTION public.rental_eligibility(...) FROM PUBLIC, anon;`.
+4. `get_credential_live_status()` has no client caller: `REVOKE EXECUTE … FROM PUBLIC, anon, authenticated` and replace its body with the same staff + same-woreda predicate `verify_credential_token()` uses.
+5. Add `scripts/check-definer-tenant-predicate.ts` (static, parses migrations like `check-role-perms-drift.ts`) that fails CI when a SECURITY DEFINER body selects from a tenant table without a `woreda_id` predicate; wire it into `.github/workflows/ci.yml`.
+
+Acceptance tests (staging, using the acceptance-harness skill with accounts #5/#6 of `06-testing-scope.md`):
+- civil_registrar in woreda B submits a birth with `mother_resident_id` of a woreda-A resident → insert rejected with the new error; no resident row is created.
+- Same flow with a same-woreda mother still creates the child resident with the mother's household.
+- `POST /rest/v1/rpc/rental_eligibility` with the anon key → 401/403 (`permission denied for function`).
+- Authenticated woreda-B user calling `rental_eligibility` for a woreda-A house → error/empty.
+- `get_credential_live_status` not executable by `authenticated` (`\df+` / `has_function_privilege` check recorded).
+- `SELECT has_function_privilege('anon','public.rental_eligibility(uuid,uuid,text)','EXECUTE')` = false.
+
+Rules (non-negotiable, from CLAUDE.md and the 2026-09-24 audit):
+- Work on a new branch; never push to main. Read CLAUDE.md first.
+- Schema changes go in ONE new, additive migration `supabase/migrations/000000000000NN_<snake_case_name>.sql` (next free number). Never edit an applied migration; change a function only with `CREATE OR REPLACE` (no `DROP FUNCTION`; to retire one, `REVOKE EXECUTE … FROM PUBLIC, anon, authenticated` and replace its body with a raise). snake_case SQL, camelCase TypeScript.
+- Every SECURITY DEFINER function: `SET search_path = ''`, fully-qualified names, re-derive the caller's woreda with `public.get_user_woreda_id()` and permission with `public.user_has_perm()`; never trust a client-supplied `woreda_id`, role or actor id. Every RLS policy for INSERT/UPDATE carries `WITH CHECK`.
+- Frontend: parameterised Supabase client calls only (no string-built PostgREST filters), Zod allow-list validation, errors shown through `translateError()` (generic copy, no raw DB text), bilingual Amharic-first labels, Ethiopian-calendar dates with Arabic numerals.
+- Dry-run the migration wrapped in `BEGIN … ROLLBACK` against staging (or, until staging exists, production immediately after a verified backup), apply, then verify by querying `pg_policies` / `pg_proc` / `information_schema` / `pg_constraint` — never infer success from the apply call. Use the `fsm-migration` skill. A schema change and the frontend that depends on it ship as one deploy unit.
+- Deployment credentials (`SUPABASE_ACCESS_TOKEN`, `VERCEL_TOKEN`) come from the session environment only; never written to a file, never printed; `unset` them and delete `p.json`/`payload.json` afterwards; run the `secret-sweep` agent before pushing.
+- If the change adds or renames a permission: update `src/config/permissions.ts` AND add `CREATE OR REPLACE FUNCTION public.default_role_perms()` in the same migration, plus a `role_permission` backfill for existing woredas; run `bun run check:role-perms-drift` and `bun run generate:permissions-doc`.
+- Update living docs in the same PR: `docs/erd.md`, `docs/dfd.md`, `docs/security-functionality.md`, `docs/openapi.yaml` / `docs/audit/2026-09-24/api/openapi.yaml` where affected, and mark the finding Fixed in `docs/audit/2026-09-24/02-findings-register.md` with the commit.
+- Before opening the PR run: `bun run lint`, `bunx tsc --noEmit`, `bun run test`, `bun run check:role-perms-drift`, `bun run check:fee-catalog`, `bun run check:service-type-catalog`, and the repo `review` skill (it dispatches tenant-isolation-review, rbac-escalation-review, workflow-fsm-review as relevant).
+```
+
+## P0-3 — Make public and staff credential verification fail closed (WP-CRY-001, WP-CRY-002)
+
+Owner: FE + DB
+
+```text
+Fix P0-3 from the 2026-09-24 security audit of eskabdi/woredas-portal: Make public and staff credential verification fail closed (WP-CRY-001, WP-CRY-002).
+
+Context: Findings: WP-CRY-001 (High), WP-CRY-002 (Medium). Evidence: `src/routes/v.$token.tsx:179,215,262` (green banner when the registry returns no row or errors), `src/utils/harariCredentialCrypto.ts:100,194` (lenient base64url decode, high-S accepted), `supabase/migrations/00000000000034_task3_harden_credential_verification.sql:245,253` (exact match on the whole token). Reproduction: `docs/audit/2026-09-24/raw/crypto-qr-malleability.txt`.
+
+Task:
+1. Migration: `CREATE INDEX IF NOT EXISTS residence_credential_qr_payload_body_idx ON public.residence_credential ((split_part(qr_payload, '.', 1))) WHERE qr_payload IS NOT NULL;` and `CREATE OR REPLACE` `verify_credential_token()` to match on `split_part(qr_payload,'.',1) = split_part(_token,'.',1)` (keep the existing rate limit and minimal response).
+2. `harariCredentialCrypto.ts`: after decoding, re-encode the signature and payload and reject if not byte-identical (canonical base64url); reject signatures whose length ≠ 64 or whose S > n/2 (low-S rule). Make the signer (`supabase/functions/sign-credential`) always emit low-S.
+3. `v.$token.tsx`: three explicit states — green only when `registry?.status === 'active'` and not expired; red "not recognised by the registry / በመዝገቡ ውስጥ አልተገኘም" when no row; amber "authenticity proven, current status unknown" on RPC error or rate limit. Never default to green.
+4. Staff scanner (`src/components/verification/HararildScanner.tsx` and its result view): run the live-status check automatically and apply the same three states.
+
+Acceptance tests:
+- Unit (vitest) in `src/utils/__tests__/harariCredentialCrypto.test.ts`: a token with an altered final base64url character and a high-S variant are rejected; a canonical token passes.
+- Component test for `v.$token.tsx`: registry `null` → red; registry error → amber; `active` → green; `revoked` → red.
+- Staging: revoke a credential, re-encode its token with the malleability script → page shows red, not green.
+- `credential_verification_log` row written for every attempt.
+
+Rules (non-negotiable, from CLAUDE.md and the 2026-09-24 audit):
+- Work on a new branch; never push to main. Read CLAUDE.md first.
+- Schema changes go in ONE new, additive migration `supabase/migrations/000000000000NN_<snake_case_name>.sql` (next free number). Never edit an applied migration; change a function only with `CREATE OR REPLACE` (no `DROP FUNCTION`; to retire one, `REVOKE EXECUTE … FROM PUBLIC, anon, authenticated` and replace its body with a raise). snake_case SQL, camelCase TypeScript.
+- Every SECURITY DEFINER function: `SET search_path = ''`, fully-qualified names, re-derive the caller's woreda with `public.get_user_woreda_id()` and permission with `public.user_has_perm()`; never trust a client-supplied `woreda_id`, role or actor id. Every RLS policy for INSERT/UPDATE carries `WITH CHECK`.
+- Frontend: parameterised Supabase client calls only (no string-built PostgREST filters), Zod allow-list validation, errors shown through `translateError()` (generic copy, no raw DB text), bilingual Amharic-first labels, Ethiopian-calendar dates with Arabic numerals.
+- Dry-run the migration wrapped in `BEGIN … ROLLBACK` against staging (or, until staging exists, production immediately after a verified backup), apply, then verify by querying `pg_policies` / `pg_proc` / `information_schema` / `pg_constraint` — never infer success from the apply call. Use the `fsm-migration` skill. A schema change and the frontend that depends on it ship as one deploy unit.
+- Deployment credentials (`SUPABASE_ACCESS_TOKEN`, `VERCEL_TOKEN`) come from the session environment only; never written to a file, never printed; `unset` them and delete `p.json`/`payload.json` afterwards; run the `secret-sweep` agent before pushing.
+- If the change adds or renames a permission: update `src/config/permissions.ts` AND add `CREATE OR REPLACE FUNCTION public.default_role_perms()` in the same migration, plus a `role_permission` backfill for existing woredas; run `bun run check:role-perms-drift` and `bun run generate:permissions-doc`.
+- Update living docs in the same PR: `docs/erd.md`, `docs/dfd.md`, `docs/security-functionality.md`, `docs/openapi.yaml` / `docs/audit/2026-09-24/api/openapi.yaml` where affected, and mark the finding Fixed in `docs/audit/2026-09-24/02-findings-register.md` with the commit.
+- Before opening the PR run: `bun run lint`, `bunx tsc --noEmit`, `bun run test`, `bun run check:role-perms-drift`, `bun run check:fee-catalog`, `bun run check:service-type-catalog`, and the repo `review` skill (it dispatches tenant-isolation-review, rbac-escalation-review, workflow-fsm-review as relevant).
+```
+
+## P0-4 — Suspended/pending/inactive staff lose access immediately (WP-DB-001, merges WP-AUTH-002)
+
+Owner: DB + Edge + FE
+
+```text
+Fix P0-4 from the 2026-09-24 security audit of eskabdi/woredas-portal: Suspended/pending/inactive staff lose access immediately (WP-DB-001, merges WP-AUTH-002).
+
+Context: Findings: WP-DB-001 (High). Evidence: `supabase/migrations/00000000000000_baseline.sql:1335` (`get_user_woreda_id()` has no status predicate; never redefined), `00000000000011_status_check_admin_helpers.sql:3` (status added only to `is_super_admin`/`is_tenant_admin`), `src/components/settings/UsersRolesTab.tsx:254` (suspension is a plain row update), `src/routes/woreda.tsx` (no status check, unlike `src/routes/admin.tsx:31`). List of affected policies: `docs/audit/2026-09-24/raw/audit-database-status-ungated-policies.txt`.
+
+Task:
+1. Migration: `CREATE OR REPLACE FUNCTION public.get_user_woreda_id() RETURNS uuid LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$ SELECT woreda_id FROM public.app_user WHERE user_id = auth.uid() AND status = 'active' $$;` — this fixes all dependent table and storage policies at once. Check `storage_path_woreda_id` callers still compare against this helper.
+2. New Edge Function `set-staff-status` (same shape as `send-password-reset-link`: caller from own JWT, active tenant_admin of the target's woreda or super_admin, staff targets only, `safeError()`, rate-limited, audit row with `source_ip`) that updates `app_user.status` with `.select().maybeSingle()` verification and, for suspended/inactive, calls `admin.auth.admin.updateUserById(id, { ban_duration: '876000h' })` (and unbans on reactivation) so refresh tokens stop working.
+3. `UsersRolesTab.tsx`: call the Edge Function via `invokeEdgeFunction()` instead of the direct update.
+4. `src/routes/woreda.tsx`: mirror `admin.tsx:31` — if `appUser.status !== 'active'`, sign out and show the bilingual "account not active" message.
+5. Update CLAUDE.md's "pending app_user … every query comes back empty" paragraph so it is now true, and `docs/security-functionality.md`.
+
+Acceptance tests (accounts #20–#22 of `06-testing-scope.md`):
+- A pending, a suspended and an inactive user each get `[]` from `GET /rest/v1/resident`, `/household`, `/audit_log`, `/payment` and a 403/empty from `storage/v1/object/list/resident-photos`.
+- Suspending an already-signed-in user: their next refresh fails and the portal signs them out within one token lifetime.
+- Reactivation restores access; an audit row exists for both actions.
+- Active users are unaffected (regression run of the existing vitest suite + a smoke read per module).
+
+Rules (non-negotiable, from CLAUDE.md and the 2026-09-24 audit):
+- Work on a new branch; never push to main. Read CLAUDE.md first.
+- Schema changes go in ONE new, additive migration `supabase/migrations/000000000000NN_<snake_case_name>.sql` (next free number). Never edit an applied migration; change a function only with `CREATE OR REPLACE` (no `DROP FUNCTION`; to retire one, `REVOKE EXECUTE … FROM PUBLIC, anon, authenticated` and replace its body with a raise). snake_case SQL, camelCase TypeScript.
+- Every SECURITY DEFINER function: `SET search_path = ''`, fully-qualified names, re-derive the caller's woreda with `public.get_user_woreda_id()` and permission with `public.user_has_perm()`; never trust a client-supplied `woreda_id`, role or actor id. Every RLS policy for INSERT/UPDATE carries `WITH CHECK`.
+- Frontend: parameterised Supabase client calls only (no string-built PostgREST filters), Zod allow-list validation, errors shown through `translateError()` (generic copy, no raw DB text), bilingual Amharic-first labels, Ethiopian-calendar dates with Arabic numerals.
+- Dry-run the migration wrapped in `BEGIN … ROLLBACK` against staging (or, until staging exists, production immediately after a verified backup), apply, then verify by querying `pg_policies` / `pg_proc` / `information_schema` / `pg_constraint` — never infer success from the apply call. Use the `fsm-migration` skill. A schema change and the frontend that depends on it ship as one deploy unit.
+- Deployment credentials (`SUPABASE_ACCESS_TOKEN`, `VERCEL_TOKEN`) come from the session environment only; never written to a file, never printed; `unset` them and delete `p.json`/`payload.json` afterwards; run the `secret-sweep` agent before pushing.
+- If the change adds or renames a permission: update `src/config/permissions.ts` AND add `CREATE OR REPLACE FUNCTION public.default_role_perms()` in the same migration, plus a `role_permission` backfill for existing woredas; run `bun run check:role-perms-drift` and `bun run generate:permissions-doc`.
+- Update living docs in the same PR: `docs/erd.md`, `docs/dfd.md`, `docs/security-functionality.md`, `docs/openapi.yaml` / `docs/audit/2026-09-24/api/openapi.yaml` where affected, and mark the finding Fixed in `docs/audit/2026-09-24/02-findings-register.md` with the commit.
+- Before opening the PR run: `bun run lint`, `bunx tsc --noEmit`, `bun run test`, `bun run check:role-perms-drift`, `bun run check:fee-catalog`, `bun run check:service-type-catalog`, and the repo `review` skill (it dispatches tenant-isolation-review, rbac-escalation-review, workflow-fsm-review as relevant).
+```
+
+## P0-5 — Remove the stored-XSS sink in the letter-template editor (WP-APP-001)
+
+Owner: FE + DB
+
+```text
+Fix P0-5 from the 2026-09-24 security audit of eskabdi/woredas-portal: Remove the stored-XSS sink in the letter-template editor (WP-APP-001).
+
+Context: Findings: WP-APP-001 (High). Evidence: `src/components/ui/rich-text-editor.tsx:46` (`el.innerHTML = value`), `src/components/settings/LetterTemplatesTab.tsx:71,79,243` (loads `service_type.letter_body_html` straight from the DB), `supabase/migrations/00000000000000_baseline.sql:1649` (no server-side sanitisation), `src/lib/security-headers.ts:52` (`script-src 'unsafe-inline'`).
+
+Task:
+1. `rich-text-editor.tsx`: sanitise with `sanitizeLetterHtml()` (from `src/lib/letterTemplate.ts`) before every `innerHTML` assignment, including the initial value and on every `value` change; also sanitise in `LetterTemplatesTab.tsx` before `setHtml(...)` and before save.
+2. Consider replacing the hand-rolled walker with DOMPurify configured with the same allow-list (tags, attributes, inline style properties); keep the existing parity tests green and extend them to cover the editor and preview sinks.
+3. Migration: `BEFORE INSERT OR UPDATE OF letter_body_html ON public.service_type` trigger that rejects values matching `(?i)(<script|<iframe|<svg|<img|<object|<embed|\bon[a-z]+\s*=|javascript:)` with `check_violation` — defence against direct PostgREST writes.
+4. Log (DB trigger) every template change to `audit_log` with actor and old/new hash.
+
+Acceptance tests:
+- vitest: `RichTextEditor` given `<img src=x onerror=alert(1)>` renders no `onerror` attribute and no `img`; `<p style="color:red">` survives per the allow-list.
+- Staging: a direct `PATCH /rest/v1/service_type?id=eq.<id>` with `letter_body_html` containing `<svg onload=…>` → 400 check_violation.
+- Opening the template tab with a legacy malicious row (inserted as service_role in staging) does not execute script (Playwright, dialog listener asserts none).
+
+Rules (non-negotiable, from CLAUDE.md and the 2026-09-24 audit):
+- Work on a new branch; never push to main. Read CLAUDE.md first.
+- Schema changes go in ONE new, additive migration `supabase/migrations/000000000000NN_<snake_case_name>.sql` (next free number). Never edit an applied migration; change a function only with `CREATE OR REPLACE` (no `DROP FUNCTION`; to retire one, `REVOKE EXECUTE … FROM PUBLIC, anon, authenticated` and replace its body with a raise). snake_case SQL, camelCase TypeScript.
+- Every SECURITY DEFINER function: `SET search_path = ''`, fully-qualified names, re-derive the caller's woreda with `public.get_user_woreda_id()` and permission with `public.user_has_perm()`; never trust a client-supplied `woreda_id`, role or actor id. Every RLS policy for INSERT/UPDATE carries `WITH CHECK`.
+- Frontend: parameterised Supabase client calls only (no string-built PostgREST filters), Zod allow-list validation, errors shown through `translateError()` (generic copy, no raw DB text), bilingual Amharic-first labels, Ethiopian-calendar dates with Arabic numerals.
+- Dry-run the migration wrapped in `BEGIN … ROLLBACK` against staging (or, until staging exists, production immediately after a verified backup), apply, then verify by querying `pg_policies` / `pg_proc` / `information_schema` / `pg_constraint` — never infer success from the apply call. Use the `fsm-migration` skill. A schema change and the frontend that depends on it ship as one deploy unit.
+- Deployment credentials (`SUPABASE_ACCESS_TOKEN`, `VERCEL_TOKEN`) come from the session environment only; never written to a file, never printed; `unset` them and delete `p.json`/`payload.json` afterwards; run the `secret-sweep` agent before pushing.
+- If the change adds or renames a permission: update `src/config/permissions.ts` AND add `CREATE OR REPLACE FUNCTION public.default_role_perms()` in the same migration, plus a `role_permission` backfill for existing woredas; run `bun run check:role-perms-drift` and `bun run generate:permissions-doc`.
+- Update living docs in the same PR: `docs/erd.md`, `docs/dfd.md`, `docs/security-functionality.md`, `docs/openapi.yaml` / `docs/audit/2026-09-24/api/openapi.yaml` where affected, and mark the finding Fixed in `docs/audit/2026-09-24/02-findings-register.md` with the commit.
+- Before opening the PR run: `bun run lint`, `bunx tsc --noEmit`, `bun run test`, `bun run check:role-perms-drift`, `bun run check:fee-catalog`, `bun run check:service-type-catalog`, and the repo `review` skill (it dispatches tenant-isolation-review, rbac-escalation-review, workflow-fsm-review as relevant).
+```
+
+## P0-6 — Guard workflow inserts and make the service FSM category-aware (WP-WF-001, WP-WF-002)
+
+Owner: DB (+ FE if a UI path used the complaint verbs on letters)
+
+```text
+Fix P0-6 from the 2026-09-24 security audit of eskabdi/woredas-portal: Guard workflow inserts and make the service FSM category-aware (WP-WF-001, WP-WF-002).
+
+Context: Findings: WP-WF-001, WP-WF-002 (High). Evidence: `supabase/migrations/00000000000029_workflow_insert_guard.sql:87,203` (insert guard attached only to credential tables), `00000000000058_task14a_civil_registration_fsm.sql:100`, `00000000000061_task14b_service_request_fsm.sql:35,114,126-129` (letters and complaints share transitions), `00000000000064_task14b_verify_letter_completed_status.sql:47` (`verify_service_letter()` accepts resolved/closed). Reconstructed transition table: `docs/audit/2026-09-24/raw/workflows-fsm-reconstructed.txt`.
+
+Task (one deploy unit — read the `workflow-fsm-review` agent first):
+1. `CREATE OR REPLACE` `public.enforce_workflow_insert()` so that for `vital_event` and `service_request` only the initial status (`draft` or `submitted`) may be inserted and every actor/issuance column (`verified_by_user_id`, `approved_by_user_id`, `issued_by_user_id`, `issued_at`, `registered_at`, …) must be NULL; attach it as `zz_enforce_workflow_insert BEFORE INSERT` on both tables.
+2. Add an AFTER INSERT trigger writing the creation row to `workflow_status_history` for both tables.
+3. Make `enforce_workflow_transition()` category-aware for `service_request`: reject `in_progress`/`resolved`/`closed` when `NEW.category = 'letter'`, and reject the letter-only states for complaints (prefer a `category` column on `workflow_transition` matched by the trigger if you choose the data-driven route — additive column with a default).
+4. `CREATE OR REPLACE` `public.verify_service_letter()` to return valid only for `category = 'letter' AND status IN ('issued','completed')`.
+5. Confirm with `src/components/services/*` that no UI path relies on the removed transitions; update `docs/general-service-requests-unified-approval-queue.md` and the state diagrams in `docs/audit/2026-09-24/architecture/workflows.md`.
+
+Acceptance tests:
+- registry_clerk `POST /rest/v1/vital_event` with `status='awaiting_payment'` → rejected; `status='submitted'` → accepted with a history row.
+- `POST /rest/v1/service_request` with `status='issued'` → rejected.
+- A letter request PATCHed `pending_approval → in_progress` → rejected; a complaint still can.
+- `verify_service_letter()` on a `resolved` letter → not valid.
+- Existing end-to-end credential/civil/service happy paths still pass on staging.
+
+Rules (non-negotiable, from CLAUDE.md and the 2026-09-24 audit):
+- Work on a new branch; never push to main. Read CLAUDE.md first.
+- Schema changes go in ONE new, additive migration `supabase/migrations/000000000000NN_<snake_case_name>.sql` (next free number). Never edit an applied migration; change a function only with `CREATE OR REPLACE` (no `DROP FUNCTION`; to retire one, `REVOKE EXECUTE … FROM PUBLIC, anon, authenticated` and replace its body with a raise). snake_case SQL, camelCase TypeScript.
+- Every SECURITY DEFINER function: `SET search_path = ''`, fully-qualified names, re-derive the caller's woreda with `public.get_user_woreda_id()` and permission with `public.user_has_perm()`; never trust a client-supplied `woreda_id`, role or actor id. Every RLS policy for INSERT/UPDATE carries `WITH CHECK`.
+- Frontend: parameterised Supabase client calls only (no string-built PostgREST filters), Zod allow-list validation, errors shown through `translateError()` (generic copy, no raw DB text), bilingual Amharic-first labels, Ethiopian-calendar dates with Arabic numerals.
+- Dry-run the migration wrapped in `BEGIN … ROLLBACK` against staging (or, until staging exists, production immediately after a verified backup), apply, then verify by querying `pg_policies` / `pg_proc` / `information_schema` / `pg_constraint` — never infer success from the apply call. Use the `fsm-migration` skill. A schema change and the frontend that depends on it ship as one deploy unit.
+- Deployment credentials (`SUPABASE_ACCESS_TOKEN`, `VERCEL_TOKEN`) come from the session environment only; never written to a file, never printed; `unset` them and delete `p.json`/`payload.json` afterwards; run the `secret-sweep` agent before pushing.
+- If the change adds or renames a permission: update `src/config/permissions.ts` AND add `CREATE OR REPLACE FUNCTION public.default_role_perms()` in the same migration, plus a `role_permission` backfill for existing woredas; run `bun run check:role-perms-drift` and `bun run generate:permissions-doc`.
+- Update living docs in the same PR: `docs/erd.md`, `docs/dfd.md`, `docs/security-functionality.md`, `docs/openapi.yaml` / `docs/audit/2026-09-24/api/openapi.yaml` where affected, and mark the finding Fixed in `docs/audit/2026-09-24/02-findings-register.md` with the commit.
+- Before opening the PR run: `bun run lint`, `bunx tsc --noEmit`, `bun run test`, `bun run check:role-perms-drift`, `bun run check:fee-catalog`, `bun run check:service-type-catalog`, and the repo `review` skill (it dispatches tenant-isolation-review, rbac-escalation-review, workflow-fsm-review as relevant).
+```
+
+## P0-7 — Rotate the disclosed letter token and harden verification tokens (WP-DB-013, merges WP-CRY-008)
+
+Owner: DB
+
+```text
+Fix P0-7 from the 2026-09-24 security audit of eskabdi/woredas-portal: Rotate the disclosed letter token and harden verification tokens (WP-DB-013, merges WP-CRY-008).
+
+Context: Findings: WP-DB-013 (Medium, fast). Evidence: `supabase/migrations/00000000000064_task14b_verify_letter_completed_status.sql:12` and `docs/remediation-report.md:549,554,578` quote a real letter-verification token (`SJ44…[REDACTED]`); `00000000000000_baseline.sql:997,1236` and `00000000000013_receipt_verification.sql:28,79` generate tokens without a CSPRNG and accept client-supplied values.
+
+Task:
+1. Migration: `CREATE OR REPLACE` `gen_letter_verification_token()` and `gen_receipt_verification_token()` to use `encode(extensions.gen_random_bytes(18), 'base64')` made URL-safe (≥ 128 bits); `BEFORE INSERT` triggers overwrite any client-supplied token; `BEFORE UPDATE` pin triggers make `verification_token` immutable.
+2. Rotate the disclosed token: `UPDATE public.service_request SET verification_token = public.gen_letter_verification_token() WHERE verification_token = <value supplied out-of-band by the owner>` — the literal value must NOT be written into the migration; pass it as a psql variable or run it as a one-off Management-API statement and delete the payload file afterwards. If the letter was printed, re-issue it.
+3. Do not rewrite history in the docs; add a note in `docs/remediation-report.md` that the token was rotated on <date>.
+
+Acceptance tests:
+- The old token returns not-valid from `/verify/letter/<old>`; the new one is valid.
+- `POST /rest/v1/service_request` with a chosen `verification_token` stores a different, server-generated value.
+- `PATCH … verification_token` → rejected.
+- 10,000 generated tokens have no collisions and ≥ 128 bits of entropy (unit test on the SQL function in staging).
+
+Rules (non-negotiable, from CLAUDE.md and the 2026-09-24 audit):
+- Work on a new branch; never push to main. Read CLAUDE.md first.
+- Schema changes go in ONE new, additive migration `supabase/migrations/000000000000NN_<snake_case_name>.sql` (next free number). Never edit an applied migration; change a function only with `CREATE OR REPLACE` (no `DROP FUNCTION`; to retire one, `REVOKE EXECUTE … FROM PUBLIC, anon, authenticated` and replace its body with a raise). snake_case SQL, camelCase TypeScript.
+- Every SECURITY DEFINER function: `SET search_path = ''`, fully-qualified names, re-derive the caller's woreda with `public.get_user_woreda_id()` and permission with `public.user_has_perm()`; never trust a client-supplied `woreda_id`, role or actor id. Every RLS policy for INSERT/UPDATE carries `WITH CHECK`.
+- Frontend: parameterised Supabase client calls only (no string-built PostgREST filters), Zod allow-list validation, errors shown through `translateError()` (generic copy, no raw DB text), bilingual Amharic-first labels, Ethiopian-calendar dates with Arabic numerals.
+- Dry-run the migration wrapped in `BEGIN … ROLLBACK` against staging (or, until staging exists, production immediately after a verified backup), apply, then verify by querying `pg_policies` / `pg_proc` / `information_schema` / `pg_constraint` — never infer success from the apply call. Use the `fsm-migration` skill. A schema change and the frontend that depends on it ship as one deploy unit.
+- Deployment credentials (`SUPABASE_ACCESS_TOKEN`, `VERCEL_TOKEN`) come from the session environment only; never written to a file, never printed; `unset` them and delete `p.json`/`payload.json` afterwards; run the `secret-sweep` agent before pushing.
+- If the change adds or renames a permission: update `src/config/permissions.ts` AND add `CREATE OR REPLACE FUNCTION public.default_role_perms()` in the same migration, plus a `role_permission` backfill for existing woredas; run `bun run check:role-perms-drift` and `bun run generate:permissions-doc`.
+- Update living docs in the same PR: `docs/erd.md`, `docs/dfd.md`, `docs/security-functionality.md`, `docs/openapi.yaml` / `docs/audit/2026-09-24/api/openapi.yaml` where affected, and mark the finding Fixed in `docs/audit/2026-09-24/02-findings-register.md` with the commit.
+- Before opening the PR run: `bun run lint`, `bunx tsc --noEmit`, `bun run test`, `bun run check:role-perms-drift`, `bun run check:fee-catalog`, `bun run check:service-type-catalog`, and the repo `review` skill (it dispatches tenant-isolation-review, rbac-escalation-review, workflow-fsm-review as relevant).
+```
+
+## P1-1 — Provision staging and cut production's trust in non-production code (WP-OPS-001, WP-OPS-005)
+
+Owner: Ops
+
+```text
+Fix P1-1 from the 2026-09-24 security audit of eskabdi/woredas-portal: Provision staging and cut production's trust in non-production code (WP-OPS-001, WP-OPS-005).
+
+Context: Findings: WP-OPS-001 (High), WP-OPS-005 (merges WP-API-005). Evidence: `docs/staging-runbook.md:9` (not provisioned), Edge `ALLOWED_ORIGINS` includes `http://localhost:5173` in production (`supabase/functions/*/index.ts`), 26 Vercel previews point at production Supabase.
+
+Task:
+1. Follow `docs/staging-runbook.md`: new Supabase project (same region as production), apply migrations 00–latest via the Management API three-phase process, `seed.sql` only (never `seed-app-users.sql`), deploy all 8 Edge Functions, new `HARARI_EC_PRIVATE_KEY` keypair and new Vault `pii_root_key` (never reuse production keys), staging Vercel project with `VITE_*` pointing at staging.
+2. Extend `scripts/seed-staging-users.ts` to the 24-row matrix in `docs/audit/2026-09-24/06-testing-scope.md` (two woredas, status variants, custom and console roles), unique generated password per account, `--teardown`, and a guard that refuses to run when the target has > 50 `resident` rows or matches the production ref.
+3. Vercel: preview deployments use staging env vars; enable Deployment Protection on previews.
+4. Edge Functions: read allowed origins from `SITE_URL` plus an optional `EXTRA_ALLOWED_ORIGINS` env var; production sets only the production origin (drop the hard-coded localhost).
+5. Update `docs/architecture.md`, `docs/testing-scope.md` (replace with `06-testing-scope.md`), CLAUDE.md "no staging project" statements.
+
+Acceptance: staging URL serves the app; `bun run` acceptance harness passes a smoke run as accounts #3, #7, #24; a production Edge Function OPTIONS request with `Origin: http://localhost:5173` gets no `Access-Control-Allow-Origin`; a preview build's network calls go to the staging ref.
+
+Rules (non-negotiable, from CLAUDE.md and the 2026-09-24 audit):
+- Work on a new branch; never push to main. Read CLAUDE.md first.
+- Schema changes go in ONE new, additive migration `supabase/migrations/000000000000NN_<snake_case_name>.sql` (next free number). Never edit an applied migration; change a function only with `CREATE OR REPLACE` (no `DROP FUNCTION`; to retire one, `REVOKE EXECUTE … FROM PUBLIC, anon, authenticated` and replace its body with a raise). snake_case SQL, camelCase TypeScript.
+- Every SECURITY DEFINER function: `SET search_path = ''`, fully-qualified names, re-derive the caller's woreda with `public.get_user_woreda_id()` and permission with `public.user_has_perm()`; never trust a client-supplied `woreda_id`, role or actor id. Every RLS policy for INSERT/UPDATE carries `WITH CHECK`.
+- Frontend: parameterised Supabase client calls only (no string-built PostgREST filters), Zod allow-list validation, errors shown through `translateError()` (generic copy, no raw DB text), bilingual Amharic-first labels, Ethiopian-calendar dates with Arabic numerals.
+- Dry-run the migration wrapped in `BEGIN … ROLLBACK` against staging (or, until staging exists, production immediately after a verified backup), apply, then verify by querying `pg_policies` / `pg_proc` / `information_schema` / `pg_constraint` — never infer success from the apply call. Use the `fsm-migration` skill. A schema change and the frontend that depends on it ship as one deploy unit.
+- Deployment credentials (`SUPABASE_ACCESS_TOKEN`, `VERCEL_TOKEN`) come from the session environment only; never written to a file, never printed; `unset` them and delete `p.json`/`payload.json` afterwards; run the `secret-sweep` agent before pushing.
+- If the change adds or renames a permission: update `src/config/permissions.ts` AND add `CREATE OR REPLACE FUNCTION public.default_role_perms()` in the same migration, plus a `role_permission` backfill for existing woredas; run `bun run check:role-perms-drift` and `bun run generate:permissions-doc`.
+- Update living docs in the same PR: `docs/erd.md`, `docs/dfd.md`, `docs/security-functionality.md`, `docs/openapi.yaml` / `docs/audit/2026-09-24/api/openapi.yaml` where affected, and mark the finding Fixed in `docs/audit/2026-09-24/02-findings-register.md` with the commit.
+- Before opening the PR run: `bun run lint`, `bunx tsc --noEmit`, `bun run test`, `bun run check:role-perms-drift`, `bun run check:fee-catalog`, `bun run check:service-type-catalog`, and the repo `review` skill (it dispatches tenant-isolation-review, rbac-escalation-review, workflow-fsm-review as relevant).
+```
+
+## P1-2 — Enforce read permissions in SELECT policies (WP-DB-004, merges WP-AZ-005)
+
+Owner: DB (+ FE for UX)
+
+```text
+Fix P1-2 from the 2026-09-24 security audit of eskabdi/woredas-portal: Enforce read permissions in SELECT policies (WP-DB-004, merges WP-AZ-005).
+
+Context: Findings: WP-DB-004 (High). Evidence: `supabase/migrations/00000000000000_baseline.sql:1626` and sibling tenant SELECT policies use only `woreda_id = get_user_woreda_id()`; 14 of 80 permission keys (`resident.read`, `household.read`, `civil.read`, `payment.read`, `audit.view`, report/revenue keys) are never evaluated server-side (`docs/audit/2026-09-24/authz/permission-matrix.md`).
+
+Task:
+1. For each tenant table, `DROP POLICY IF EXISTS` + `CREATE POLICY` (this is the sanctioned way to change a policy; keep it in one additive migration) adding `AND public.user_has_perm('<module>.read')` — or `user_has_any_perm(ARRAY[...])` where a write role must also read (e.g. `credential.issue` reads `resident`). Map: resident/resident_document → resident.read; household* → household.read; vital_event → civil.read; payment/receipt → payment.read or revenue.view; audit_log → audit.view; credential tables → credential.read; service tables → service.read; rental tables → rental.view.
+2. Verify the `*_decrypted` views (security_invoker) inherit the new base-table policies.
+3. Review `default_role_perms()` so every role that needs to read today still has the read key (print_officer: minimal set for the print path only) — any grant change follows the permission rule (permissions.ts + default_role_perms + role_permission backfill + drift check).
+4. Regenerate `docs/permissions-matrix.md`; update `docs/security-functionality.md` access-control matrix.
+
+Acceptance: as print_officer (#17) `GET /rest/v1/resident` returns only rows reachable through its print duty (or none); viewer without `audit.view` gets `[]` from `/audit_log`; a zero-grant custom role (#18) gets `[]` everywhere; each built-in role's existing screens still load (Playwright smoke per role on staging); `check:role-perms-drift` passes.
+
+Rules (non-negotiable, from CLAUDE.md and the 2026-09-24 audit):
+- Work on a new branch; never push to main. Read CLAUDE.md first.
+- Schema changes go in ONE new, additive migration `supabase/migrations/000000000000NN_<snake_case_name>.sql` (next free number). Never edit an applied migration; change a function only with `CREATE OR REPLACE` (no `DROP FUNCTION`; to retire one, `REVOKE EXECUTE … FROM PUBLIC, anon, authenticated` and replace its body with a raise). snake_case SQL, camelCase TypeScript.
+- Every SECURITY DEFINER function: `SET search_path = ''`, fully-qualified names, re-derive the caller's woreda with `public.get_user_woreda_id()` and permission with `public.user_has_perm()`; never trust a client-supplied `woreda_id`, role or actor id. Every RLS policy for INSERT/UPDATE carries `WITH CHECK`.
+- Frontend: parameterised Supabase client calls only (no string-built PostgREST filters), Zod allow-list validation, errors shown through `translateError()` (generic copy, no raw DB text), bilingual Amharic-first labels, Ethiopian-calendar dates with Arabic numerals.
+- Dry-run the migration wrapped in `BEGIN … ROLLBACK` against staging (or, until staging exists, production immediately after a verified backup), apply, then verify by querying `pg_policies` / `pg_proc` / `information_schema` / `pg_constraint` — never infer success from the apply call. Use the `fsm-migration` skill. A schema change and the frontend that depends on it ship as one deploy unit.
+- Deployment credentials (`SUPABASE_ACCESS_TOKEN`, `VERCEL_TOKEN`) come from the session environment only; never written to a file, never printed; `unset` them and delete `p.json`/`payload.json` afterwards; run the `secret-sweep` agent before pushing.
+- If the change adds or renames a permission: update `src/config/permissions.ts` AND add `CREATE OR REPLACE FUNCTION public.default_role_perms()` in the same migration, plus a `role_permission` backfill for existing woredas; run `bun run check:role-perms-drift` and `bun run generate:permissions-doc`.
+- Update living docs in the same PR: `docs/erd.md`, `docs/dfd.md`, `docs/security-functionality.md`, `docs/openapi.yaml` / `docs/audit/2026-09-24/api/openapi.yaml` where affected, and mark the finding Fixed in `docs/audit/2026-09-24/02-findings-register.md` with the commit.
+- Before opening the PR run: `bun run lint`, `bunx tsc --noEmit`, `bun run test`, `bun run check:role-perms-drift`, `bun run check:fee-catalog`, `bun run check:service-type-catalog`, and the repo `review` skill (it dispatches tenant-isolation-review, rbac-escalation-review, workflow-fsm-review as relevant).
+```
+
+## P1-3 — Permission- and status-scoped storage policies (WP-DB-002)
+
+Owner: DB
+
+```text
+Fix P1-3 from the 2026-09-24 security audit of eskabdi/woredas-portal: Permission- and status-scoped storage policies (WP-DB-002).
+
+Context: Findings: WP-DB-002 (High). Evidence: `supabase/migrations/00000000000001_storage.sql:124` and 35 sibling policies check only `storage_path_woreda_id(name) = get_user_woreda_id()`.
+
+Task: in one migration, replace each bucket's INSERT/UPDATE/DELETE/SELECT policies with ones that add the module permission: `tenant-assets` write → `tenant.manage`; `staff-assets` write → own `user_id` path segment or `tenant.manage`; `resident-photos`/`resident-documents` → `resident.update` (write) / `resident.read` (read); `credential-request-documents` → `credential.issue`/`credential.read`; `service-request-documents` → `service.create`/`service.read`; `rental-request-documents` → rental keys; `resident-clearance-letters` → service issue key; `attachments` → `entity_attach_perm_ok()` / `entity_read_perm_ok()`. DELETE on legal-document buckets: `tenant.manage` only, and log it. Keep `credential-templates` as is (platform bucket, super-admin write). Status is covered by P0-4.
+
+Acceptance: registry_clerk upload to `tenant-assets/<woreda>/signature.webp` → 403; tenant_admin → 200; viewer DELETE on `resident-documents` → 403; cross-woreda path → 403 (regression); existing upload flows still work per role on staging.
+
+Rules (non-negotiable, from CLAUDE.md and the 2026-09-24 audit):
+- Work on a new branch; never push to main. Read CLAUDE.md first.
+- Schema changes go in ONE new, additive migration `supabase/migrations/000000000000NN_<snake_case_name>.sql` (next free number). Never edit an applied migration; change a function only with `CREATE OR REPLACE` (no `DROP FUNCTION`; to retire one, `REVOKE EXECUTE … FROM PUBLIC, anon, authenticated` and replace its body with a raise). snake_case SQL, camelCase TypeScript.
+- Every SECURITY DEFINER function: `SET search_path = ''`, fully-qualified names, re-derive the caller's woreda with `public.get_user_woreda_id()` and permission with `public.user_has_perm()`; never trust a client-supplied `woreda_id`, role or actor id. Every RLS policy for INSERT/UPDATE carries `WITH CHECK`.
+- Frontend: parameterised Supabase client calls only (no string-built PostgREST filters), Zod allow-list validation, errors shown through `translateError()` (generic copy, no raw DB text), bilingual Amharic-first labels, Ethiopian-calendar dates with Arabic numerals.
+- Dry-run the migration wrapped in `BEGIN … ROLLBACK` against staging (or, until staging exists, production immediately after a verified backup), apply, then verify by querying `pg_policies` / `pg_proc` / `information_schema` / `pg_constraint` — never infer success from the apply call. Use the `fsm-migration` skill. A schema change and the frontend that depends on it ship as one deploy unit.
+- Deployment credentials (`SUPABASE_ACCESS_TOKEN`, `VERCEL_TOKEN`) come from the session environment only; never written to a file, never printed; `unset` them and delete `p.json`/`payload.json` afterwards; run the `secret-sweep` agent before pushing.
+- If the change adds or renames a permission: update `src/config/permissions.ts` AND add `CREATE OR REPLACE FUNCTION public.default_role_perms()` in the same migration, plus a `role_permission` backfill for existing woredas; run `bun run check:role-perms-drift` and `bun run generate:permissions-doc`.
+- Update living docs in the same PR: `docs/erd.md`, `docs/dfd.md`, `docs/security-functionality.md`, `docs/openapi.yaml` / `docs/audit/2026-09-24/api/openapi.yaml` where affected, and mark the finding Fixed in `docs/audit/2026-09-24/02-findings-register.md` with the commit.
+- Before opening the PR run: `bun run lint`, `bunx tsc --noEmit`, `bun run test`, `bun run check:role-perms-drift`, `bun run check:fee-catalog`, `bun run check:service-type-catalog`, and the repo `review` skill (it dispatches tenant-isolation-review, rbac-escalation-review, workflow-fsm-review as relevant).
+```
+
+## P1-4 — Freeze approved content and make death irreversible and complete (WP-WF-004, WP-WF-006)
+
+Owner: DB
+
+```text
+Fix P1-4 from the 2026-09-24 security audit of eskabdi/woredas-portal: Freeze approved content and make death irreversible and complete (WP-WF-004, WP-WF-006).
+
+Context: Findings: WP-WF-004 (merges WP-AZ-002 part 1, WP-APP-002), WP-WF-006 (merges WP-AZ-002 part 2). Evidence: `enforce_workflow_transition()` returns early when status is unchanged (`supabase/migrations/00000000000046_task10_credential_lifecycle.sql:166`); `resident.residency_status` writable by any `resident.update` holder; death side effect revokes only `status = 'active'` credentials (`00000000000059_task14a_civil_payment_and_preconditions.sql:95-99`).
+
+Task:
+1. New `BEFORE UPDATE` trigger `zz_freeze_workflow_content` on `credential_request`, `vital_event`, `service_request`, `rental_occupancy_request`: once `OLD.status` is past the maker stage (e.g. not in `draft`,`submitted`,`returned`), reject any change to subject/content columns (`resident_id`, `event_type`, `event_details`, `subject`, `summary`, `letter_body*`, `issue_date`, `verification_token`, amounts). Allow only status, actor and timestamp columns that the transition itself sets.
+2. `resident.residency_status`: reject transitions to or from `deceased` unless the session setting `app.civil_side_effect = 'on'` is set by the death-registration trigger (set with `set_config(..., true)` inside that trigger); record every residency_status change in `audit_log` from a trigger.
+3. Death side effect: revoke every credential not already in a terminal state (`active`, `suspended`, `printed`, `ready_to_print`, …) and cancel open credential requests for the resident.
+
+Acceptance: finance_clerk PATCH of `resident_id` on an approved credential_request → rejected; PATCH `event_type` on an approved vital_event → rejected; `resident.update` holder setting `residency_status` from `deceased` to `active` → rejected; registering a death revokes a `printed` card; letters in `issued` cannot be edited.
+
+Rules (non-negotiable, from CLAUDE.md and the 2026-09-24 audit):
+- Work on a new branch; never push to main. Read CLAUDE.md first.
+- Schema changes go in ONE new, additive migration `supabase/migrations/000000000000NN_<snake_case_name>.sql` (next free number). Never edit an applied migration; change a function only with `CREATE OR REPLACE` (no `DROP FUNCTION`; to retire one, `REVOKE EXECUTE … FROM PUBLIC, anon, authenticated` and replace its body with a raise). snake_case SQL, camelCase TypeScript.
+- Every SECURITY DEFINER function: `SET search_path = ''`, fully-qualified names, re-derive the caller's woreda with `public.get_user_woreda_id()` and permission with `public.user_has_perm()`; never trust a client-supplied `woreda_id`, role or actor id. Every RLS policy for INSERT/UPDATE carries `WITH CHECK`.
+- Frontend: parameterised Supabase client calls only (no string-built PostgREST filters), Zod allow-list validation, errors shown through `translateError()` (generic copy, no raw DB text), bilingual Amharic-first labels, Ethiopian-calendar dates with Arabic numerals.
+- Dry-run the migration wrapped in `BEGIN … ROLLBACK` against staging (or, until staging exists, production immediately after a verified backup), apply, then verify by querying `pg_policies` / `pg_proc` / `information_schema` / `pg_constraint` — never infer success from the apply call. Use the `fsm-migration` skill. A schema change and the frontend that depends on it ship as one deploy unit.
+- Deployment credentials (`SUPABASE_ACCESS_TOKEN`, `VERCEL_TOKEN`) come from the session environment only; never written to a file, never printed; `unset` them and delete `p.json`/`payload.json` afterwards; run the `secret-sweep` agent before pushing.
+- If the change adds or renames a permission: update `src/config/permissions.ts` AND add `CREATE OR REPLACE FUNCTION public.default_role_perms()` in the same migration, plus a `role_permission` backfill for existing woredas; run `bun run check:role-perms-drift` and `bun run generate:permissions-doc`.
+- Update living docs in the same PR: `docs/erd.md`, `docs/dfd.md`, `docs/security-functionality.md`, `docs/openapi.yaml` / `docs/audit/2026-09-24/api/openapi.yaml` where affected, and mark the finding Fixed in `docs/audit/2026-09-24/02-findings-register.md` with the commit.
+- Before opening the PR run: `bun run lint`, `bunx tsc --noEmit`, `bun run test`, `bun run check:role-perms-drift`, `bun run check:fee-catalog`, `bun run check:service-type-catalog`, and the repo `review` skill (it dispatches tenant-isolation-review, rbac-escalation-review, workflow-fsm-review as relevant).
+```
+
+## P1-5 — Maker ≠ checker on the current cycle (WP-WF-003)
+
+Owner: DB
+
+```text
+Fix P1-5 from the 2026-09-24 security audit of eskabdi/woredas-portal: Maker ≠ checker on the current cycle (WP-WF-003).
+
+Context: Findings: WP-WF-003 (High). Evidence: `supabase/migrations/00000000000046_task10_credential_lifecycle.sql:219`, `00000000000000_baseline.sql:1213` — the SoD check compares `verified_by_user_id` / `approved_by_user_id` columns that survive a `returned` cycle.
+
+Task: `CREATE OR REPLACE` `enforce_workflow_transition()` so that (a) on any transition into `returned`/`draft` the verifier/approver columns are cleared, and (b) on entry into `approved` the approver must differ from the verifier AND from the requester, comparing against the actors recorded in `workflow_status_history`/`credential_request_status_history` since the last `submitted`. Apply to credential_request, vital_event, service_request, rental_occupancy_request. Confirm tenant_admin is not exempt.
+
+Acceptance: user A verifies, request returned, resubmitted, A verifies again, A approves → rejected; B approves → accepted. Requester approving own request → rejected. Covered for all four entities in a staging harness run with accounts #11/#12.
+
+Rules (non-negotiable, from CLAUDE.md and the 2026-09-24 audit):
+- Work on a new branch; never push to main. Read CLAUDE.md first.
+- Schema changes go in ONE new, additive migration `supabase/migrations/000000000000NN_<snake_case_name>.sql` (next free number). Never edit an applied migration; change a function only with `CREATE OR REPLACE` (no `DROP FUNCTION`; to retire one, `REVOKE EXECUTE … FROM PUBLIC, anon, authenticated` and replace its body with a raise). snake_case SQL, camelCase TypeScript.
+- Every SECURITY DEFINER function: `SET search_path = ''`, fully-qualified names, re-derive the caller's woreda with `public.get_user_woreda_id()` and permission with `public.user_has_perm()`; never trust a client-supplied `woreda_id`, role or actor id. Every RLS policy for INSERT/UPDATE carries `WITH CHECK`.
+- Frontend: parameterised Supabase client calls only (no string-built PostgREST filters), Zod allow-list validation, errors shown through `translateError()` (generic copy, no raw DB text), bilingual Amharic-first labels, Ethiopian-calendar dates with Arabic numerals.
+- Dry-run the migration wrapped in `BEGIN … ROLLBACK` against staging (or, until staging exists, production immediately after a verified backup), apply, then verify by querying `pg_policies` / `pg_proc` / `information_schema` / `pg_constraint` — never infer success from the apply call. Use the `fsm-migration` skill. A schema change and the frontend that depends on it ship as one deploy unit.
+- Deployment credentials (`SUPABASE_ACCESS_TOKEN`, `VERCEL_TOKEN`) come from the session environment only; never written to a file, never printed; `unset` them and delete `p.json`/`payload.json` afterwards; run the `secret-sweep` agent before pushing.
+- If the change adds or renames a permission: update `src/config/permissions.ts` AND add `CREATE OR REPLACE FUNCTION public.default_role_perms()` in the same migration, plus a `role_permission` backfill for existing woredas; run `bun run check:role-perms-drift` and `bun run generate:permissions-doc`.
+- Update living docs in the same PR: `docs/erd.md`, `docs/dfd.md`, `docs/security-functionality.md`, `docs/openapi.yaml` / `docs/audit/2026-09-24/api/openapi.yaml` where affected, and mark the finding Fixed in `docs/audit/2026-09-24/02-findings-register.md` with the commit.
+- Before opening the PR run: `bun run lint`, `bunx tsc --noEmit`, `bun run test`, `bun run check:role-perms-drift`, `bun run check:fee-catalog`, `bun run check:service-type-catalog`, and the repo `review` skill (it dispatches tenant-isolation-review, rbac-escalation-review, workflow-fsm-review as relevant).
+```
+
+## P1-6 — Split credential.verify into lookup and write keys (WP-WF-005, merges WP-AZ-003)
+
+Owner: DB + FE
+
+```text
+Fix P1-6 from the 2026-09-24 security audit of eskabdi/woredas-portal: Split credential.verify into lookup and write keys (WP-WF-005, merges WP-AZ-003).
+
+Context: Findings: WP-WF-005 (High, Likely). Evidence: `credential_request_update` policy admits `credential.verify`, which viewer/auditor/finance_clerk hold for ID lookup; `supabase/seed.sql` disagrees with `default_role_perms()` on this key for 6 woredas (RBAC-01).
+
+Task: introduce `credential.lookup` (read-only scanner/lookup) and keep `credential.verify` as the workflow verification write key. Migration: add the key to `default_role_perms()` (viewer, auditor, finance_clerk get `credential.lookup`, lose `credential.verify`), backfill `role_permission` for all woredas, update any policy/RPC that used `credential.verify` for read purposes to accept `credential.lookup`, and remove `credential.verify` from `credential_request_update` for those roles. Update `src/config/permissions.ts`, the scanner route guard (`woreda.credentials.verify.tsx`), `seed.sql`, run the drift check and regenerate `docs/permissions-matrix.md`. This is a permission change: rbac-escalation-review must pass.
+
+Acceptance: viewer can still scan/verify a card in the UI; viewer PATCH on `credential_request` → 0 rows/403; supervisor verification flow unchanged; `check:role-perms-drift` passes; seed and default agree.
+
+Rules (non-negotiable, from CLAUDE.md and the 2026-09-24 audit):
+- Work on a new branch; never push to main. Read CLAUDE.md first.
+- Schema changes go in ONE new, additive migration `supabase/migrations/000000000000NN_<snake_case_name>.sql` (next free number). Never edit an applied migration; change a function only with `CREATE OR REPLACE` (no `DROP FUNCTION`; to retire one, `REVOKE EXECUTE … FROM PUBLIC, anon, authenticated` and replace its body with a raise). snake_case SQL, camelCase TypeScript.
+- Every SECURITY DEFINER function: `SET search_path = ''`, fully-qualified names, re-derive the caller's woreda with `public.get_user_woreda_id()` and permission with `public.user_has_perm()`; never trust a client-supplied `woreda_id`, role or actor id. Every RLS policy for INSERT/UPDATE carries `WITH CHECK`.
+- Frontend: parameterised Supabase client calls only (no string-built PostgREST filters), Zod allow-list validation, errors shown through `translateError()` (generic copy, no raw DB text), bilingual Amharic-first labels, Ethiopian-calendar dates with Arabic numerals.
+- Dry-run the migration wrapped in `BEGIN … ROLLBACK` against staging (or, until staging exists, production immediately after a verified backup), apply, then verify by querying `pg_policies` / `pg_proc` / `information_schema` / `pg_constraint` — never infer success from the apply call. Use the `fsm-migration` skill. A schema change and the frontend that depends on it ship as one deploy unit.
+- Deployment credentials (`SUPABASE_ACCESS_TOKEN`, `VERCEL_TOKEN`) come from the session environment only; never written to a file, never printed; `unset` them and delete `p.json`/`payload.json` afterwards; run the `secret-sweep` agent before pushing.
+- If the change adds or renames a permission: update `src/config/permissions.ts` AND add `CREATE OR REPLACE FUNCTION public.default_role_perms()` in the same migration, plus a `role_permission` backfill for existing woredas; run `bun run check:role-perms-drift` and `bun run generate:permissions-doc`.
+- Update living docs in the same PR: `docs/erd.md`, `docs/dfd.md`, `docs/security-functionality.md`, `docs/openapi.yaml` / `docs/audit/2026-09-24/api/openapi.yaml` where affected, and mark the finding Fixed in `docs/audit/2026-09-24/02-findings-register.md` with the commit.
+- Before opening the PR run: `bun run lint`, `bunx tsc --noEmit`, `bun run test`, `bun run check:role-perms-drift`, `bun run check:fee-catalog`, `bun run check:service-type-catalog`, and the repo `review` skill (it dispatches tenant-isolation-review, rbac-escalation-review, workflow-fsm-review as relevant).
+```
+
+## P1-7 — Enforce console permissions server-side (WP-AZ-001, merges WP-API-001)
+
+Owner: DB + Edge
+
+```text
+Fix P1-7 from the 2026-09-24 security audit of eskabdi/woredas-portal: Enforce console permissions server-side (WP-AZ-001, merges WP-API-001).
+
+Context: Findings: WP-AZ-001 (High). Evidence: 4 of 5 `CP` keys exist only in the CHECK at `supabase/migrations/00000000000009_console_roles.sql:40-43`; server paths check only `is_super_admin()` (e.g. `app_user_super_admin_write`, `audit_log` SELECT, `publish_id_card_template` `00000000000010:125`); `supabase/functions/invite-platform-admin/index.ts:84-94` checks the console key only for super_admin invites.
+
+Task: add `public.user_has_console_perm('<cp key>')` (NULL console role = unrestricted, preserving the documented default) to every super-admin policy and definer function per the CP map in `src/config/permissions.ts` (tenants.manage → woreda/tenant_module_config/app_user writes; audit.view → cross-tenant audit_log SELECT; templates → id_card_template*/publish; console_users.manage → console_role*). In each Edge Function that accepts a super_admin caller, check the matching CP key after `getUser()` (invite-tenant-user, invite-platform-admin, resend-platform-invite, resend-tenant-invite, send-password-reset-link, sign-credential). Widen the migration CHECK by hand if a key is added (no drift check exists for CP).
+
+Acceptance: super_admin with an AUDIT_VIEW-only console role (#2) → can read cross-tenant audit_log; cannot PATCH `woreda`, toggle modules, publish the template, or invite a tenant_admin (403 from Edge, RLS denial from PostgREST); unrestricted super_admin (#1) unaffected.
+
+Rules (non-negotiable, from CLAUDE.md and the 2026-09-24 audit):
+- Work on a new branch; never push to main. Read CLAUDE.md first.
+- Schema changes go in ONE new, additive migration `supabase/migrations/000000000000NN_<snake_case_name>.sql` (next free number). Never edit an applied migration; change a function only with `CREATE OR REPLACE` (no `DROP FUNCTION`; to retire one, `REVOKE EXECUTE … FROM PUBLIC, anon, authenticated` and replace its body with a raise). snake_case SQL, camelCase TypeScript.
+- Every SECURITY DEFINER function: `SET search_path = ''`, fully-qualified names, re-derive the caller's woreda with `public.get_user_woreda_id()` and permission with `public.user_has_perm()`; never trust a client-supplied `woreda_id`, role or actor id. Every RLS policy for INSERT/UPDATE carries `WITH CHECK`.
+- Frontend: parameterised Supabase client calls only (no string-built PostgREST filters), Zod allow-list validation, errors shown through `translateError()` (generic copy, no raw DB text), bilingual Amharic-first labels, Ethiopian-calendar dates with Arabic numerals.
+- Dry-run the migration wrapped in `BEGIN … ROLLBACK` against staging (or, until staging exists, production immediately after a verified backup), apply, then verify by querying `pg_policies` / `pg_proc` / `information_schema` / `pg_constraint` — never infer success from the apply call. Use the `fsm-migration` skill. A schema change and the frontend that depends on it ship as one deploy unit.
+- Deployment credentials (`SUPABASE_ACCESS_TOKEN`, `VERCEL_TOKEN`) come from the session environment only; never written to a file, never printed; `unset` them and delete `p.json`/`payload.json` afterwards; run the `secret-sweep` agent before pushing.
+- If the change adds or renames a permission: update `src/config/permissions.ts` AND add `CREATE OR REPLACE FUNCTION public.default_role_perms()` in the same migration, plus a `role_permission` backfill for existing woredas; run `bun run check:role-perms-drift` and `bun run generate:permissions-doc`.
+- Update living docs in the same PR: `docs/erd.md`, `docs/dfd.md`, `docs/security-functionality.md`, `docs/openapi.yaml` / `docs/audit/2026-09-24/api/openapi.yaml` where affected, and mark the finding Fixed in `docs/audit/2026-09-24/02-findings-register.md` with the commit.
+- Before opening the PR run: `bun run lint`, `bunx tsc --noEmit`, `bun run test`, `bun run check:role-perms-drift`, `bun run check:fee-catalog`, `bun run check:service-type-catalog`, and the repo `review` skill (it dispatches tenant-isolation-review, rbac-escalation-review, workflow-fsm-review as relevant).
+```
+
+## P1-8 — Mandatory MFA for administrators (WP-AUTH-001)
+
+Owner: Ops + DB + FE
+
+```text
+Fix P1-8 from the 2026-09-24 security audit of eskabdi/woredas-portal: Mandatory MFA for administrators (WP-AUTH-001).
+
+Context: Findings: WP-AUTH-001 (High). Evidence: no `mfa` API usage anywhere in `src/`; no `aal` check in any policy or Edge Function.
+
+Task: enable TOTP MFA in Supabase Auth. FE: enrolment flow (`supabase.auth.mfa.enroll/challenge/verify`) reachable from the avatar menu in `AppShell.tsx`, and a step-up screen after login when the user is `super_admin`/`tenant_admin` and `aal` is `aal1`. DB: helper `public.is_aal2()` (`(auth.jwt()->>'aal') = 'aal2'`) required in `is_super_admin()`/`is_tenant_admin()`-gated write policies and checked in Edge Functions that accept admin callers. Provide an admin-initiated MFA reset path (Edge Function, logged). Bilingual copy for every new screen.
+
+Acceptance: tenant_admin without MFA can sign in but every admin write returns 403 until enrolled; after enrolment and step-up, writes succeed; aal1 session token replayed against an admin RPC → denied; non-admin roles unaffected.
+
+Rules (non-negotiable, from CLAUDE.md and the 2026-09-24 audit):
+- Work on a new branch; never push to main. Read CLAUDE.md first.
+- Schema changes go in ONE new, additive migration `supabase/migrations/000000000000NN_<snake_case_name>.sql` (next free number). Never edit an applied migration; change a function only with `CREATE OR REPLACE` (no `DROP FUNCTION`; to retire one, `REVOKE EXECUTE … FROM PUBLIC, anon, authenticated` and replace its body with a raise). snake_case SQL, camelCase TypeScript.
+- Every SECURITY DEFINER function: `SET search_path = ''`, fully-qualified names, re-derive the caller's woreda with `public.get_user_woreda_id()` and permission with `public.user_has_perm()`; never trust a client-supplied `woreda_id`, role or actor id. Every RLS policy for INSERT/UPDATE carries `WITH CHECK`.
+- Frontend: parameterised Supabase client calls only (no string-built PostgREST filters), Zod allow-list validation, errors shown through `translateError()` (generic copy, no raw DB text), bilingual Amharic-first labels, Ethiopian-calendar dates with Arabic numerals.
+- Dry-run the migration wrapped in `BEGIN … ROLLBACK` against staging (or, until staging exists, production immediately after a verified backup), apply, then verify by querying `pg_policies` / `pg_proc` / `information_schema` / `pg_constraint` — never infer success from the apply call. Use the `fsm-migration` skill. A schema change and the frontend that depends on it ship as one deploy unit.
+- Deployment credentials (`SUPABASE_ACCESS_TOKEN`, `VERCEL_TOKEN`) come from the session environment only; never written to a file, never printed; `unset` them and delete `p.json`/`payload.json` afterwards; run the `secret-sweep` agent before pushing.
+- If the change adds or renames a permission: update `src/config/permissions.ts` AND add `CREATE OR REPLACE FUNCTION public.default_role_perms()` in the same migration, plus a `role_permission` backfill for existing woredas; run `bun run check:role-perms-drift` and `bun run generate:permissions-doc`.
+- Update living docs in the same PR: `docs/erd.md`, `docs/dfd.md`, `docs/security-functionality.md`, `docs/openapi.yaml` / `docs/audit/2026-09-24/api/openapi.yaml` where affected, and mark the finding Fixed in `docs/audit/2026-09-24/02-findings-register.md` with the commit.
+- Before opening the PR run: `bun run lint`, `bunx tsc --noEmit`, `bun run test`, `bun run check:role-perms-drift`, `bun run check:fee-catalog`, `bun run check:service-type-catalog`, and the repo `review` skill (it dispatches tenant-isolation-review, rbac-escalation-review, workflow-fsm-review as relevant).
+```
+
+## P1-9 — Database-written, PII-free, append-only audit trail (WP-DB-008, WP-PRV-001, WP-PRV-002)
+
+Owner: DB + FE
+
+```text
+Fix P1-9 from the 2026-09-24 security audit of eskabdi/woredas-portal: Database-written, PII-free, append-only audit trail (WP-DB-008, WP-PRV-001, WP-PRV-002).
+
+Context: Findings: WP-DB-008, WP-PRV-001, WP-PRV-002 (Medium). Evidence: 20 client-side `audit_log` inserts with browser timestamps (see `docs/audit/2026-09-24/findings/privacy-logging.md`), `src/routes/woreda.residents.$residentId.edit.tsx:229-249` copies FAN/phone/religion/ethnicity into the payload, `audit_log` INSERT open to any tenant user.
+
+Task: AFTER INSERT/UPDATE/DELETE audit triggers (SECURITY DEFINER, `now()` server time, `auth.uid()` actor, woreda from the row) on `resident`, `household`, `resident_document`, `app_user`, `user_permission_override`, `role_permission`, `tenant_role*`, `woreda_settings`, `tenant_module_config`, `service_type`; payload = changed column NAMES plus non-sensitive old/new values; Restricted columns (national_id_no, phone, email, religion, ethnicity, GPS) recorded as `"<changed>"` or blind index only. Revoke client INSERT on `audit_log` (keep a narrow definer RPC for genuinely client-only events such as exports). Make log tables (`*_status_history`, `workflow_status_history`, `credential_print_log`, `credential_verification_log`) reject UPDATE/DELETE with triggers. Remove the now-duplicate client inserts. Purge PII from existing `audit_log` payloads in a separate, reviewed data migration.
+
+Acceptance: a direct `PATCH /rest/v1/resident` writes an audit row with server time and no FAN; `POST /rest/v1/audit_log` from a clerk → 403; UPDATE/DELETE on history tables → rejected; audit screens still render.
+
+Rules (non-negotiable, from CLAUDE.md and the 2026-09-24 audit):
+- Work on a new branch; never push to main. Read CLAUDE.md first.
+- Schema changes go in ONE new, additive migration `supabase/migrations/000000000000NN_<snake_case_name>.sql` (next free number). Never edit an applied migration; change a function only with `CREATE OR REPLACE` (no `DROP FUNCTION`; to retire one, `REVOKE EXECUTE … FROM PUBLIC, anon, authenticated` and replace its body with a raise). snake_case SQL, camelCase TypeScript.
+- Every SECURITY DEFINER function: `SET search_path = ''`, fully-qualified names, re-derive the caller's woreda with `public.get_user_woreda_id()` and permission with `public.user_has_perm()`; never trust a client-supplied `woreda_id`, role or actor id. Every RLS policy for INSERT/UPDATE carries `WITH CHECK`.
+- Frontend: parameterised Supabase client calls only (no string-built PostgREST filters), Zod allow-list validation, errors shown through `translateError()` (generic copy, no raw DB text), bilingual Amharic-first labels, Ethiopian-calendar dates with Arabic numerals.
+- Dry-run the migration wrapped in `BEGIN … ROLLBACK` against staging (or, until staging exists, production immediately after a verified backup), apply, then verify by querying `pg_policies` / `pg_proc` / `information_schema` / `pg_constraint` — never infer success from the apply call. Use the `fsm-migration` skill. A schema change and the frontend that depends on it ship as one deploy unit.
+- Deployment credentials (`SUPABASE_ACCESS_TOKEN`, `VERCEL_TOKEN`) come from the session environment only; never written to a file, never printed; `unset` them and delete `p.json`/`payload.json` afterwards; run the `secret-sweep` agent before pushing.
+- If the change adds or renames a permission: update `src/config/permissions.ts` AND add `CREATE OR REPLACE FUNCTION public.default_role_perms()` in the same migration, plus a `role_permission` backfill for existing woredas; run `bun run check:role-perms-drift` and `bun run generate:permissions-doc`.
+- Update living docs in the same PR: `docs/erd.md`, `docs/dfd.md`, `docs/security-functionality.md`, `docs/openapi.yaml` / `docs/audit/2026-09-24/api/openapi.yaml` where affected, and mark the finding Fixed in `docs/audit/2026-09-24/02-findings-register.md` with the commit.
+- Before opening the PR run: `bun run lint`, `bunx tsc --noEmit`, `bun run test`, `bun run check:role-perms-drift`, `bun run check:fee-catalog`, `bun run check:service-type-catalog`, and the repo `review` skill (it dispatches tenant-isolation-review, rbac-escalation-review, workflow-fsm-review as relevant).
+```
+
+## P1-10 — Session and authentication hardening (WP-APP-003, WP-AUTH-004/005/006/007, WP-API-003)
+
+Owner: FE + Ops
+
+```text
+Fix P1-10 from the 2026-09-24 security audit of eskabdi/woredas-portal: Session and authentication hardening (WP-APP-003, WP-AUTH-004/005/006/007, WP-API-003).
+
+Context: Findings: WP-APP-003 (merges WP-AUTH-003), WP-AUTH-004, WP-AUTH-005, WP-AUTH-006, WP-AUTH-007, WP-API-003 (merges WP-AUTH-008). Evidence: `src/lib/security-headers.ts:52`, `src/hooks/useIdleTimeout.ts:79,84`, `src/routes/login.tsx:96`, `src/components/common/ChangePasswordDialog.tsx`.
+
+Task:
+1. CSP: per-request nonce in `src/server.ts`/`security-headers.ts`, `script-src 'self' 'nonce-…' 'strict-dynamic'`, drop `'unsafe-inline'` for scripts; add `report-to`.
+2. Idle timeout: on load, keep the stored last-activity timestamp and sign out immediately if it is older than 25 min; mount on `/set-password` too. Configure Supabase inactivity timeout / time-box (dashboard) and record values in the SFD.
+3. Enable Supabase CAPTCHA (hCaptcha/Turnstile) and pass `captchaToken` from `login.tsx` and the reset Edge Function; log failed sign-ins (Auth hook or Edge wrapper) into an auth-events table.
+4. Password change: require current password (re-authenticate with `signInWithPassword` or `reauthenticate()` nonce) and sign out other sessions; enable "secure password change" and leaked-password protection; server minimum length ≥ 8 (INSA/NIST 800-63B), no composition rules.
+5. Disable public sign-up and anonymous sign-ins in the dashboard; document it.
+6. Declare the remaining C-04 localStorage gap and compensating controls in `docs/security-functionality.md`.
+
+Acceptance: response CSP has a nonce and no `'unsafe-inline'` in script-src, app still works (Playwright smoke both portals); closing the tab for 26 min then reopening lands on login; 10 wrong passwords trigger CAPTCHA/limit and 10 logged events; password change without current password fails; `POST /auth/v1/signup` → 'Signups not allowed'.
+
+Rules (non-negotiable, from CLAUDE.md and the 2026-09-24 audit):
+- Work on a new branch; never push to main. Read CLAUDE.md first.
+- Schema changes go in ONE new, additive migration `supabase/migrations/000000000000NN_<snake_case_name>.sql` (next free number). Never edit an applied migration; change a function only with `CREATE OR REPLACE` (no `DROP FUNCTION`; to retire one, `REVOKE EXECUTE … FROM PUBLIC, anon, authenticated` and replace its body with a raise). snake_case SQL, camelCase TypeScript.
+- Every SECURITY DEFINER function: `SET search_path = ''`, fully-qualified names, re-derive the caller's woreda with `public.get_user_woreda_id()` and permission with `public.user_has_perm()`; never trust a client-supplied `woreda_id`, role or actor id. Every RLS policy for INSERT/UPDATE carries `WITH CHECK`.
+- Frontend: parameterised Supabase client calls only (no string-built PostgREST filters), Zod allow-list validation, errors shown through `translateError()` (generic copy, no raw DB text), bilingual Amharic-first labels, Ethiopian-calendar dates with Arabic numerals.
+- Dry-run the migration wrapped in `BEGIN … ROLLBACK` against staging (or, until staging exists, production immediately after a verified backup), apply, then verify by querying `pg_policies` / `pg_proc` / `information_schema` / `pg_constraint` — never infer success from the apply call. Use the `fsm-migration` skill. A schema change and the frontend that depends on it ship as one deploy unit.
+- Deployment credentials (`SUPABASE_ACCESS_TOKEN`, `VERCEL_TOKEN`) come from the session environment only; never written to a file, never printed; `unset` them and delete `p.json`/`payload.json` afterwards; run the `secret-sweep` agent before pushing.
+- If the change adds or renames a permission: update `src/config/permissions.ts` AND add `CREATE OR REPLACE FUNCTION public.default_role_perms()` in the same migration, plus a `role_permission` backfill for existing woredas; run `bun run check:role-perms-drift` and `bun run generate:permissions-doc`.
+- Update living docs in the same PR: `docs/erd.md`, `docs/dfd.md`, `docs/security-functionality.md`, `docs/openapi.yaml` / `docs/audit/2026-09-24/api/openapi.yaml` where affected, and mark the finding Fixed in `docs/audit/2026-09-24/02-findings-register.md` with the commit.
+- Before opening the PR run: `bun run lint`, `bunx tsc --noEmit`, `bun run test`, `bun run check:role-perms-drift`, `bun run check:fee-catalog`, `bun run check:service-type-catalog`, and the repo `review` skill (it dispatches tenant-isolation-review, rbac-escalation-review, workflow-fsm-review as relevant).
+```
+
+## P1-11 — Server-side upload and input allow-lists (WP-APP-004, WP-APP-005)
+
+Owner: DB
+
+```text
+Fix P1-11 from the 2026-09-24 security audit of eskabdi/woredas-portal: Server-side upload and input allow-lists (WP-APP-004, WP-APP-005).
+
+Context: Findings: WP-APP-004, WP-APP-005 (merges WP-LOC-005). Evidence: 8 of 10 `storage.buckets` rows lack `allowed_mime_types`/`file_size_limit`; no CHECK on `resident.national_id_no`, phone or email columns; FAN uniqueness is a UI warning; stored phone = 9-digit local part (`src/lib/phoneNumber.ts:59`).
+
+Task: migration setting `allowed_mime_types` (images: `image/webp`, `image/jpeg`, `image/png` — no SVG; documents: `application/pdf`) and `file_size_limit` (images 2 MB, documents 10 MB) on every bucket; storage INSERT policies additionally require the object name to end in an allowed extension. Add `CHECK (national_id_no IS NULL OR national_id_no ~ '^\d{16}$') NOT VALID` then `VALIDATE CONSTRAINT` after cleaning existing rows; phone columns `CHECK (col IS NULL OR col ~ '^\d{9}$')`; email `CHECK (col IS NULL OR col ~* '^[^@\s]+@[^@\s]+\.[^@\s]+$')`; partial UNIQUE index per woreda on the normalised FAN (or its blind index). Uploads in the FE derive the extension from the detected MIME, not the filename.
+
+Acceptance: upload of an SVG or a 20 MB PDF → 400 from Storage; PostgREST insert with a 15-digit FAN or `+251…` phone → check_violation; duplicate FAN in the same woreda → unique_violation; existing data validated (report of rows fixed).
+
+Rules (non-negotiable, from CLAUDE.md and the 2026-09-24 audit):
+- Work on a new branch; never push to main. Read CLAUDE.md first.
+- Schema changes go in ONE new, additive migration `supabase/migrations/000000000000NN_<snake_case_name>.sql` (next free number). Never edit an applied migration; change a function only with `CREATE OR REPLACE` (no `DROP FUNCTION`; to retire one, `REVOKE EXECUTE … FROM PUBLIC, anon, authenticated` and replace its body with a raise). snake_case SQL, camelCase TypeScript.
+- Every SECURITY DEFINER function: `SET search_path = ''`, fully-qualified names, re-derive the caller's woreda with `public.get_user_woreda_id()` and permission with `public.user_has_perm()`; never trust a client-supplied `woreda_id`, role or actor id. Every RLS policy for INSERT/UPDATE carries `WITH CHECK`.
+- Frontend: parameterised Supabase client calls only (no string-built PostgREST filters), Zod allow-list validation, errors shown through `translateError()` (generic copy, no raw DB text), bilingual Amharic-first labels, Ethiopian-calendar dates with Arabic numerals.
+- Dry-run the migration wrapped in `BEGIN … ROLLBACK` against staging (or, until staging exists, production immediately after a verified backup), apply, then verify by querying `pg_policies` / `pg_proc` / `information_schema` / `pg_constraint` — never infer success from the apply call. Use the `fsm-migration` skill. A schema change and the frontend that depends on it ship as one deploy unit.
+- Deployment credentials (`SUPABASE_ACCESS_TOKEN`, `VERCEL_TOKEN`) come from the session environment only; never written to a file, never printed; `unset` them and delete `p.json`/`payload.json` afterwards; run the `secret-sweep` agent before pushing.
+- If the change adds or renames a permission: update `src/config/permissions.ts` AND add `CREATE OR REPLACE FUNCTION public.default_role_perms()` in the same migration, plus a `role_permission` backfill for existing woredas; run `bun run check:role-perms-drift` and `bun run generate:permissions-doc`.
+- Update living docs in the same PR: `docs/erd.md`, `docs/dfd.md`, `docs/security-functionality.md`, `docs/openapi.yaml` / `docs/audit/2026-09-24/api/openapi.yaml` where affected, and mark the finding Fixed in `docs/audit/2026-09-24/02-findings-register.md` with the commit.
+- Before opening the PR run: `bun run lint`, `bunx tsc --noEmit`, `bun run test`, `bun run check:role-perms-drift`, `bun run check:fee-catalog`, `bun run check:service-type-catalog`, and the repo `review` skill (it dispatches tenant-isolation-review, rbac-escalation-review, workflow-fsm-review as relevant).
+```
+
+## P1-12 — Payment and numbering integrity (WP-CRY-007, WP-DB-006, WP-DB-007, WP-WF-009/010/011)
+
+Owner: DB + FE
+
+```text
+Fix P1-12 from the 2026-09-24 security audit of eskabdi/woredas-portal: Payment and numbering integrity (WP-CRY-007, WP-DB-006, WP-DB-007, WP-WF-009/010/011).
+
+Context: Findings: WP-CRY-007, WP-DB-006, WP-DB-007, WP-WF-009, WP-WF-010, WP-WF-011 (Medium). Evidence: no UNIQUE on `receipt.payment_id`; `credential_seq_tenant` (`baseline:1554`) and `receipt_seq_tenant` (`1601`) FOR ALL policies; `assign_receipt_number` keeps a client-supplied number (`baseline:1015`); fee payment is three client calls; waiver accepted with any module's approve permission.
+
+Task: `UNIQUE (payment_id)` on `receipt` (after de-duplicating); numbering tables SELECT-only for tenants (writes only inside definer triggers); numbering triggers always overwrite client-supplied numbers; `kebele` writes restricted to super_admin; a single `record_fee_payment(_entity text, _entity_id uuid, _waived boolean, _waiver_reason text)` SECURITY DEFINER RPC that resolves the fee server-side, inserts payment + receipt + transition atomically, enforces one confirmed payment per request (partial unique index), and requires the module's supervisor-level permission for waivers with approver ≠ waiver-requester, writing the audit row itself; payment status/link columns frozen after confirmation except via reversal RPC. Switch the three FE payment flows to the RPC.
+
+Acceptance: second receipt for the same payment → unique_violation; client-chosen receipt number ignored; clerk PATCH on `receipt_sequence` → denied; double-click on 'record payment' yields one payment; self-approved waiver → rejected; zero-fee path still writes payment + receipt.
+
+Rules (non-negotiable, from CLAUDE.md and the 2026-09-24 audit):
+- Work on a new branch; never push to main. Read CLAUDE.md first.
+- Schema changes go in ONE new, additive migration `supabase/migrations/000000000000NN_<snake_case_name>.sql` (next free number). Never edit an applied migration; change a function only with `CREATE OR REPLACE` (no `DROP FUNCTION`; to retire one, `REVOKE EXECUTE … FROM PUBLIC, anon, authenticated` and replace its body with a raise). snake_case SQL, camelCase TypeScript.
+- Every SECURITY DEFINER function: `SET search_path = ''`, fully-qualified names, re-derive the caller's woreda with `public.get_user_woreda_id()` and permission with `public.user_has_perm()`; never trust a client-supplied `woreda_id`, role or actor id. Every RLS policy for INSERT/UPDATE carries `WITH CHECK`.
+- Frontend: parameterised Supabase client calls only (no string-built PostgREST filters), Zod allow-list validation, errors shown through `translateError()` (generic copy, no raw DB text), bilingual Amharic-first labels, Ethiopian-calendar dates with Arabic numerals.
+- Dry-run the migration wrapped in `BEGIN … ROLLBACK` against staging (or, until staging exists, production immediately after a verified backup), apply, then verify by querying `pg_policies` / `pg_proc` / `information_schema` / `pg_constraint` — never infer success from the apply call. Use the `fsm-migration` skill. A schema change and the frontend that depends on it ship as one deploy unit.
+- Deployment credentials (`SUPABASE_ACCESS_TOKEN`, `VERCEL_TOKEN`) come from the session environment only; never written to a file, never printed; `unset` them and delete `p.json`/`payload.json` afterwards; run the `secret-sweep` agent before pushing.
+- If the change adds or renames a permission: update `src/config/permissions.ts` AND add `CREATE OR REPLACE FUNCTION public.default_role_perms()` in the same migration, plus a `role_permission` backfill for existing woredas; run `bun run check:role-perms-drift` and `bun run generate:permissions-doc`.
+- Update living docs in the same PR: `docs/erd.md`, `docs/dfd.md`, `docs/security-functionality.md`, `docs/openapi.yaml` / `docs/audit/2026-09-24/api/openapi.yaml` where affected, and mark the finding Fixed in `docs/audit/2026-09-24/02-findings-register.md` with the commit.
+- Before opening the PR run: `bun run lint`, `bunx tsc --noEmit`, `bun run test`, `bun run check:role-perms-drift`, `bun run check:fee-catalog`, `bun run check:service-type-catalog`, and the repo `review` skill (it dispatches tenant-isolation-review, rbac-escalation-review, workflow-fsm-review as relevant).
+```
+
+## P1-13 — Server-side module toggles (WP-AZ-004, merges WP-INV-005)
+
+Owner: DB + FE
+
+```text
+Fix P1-13 from the 2026-09-24 security audit of eskabdi/woredas-portal: Server-side module toggles (WP-AZ-004, merges WP-INV-005).
+
+Context: Findings: WP-AZ-004 (Medium). Evidence: only letter-category service requests check `tenant_module_config` server-side; `rental_houses` key accepted by the CHECK but never gated (`src/config/permissions.ts`, no `ModuleGate`); `woreda.reports.$reportType.print.tsx` bypasses the reports gate.
+
+Task: `public.module_enabled(_key text)` (STABLE SECURITY DEFINER; missing row = enabled, preserving current semantics) and add it to INSERT/UPDATE policies and write RPCs for each module's tables (credentials, civil_registration, revenue, services, approvals, rental_houses) and to the report RPCs. FE: wrap rental routes and the reports print route in `<ModuleGate>`; add `rental_houses` to the admin module toggle UI and the nav filter.
+
+Acceptance: with `rental_houses` disabled for woreda A, `POST /rest/v1/kebele_rental_house` → denied and the rental nav/routes redirect; enabling restores; other woredas unaffected.
+
+Rules (non-negotiable, from CLAUDE.md and the 2026-09-24 audit):
+- Work on a new branch; never push to main. Read CLAUDE.md first.
+- Schema changes go in ONE new, additive migration `supabase/migrations/000000000000NN_<snake_case_name>.sql` (next free number). Never edit an applied migration; change a function only with `CREATE OR REPLACE` (no `DROP FUNCTION`; to retire one, `REVOKE EXECUTE … FROM PUBLIC, anon, authenticated` and replace its body with a raise). snake_case SQL, camelCase TypeScript.
+- Every SECURITY DEFINER function: `SET search_path = ''`, fully-qualified names, re-derive the caller's woreda with `public.get_user_woreda_id()` and permission with `public.user_has_perm()`; never trust a client-supplied `woreda_id`, role or actor id. Every RLS policy for INSERT/UPDATE carries `WITH CHECK`.
+- Frontend: parameterised Supabase client calls only (no string-built PostgREST filters), Zod allow-list validation, errors shown through `translateError()` (generic copy, no raw DB text), bilingual Amharic-first labels, Ethiopian-calendar dates with Arabic numerals.
+- Dry-run the migration wrapped in `BEGIN … ROLLBACK` against staging (or, until staging exists, production immediately after a verified backup), apply, then verify by querying `pg_policies` / `pg_proc` / `information_schema` / `pg_constraint` — never infer success from the apply call. Use the `fsm-migration` skill. A schema change and the frontend that depends on it ship as one deploy unit.
+- Deployment credentials (`SUPABASE_ACCESS_TOKEN`, `VERCEL_TOKEN`) come from the session environment only; never written to a file, never printed; `unset` them and delete `p.json`/`payload.json` afterwards; run the `secret-sweep` agent before pushing.
+- If the change adds or renames a permission: update `src/config/permissions.ts` AND add `CREATE OR REPLACE FUNCTION public.default_role_perms()` in the same migration, plus a `role_permission` backfill for existing woredas; run `bun run check:role-perms-drift` and `bun run generate:permissions-doc`.
+- Update living docs in the same PR: `docs/erd.md`, `docs/dfd.md`, `docs/security-functionality.md`, `docs/openapi.yaml` / `docs/audit/2026-09-24/api/openapi.yaml` where affected, and mark the finding Fixed in `docs/audit/2026-09-24/02-findings-register.md` with the commit.
+- Before opening the PR run: `bun run lint`, `bunx tsc --noEmit`, `bun run test`, `bun run check:role-perms-drift`, `bun run check:fee-catalog`, `bun run check:service-type-catalog`, and the repo `review` skill (it dispatches tenant-isolation-review, rbac-escalation-review, workflow-fsm-review as relevant).
+```
+
+## P1-14 — Make CI a real gate and pin the supply chain (WP-OPS-004, WP-SUP-001, WP-INV-001)
+
+Owner: Ops
+
+```text
+Fix P1-14 from the 2026-09-24 security audit of eskabdi/woredas-portal: Make CI a real gate and pin the supply chain (WP-OPS-004, WP-SUP-001, WP-INV-001).
+
+Context: Findings: WP-OPS-004, WP-SUP-001, WP-INV-001 (Medium), WP-INV-004 (js-yaml). Evidence: branch protection on `main` has zero required checks; `.github/workflows/ci.yml:30-41` has no `bun audit`/secret scan; all 8 Edge Functions import `https://esm.sh/@supabase/supabase-js@2`.
+
+Task: mark the CI job as a required status check on `main`; configure Vercel to wait for GitHub checks before promoting production (or deploy from CI only); add CI steps `bun audit --audit-level=high` and a secret scanner (gitleaks action, pinned by SHA); add `.github/dependabot.yml` (npm + github-actions); pin `actions/checkout` by SHA; add `supabase/functions/deno.json` with an import map pinning `@supabase/supabase-js` to an exact version plus `deno.lock`, and a CI `deno check supabase/functions/**/index.ts`; `bun update js-yaml`.
+
+Acceptance: a PR with a failing test cannot be merged; a commit containing a fake `sbp_` token fails CI; `deno check` runs in CI; `bun audit` clean at high.
+
+Rules (non-negotiable, from CLAUDE.md and the 2026-09-24 audit):
+- Work on a new branch; never push to main. Read CLAUDE.md first.
+- Schema changes go in ONE new, additive migration `supabase/migrations/000000000000NN_<snake_case_name>.sql` (next free number). Never edit an applied migration; change a function only with `CREATE OR REPLACE` (no `DROP FUNCTION`; to retire one, `REVOKE EXECUTE … FROM PUBLIC, anon, authenticated` and replace its body with a raise). snake_case SQL, camelCase TypeScript.
+- Every SECURITY DEFINER function: `SET search_path = ''`, fully-qualified names, re-derive the caller's woreda with `public.get_user_woreda_id()` and permission with `public.user_has_perm()`; never trust a client-supplied `woreda_id`, role or actor id. Every RLS policy for INSERT/UPDATE carries `WITH CHECK`.
+- Frontend: parameterised Supabase client calls only (no string-built PostgREST filters), Zod allow-list validation, errors shown through `translateError()` (generic copy, no raw DB text), bilingual Amharic-first labels, Ethiopian-calendar dates with Arabic numerals.
+- Dry-run the migration wrapped in `BEGIN … ROLLBACK` against staging (or, until staging exists, production immediately after a verified backup), apply, then verify by querying `pg_policies` / `pg_proc` / `information_schema` / `pg_constraint` — never infer success from the apply call. Use the `fsm-migration` skill. A schema change and the frontend that depends on it ship as one deploy unit.
+- Deployment credentials (`SUPABASE_ACCESS_TOKEN`, `VERCEL_TOKEN`) come from the session environment only; never written to a file, never printed; `unset` them and delete `p.json`/`payload.json` afterwards; run the `secret-sweep` agent before pushing.
+- If the change adds or renames a permission: update `src/config/permissions.ts` AND add `CREATE OR REPLACE FUNCTION public.default_role_perms()` in the same migration, plus a `role_permission` backfill for existing woredas; run `bun run check:role-perms-drift` and `bun run generate:permissions-doc`.
+- Update living docs in the same PR: `docs/erd.md`, `docs/dfd.md`, `docs/security-functionality.md`, `docs/openapi.yaml` / `docs/audit/2026-09-24/api/openapi.yaml` where affected, and mark the finding Fixed in `docs/audit/2026-09-24/02-findings-register.md` with the commit.
+- Before opening the PR run: `bun run lint`, `bunx tsc --noEmit`, `bun run test`, `bun run check:role-perms-drift`, `bun run check:fee-catalog`, `bun run check:service-type-catalog`, and the repo `review` skill (it dispatches tenant-isolation-review, rbac-escalation-review, workflow-fsm-review as relevant).
+```
+
+## P1-15 — Fix EC due dates stored one day early (WP-LOC-001)
+
+Owner: FE + DB
+
+```text
+Fix P1-15 from the 2026-09-24 security audit of eskabdi/woredas-portal: Fix EC due dates stored one day early (WP-LOC-001).
+
+Context: Findings: WP-LOC-001 (Medium). Evidence: `src/routes/woreda.rental-accounts.$occupancyId.tsx:56,263` serialise with `toISOString()` (UTC) — Tikimt 10 saved as 2026-10-19 under Africa/Addis_Ababa; reproduced in `docs/audit/2026-09-24/raw/locale-ec-vectors.txt`.
+
+Task: add `toIsoDateLocal(date)` in `src/utils/ethiopianCalendar.ts` that formats the Gregorian result of the EC conversion as `YYYY-MM-DD` from its calendar fields (never `toISOString()`); replace every `toISOString().slice(0,10)` / `split('T')[0]` on user-picked dates repo-wide (grep); compute "today" in Africa/Addis_Ababa. Data fix: identify `rent_charge` / `arrears_repayment_installment` rows created through the affected paths and shift them +1 day in a reviewed migration (dry-run first; rental-financial-integrity-review must pass).
+
+Acceptance: vitest with `TZ=Africa/Addis_Ababa` — picking Tikimt 10, 2019 stores `2026-10-20`; Pagumē start plans do not skip Meskerem; overdue computation flips on the correct day.
+
+Rules (non-negotiable, from CLAUDE.md and the 2026-09-24 audit):
+- Work on a new branch; never push to main. Read CLAUDE.md first.
+- Schema changes go in ONE new, additive migration `supabase/migrations/000000000000NN_<snake_case_name>.sql` (next free number). Never edit an applied migration; change a function only with `CREATE OR REPLACE` (no `DROP FUNCTION`; to retire one, `REVOKE EXECUTE … FROM PUBLIC, anon, authenticated` and replace its body with a raise). snake_case SQL, camelCase TypeScript.
+- Every SECURITY DEFINER function: `SET search_path = ''`, fully-qualified names, re-derive the caller's woreda with `public.get_user_woreda_id()` and permission with `public.user_has_perm()`; never trust a client-supplied `woreda_id`, role or actor id. Every RLS policy for INSERT/UPDATE carries `WITH CHECK`.
+- Frontend: parameterised Supabase client calls only (no string-built PostgREST filters), Zod allow-list validation, errors shown through `translateError()` (generic copy, no raw DB text), bilingual Amharic-first labels, Ethiopian-calendar dates with Arabic numerals.
+- Dry-run the migration wrapped in `BEGIN … ROLLBACK` against staging (or, until staging exists, production immediately after a verified backup), apply, then verify by querying `pg_policies` / `pg_proc` / `information_schema` / `pg_constraint` — never infer success from the apply call. Use the `fsm-migration` skill. A schema change and the frontend that depends on it ship as one deploy unit.
+- Deployment credentials (`SUPABASE_ACCESS_TOKEN`, `VERCEL_TOKEN`) come from the session environment only; never written to a file, never printed; `unset` them and delete `p.json`/`payload.json` afterwards; run the `secret-sweep` agent before pushing.
+- If the change adds or renames a permission: update `src/config/permissions.ts` AND add `CREATE OR REPLACE FUNCTION public.default_role_perms()` in the same migration, plus a `role_permission` backfill for existing woredas; run `bun run check:role-perms-drift` and `bun run generate:permissions-doc`.
+- Update living docs in the same PR: `docs/erd.md`, `docs/dfd.md`, `docs/security-functionality.md`, `docs/openapi.yaml` / `docs/audit/2026-09-24/api/openapi.yaml` where affected, and mark the finding Fixed in `docs/audit/2026-09-24/02-findings-register.md` with the commit.
+- Before opening the PR run: `bun run lint`, `bunx tsc --noEmit`, `bun run test`, `bun run check:role-perms-drift`, `bun run check:fee-catalog`, `bun run check:service-type-catalog`, and the repo `review` skill (it dispatches tenant-isolation-review, rbac-escalation-review, workflow-fsm-review as relevant).
+```
+
+## P1-16 — Generic, translated error messages everywhere (WP-BQ-001)
+
+Owner: FE
+
+```text
+Fix P1-16 from the 2026-09-24 security audit of eskabdi/woredas-portal: Generic, translated error messages everywhere (WP-BQ-001).
+
+Context: Findings: WP-BQ-001 (Medium, C-07). Evidence: 128 `toast.error(error.message)`-style call sites, e.g. `src/routes/woreda.residents.index.tsx:658`.
+
+Task: add a `toastError(err)` helper that runs `translateError()` from `src/lib/errorMessages.ts` (generic bilingual fallback) and logs the raw error to `console.error` only in development; replace all 128 call sites; add an ESLint `no-restricted-syntax` rule forbidding `toast.error(<x>.message)`. Do not add new Amharic entries to the translation table without native-speaker review (see the file's header).
+
+Acceptance: grep for `toast.error(.*\.message` returns 0; lint rule fails on a reintroduced instance; a forced RLS denial shows the generic bilingual message, not Postgres text.
+
+Rules (non-negotiable, from CLAUDE.md and the 2026-09-24 audit):
+- Work on a new branch; never push to main. Read CLAUDE.md first.
+- Schema changes go in ONE new, additive migration `supabase/migrations/000000000000NN_<snake_case_name>.sql` (next free number). Never edit an applied migration; change a function only with `CREATE OR REPLACE` (no `DROP FUNCTION`; to retire one, `REVOKE EXECUTE … FROM PUBLIC, anon, authenticated` and replace its body with a raise). snake_case SQL, camelCase TypeScript.
+- Every SECURITY DEFINER function: `SET search_path = ''`, fully-qualified names, re-derive the caller's woreda with `public.get_user_woreda_id()` and permission with `public.user_has_perm()`; never trust a client-supplied `woreda_id`, role or actor id. Every RLS policy for INSERT/UPDATE carries `WITH CHECK`.
+- Frontend: parameterised Supabase client calls only (no string-built PostgREST filters), Zod allow-list validation, errors shown through `translateError()` (generic copy, no raw DB text), bilingual Amharic-first labels, Ethiopian-calendar dates with Arabic numerals.
+- Dry-run the migration wrapped in `BEGIN … ROLLBACK` against staging (or, until staging exists, production immediately after a verified backup), apply, then verify by querying `pg_policies` / `pg_proc` / `information_schema` / `pg_constraint` — never infer success from the apply call. Use the `fsm-migration` skill. A schema change and the frontend that depends on it ship as one deploy unit.
+- Deployment credentials (`SUPABASE_ACCESS_TOKEN`, `VERCEL_TOKEN`) come from the session environment only; never written to a file, never printed; `unset` them and delete `p.json`/`payload.json` afterwards; run the `secret-sweep` agent before pushing.
+- If the change adds or renames a permission: update `src/config/permissions.ts` AND add `CREATE OR REPLACE FUNCTION public.default_role_perms()` in the same migration, plus a `role_permission` backfill for existing woredas; run `bun run check:role-perms-drift` and `bun run generate:permissions-doc`.
+- Update living docs in the same PR: `docs/erd.md`, `docs/dfd.md`, `docs/security-functionality.md`, `docs/openapi.yaml` / `docs/audit/2026-09-24/api/openapi.yaml` where affected, and mark the finding Fixed in `docs/audit/2026-09-24/02-findings-register.md` with the commit.
+- Before opening the PR run: `bun run lint`, `bunx tsc --noEmit`, `bun run test`, `bun run check:role-perms-drift`, `bun run check:fee-catalog`, `bun run check:service-type-catalog`, and the repo `review` skill (it dispatches tenant-isolation-review, rbac-escalation-review, workflow-fsm-review as relevant).
+```
+

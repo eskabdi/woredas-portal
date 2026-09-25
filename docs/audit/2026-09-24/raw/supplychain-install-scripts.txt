@@ -1,0 +1,28 @@
+@eslint/eslintrc@3.3.6	prepare: npm run build
+@hookform/resolvers@5.9.0	prepare: run-s build:src
+@humanfs/core@0.19.2	prepare: npm run build
+@humanfs/node@0.16.8	prepare: npm run build
+@humanfs/types@0.15.0	prepare: npm run build
+@humanwhocodes/module-importer@1.0.1	prepare: npm run build
+@humanwhocodes/retry@0.4.3	prepare: npm run build
+acorn@8.18.0	prepare: cd ..; npm run build:main
+aria-hidden@1.2.6	prepare: husky install
+core-js@3.50.0	postinstall: node -e "try{require('./postinstall')}catch(e){}"
+crossws@0.4.10	prepare: obuild --stub
+dompurify@3.4.13	prepare: husky
+enhanced-resolve@5.24.5	prepare: husky
+globals@15.15.0	prepare: npm run build
+isbot@5.2.1	prepare: ./scripts/prepare/index.js
+jsdom@30.0.1	prepare: wireit
+keyv@4.5.4	prepare: yarn build
+leaflet@1.9.4	prepare: husky install
+lightningcss@1.33.0	prepare: patch-package
+lru-cache@11.5.2	prepare: tshy && bash scripts/build.sh
+react-hook-form@7.85.0	prepare: husky
+react-to-print@3.3.0	prepare: npm run lint && npm run build && husky install
+recharts@2.15.4	prepare: husky install
+tinyexec@1.3.0	prepare: npm run build
+ts-api-utils@2.5.0	prepare: husky
+undici@8.10.0	prepare: husky && node ./scripts/platform-shell.js
+whatwg-url@16.0.1	prepare: node scripts/transform.js
+whatwg-url@17.1.0	prepare: node scripts/transform.js

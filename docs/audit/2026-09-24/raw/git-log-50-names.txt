@@ -1,0 +1,289 @@
+--- 9950f16 2026-09-23 Merge pull request #83 from eskabdi/claude/woredas-portal-amharic-manual-0x86rz
+--- abc4a1c 2026-09-22 Rental review round 6: fix re-verification regression from 00088, close requester/approver reassignment gaps, plan-completion race, and a self-reversal skimming path
+
+supabase/migrations/00000000000089_rental_review_round6_fixes.sql
+--- f484a94 2026-09-22 Rental review round 5: fix arrears-payment regression from 00087, harden request maker-checker, close a second plan/reversal collision path
+
+supabase/migrations/00000000000088_rental_review_round5_fixes.sql
+--- 7257bc9 2026-09-22 Rental review round 4: NULL-safe tenant check, request field lockdown, live-overdue widening, payment-insert guard, plan/reversal race fixes
+
+supabase/migrations/00000000000087_rental_review_round4_fixes.sql
+--- 6adb8c3 2026-09-22 Fix third round of findings from final security review of PR #83
+
+scripts/rental-phase2-backfill.ts
+src/routes/woreda.rental-accounts.$occupancyId.tsx
+src/routes/woreda.rental-reports.tsx
+src/routes/woreda.services.new.tsx
+src/utils/ethiopianCalendar.ts
+supabase/migrations/00000000000086_rental_review_round3_fixes.sql
+--- 590fe85 2026-09-22 Merge pull request #84 from eskabdi/claude/init-claude-md-q5cwhb
+--- 07ca972 2026-09-22 Update CLAUDE.md for drift since last write-up
+
+CLAUDE.md
+--- 94981b8 2026-09-22 Fix second round of findings from full-PR review of PR #83
+
+scripts/rental-phase2-backfill.ts
+supabase/migrations/00000000000085_rental_review_round2_fixes.sql
+--- ce06e5d 2026-09-22 Fix regressions found by pre-merge security review of full PR #83
+
+src/routes/woreda.services.new.tsx
+supabase/migrations/00000000000084_rental_review_regression_fixes.sql
+--- 4f2e64d 2026-09-22 Regenerate docs/permissions-matrix.md for service.checkpoint_override
+
+docs/permissions-matrix.md
+--- 16a0aee 2026-09-22 Merge origin/main into claude/woredas-portal-amharic-manual-0x86rz
+--- 8db1eab 2026-09-22 Add Phase 5: cross-module rental checkpoint and reporting
+
+src/components/settings/RolesPermissionsTab.tsx
+src/config/navGroups.ts
+src/config/permissions.ts
+src/hooks/useServiceTypes.ts
+src/integrations/supabase/types.ts
+src/routeTree.gen.ts
+src/routes/woreda.rental-reports.tsx
+src/routes/woreda.services.new.tsx
+src/routes/woreda.settings.woreda-configuration.tsx
+supabase/migrations/00000000000083_rental_phase5_checkpoint.sql
+--- df1c3be 2026-09-22 Add Phase 4: arrears and repayment plans
+
+src/components/settings/RolesPermissionsTab.tsx
+src/config/permissions.ts
+src/integrations/supabase/types.ts
+src/routes/woreda.rental-accounts.$occupancyId.tsx
+supabase/migrations/00000000000080_rental_phase4_arrears.sql
+supabase/migrations/00000000000081_rental_phase4_review_fixes.sql
+supabase/migrations/00000000000082_rental_phase4_review_fixes_2.sql
+supabase/seed.sql
+--- 91f35a0 2026-09-21 Kebele Rental Houses Phase 3: settlement and payments
+
+docs/permissions-matrix.md
+src/components/settings/RolesPermissionsTab.tsx
+src/config/permissions.ts
+src/integrations/supabase/types.ts
+src/routes/woreda.rental-accounts.$occupancyId.tsx
+src/routes/woreda.revenue.index.tsx
+supabase/migrations/00000000000078_rental_phase3_settlement.sql
+supabase/migrations/00000000000079_rental_phase3_review_fixes.sql
+--- 6a94603 2026-09-21 Enforce Amharic-primary labels and Ethiopian-calendar-primary dates across the woreda portal
+
+src/routes/woreda.audit.tsx
+src/routes/woreda.civil.$eventId.tsx
+src/routes/woreda.civil.birth.new.tsx
+src/routes/woreda.civil.death.new.tsx
+src/routes/woreda.civil.divorce.new.tsx
+src/routes/woreda.civil.marriage.new.tsx
+src/routes/woreda.credentials.$requestId.certificate.tsx
+src/routes/woreda.credentials.$requestId.index.tsx
+src/routes/woreda.credentials.$requestId.print.tsx
+src/routes/woreda.credentials.index.tsx
+src/routes/woreda.credentials.new.tsx
+src/routes/woreda.credentials.verify.tsx
+src/routes/woreda.dashboard.tsx
+src/routes/woreda.households.$householdId.index.tsx
+src/routes/woreda.households.index.tsx
+src/routes/woreda.rental-houses.$houseId.edit.tsx
+src/routes/woreda.rental-houses.$houseId.index.tsx
+src/routes/woreda.rental-houses.$houseId.occupant-print.tsx
+src/routes/woreda.rental-houses.index.tsx
+src/routes/woreda.rental-houses.new.tsx
+src/routes/woreda.rental-houses.occupants.new.tsx
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx
+src/routes/woreda.rental-houses.requests.index.tsx
+src/routes/woreda.reports.index.tsx
+src/routes/woreda.residents.$residentId.edit.tsx
+src/routes/woreda.residents.$residentId.index.tsx
+src/routes/woreda.revenue.$paymentId.receipt.tsx
+src/routes/woreda.revenue.index.tsx
+src/routes/woreda.settings.woreda-configuration.tsx
+--- aa288ba 2026-09-21 Kebele Rental Houses Phase 2: financial core (rent_account, rent_rate_history, rent_charge, billing RPC)
+
+docs/permissions-matrix.md
+scripts/rental-phase2-backfill.ts
+src/config/permissions.ts
+src/integrations/supabase/types.ts
+src/routeTree.gen.ts
+src/routes/woreda.rental-accounts.$occupancyId.tsx
+src/routes/woreda.rental-houses.$houseId.index.tsx
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx
+supabase/migrations/00000000000076_rental_phase2_financial_core.sql
+supabase/migrations/00000000000077_rental_phase2_review_fixes.sql
+supabase/seed.sql
+--- 0fb1050 2026-09-21 Merge pull request #82 from eskabdi/fix/rental-payment-frequency-labels
+--- 450e35f 2026-09-21 Rental occupant intake: rename payment frequency options to monthly/quarterly/yearly
+
+src/routes/woreda.rental-houses.occupants.new.tsx
+--- 180bee2 2026-09-21 Kebele Rental Houses Phase 1: fix review findings from both agents
+
+docs/rental-policy-decisions.md
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx
+src/routes/woreda.rental-houses.requests.index.tsx
+supabase/migrations/00000000000073_rental_phase1_review_fixes.sql
+supabase/migrations/00000000000074_rental_phase1_fsm_review_fixes.sql
+supabase/migrations/00000000000075_rental_phase1_pd09_ui_wiring.sql
+--- 14cf8ab 2026-09-21 Kebele Rental Houses Phase 1: integrity hardening (AF-01..AF-11, PD-07/09)
+
+src/routes/woreda.rental-houses.$houseId.edit.tsx
+src/routes/woreda.rental-houses.occupants.new.tsx
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx
+supabase/migrations/00000000000072_rental_phase1_integrity_hardening.sql
+--- 2237726 2026-09-21 Kebele Rental Houses Phase 0: rental_policy table + policy sign-off
+
+docs/permissions-matrix.md
+docs/rental-policy-decisions.md
+src/config/permissions.ts
+supabase/migrations/00000000000071_rental_phase0_policy.sql
+--- ae62560 2026-09-21 Fix invite/resend crashes and add missing woreda-portal Resend Invite across invite-tenant-user, invite-platform-admin, resend-platform-invite, resend-tenant-invite (#81)
+
+.claude/skills/doctor/SKILL.md
+CLAUDE.md
+scripts/deploy-functions.sh
+src/components/admin/PlatformUsersTab.tsx
+src/components/settings/UsersRolesTab.tsx
+src/lib/errorMessages.ts
+supabase/functions/invite-platform-admin/index.ts
+supabase/functions/invite-tenant-user/index.ts
+supabase/functions/resend-platform-invite/index.ts
+supabase/functions/resend-tenant-invite/index.ts
+supabase/functions/send-password-reset-link/index.ts
+--- 883e117 2026-09-20 Add rental-financial-integrity-review subagent for kebele rental billing
+
+.claude/agents/rental-financial-integrity-review.md
+.claude/skills/review/SKILL.md
+--- d3c1557 2026-09-20 Merge pull request #80 from eskabdi/fix/vercel-ssr-circular-chunk
+--- 8af9fb0 2026-09-19 Fix stale Edge Function count in doctor workspace check
+
+.claude/skills/doctor/scripts/check-workspace.sh
+--- 82497a7 2026-09-19 Fix production 500s from a circular ssr chunk split (router.tsx)
+
+vite.config.ts
+--- 0bd0c30 2026-09-19 Merge pull request #79 from eskabdi/ux-restructure
+--- 761f965 2026-09-19 Refine woreda dashboard and sidebar per feedback batch
+
+src/components/layout/AppShell.tsx
+src/hooks/useAuthBootstrap.ts
+src/routes/woreda.dashboard.tsx
+src/stores/__tests__/authStore.test.ts
+src/stores/authStore.ts
+--- 07f8605 2026-09-16 Recolor solid blue action buttons to the header's deep navy
+
+src/components/admin/PlatformUsersTab.tsx
+src/components/common/ChangePasswordDialog.tsx
+src/components/credentials/CredentialQueueTable.tsx
+src/components/residents/ResidentActions.tsx
+src/components/residents/ResidentProfileTabs.tsx
+src/components/settings/CustomRolesTab.tsx
+src/components/settings/LetterTemplatesTab.tsx
+src/components/settings/UsersRolesTab.tsx
+src/routes/__root.tsx
+src/routes/admin.console-roles.tsx
+src/routes/admin.credential-template.tsx
+src/routes/admin.tenants.$woredaId.provision.tsx
+src/routes/index.tsx
+src/routes/woreda.civil.$eventId.tsx
+src/routes/woreda.civil.birth.new.tsx
+src/routes/woreda.civil.death.new.tsx
+src/routes/woreda.civil.divorce.new.tsx
+src/routes/woreda.civil.index.tsx
+src/routes/woreda.civil.marriage.new.tsx
+src/routes/woreda.credentials.$requestId.index.tsx
+src/routes/woreda.credentials.$requestId.print.tsx
+src/routes/woreda.credentials.index.tsx
+src/routes/woreda.credentials.new.tsx
+src/routes/woreda.dashboard.tsx
+src/routes/woreda.households.$householdId.edit.tsx
+src/routes/woreda.households.$householdId.index.tsx
+src/routes/woreda.households.index.tsx
+src/routes/woreda.households.new.tsx
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx
+src/routes/woreda.reports.index.tsx
+src/routes/woreda.residents.$residentId.edit.tsx
+src/routes/woreda.residents.$residentId.index.tsx
+src/routes/woreda.residents.index.tsx
+src/routes/woreda.residents.new.tsx
+src/routes/woreda.settings.woreda-configuration.tsx
+--- 11b4ff9 2026-09-16 Gate dashboard audit activity by P.AUDIT_VIEW; fix loading-flash and dedupe BackLink
+
+src/components/common/DetailHeader.tsx
+src/components/common/PageHeader.tsx
+src/routes/woreda.dashboard.tsx
+--- 5c181eb 2026-09-16 Fix tablet-width horizontal page overflow on wide-table screens
+
+src/components/ui/sidebar.tsx
+--- f8a8e74 2026-09-16 Add back-to-parent link to child pages missing one
+
+src/components/common/DetailHeader.tsx
+src/components/common/PageHeader.tsx
+src/routes/admin.tenants.$woredaId.index.tsx
+src/routes/woreda.civil.$eventId.tsx
+src/routes/woreda.credentials.$requestId.index.tsx
+src/routes/woreda.credentials.new.tsx
+src/routes/woreda.credentials.verify.tsx
+src/routes/woreda.households.$householdId.edit.tsx
+src/routes/woreda.households.$householdId.index.tsx
+src/routes/woreda.households.new.tsx
+src/routes/woreda.rental-houses.$houseId.edit.tsx
+src/routes/woreda.rental-houses.$houseId.index.tsx
+src/routes/woreda.rental-houses.new.tsx
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx
+src/routes/woreda.residents.$residentId.edit.tsx
+src/routes/woreda.residents.$residentId.index.tsx
+src/routes/woreda.residents.new.tsx
+src/routes/woreda.services.$requestId.index.tsx
+src/routes/woreda.services.new.tsx
+--- 4b8aafd 2026-09-16 Rebuild woreda dashboard content to match master_design_system.md
+
+src/components/charts/PieChartCard.tsx
+src/components/common/KpiCard.tsx
+src/routes/woreda.dashboard.tsx
+--- b35d163 2026-09-15 Rebuild woreda AppShell shell to match master_design_system.md 1:1
+
+src/components/layout/AppShell.tsx
+--- 2bba6ca 2026-09-15 Add missing verified/approved stages to credential request stepper
+
+src/routes/woreda.credentials.$requestId.index.tsx
+--- fe796a2 2026-09-15 Fix BarChartCard rendering NaN when angledLabels is unset
+
+src/components/charts/BarChartCard.tsx
+--- 1f3b0e7 2026-09-15 Add pre-merge gate to main-logic-authority-review subagent
+
+.claude/agents/main-logic-authority-review.md
+--- 93f5d31 2026-09-15 Fix rental request stepper misreporting current stage; drop dead login affordance
+
+src/routes/login.tsx
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx
+--- 4dcc0d6 2026-09-15 Add main-logic-authority-review subagent
+
+.claude/agents/main-logic-authority-review.md
+CLAUDE.md
+--- 2e72e31 2026-09-15 Merge origin/main into ux-restructure
+--- 125205c 2026-09-15 Port main's shell security/reliability features into AppShell
+
+src/components/layout/AppShell.tsx
+--- 2125dee 2026-09-15 fix: add missing "printed" stage to credential WorkflowStepper
+
+src/routes/woreda.credentials.$requestId.index.tsx
+--- 1e49ab3 2026-09-15 Merge pull request #78 from eskabdi/claude/incident-report-close-out
+--- f4cf428 2026-09-15 docs: close out the /woreda/* crash incident report
+
+docs/incident-2026-09-15-woreda-portal-crash.md
+--- a23dfa8 2026-09-15 Merge pull request #77 from eskabdi/claude/fix-offline-queue-infinite-loop
+--- 422633f 2026-09-15 docs: incident report for the /woreda/* infinite-loop crash
+
+docs/incident-2026-09-15-woreda-portal-crash.md
+--- a1db585 2026-09-15 Fix infinite render loop crashing every /woreda/* page (offline queue snapshot)
+
+src/lib/offlineQueue.ts
+--- 699e0ac 2026-09-15 docs: record all five UX restructuring phases as complete
+
+CLAUDE.md
+docs/ux/ux_implementation_report.md
+docs/ux/ux_implementation_roadmap.md
+--- 8b06fe8 2026-09-15 Phase 4: keyboard navigation pass on Stepper and TableToolbar
+
+src/components/common/TableToolbar.tsx
+src/components/forms/Stepper.tsx
+--- e3bd9c4 2026-09-15 Phase 4: fix WCAG 2.1 AA contrast failures found in new palette
+
+src/components/common/WorkflowStepper.tsx
+src/components/layout/AppShell.tsx
+src/routes/login.tsx

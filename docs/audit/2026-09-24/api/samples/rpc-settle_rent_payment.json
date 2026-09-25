@@ -1,0 +1,124 @@
+{
+ "generated_by": "audit-api-edge 2026-09-24",
+ "as_is": true,
+ "synthetic_values": "All ids, names, tokens and numbers are synthetic placeholders; no production data.",
+ "endpoint": "POST /rest/v1/rpc/settle_rent_payment",
+ "classification": "Private",
+ "auth": "staff JWT; rental.collect or super_admin; caller woreda derived server-side",
+ "responses": {
+  "200": [
+   {
+    "emitted": true,
+    "response": {
+     "status": "settled",
+     "payment_id": "00000000-0000-4000-8000-000000000005"
+    },
+    "evidence": "supabase/migrations/00000000000087_rental_review_round4_fixes.sql:749",
+    "request": {
+     "headers": {
+      "apikey": "<publishable key>",
+      "Content-Type": "application/json",
+      "Authorization": "Bearer <user access token>"
+     },
+     "body": {
+      "_rent_account_id": "00000000-0000-4000-8000-000000000006",
+      "_rent_charge_ids": [
+       "00000000-0000-4000-8000-000000000007"
+      ],
+      "_payment_amount": 500,
+      "_payment_date": "2026-01-15",
+      "_channel": "cash",
+      "_reference_number": null,
+      "_payer_resident_id": null,
+      "_idempotency_key": "<client uuid>"
+     }
+    }
+   },
+   {
+    "emitted": true,
+    "response": {
+     "status": "idempotent_replay",
+     "payment_id": "00000000-0000-4000-8000-000000000005"
+    },
+    "evidence": "supabase/migrations/00000000000087_rental_review_round4_fixes.sql:627-634"
+   },
+   {
+    "emitted": true,
+    "response": {
+     "status": "mismatch",
+     "exception_id": "00000000-0000-4000-8000-000000000008",
+     "expected_amount": 500,
+     "received_amount": 450
+    },
+    "evidence": "supabase/migrations/00000000000087_rental_review_round4_fixes.sql:690-707",
+    "request": "Amount mismatch is recorded as a reconciliation exception and returned as 200."
+   }
+  ],
+  "400": [
+   {
+    "emitted": true,
+    "response": {
+     "code": "23514",
+     "details": null,
+     "hint": null,
+     "message": "settle_rent_payment: payment amount must be positive"
+    },
+    "evidence": "supabase/migrations/00000000000087_rental_review_round4_fixes.sql:625-627"
+   },
+   {
+    "emitted": true,
+    "response": {
+     "code": "P0002",
+     "details": null,
+     "hint": null,
+     "message": "settle_rent_payment: rent account not found"
+    },
+    "evidence": "supabase/migrations/00000000000087_rental_review_round4_fixes.sql:646-648",
+    "request": "Cross-tenant and non-existent account are indistinguishable. PostgREST maps unlisted SQLSTATEs to 400."
+   }
+  ],
+  "401": {
+   "emitted": true,
+   "response": {
+    "code": "42501",
+    "message": "settle_rent_payment: caller has no woreda context"
+   },
+   "evidence": "supabase/migrations/00000000000087_rental_review_round4_fixes.sql:610-613",
+   "request": "HTTP 401 for anon, 403 for an authenticated caller without an app_user woreda."
+  },
+  "403": {
+   "emitted": true,
+   "response": {
+    "code": "42501",
+    "details": null,
+    "hint": null,
+    "message": "settle_rent_payment: permission denied"
+   },
+   "evidence": "supabase/migrations/00000000000087_rental_review_round4_fixes.sql:615-618"
+  },
+  "404": {
+   "emitted": true,
+   "response": {
+    "code": "PGRST202",
+    "message": "Could not find the function public.settle_rent_payment(...) in the schema cache"
+   },
+   "evidence": "PostgREST"
+  },
+  "409": {
+   "emitted": false,
+   "reason": "Not emitted; concurrency conflicts raise check_violation (400) with a bilingual refresh message (:676-688)."
+  },
+  "422": {
+   "emitted": false,
+   "reason": "Not emitted."
+  },
+  "429": {
+   "emitted": false,
+   "reason": "No rate limit."
+  },
+  "500": {
+   "emitted": false,
+   "reason": "No explicit 500."
+  }
+ }
+}

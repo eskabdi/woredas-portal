@@ -1,0 +1,6 @@
+payload JSON bytes: 215  token chars: 374  sig chars: 86
+URL chars (https://woredas-portal.vercel.app/v/ + token): 410
+original verifies: true
+distinct last-char variants that still verify: 15
+(r, n-s) token differs: true  verifies: true
+decoded without key: {"c":"0105260000127","i":"HR-01-000123","n":"Abdulahi Mohammed Yusuf","g":"M","b":"19900115","w":"Aboker","k":"Kebele 05","h":"1234/B","s":"20260920","e":"20270920","p":"Aboker Woreda Administration","t":1790000000}

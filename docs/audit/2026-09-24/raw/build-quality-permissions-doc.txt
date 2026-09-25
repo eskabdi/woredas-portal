@@ -1,0 +1,2 @@
+OK: docs/permissions-matrix.md matches src/config/permissions.ts.
+exit=0

@@ -1,0 +1,40 @@
+# insert/update with spread or variable payload
+src/routes/woreda.civil.birth.new.tsx:216:        .insert(insertPayload)
+src/routes/woreda.civil.marriage.new.tsx:152:        .insert(insertPayload)
+src/routes/woreda.civil.divorce.new.tsx:160:        .insert(insertPayload)
+src/routes/woreda.settings.woreda-configuration.tsx:255:        .upsert(payload, { onConflict: "woreda_id" })
+src/routes/woreda.settings.woreda-configuration.tsx:1069:          .insert({ ...values, category, woreda_id: woredaId })
+src/routes/woreda.settings.woreda-configuration.tsx:1415:          .insert({ ...values, woreda_id: woredaId })
+src/routes/admin.console-roles.tsx:371:    const { error: permError } = await db.from("console_role_permission").insert(rows);
+src/routes/woreda.credentials.$requestId.index.tsx:447:        .update(payload)
+src/routes/woreda.services.$requestId.index.tsx:220:        .update({ ...(opts?.extra ?? {}), status: next } as never)
+src/routes/admin.tenants.$woredaId.provision.tsx:155:        .upsert(rows, { onConflict: "woreda_id,module_key" })
+src/routes/woreda.residents.$residentId.edit.tsx:220:        .update(core)
+src/routes/woreda.civil.death.new.tsx:149:        .insert(insertPayload)
+src/lib/tenantRoles.ts:92:    .update({ ...patch, updated_by: updatedBy })
+
+# force_actor_columns triggers
+supabase/migrations/00000000000000_baseline.sql:1477:CREATE TRIGGER trg_force_actor BEFORE INSERT ON public.audit_log FOR EACH ROW EXECUTE FUNCTION force_actor_columns('actor_user_id');
+supabase/migrations/00000000000000_baseline.sql:1478:CREATE TRIGGER trg_force_actor BEFORE INSERT ON public.credential_print_log FOR EACH ROW EXECUTE FUNCTION force_actor_columns('printed_by_user_id');
+supabase/migrations/00000000000000_baseline.sql:1479:CREATE TRIGGER trg_force_actor BEFORE INSERT ON public.credential_request_status_history FOR EACH ROW EXECUTE FUNCTION force_actor_columns('changed_by_user_id');
+supabase/migrations/00000000000000_baseline.sql:1481:CREATE TRIGGER trg_force_actor BEFORE INSERT OR UPDATE ON public.credential_request FOR EACH ROW EXECUTE FUNCTION force_actor_columns('requested_by_user_id', 'verified_by_user_id', 'approved_by_user_id');
+supabase/migrations/00000000000000_baseline.sql:1483:CREATE TRIGGER trg_force_actor BEFORE INSERT ON public.credential_status_history FOR EACH ROW EXECUTE FUNCTION force_actor_columns('changed_by_user_id');
+supabase/migrations/00000000000000_baseline.sql:1484:CREATE TRIGGER trg_force_actor BEFORE INSERT ON public.household_change_log FOR EACH ROW EXECUTE FUNCTION force_actor_columns('registered_by_user_id');
+supabase/migrations/00000000000000_baseline.sql:1485:CREATE TRIGGER trg_force_actor BEFORE INSERT OR UPDATE ON public.payment FOR EACH ROW EXECUTE FUNCTION force_actor_columns('posted_by_user_id');
+supabase/migrations/00000000000000_baseline.sql:1491:CREATE TRIGGER trg_force_actor BEFORE INSERT OR UPDATE ON public.rental_occupancy_request FOR EACH ROW EXECUTE FUNCTION force_actor_columns('requested_by_user_id', 'verified_by_user_id', 'approved_by_user_id');
+supabase/migrations/00000000000000_baseline.sql:1493:CREATE TRIGGER trg_force_actor BEFORE INSERT ON public.rental_request_document FOR EACH ROW EXECUTE FUNCTION force_actor_columns('uploaded_by_user_id');
+supabase/migrations/00000000000000_baseline.sql:1498:CREATE TRIGGER trg_force_actor BEFORE INSERT ON public.service_request_attachment FOR EACH ROW EXECUTE FUNCTION force_actor_columns('uploaded_by_user_id');
+supabase/migrations/00000000000000_baseline.sql:1499:CREATE TRIGGER trg_force_actor BEFORE INSERT ON public.service_request_status_history FOR EACH ROW EXECUTE FUNCTION force_actor_columns('changed_by_user_id');
+supabase/migrations/00000000000000_baseline.sql:1503:CREATE TRIGGER trg_force_actor BEFORE INSERT OR UPDATE ON public.service_request FOR EACH ROW EXECUTE FUNCTION force_actor_columns('requested_by_user_id', 'verified_by_user_id', 'approved_by_user_id', 'issued_by_user_id');
+supabase/migrations/00000000000000_baseline.sql:1507:CREATE TRIGGER trg_force_actor BEFORE INSERT OR UPDATE ON public.vital_event FOR EACH ROW EXECUTE FUNCTION force_actor_columns('requested_by_user_id', 'verified_by_user_id', 'approved_by_user_id', 'issued_by_user_id');
+supabase/migrations/00000000000048_task11_schema_gaps.sql:174:  FOR EACH ROW EXECUTE FUNCTION force_actor_columns('captured_by');
+supabase/migrations/00000000000048_task11_schema_gaps.sql:293:  FOR EACH ROW EXECUTE FUNCTION force_actor_columns('approver_user_id');
+supabase/migrations/00000000000048_task11_schema_gaps.sql:343:  FOR EACH ROW EXECUTE FUNCTION force_actor_columns('uploaded_by');
+supabase/migrations/00000000000048_task11_schema_gaps.sql:407:  FOR EACH ROW EXECUTE FUNCTION force_actor_columns('updated_by');
+supabase/migrations/00000000000025_workflow_engine.sql:409:  FOR EACH ROW EXECUTE FUNCTION public.force_actor_columns('revoked_by_user_id');
+supabase/migrations/00000000000019_override_hardening.sql:131:  FOR EACH ROW EXECUTE FUNCTION public.force_actor_columns('updated_by');
+supabase/migrations/00000000000019_override_hardening.sql:134:  FOR EACH ROW EXECUTE FUNCTION public.force_actor_columns('updated_by');
+supabase/migrations/00000000000038_task13_tenant_role_schema.sql:98:  FOR EACH ROW EXECUTE FUNCTION force_actor_columns('created_by', 'updated_by');
+supabase/migrations/00000000000080_rental_phase4_arrears.sql:267:  FOR EACH ROW EXECUTE FUNCTION public.force_actor_columns('requested_by_user_id', 'approved_by_user_id');
+supabase/migrations/00000000000041_task13_review_hardening.sql:124:  FOR EACH ROW EXECUTE FUNCTION force_actor_columns('updated_by');
+supabase/migrations/00000000000004_resident_documents.sql:93:  FOR EACH ROW EXECUTE FUNCTION public.force_actor_columns('uploaded_by_user_id');

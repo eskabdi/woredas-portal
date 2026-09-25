@@ -1,0 +1,145 @@
+# ops-scope: GitHub public API (unauthenticated, read-only) captured 2026-09-24T17:43:10Z
+## GET /repos/eskabdi/woredas-portal (subset)
+{
+  "full_name": "eskabdi/woredas-portal",
+  "private": false,
+  "visibility": "public",
+  "default_branch": "main",
+  "has_issues": true,
+  "security_and_analysis": null
+}
+## GET /repos/eskabdi/woredas-portal/branches/main (protection subset)
+{
+  "protected": true,
+  "protection": {
+    "enabled": true,
+    "required_status_checks": {
+      "enforcement_level": "everyone",
+      "contexts": [],
+      "checks": []
+    }
+  }
+}
+## GET /repos/.../actions/runs?per_page=100 (name event conclusion sha branch created)
+total_count 204
+CI push success 9950f16e main 2026-09-22T23:41:15Z
+CI pull_request success abc4a1cc claude/woredas-portal-amharic-manual-0x86rz 2026-09-22T23:35:37Z
+CI pull_request success f484a942 claude/woredas-portal-amharic-manual-0x86rz 2026-09-22T23:24:39Z
+CI pull_request success 7257bc95 claude/woredas-portal-amharic-manual-0x86rz 2026-09-22T23:14:21Z
+CI pull_request success 6adb8c32 claude/woredas-portal-amharic-manual-0x86rz 2026-09-22T18:34:34Z
+CI push success 590fe854 main 2026-09-22T18:24:28Z
+CI pull_request success 07ca972f claude/init-claude-md-q5cwhb 2026-09-22T18:21:52Z
+CI pull_request success 94981b82 claude/woredas-portal-amharic-manual-0x86rz 2026-09-22T18:17:17Z
+CI pull_request success ce06e5d2 claude/woredas-portal-amharic-manual-0x86rz 2026-09-22T18:01:09Z
+CI pull_request success 4f2e64dd claude/woredas-portal-amharic-manual-0x86rz 2026-09-22T13:37:32Z
+CI pull_request failure 16a0aee8 claude/woredas-portal-amharic-manual-0x86rz 2026-09-22T13:34:47Z
+CI push success 0fb1050f main 2026-09-21T12:20:28Z
+CI pull_request success 450e35f7 fix/rental-payment-frequency-labels 2026-09-21T12:17:56Z
+CI push success ae62560a main 2026-09-20T22:51:13Z
+CI pull_request success 1228e9e9 claude/fix-duplicate-invite-crash 2026-09-20T22:46:19Z
+CI pull_request success 54d8b78e claude/fix-duplicate-invite-crash 2026-09-20T22:32:21Z
+CI pull_request success 5d19c997 claude/fix-duplicate-invite-crash 2026-09-20T22:18:59Z
+CI pull_request success b5d30b81 claude/fix-duplicate-invite-crash 2026-09-20T22:15:36Z
+CI pull_request success 2aebb066 claude/fix-duplicate-invite-crash 2026-09-20T22:14:56Z
+CI push success d3c1557b main 2026-09-19T21:42:41Z
+CI pull_request success 8af9fb04 fix/vercel-ssr-circular-chunk 2026-09-19T21:39:48Z
+CI pull_request success 82497a7e fix/vercel-ssr-circular-chunk 2026-09-19T08:12:06Z
+CI push success 0bd0c300 main 2026-09-19T07:54:49Z
+CI pull_request success 761f965a ux-restructure 2026-09-19T07:46:02Z
+CI push success 1e49ab33 main 2026-09-15T11:28:56Z
+CI pull_request success f4cf4284 claude/incident-report-close-out 2026-09-15T11:27:28Z
+CI push success a23dfa89 main 2026-09-15T11:24:46Z
+CI pull_request success 422633f6 claude/fix-offline-queue-infinite-loop 2026-09-15T11:23:10Z
+CI pull_request success a1db5858 claude/fix-offline-queue-infinite-loop 2026-09-15T11:21:25Z
+CI push success b2b07753 main 2026-09-14T21:43:40Z
+CI pull_request success 2de40313 claude/gstack-docs 2026-09-14T21:41:40Z
+CI push success 093549e9 main 2026-09-14T21:36:17Z
+CI push success 9a88e7e6 main 2026-09-14T21:35:32Z
+CI pull_request success cc50d086 claude/issue-41-bun-install-fallback 2026-09-14T21:31:17Z
+CI pull_request success e8bcebae claude/mint-guard-deceased-followup 2026-09-14T21:28:01Z
+CI push success 877f4523 main 2026-09-14T21:08:14Z
+CI pull_request success 6eb7e46f claude/task8-docs-declaration 2026-09-14T20:14:35Z
+CI push success 0bf4cdd7 main 2026-09-14T14:56:37Z
+CI pull_request success 52d2fc76 claude/task12c-offline-queue 2026-09-14T14:54:57Z
+CI push success 4b2baea2 main 2026-09-14T14:11:02Z
+CI pull_request success be67954f claude/token-rotation-closeout 2026-09-14T14:08:46Z
+CI push success 8b7a29ce main 2026-09-14T14:02:38Z
+CI pull_request success 2a4704c0 claude/task14c-workflow-surfaces 2026-09-14T13:59:44Z
+CI pull_request success e6b28f39 claude/task14c-workflow-surfaces 2026-09-14T13:58:22Z
+CI pull_request success b61cc9c2 claude/task14c-workflow-surfaces 2026-09-14T13:51:24Z
+CI push success 09bbb8c9 main 2026-09-14T13:16:34Z
+CI pull_request success e200bb97 claude/payment-hardening-housekeeping 2026-09-14T13:14:20Z
+CI pull_request success 86fb975f claude/payment-hardening-housekeeping 2026-09-14T13:00:54Z
+CI pull_request success 9660e1a9 claude/payment-hardening-housekeeping 2026-09-14T12:57:53Z
+CI push success 75dedded main 2026-09-14T11:43:21Z
+CI pull_request success 39158a05 claude/payment-hardening-fee-guard 2026-09-14T11:41:33Z
+CI push success 774aa26a main 2026-09-14T11:01:22Z
+CI pull_request success 6490fab7 claude/task14b-deploy-currency-check 2026-09-14T10:59:36Z
+CI push success 58afe4c0 main 2026-09-14T08:05:22Z
+CI pull_request success 6be9e462 claude/task14b-remediation-report 2026-09-14T08:03:43Z
+CI push success 1afb44f7 main 2026-09-14T08:01:50Z
+CI pull_request success 967546c6 claude/task14b-verify-letter-fix 2026-09-14T07:59:17Z
+CI push success 1f43e49d main 2026-09-14T00:16:54Z
+CI pull_request success e42d97ae claude/task14b-service-requests-fsm 2026-09-14T00:14:47Z
+CI pull_request success 2ff941a1 claude/task14b-service-requests-fsm 2026-09-14T00:03:39Z
+CI pull_request failure ca89246b claude/task14b-service-requests-fsm 2026-09-14T00:02:06Z
+CI push success 48167b5d main 2026-09-13T23:08:08Z
+CI pull_request success 473083c2 claude/task14a-followups 2026-09-13T23:06:27Z
+CI push success 4206a694 main 2026-09-13T21:56:24Z
+CI pull_request success 67e23be0 claude/task14a-workflow-engine 2026-09-13T21:54:01Z
+CI push success b68b3883 main 2026-09-13T18:27:21Z
+CI pull_request success 0dc911b6 claude/task12b-remediation-report 2026-09-13T18:25:53Z
+CI push success 8911056b main 2026-09-13T18:24:18Z
+CI push success 6883b02a main 2026-09-13T18:20:08Z
+CI pull_request success eb6a2514 claude/task12b-surfaces 2026-09-13T18:13:48Z
+CI pull_request success 762ddc63 claude/task12b-surfaces 2026-09-13T18:09:53Z
+CI pull_request success 073cf054 claude/task12b-surfaces 2026-09-13T18:04:35Z
+CI push success da295b2e main 2026-09-13T17:42:11Z
+CI pull_request success 4078ae1f claude/deploy-verify-remediation-report 2026-09-13T17:40:48Z
+CI push success 488e36fc main 2026-09-13T17:38:16Z
+CI push success fa6b5748 main 2026-09-13T16:46:11Z
+CI pull_request success 89add71b claude/task12a-foundation-and-stages 2026-09-13T16:44:56Z
+CI pull_request success de9536ed claude/task12a-foundation-and-stages 2026-09-13T16:38:24Z
+CI push success 1187e9f4 main 2026-09-13T12:57:47Z
+CI pull_request success 4597e07e claude/task11-schema-gaps 2026-09-13T12:25:48Z
+CI pull_request success dad32d00 claude/task11-schema-gaps 2026-09-13T12:13:27Z
+CI push success d70dc23c main 2026-09-13T11:36:31Z
+CI pull_request success 31d22c39 claude/task10-credential-lifecycle 2026-09-13T11:34:51Z
+CI push success b14623e0 main 2026-09-12T21:32:14Z
+CI pull_request success 4318fa29 claude/tasks-5-6-7-user-drafts-audit-pii 2026-09-12T21:23:04Z
+CI push success 85c560e0 main 2026-09-12T20:40:30Z
+CI pull_request success 113c98a0 claude/task4-permission-reconciliation 2026-09-12T20:34:38Z
+CI push success 6137a324 main 2026-09-12T12:41:43Z
+CI pull_request success 5296b29a claude/task3-verify-copy-fixes 2026-09-12T12:40:18Z
+CI push success d952c642 main 2026-09-12T12:31:36Z
+CI pull_request success 45669563 claude/task3-harden-credential-verification 2026-09-12T12:30:11Z
+CI push success 59301233 main 2026-09-12T11:53:01Z
+CI pull_request success 02fa7861 claude/task2-tenant-scoped-triggers 2026-09-12T11:51:37Z
+CI push success a11714a1 main 2026-09-12T11:00:26Z
+CI pull_request success bea20019 claude/frontend-fixes-login-bundle 2026-09-12T10:59:14Z
+CI push success 450254cc main 2026-09-12T10:34:42Z
+CI pull_request success 9b629130 claude/tenant-admin-password-reset 2026-09-12T10:31:47Z
+CI push success f78967de main 2026-09-09T19:21:50Z
+CI pull_request success 53f3f8e0 claude/tenant-admin-password-reset 2026-09-09T11:06:23Z
+CI push success 7330882b main 2026-09-09T11:04:58Z
+## GET /repos/.../actions/workflows
+CI .github/workflows/ci.yml active
+## GET /repos/.../deployments?per_page=10
+10
+Production 9950f16e 2026-09-22T23:41:51Z vercel[bot]
+Preview abc4a1cc 2026-09-22T23:36:07Z vercel[bot]
+Preview f484a942 2026-09-22T23:25:05Z vercel[bot]
+Preview 7257bc95 2026-09-22T23:14:51Z vercel[bot]
+Preview 6adb8c32 2026-09-22T18:35:09Z vercel[bot]
+Production 590fe854 2026-09-22T18:25:00Z vercel[bot]
+Preview 07ca972f 2026-09-22T18:22:01Z vercel[bot]
+Preview 94981b82 2026-09-22T18:17:48Z vercel[bot]
+Preview ce06e5d2 2026-09-22T18:01:42Z vercel[bot]
+Preview 1404786d 2026-09-22T13:56:42Z vercel[bot]
+## Deployment statuses (latest Production and Preview)
+Production 9950f16e -> https://woredas-portal-kw7nlwcqp-woreda.vercel.app (vercel[bot], success)
+Preview -> https://woredas-portal-rh5d5069z-woreda.vercel.app (vercel[bot], success)
+30 deployments listed: 26 Preview, 4 Production; oldest 2026-09-20T22:09:16Z
+## CI run timing on main (run_started_at / updated_at) vs Vercel Production deployment created_at
+9950f16e CI 2026-09-22T23:41:15Z -> 23:42:18Z success; Production deployment created 23:41:51Z (before CI completed)
+590fe854 CI 2026-09-22T18:24:28Z -> 18:25:42Z success; Production deployment created 18:25:00Z (before CI completed)

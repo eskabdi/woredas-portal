@@ -1,0 +1,14 @@
+bun audit v1.3.11 (af24e281)
+js-yaml  >=4.0.0 <4.3.2
+  eslint › @eslint/eslintrc › js-yaml
+  @tanstack/react-start › @tanstack/start-plugin-core › xmlbuilder2 › js-yaml
+  high: js-yaml: maxTotalMergeKeys does not limit CPU use for empty merge sources - https://github.com/advisories/GHSA-2883-xcg3-v3hh
+
+1 vulnerabilities (1 high)
+
+To update all dependencies to the latest compatible versions:
+  bun update
+
+To update all dependencies to the latest versions (including breaking changes):
+  bun update --latest
+

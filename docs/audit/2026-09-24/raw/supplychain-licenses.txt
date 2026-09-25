@@ -1,0 +1,19 @@
+total packages: 524
+  435 MIT 
+   28 ISC 
+   24 Apache-2.0 
+    9 BSD-2-Clause 
+    7 BSD-3-Clause 
+    6 MPL-2.0   -> lightningcss@1.32.0, lightningcss-linux-x64-gnu@1.32.0, lightningcss-linux-x64-musl@1.32.0, lightningcss@1.33.0, lightningcss-linux-x64-gnu@1.33.0, lightningcss-linux-x64-musl@1.33.0
+    2 MIT-0 
+    2 Hippocratic-2.1 
+    2 BlueOak-1.0.0   -> minimatch@10.2.6, lru-cache@11.5.2
+    1 Python-2.0   -> argparse@2.0.1
+    1 CC-BY-4.0   -> caniuse-lite@1.0.30001809
+    1 (MPL-2.0 OR Apache-2.0)   -> dompurify@3.4.13
+    1 Unlicense   -> isbot@5.2.1
+    1 CC0-1.0   -> mdn-data@2.27.1
+    1 (MIT AND Zlib) 
+    1 MIT OR SEE LICENSE IN FEEL-FREE.md 
+    1 0BSD   -> tslib@2.8.1
+    1 MIT AND ISC 

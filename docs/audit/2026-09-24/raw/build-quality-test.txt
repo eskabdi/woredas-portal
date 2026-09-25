@@ -1,0 +1,11 @@
+$ vitest run
+
+ RUN  v4.1.11 /home/user/woredas-portal
+
+
+ Test Files  23 passed (23)
+      Tests  202 passed (202)
+   Start at  17:25:00
+   Duration  9.73s (transform 834ms, setup 3.40s, import 1.21s, tests 347ms, environment 18.78s)
+
+exit=0

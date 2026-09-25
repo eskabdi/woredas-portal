@@ -1,0 +1,150 @@
+{
+  "A. Architecture & Design": {
+    "points": 2.5,
+    "scored": 8,
+    "unverified": 0,
+    "na": 0
+  },
+  "B. Stack & Inventory": {
+    "points": 2.0,
+    "scored": 5,
+    "unverified": 0,
+    "na": 0
+  },
+  "C. Coding & Implementation": {
+    "points": 2.0,
+    "scored": 7,
+    "unverified": 0,
+    "na": 1
+  },
+  "D. Security Functionality Doc": {
+    "points": 1.0,
+    "scored": 4,
+    "unverified": 1,
+    "na": 0
+  },
+  "E. API Security": {
+    "points": 1.5,
+    "scored": 6,
+    "unverified": 0,
+    "na": 0
+  },
+  "F. Testing Scope": {
+    "points": 1.5,
+    "scored": 3,
+    "unverified": 0,
+    "na": 0
+  },
+  "G. Living Documentation": {
+    "points": 0.0,
+    "scored": 1,
+    "unverified": 0,
+    "na": 0
+  },
+  "H. Project-specific extensions": {
+    "points": 8.5,
+    "scored": 24,
+    "unverified": 0,
+    "na": 0
+  },
+  "Appendix B \u2014 Ethiopian Locale": {
+    "points": 8.0,
+    "scored": 13,
+    "unverified": 0,
+    "na": 0
+  },
+  "_overall_appendix_a": {
+    "points": 19.0,
+    "scored": 58,
+    "unverified": 1,
+    "pct": "32.8%"
+  },
+  "_combined": {
+    "points": 27.0,
+    "scored": 71,
+    "unverified": 1,
+    "pct": "38.0%"
+  },
+  "_status_totals": {
+    "PARTIAL": 32,
+    "FAIL": 28,
+    "N/A": 1,
+    "UNVERIFIED": 1,
+    "PASS": 11
+  },
+  "_items": {
+    "A-01": "PARTIAL",
+    "A-02": "FAIL",
+    "A-03": "FAIL",
+    "A-04": "PARTIAL",
+    "A-05": "PARTIAL",
+    "A-06": "PARTIAL",
+    "A-07": "PARTIAL",
+    "A-08": "FAIL",
+    "B-01": "PARTIAL",
+    "B-02": "PARTIAL",
+    "B-03": "PARTIAL",
+    "B-04": "FAIL",
+    "B-05": "PARTIAL",
+    "C-01": "PARTIAL",
+    "C-02": "FAIL",
+    "C-03": "N/A",
+    "C-04": "PARTIAL",
+    "C-05": "PARTIAL",
+    "C-06": "FAIL",
+    "C-07": "PARTIAL",
+    "C-08": "FAIL",
+    "D-01": "FAIL",
+    "D-02": "PARTIAL",
+    "D-03": "PARTIAL",
+    "D-04": "UNVERIFIED",
+    "D-05": "FAIL",
+    "E-01": "FAIL",
+    "E-02": "FAIL",
+    "E-03": "PARTIAL",
+    "E-04": "FAIL",
+    "E-05": "PASS",
+    "E-06": "FAIL",
+    "F-01": "PARTIAL",
+    "F-02": "PARTIAL",
+    "F-03": "PARTIAL",
+    "G-01": "FAIL",
+    "TEN-01": "PARTIAL",
+    "TEN-02": "FAIL",
+    "TEN-03": "PASS",
+    "TEN-04": "FAIL",
+    "TEN-05": "PARTIAL",
+    "TEN-06": "PARTIAL",
+    "CLS-01": "FAIL",
+    "RBAC-01": "FAIL",
+    "RBAC-02": "PASS",
+    "RBAC-03": "FAIL",
+    "MC-01": "FAIL",
+    "MC-02": "FAIL",
+    "MC-03": "FAIL",
+    "BL-01": "PARTIAL",
+    "BL-02": "PARTIAL",
+    "CRY-01": "PARTIAL",
+    "CRY-02": "PARTIAL",
+    "CRY-03": "FAIL",
+    "LOG-01": "FAIL",
+    "PRV-01": "PARTIAL",
+    "SEC-01": "PASS",
+    "QA-01": "PARTIAL",
+    "RT-01": "PASS",
+    "OPS-01": "FAIL",
+    "ET-01": "PARTIAL",
+    "ET-02": "PASS",
+    "ET-03": "PASS",
+    "ET-04": "FAIL",
+    "ET-05": "FAIL",
+    "ET-06": "PARTIAL",
+    "ET-07": "PASS",
+    "ET-08": "PARTIAL",
+    "ET-09": "PARTIAL",
+    "ET-10": "PASS",
+    "ET-11": "PASS",
+    "ET-12": "FAIL",
+    "ET-13": "PASS"
+  }
+}

@@ -1,0 +1,111 @@
+Resolving dependencies
+Resolved, downloaded and extracted [188]
+Saved lockfile
+Unused files (52)
+.claude/designs/woreda-documents/_ds/modernist-4b3a5c50-da2e-44b5-81ca-7aa846da9d0a/_ds_bundle.js
+.claude/designs/woreda-documents/_ds/modernist-4b3a5c50-da2e-44b5-81ca-7aa846da9d0a/styles.css
+.claude/designs/woreda-documents/doc-page.js
+.claude/designs/woreda-documents/image-slot.js
+.claude/designs/woreda-documents/support.js
+.claude/skills/woreda-manual/assets/manual.css
+.claude/skills/woreda-manual/scripts/render-pdf.mjs
+public/sw.js
+scripts/migrate-storage.mjs
+scripts/rental-phase2-backfill.ts
+scripts/seed-staging-users.ts
+src/components/common/ComingSoon.tsx
+src/components/ui/accordion.tsx
+src/components/ui/aspect-ratio.tsx
+src/components/ui/avatar.tsx
+src/components/ui/breadcrumb.tsx
+src/components/ui/calendar.tsx
+src/components/ui/carousel.tsx
+src/components/ui/chart.tsx
+src/components/ui/command.tsx
+src/components/ui/context-menu.tsx
+src/components/ui/drawer.tsx
+src/components/ui/form.tsx
+src/components/ui/hover-card.tsx
+src/components/ui/input-otp.tsx
+src/components/ui/menubar.tsx
+src/components/ui/navigation-menu.tsx
+src/components/ui/pagination.tsx
+src/components/ui/popover.tsx
+src/components/ui/progress.tsx
+src/components/ui/radio-group.tsx
+src/components/ui/resizable.tsx
+src/components/ui/slider.tsx
+src/components/ui/table.tsx
+src/components/ui/toggle-group.tsx
+src/components/ui/toggle.tsx
+src/integrations/supabase/auth-middleware.ts
+src/integrations/supabase/client.server.ts
+src/lib/error-capture.ts
+src/lib/security-headers.ts
+src/server.ts
+supabase/functions/_shared/clientIp.ts
+supabase/functions/_shared/rateLimit.ts
+supabase/functions/_shared/response.ts
+supabase/functions/activate-invited-user/index.ts
+supabase/functions/invite-platform-admin/index.ts
+supabase/functions/invite-tenant-user/index.ts
+supabase/functions/record-login/index.ts
+supabase/functions/resend-platform-invite/index.ts
+supabase/functions/resend-tenant-invite/index.ts
+supabase/functions/send-password-reset-link/index.ts
+supabase/functions/sign-credential/index.ts
+Unused dependencies (1)
+package.json: @radix-ui/react-accordion, @radix-ui/react-aspect-ratio, @radix-ui/react-avatar, @radix-ui/react-context-menu, @radix-ui/react-hover-card, @radix-ui/react-menubar, @radix-ui/react-navigation-menu, @radix-ui/react-popover, @radix-ui/react-progress, @radix-ui/react-radio-group, @radix-ui/react-slider, @radix-ui/react-toggle, @radix-ui/react-toggle-group, @tanstack/router-plugin, cmdk, date-fns, embla-carousel-react, input-otp, react-day-picker, react-resizable-panels, vaul
+Unused devDependencies (1)
+package.json: @testing-library/user-event, lightningcss
+Unused exports (27)
+src/components/common/StatusChip.tsx: statusLabelAm
+src/components/common/TableToolbar.tsx: ClearFiltersButton
+src/components/print/PrintDocumentShell.tsx: REGIONAL_HEADER_AM, REGIONAL_HEADER_EN
+src/components/ui/alert-dialog.tsx: AlertDialogPortal, AlertDialogOverlay, AlertDialogTrigger
+src/components/ui/alert.tsx: AlertTitle
+src/components/ui/badge.tsx: badgeVariants
+src/components/ui/card.tsx: CardFooter, CardTitle, CardDescription
+src/components/ui/dialog.tsx: DialogPortal, DialogOverlay, DialogTrigger, DialogClose
+src/components/ui/dropdown-menu.tsx: DropdownMenuCheckboxItem, DropdownMenuRadioItem, DropdownMenuLabel, DropdownMenuShortcut, DropdownMenuGroup, DropdownMenuPortal, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuRadioGroup
+src/components/ui/scroll-area.tsx: ScrollBar
+src/components/ui/select.tsx: SelectGroup, SelectLabel, SelectSeparator, SelectScrollUpButton, SelectScrollDownButton
+src/components/ui/sheet.tsx: SheetPortal, SheetOverlay, SheetTrigger, SheetClose, SheetFooter
+src/components/ui/sidebar.tsx: SidebarGroupAction, SidebarGroupLabel, SidebarInput, SidebarMenuAction, SidebarMenuBadge, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarRail, SidebarSeparator, useSidebar
+src/config/credentialCryptoConfig.ts: CREDENTIAL_VERIFY_ORIGIN
+src/config/navGroups.ts: groupOf
+src/config/receiptVerify.ts: RECEIPT_VERIFY_ORIGIN
+src/hooks/useAuthBootstrap.ts: fetchAppUser
+src/hooks/useCredentialRequests.ts: useCredentialPolicy
+src/integrations/supabase/types.ts: Constants
+src/lib/credentialWorkflowSchemas.ts: suspendSchema
+src/lib/residentSchema.ts: buildJsonOrNull
+src/lib/serviceConstants.ts: OPEN_SERVICE_STATUSES
+src/utils/barcode.ts: BARCODE_HEIGHT_MM, MIN_X_DIMENSION_UM, BarcodeTooDenseError
+src/utils/harariCredentialCrypto.ts: extractToken
+src/utils/imageCompression.ts: swapExtension
+src/utils/reportExport.ts: exportSectionsToPdf
+src/utils/tableExport.ts: rowsToCsv
+Unused exported types (22)
+src/components/common/TableToolbar.tsx: SortDir, UrlSort
+src/components/forms/Stepper.tsx: StepperStep
+src/components/print/PrintDocumentShell.tsx: PrintDocumentShellProps
+src/components/ui/badge.tsx: BadgeProps
+src/components/ui/button.tsx: ButtonProps
+src/components/workflow/HistoryTimeline.tsx: HistoryRow
+src/components/workflow/WorkflowQueueTable.tsx: WorkflowQueueFilters
+src/config/permissionLabels.ts: PermissionLabel
+src/config/permissions.ts: AdminNavItem
+src/hooks/useCredentialRequests.ts: CredentialPolicyRow
+src/hooks/useKebeleOptions.ts: KebeleOption
+src/hooks/useReportsAggregate.ts: ReportData
+src/hooks/useServiceTypes.ts: ServiceTypeRow
+src/integrations/supabase/types.ts: Tables, TablesInsert, TablesUpdate, Enums, CompositeTypes
+src/lib/authRedirect.ts: AuthRedirectOutcome
+src/lib/credentialWorkflowSchemas.ts: StageReturnValues, RejectValues, RevokeValues, SuspendValues, PaymentValues, PrintConfirmValues
+src/lib/offlineSync.ts: SyncResult
+src/lib/tenantRoles.ts: TenantRolePermissionRow
+src/lib/userPermissionOverrides.ts: UserPermissionOverrideRow
+src/test/supabaseMock.ts: QueryBuilderMock
+src/utils/barcode.ts: BarcodeMetrics
+src/utils/harariCredentialCrypto.ts: HarariResidentProfile

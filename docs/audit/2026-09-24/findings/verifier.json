@@ -1,0 +1,940 @@
+{
+  "agent": "verifier",
+  "method": "Every Critical/High (20, all High) re-opened at the cited path:line; latest definition of each function/policy resolved by grepping all 90 migrations for CREATE OR REPLACE / DROP POLICY / CREATE TRIGGER / REVOKE; searched for compensating RESTRICTIVE policies (none), column-level REVOKE UPDATE (none), BEFORE triggers and pin triggers; code paths confirmed reachable from live UI or PostgREST. WP-CRY-001 malleability independently reproduced with Node 22 WebCrypto. R7 candidates (WP-DB-003/009/010, WP-API-003) re-examined. 10 Medium findings spot-checked.",
+  "summary": {
+    "input": {
+      "Critical": 0,
+      "High": 20,
+      "Medium": 56,
+      "Low": 60,
+      "Info": 21,
+      "total": 157
+    },
+    "high_verdicts": {
+      "verified": 19,
+      "downgraded": 0,
+      "rejected": 0,
+      "needs-live-test": 1
+    },
+    "severity_changes": [
+      "WP-DB-003 High->Critical (R7)",
+      "WP-DB-009 Medium->Critical (R7)",
+      "WP-DB-010 Medium->Critical (R7)"
+    ],
+    "after_regrade_before_dedupe": {
+      "Critical": 3,
+      "High": 19,
+      "Medium": 54,
+      "Low": 60,
+      "Info": 21,
+      "total": 157
+    },
+    "after_dedupe_canonical": {
+      "Critical": 1,
+      "High": 15,
+      "Medium": 47,
+      "Low": 56,
+      "Info": 21,
+      "total": 140
+    },
+    "medium_sample_false_positive_rate": "0/10 (0%)"
+  },
+  "verdicts": [
+    {
+      "id": "WP-DB-001",
+      "verdict": "verified",
+      "original_severity": "High",
+      "new_severity": "High",
+      "new_confidence": "Confirmed",
+      "canonical": "WP-DB-001",
+      "reasoning": "get_user_woreda_id() has exactly one definition (baseline:1335) and no later CREATE OR REPLACE; it selects woreda_id with no status predicate. The tenant SELECT policies on resident, household, vital_event, payment, receipt, credential_request, residence_credential, service_request and audit_log are still their baseline versions (no DROP POLICY/CREATE POLICY in any later migration). No RESTRICTIVE policy exists anywhere in supabase/migrations (grep 'RESTRICTIVE' = 0 hits), so nothing ANDs a status check back in. No code path calls auth.admin.signOut, ban_duration or updateUserById (grep over src/ and supabase/functions = 0 hits), so the suspended user's refresh token keeps working. Not cross-tenant, so R7 does not apply; High (in-tenant access after de-provisioning) stands.",
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1335,
+          "snippet": "CREATE OR REPLACE FUNCTION public.get_user_woreda_id() ... SELECT woreda_id FROM public.app_user WHERE user_id = auth.uid();"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1626,
+          "snippet": "CREATE POLICY resident_select ... USING ((is_super_admin() OR (woreda_id = get_user_woreda_id())))"
+        },
+        {
+          "path": "src/components/settings/UsersRolesTab.tsx",
+          "line": 257,
+          "snippet": ".update({ status: \"suspended\" })  -- only app_user changes; GoTrue session untouched"
+        }
+      ]
+    },
+    {
+      "id": "WP-AUTH-002",
+      "verdict": "verified",
+      "original_severity": "High",
+      "new_severity": "High",
+      "new_confidence": "Confirmed",
+      "canonical": "WP-DB-001",
+      "reasoning": "Duplicate root cause of WP-DB-001 (suspension is an app_user.status flag that neither the tenant predicate nor GoTrue honours). Independently confirmed that src/routes/woreda.tsx:21-22 gates only on role, while src/routes/admin.tsx:31 adds a status !== 'active' redirect; useAuthBootstrap re-reads status on TOKEN_REFRESHED but nothing acts on it in the woreda shell. Merged into WP-DB-001 as an additional location (client + session layer).",
+      "evidence": [
+        {
+          "path": "src/routes/woreda.tsx",
+          "line": 21,
+          "snippet": "if (!role) return <Navigate to=\"/login\" />;\n  if (role === \"super_admin\") return <Navigate to=\"/admin/dashboard\" />;"
+        },
+        {
+          "path": "src/routes/admin.tsx",
+          "line": 31,
+          "snippet": "if (status !== \"active\") return <Navigate to=\"/login\" />;  -- admin shell only"
+        }
+      ]
+    },
+    {
+      "id": "WP-DB-002",
+      "verdict": "verified",
+      "original_severity": "High",
+      "new_severity": "High",
+      "new_confidence": "Confirmed",
+      "canonical": "WP-DB-002",
+      "reasoning": "All 78 'ON storage.objects' statements live in migrations 01, 04, 14, 48 and 49; none of the tenant-bucket policies references user_has_perm/user_has_any_perm or any *_perm_ok helper (grep of the policy bodies = 0 hits). The only permission-tighter policy (attachments_delete in 48) was widened back to the woreda prefix in 49:112. rental-request-documents policies (01:85-94) are also prefix-only. No later migration redefines any of them. Official assets live at deterministic paths and are uploaded with upsert, so an overwrite by any staff member is a straightforward PostgREST/Storage call.",
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000001_storage.sql",
+          "line": 124,
+          "snippet": "tenant_assets_insert_scoped ... (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id()))"
+        },
+        {
+          "path": "supabase/migrations/00000000000049_task11_review_hardening.sql",
+          "line": 112,
+          "snippet": "attachments_delete_scoped ... (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id()))"
+        },
+        {
+          "path": "src/routes/woreda.settings.woreda-configuration.tsx",
+          "line": 687,
+          "snippet": "const path = `${woredaId}/${field}.${storageExtension(upload, \"png\")}`; ... upsert: true"
+        }
+      ]
+    },
+    {
+      "id": "WP-DB-003",
+      "verdict": "verified",
+      "original_severity": "High",
+      "new_severity": "Critical",
+      "new_confidence": "Likely",
+      "canonical": "WP-VER-001",
+      "severity_change": "upgraded (R7)",
+      "reasoning": "Could not disprove. Latest generate_resident_on_birth_approval() is 59:118 (redefined in 32 and 59; nothing later). It is SECURITY DEFINER and reads ethnicity, religion, current_household_id (59:139-141) and full_name_am (59:163) from public.resident by the client-supplied event_details.mother_resident_id with no woreda predicate. The only compensating checks are assert_vital_event_woreda_consistency() (32:223; checks NEW.resident_id and NEW.household_id only) and enforce_vital_event_preconditions() (latest 66:406; checks household for birth, resident for death, spouses for marriage), neither of which looks at mother_resident_id. resident has no BEFORE trigger that validates current_household_id's woreda. Migration 32:68-71 explicitly deferred this to 'Task 14'; the Task 14 migrations (58, 59, 60, 65, 66) redefined the function and the preconditions without adding the check. Single-actor path exists: a civil_registrar can INSERT the birth at 'awaiting_payment' (WP-WF-001) or edit event_details after approval (WP-WF-004); approval UI renders a foreign mother as blank (findParent() misses under RLS) so a reviewer would not notice. Result: tenant B's special-category PII (ethnicity, religion), the mother's Amharic name and B's household id are written into a tenant-A resident row that A can read. That is a cross-tenant data exposure, which R7 fixes at Critical. Confidence stays Likely because exploitation requires knowing a UUIDv4 of a tenant-B resident (not enumerable through RLS) and the live function body is not verifiable here.",
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql",
+          "line": 141,
+          "snippet": "FROM public.resident WHERE resident_id = v_mother_id;  -- no woreda_id predicate, SECURITY DEFINER"
+        },
+        {
+          "path": "supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql",
+          "line": 163,
+          "snippet": "COALESCE(d->>'mother_name', (SELECT full_name_am FROM public.resident WHERE resident_id = v_mother_id)),"
+        },
+        {
+          "path": "supabase/migrations/00000000000032_task2_tenant_scoped_definer_triggers.sql",
+          "line": 68,
+          "snippet": "Out of scope for this task, not touched here: mother-lookup reads inside generate_resident_on_birth_approval() ... with no woreda check of their own ... which is Task 14."
+        },
+        {
+          "path": "supabase/migrations/00000000000032_task2_tenant_scoped_definer_triggers.sql",
+          "line": 223,
+          "snippet": "assert_vital_event_woreda_consistency(): checks NEW.resident_id and NEW.household_id only"
+        }
+      ]
+    },
+    {
+      "id": "WP-DB-004",
+      "verdict": "verified",
+      "original_severity": "High",
+      "new_severity": "High",
+      "new_confidence": "Confirmed",
+      "canonical": "WP-DB-004",
+      "reasoning": "Every cited SELECT policy (resident_select 1626, household_select 1586, vital_event_select 1655, payment_select 1599, receipt_select 1604, credential_request_select 1568, residence_credential_select 1621, service_request_select 1644, audit_log_tenant_read 1553) has only its baseline definition. The *_decrypted views are security_invoker, so they inherit these policies, and decrypt_pii_text() (23:352-357) checks only caller woreda, not a read permission. print_officer's default_role_perms (83:110) has no resident/civil/payment/audit read key. In-tenant, so High (not R7).",
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1626,
+          "snippet": "resident_select ... USING ((is_super_admin() OR (woreda_id = get_user_woreda_id())))"
+        },
+        {
+          "path": "supabase/migrations/00000000000023_pii_encryption.sql",
+          "line": 355,
+          "snippet": "IF NOT caller_is_super AND (caller_woreda IS NULL OR caller_woreda <> _woreda_id) THEN RETURN NULL;  -- woreda only, no permission"
+        }
+      ]
+    },
+    {
+      "id": "WP-AZ-001",
+      "verdict": "verified",
+      "original_severity": "High",
+      "new_severity": "High",
+      "new_confidence": "Confirmed",
+      "canonical": "WP-AZ-001",
+      "reasoning": "grep for user_has_console_perm across migrations and functions: the only server-side uses are 12:39-44 (console_role tables), 12:150 (console_role_id trigger) and invite-platform-admin/index.ts:84-94 (super_admin mint only). sign-credential checks credential.print only for non-super_admin callers (index.ts:120-127); invite-tenant-user, resend-*, send-password-reset-link and publish_id_card_template gate on role/is_super_admin() only. The four other CP keys appear server-side only in the 09 CHECK list. Impact is latent until a super_admin is actually given a console role (NULL = unrestricted), hence High not Critical.",
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000012_enforce_console_rbac.sql",
+          "line": 39,
+          "snippet": "USING (public.user_has_console_perm('console.console_users.manage'))"
+        },
+        {
+          "path": "supabase/functions/invite-platform-admin/index.ts",
+          "line": 84,
+          "snippet": "if (role === \"super_admin\") { ... user_has_console_perm ... }  -- no CP check on the tenant_admin path"
+        },
+        {
+          "path": "supabase/functions/sign-credential/index.ts",
+          "line": 120,
+          "snippet": "if (appUser.role !== \"super_admin\") { ... user_has_perm('credential.print') }"
+        }
+      ]
+    },
+    {
+      "id": "WP-API-001",
+      "verdict": "verified",
+      "original_severity": "High",
+      "new_severity": "High",
+      "new_confidence": "Confirmed",
+      "canonical": "WP-AZ-001",
+      "reasoning": "Same root cause and same evidence as WP-AZ-001 (CP axis enforced only in React). Merged; its Edge-Function-by-function enumeration is kept as additional locations.",
+      "evidence": [
+        {
+          "path": "supabase/functions/resend-platform-invite/index.ts",
+          "line": 46,
+          "snippet": "if (!caller || caller.role !== \"super_admin\" || caller.status !== \"active\") {"
+        }
+      ]
+    },
+    {
+      "id": "WP-AZ-002",
+      "verdict": "verified",
+      "original_severity": "High",
+      "new_severity": "High",
+      "new_confidence": "Confirmed",
+      "canonical": "WP-WF-004 (part 1), WP-WF-006 (part 2)",
+      "reasoning": "Both halves reproduce from the latest definitions. (1) credential_request_update is still the baseline policy (1569) admitting credential.verify/payment.collect/revenue.collect; enforce_workflow_transition (latest 46:135) returns at 46:166 when status is unchanged, and no trigger on credential_request pins resident_id/request_type (grep 'OLD.resident_id' finds pins only on vital_event (33:66), service_request/vital_event precondition re-checks (66) and arrears plans (81/82)). The 66 precondition re-check fires on a resident_id change but only asserts same-woreda membership, which a substitution satisfies. (2) resident.residency_status has no guard trigger. Finding is a composite of two root causes already reported by workflows; split and merged.",
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1569,
+          "snippet": "credential_request_update ... user_has_any_perm('{credential.issue,credential.approve,credential.verify,payment.collect,revenue.collect}')"
+        },
+        {
+          "path": "supabase/migrations/00000000000046_task10_credential_lifecycle.sql",
+          "line": 166,
+          "snippet": "IF NEW.status IS NOT DISTINCT FROM OLD.status THEN RETURN NEW;"
+        }
+      ]
+    },
+    {
+      "id": "WP-AUTH-001",
+      "verdict": "verified",
+      "original_severity": "High",
+      "new_severity": "High",
+      "new_confidence": "Confirmed",
+      "canonical": "WP-AUTH-001",
+      "reasoning": "grep for mfa|aal2|getAuthenticatorAssuranceLevel over src/ and supabase/ (ts, tsx, sql) returns nothing; input-otp.tsx is imported by no other file. Even if TOTP were enabled in the dashboard, no RLS policy or RPC requires aal2, so it would be optional. Could not disprove; High for platform-wide super_admin with single-factor login.",
+      "evidence": [
+        {
+          "path": "src/routes/login.tsx",
+          "line": 96,
+          "snippet": "supabase.auth.signInWithPassword({ email: values.email, password: values.password })"
+        }
+      ]
+    },
+    {
+      "id": "WP-APP-001",
+      "verdict": "verified",
+      "original_severity": "High",
+      "new_severity": "High",
+      "new_confidence": "Confirmed",
+      "canonical": "WP-APP-001",
+      "reasoning": "The sink is live: LetterTemplatesTab auto-selects the first type (65-67), copies letter_body_html into state (71) and RichTextEditor assigns it to innerHTML (rich-text-editor.tsx:46). No migration sanitises or constrains service_type.letter_body_html (only its column definition at baseline:466). Mitigating factor examined: service_type_update requires tenant.manage, which is a RESERVED key held only by tenant_admin/super_admin, and super_admin cannot open the woreda portal; so the realistic attacker is one tenant_admin (or super_admin via PostgREST) and the victim another tenant_admin of the same woreda. That limits privilege gain, but the stolen session still defeats maker != checker between two admins and non-repudiation, and the audit rubric fixes stored XSS at High. Kept High with precondition noted.",
+      "evidence": [
+        {
+          "path": "src/components/ui/rich-text-editor.tsx",
+          "line": 46,
+          "snippet": "if (el && el.innerHTML !== value) el.innerHTML = value || \"\";"
+        },
+        {
+          "path": "src/components/settings/LetterTemplatesTab.tsx",
+          "line": 71,
+          "snippet": "setHtml(selected.letter_body_html ?? plainTextToHtml(selected.letter_body_template ?? \"\"));"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1649,
+          "snippet": "service_type_update ... user_has_any_perm(ARRAY['tenant.manage'::text])"
+        }
+      ]
+    },
+    {
+      "id": "WP-APP-002",
+      "verdict": "verified",
+      "original_severity": "High",
+      "new_severity": "High",
+      "new_confidence": "Confirmed",
+      "canonical": "WP-WF-004",
+      "reasoning": "Confirmed: verify_service_letter (latest 64:22) attests sr.subject, sr.issued_at, COALESCE(sr.letter_summary, sr.purpose) and the resident via sr.resident_id. Triggers on service_request (baseline 1500-1503, 23:537, 61:73/78, 62:51/82/151, 83:449) are: status FSM (returns early if status unchanged), payment/issuance gates (status-transition only), preconditions (re-check only on resident/household/service_type/woreda change, same-woreda test), rental checkpoint (only on service_type/resident/override change). None pins letter_summary, subject, issued_at or verification_token, and there is no column-level REVOKE UPDATE anywhere. Merged into WP-WF-004 (same root cause: content not frozen after the approval/issuance step); the reprint-from-live-template and client-chosen-token sub-issues are recorded as additional locations.",
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000064_task14b_verify_letter_completed_status.sql",
+          "line": 33,
+          "snippet": "COALESCE(sr.letter_summary, sr.purpose),"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 997,
+          "snippet": "IF NEW.verification_token IS NULL OR NEW.verification_token = '' THEN  -- client token kept on INSERT, never pinned on UPDATE"
+        }
+      ]
+    },
+    {
+      "id": "WP-CRY-001",
+      "verdict": "verified",
+      "original_severity": "High",
+      "new_severity": "High",
+      "new_confidence": "Confirmed",
+      "canonical": "WP-CRY-001",
+      "reasoning": "Read src/routes/v.$token.tsx end to end. The verdict banner is a chain withdrawn ? red : notYetIssued ? amber : printedNotCollected ? amber : expired ? amber : GREEN. withdrawn requires a registry row (215), so both registry-miss (notFound, 179) and RPC error (registryError, 134) fall into the green 'verified' branch (262), with only a small grey note (276). verify_credential_token (only definition 34:145) matches WHERE rc.qr_payload = _token (245), an exact string compare. Independently reproduced with Node 22 WebCrypto and the repo's own decoder logic (atob on base64url, harariCredentialCrypto.ts:103): an 86-char P-256 signature has 15 alternative last characters that decode to the same bytes and verify, and the high-S twin (r, n-s) also verifies and produces a different string. Either variant passes the offline check and misses the exact-match lookup, landing on green for a revoked card. Not an authentication bypass of the system itself, so High (not R7 Critical).",
+      "evidence": [
+        {
+          "path": "src/routes/v.$token.tsx",
+          "line": 179,
+          "snippet": "const notFound = !registry && !data.registryError;"
+        },
+        {
+          "path": "src/routes/v.$token.tsx",
+          "line": 215,
+          "snippet": "const withdrawn = !!registry && !expired && WITHDRAWN.includes(registry.status);"
+        },
+        {
+          "path": "supabase/migrations/00000000000034_task3_harden_credential_verification.sql",
+          "line": 245,
+          "snippet": "WHERE rc.qr_payload = _token"
+        },
+        {
+          "path": "src/utils/harariCredentialCrypto.ts",
+          "line": 103,
+          "snippet": "const bin = atob(b64);  -- forgiving base64: trailing bits discarded, no canonical re-encode check"
+        },
+        {
+          "path": "(verifier reproduction, node 22)",
+          "line": 0,
+          "snippet": "len 86 variants 15 highS verifies true differs true"
+        }
+      ]
+    },
+    {
+      "id": "WP-OPS-001",
+      "verdict": "verified",
+      "original_severity": "High",
+      "new_severity": "High",
+      "new_confidence": "Confirmed",
+      "canonical": "WP-OPS-001",
+      "reasoning": "Every cited line checks out: staging-runbook.md:9, go-live-declaration.md:179-181, _shared/response.ts:20-23 (localhost:5173 allowed 'against the real project'), remediation-report.md:21 (SAMPLE-DATA = committed-then-cleaned real writes), scripts/run-live-probes.py:33 (production ref as default target; value not reproduced here). Operational rather than code-exploitable, but the combination of real PII, committed test writes, hand-inserted audit rows and account-level tokens in agent sessions is a direct INSA OPS-01 failure. Kept High.",
+      "evidence": [
+        {
+          "path": "docs/staging-runbook.md",
+          "line": 9,
+          "snippet": "**This app has no staging project today.**"
+        },
+        {
+          "path": "supabase/functions/_shared/response.ts",
+          "line": 22,
+          "snippet": "[Deno.env.get(\"SITE_URL\"), \"http://localhost:5173\"]"
+        }
+      ]
+    },
+    {
+      "id": "WP-OPS-002",
+      "verdict": "needs-live-test",
+      "original_severity": "High",
+      "new_severity": "High",
+      "new_confidence": "Needs-live-verification",
+      "canonical": "WP-OPS-002",
+      "reasoning": "The negative evidence holds (no PITR/RPO/RTO/DR statement anywhere outside docs/audit; dump-storage.sql:12 and dump-data.sql:8 exclude object bytes and operational rows; system-review-2026-09.md:435 records no restore drill). Whether the production project is on a paid plan with daily backups/PITR cannot be determined from the repository. Retain High provisionally; confirm plan tier and backup settings in the Supabase dashboard, and confirm Storage object backup separately (Supabase database backups never include object bytes).",
+      "evidence": [
+        {
+          "path": "scripts/dump-storage.sql",
+          "line": 12,
+          "snippet": "It does NOT copy the stored files themselves."
+        },
+        {
+          "path": "docs/system-review-2026-09.md",
+          "line": 435,
+          "snippet": "no restore drill is recorded"
+        }
+      ]
+    },
+    {
+      "id": "WP-WF-001",
+      "verdict": "verified",
+      "original_severity": "High",
+      "new_severity": "High",
+      "new_confidence": "Confirmed",
+      "canonical": "WP-WF-001",
+      "reasoning": "enforce_workflow_insert() has a single definition (29:81) and zz_enforce_workflow_insert triggers exist only on credential_request and residence_credential (29:203-211). Latest vital_event_insert (58:100) and service_request_insert (61:35) carry no status predicate. BEFORE INSERT triggers on vital_event (baseline 1506-1507; 32/33 consistency; 59:355 preconditions) and on service_request (baseline 1501-1503; 23:537; 62:151; 83:449) never read NEW.status. The issuance gate (62:70) is BEFORE UPDATE only. verify_service_letter requires only issued_at IS NOT NULL and status in (issued, resolved, closed, completed). Could not disprove; confidence raised to Confirmed at migration level.",
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000029_workflow_insert_guard.sql",
+          "line": 203,
+          "snippet": "DROP TRIGGER IF EXISTS zz_enforce_workflow_insert ON public.credential_request;  -- only credential_request and residence_credential"
+        },
+        {
+          "path": "supabase/migrations/00000000000058_task14a_civil_registration_fsm.sql",
+          "line": 100,
+          "snippet": "CREATE POLICY vital_event_insert ... user_has_any_perm(ARRAY['civil.register', 'civil.create_event'])"
+        },
+        {
+          "path": "supabase/migrations/00000000000061_task14b_service_request_fsm.sql",
+          "line": 35,
+          "snippet": "CREATE POLICY service_request_insert ... 'service.create', 'service.submit', 'complaint.manage', 'tenant.manage'"
+        }
+      ]
+    },
+    {
+      "id": "WP-WF-002",
+      "verdict": "verified",
+      "original_severity": "High",
+      "new_severity": "High",
+      "new_confidence": "Confirmed",
+      "canonical": "WP-WF-002",
+      "reasoning": "workflow_transition seed rows for complaints (61:113-130) are keyed only by entity='service_request'. No trigger after 61 consults category on a status change (grep 'category' in 61-89: only the letter preconditions early-return at 66:346 and fee catalog checks). Maker != checker is only evaluated on entry into 'approved' (46:204-222); the complaint path never enters 'approved'. The public verifier accepts resolved/closed (64:47). Note that WP-WF-001 offers an even shorter route (INSERT at 'issued'); this finding remains a separate root cause.",
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000061_task14b_service_request_fsm.sql",
+          "line": 126,
+          "snippet": "('service_request', 'pending_approval', 'in_progress', 'service.approve', false, 'As-built (complaint): ...')"
+        },
+        {
+          "path": "supabase/migrations/00000000000064_task14b_verify_letter_completed_status.sql",
+          "line": 47,
+          "snippet": "AND sr.status IN ('issued', 'resolved', 'closed', 'completed')"
+        }
+      ]
+    },
+    {
+      "id": "WP-WF-003",
+      "verdict": "verified",
+      "original_severity": "High",
+      "new_severity": "High",
+      "new_confidence": "Confirmed",
+      "canonical": "WP-WF-003",
+      "reasoning": "force_actor_columns() (only definition, baseline:1196) re-pins a column on UPDATE only when the new value is non-null and differs from OLD (1213-1215). enforce_workflow_transition (46:150-163) forbids clearing verified_by/approved_by. Trigger order is alphabetical (trg_force_actor before zz_enforce_workflow_transition), so on cycle 2 an approver who omitted verified_by_user_id is compared against the cycle-1 verifier (46:219). No trigger requires verified_by_user_id = auth.uid() on entry into 'verified' for credential/civil/service (the rental pin at 89:172 is table-specific). Could not disprove.",
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1213,
+          "snippet": "IF (to_jsonb(NEW) ->> col) IS NOT NULL AND (to_jsonb(NEW) ->> col) IS DISTINCT FROM (to_jsonb(OLD) ->> col) THEN"
+        },
+        {
+          "path": "supabase/migrations/00000000000046_task10_credential_lifecycle.sql",
+          "line": 219,
+          "snippet": "IF v_approver = v_verifier THEN"
+        }
+      ]
+    },
+    {
+      "id": "WP-WF-004",
+      "verdict": "verified",
+      "original_severity": "High",
+      "new_severity": "High",
+      "new_confidence": "Confirmed",
+      "canonical": "WP-WF-004",
+      "reasoning": "Canonical for the 'content not frozen after approval/issuance' root cause. pin_credential_identity_fields (46:31) pins only credential_number/serial_number/qr_payload on residence_credential; pin_vital_event_resident (33:60) pins resident_id only once non-null; nothing pins credential_request.resident_id/request_type, vital_event.event_type/event_details, or service_request.subject/letter_summary/issued_at. The 66 precondition re-checks do fire on such edits but only enforce same-woreda/active-resident membership, so a same-tenant substitution passes. Scenario (b) (birth -> death flip on an approved event) passes 66:448 death check if the victim is active. The mint (70:120) reads NEW.resident_id at payment time.",
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000070_mint_guard_deceased_check.sql",
+          "line": 120,
+          "snippet": "NEW.woreda_id, NEW.resident_id, NEW.issuing_kebele_id,"
+        },
+        {
+          "path": "supabase/migrations/00000000000033_task2_followup_pin_and_rental_scope.sql",
+          "line": 66,
+          "snippet": "IF OLD.resident_id IS NOT NULL AND NEW.resident_id IS DISTINCT FROM OLD.resident_id THEN"
+        }
+      ]
+    },
+    {
+      "id": "WP-WF-005",
+      "verdict": "verified",
+      "original_severity": "High",
+      "new_severity": "High",
+      "new_confidence": "Likely",
+      "canonical": "WP-WF-005",
+      "reasoning": "credential_request_update remains the baseline policy (1569). Latest default_role_perms (83:96) gives credential.verify to viewer (83:109), auditor (83:108) and finance_clerk (83:107); permissions.ts agrees (finance_clerk 407, auditor 427, viewer 443). The write reaches every non-status column. Confidence stays Likely only because per-tenant role_permission rows in the live DB may differ from default_role_perms. WP-AZ-003 (Medium) reports the same root cause and is merged here.",
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql",
+          "line": 109,
+          "snippet": "WHEN 'viewer' THEN ARRAY['resident.read','household.read','credential.read','credential.verify',...]"
+        }
+      ]
+    },
+    {
+      "id": "WP-WF-006",
+      "verdict": "verified",
+      "original_severity": "High",
+      "new_severity": "High",
+      "new_confidence": "Confirmed",
+      "canonical": "WP-WF-006",
+      "reasoning": "apply_death_on_approval latest is 59:82; it revokes only status = 'active' credentials (59:97-99). Transitions suspended->active (25:534) and printed->active (25:531) carry no residency check in enforce_workflow_transition (46). resident_update (baseline 1627) is the only guard on residency_status; the only resident triggers are numbering, PII sync and AFTER INSERT audit (grep), so deceased -> active is accepted, and ResidentActions.tsx:132 is a live client path that issues exactly that update. Absorbs part 2 of WP-AZ-002.",
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql",
+          "line": 99,
+          "snippet": "WHERE resident_id = NEW.resident_id AND status = 'active' AND woreda_id = NEW.woreda_id;"
+        },
+        {
+          "path": "src/components/residents/ResidentActions.tsx",
+          "line": 132,
+          "snippet": ".update({ residency_status: \"active\" })"
+        }
+      ]
+    },
+    {
+      "id": "WP-DB-009",
+      "verdict": "verified",
+      "original_severity": "Medium",
+      "new_severity": "Critical",
+      "new_confidence": "Likely",
+      "canonical": "WP-VER-001",
+      "severity_change": "upgraded (R7)",
+      "reasoning": "rental_eligibility() has a single definition (31:55), SECURITY DEFINER, and resolves the resident's woreda from the resident row itself (31:74-78) rather than from the caller; it never calls get_user_woreda_id() or a permission helper. It is explicitly GRANTed to authenticated (31:197), so any authenticated user of tenant A can read tenant B's data for a known resident UUID: house_type, is_household_head, active_occupancy_id, and an in-flight request_number/status. The REVOKE names only PUBLIC (31:196); under Supabase's stock default function ACL anon also holds an explicit EXECUTE, so the unauthenticated path is likely but needs a live has_function_privilege check. The authenticated cross-tenant read is established from code alone, so R7 applies. Likely (UUID precondition).",
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000031_rental_eligibility.sql",
+          "line": 197,
+          "snippet": "GRANT EXECUTE ON FUNCTION public.rental_eligibility(uuid, uuid, text) TO authenticated;"
+        },
+        {
+          "path": "supabase/migrations/00000000000031_rental_eligibility.sql",
+          "line": 196,
+          "snippet": "REVOKE ALL ON FUNCTION public.rental_eligibility(uuid, uuid, text) FROM PUBLIC;  -- anon not named"
+        }
+      ]
+    },
+    {
+      "id": "WP-DB-010",
+      "verdict": "verified",
+      "original_severity": "Medium",
+      "new_severity": "Critical",
+      "new_confidence": "Confirmed",
+      "canonical": "WP-VER-001",
+      "severity_change": "upgraded (R7)",
+      "reasoning": "get_credential_live_status() has a single definition (baseline:1323), SECURITY DEFINER, WHERE credential_number = _credential_number with no woreda predicate, GRANTed to authenticated (07:84). Migration 34 (225-250) deliberately restricted bare-number lookups in verify_credential_token to same-woreda staff and calls cross-tenant number enumeration 'the exact vulnerability this migration exists to close'; this second function reopens that path for every authenticated user. The data returned is status text only, and the function has no callers, so impact per record is low, but it is a server-side cross-tenant read over an enumerable 13-digit Luhn key space. Upgraded under R7; fix is trivial (drop or add the woreda predicate).",
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1323,
+          "snippet": "CREATE OR REPLACE FUNCTION public.get_credential_live_status(_credential_number text) ... SECURITY DEFINER"
+        },
+        {
+          "path": "supabase/migrations/00000000000007_tighten_anon_grants.sql",
+          "line": 84,
+          "snippet": "GRANT EXECUTE ON FUNCTION public.get_credential_live_status(text) TO authenticated, service_role;"
+        }
+      ]
+    },
+    {
+      "id": "WP-API-003",
+      "verdict": "needs-live-test",
+      "original_severity": "Medium",
+      "new_severity": "Medium",
+      "new_confidence": "Needs-live-verification",
+      "canonical": "WP-API-003",
+      "reasoning": "Not itself a cross-tenant path: it is an amplifier that would let an outsider obtain the 'authenticated' role and reach WP-VER-001's functions. Whether GoTrue sign-up is enabled is dashboard-only (supabase/config.toml holds only project_id). Stays Medium; if live testing shows sign-up enabled, WP-VER-001 becomes exploitable by unauthenticated outsiders and should be treated as an incident-priority fix. WP-AUTH-008 is the same issue from the auth-session agent and is merged here.",
+      "evidence": [
+        {
+          "path": "supabase/config.toml",
+          "line": 1,
+          "snippet": "project_id = \"woredas-portal\"  (entire file)"
+        }
+      ]
+    }
+  ],
+  "merges": [
+    {
+      "canonical": "WP-VER-001",
+      "duplicates": [
+        "WP-DB-003",
+        "WP-DB-009",
+        "WP-DB-010"
+      ],
+      "reason": "Same root cause: SECURITY DEFINER functions resolve a row by a caller-supplied key without re-checking the caller's woreda (TEN-04). Three locations: generate_resident_on_birth_approval (59:118), rental_eligibility (31:55), get_credential_live_status (baseline:1323). Critical under R7. WP-API-003/WP-AUTH-008 are the amplifier (self-sign-up) and stay separate."
+    },
+    {
+      "canonical": "WP-DB-001",
+      "duplicates": [
+        "WP-AUTH-002"
+      ],
+      "reason": "Suspension/deactivation does not cut access: DB tenant predicate ignores status and GoTrue sessions are never revoked; woreda shell has no status gate."
+    },
+    {
+      "canonical": "WP-AZ-001",
+      "duplicates": [
+        "WP-API-001"
+      ],
+      "reason": "Console-permission (CP) axis enforced only in React; server checks only console.console_users.manage."
+    },
+    {
+      "canonical": "WP-DB-004",
+      "duplicates": [
+        "WP-AZ-005"
+      ],
+      "reason": "Read/report/audit permission keys not enforced by SELECT RLS."
+    },
+    {
+      "canonical": "WP-WF-004",
+      "duplicates": [
+        "WP-AZ-002",
+        "WP-APP-002"
+      ],
+      "reason": "Content fields of verified/approved/issued records are not frozen; FSM trigger returns early on non-status edits. WP-AZ-002 part 1 (credential_request resident substitution) and WP-APP-002 (issued-letter fields, token and reprint) are additional locations. WP-WF-002's closing sentence on letter_summary edits is the same issue."
+    },
+    {
+      "canonical": "WP-WF-006",
+      "duplicates": [
+        "WP-AZ-002"
+      ],
+      "reason": "WP-AZ-002 part 2 (resident.residency_status writable by any resident.update holder) is the same root cause as WP-WF-006 part 2. WP-AZ-002 is therefore split across two canonicals."
+    },
+    {
+      "canonical": "WP-WF-005",
+      "duplicates": [
+        "WP-AZ-003"
+      ],
+      "reason": "credential.verify (ID-lookup key held by viewer/auditor/finance_clerk) also satisfies credential_request_update."
+    },
+    {
+      "canonical": "WP-DB-005",
+      "duplicates": [
+        "WP-CRY-006"
+      ],
+      "reason": "Plaintext PII twins remain authoritative beside encrypted columns."
+    },
+    {
+      "canonical": "WP-DB-013",
+      "duplicates": [
+        "WP-CRY-008"
+      ],
+      "reason": "Public verification tokens: non-CSPRNG, client-chosen accepted, letter token unpinned, real token in migration 64."
+    },
+    {
+      "canonical": "WP-APP-005",
+      "duplicates": [
+        "WP-LOC-005"
+      ],
+      "reason": "FAN/phone/email format validation is client-only; DB accepts any text."
+    },
+    {
+      "canonical": "WP-APP-003",
+      "duplicates": [
+        "WP-AUTH-003"
+      ],
+      "reason": "Tokens in localStorage plus 'unsafe-inline' script CSP."
+    },
+    {
+      "canonical": "WP-INV-004",
+      "duplicates": [
+        "WP-SUP-002"
+      ],
+      "reason": "js-yaml GHSA-2883-xcg3-v3hh, build-time only."
+    },
+    {
+      "canonical": "WP-AZ-004",
+      "duplicates": [
+        "WP-INV-005"
+      ],
+      "reason": "Module toggles are UI-only; rental_houses key is never gated."
+    },
+    {
+      "canonical": "WP-OPS-005",
+      "duplicates": [
+        "WP-API-005"
+      ],
+      "reason": "Production Edge Function CORS allows http://localhost:5173 (consequence of no staging; also referenced by WP-OPS-001)."
+    },
+    {
+      "canonical": "WP-API-003",
+      "duplicates": [
+        "WP-AUTH-008"
+      ],
+      "reason": "GoTrue self-sign-up / anonymous sign-in not evidenced as disabled."
+    },
+    {
+      "canonical": "WP-AZ-006",
+      "duplicates": [
+        "WP-WF-012"
+      ],
+      "reason": "print_officer role lacks the RLS/Edge permissions its duties require."
+    }
+  ],
+  "medium_sample": [
+    {
+      "id": "WP-DB-006",
+      "result": "accurate",
+      "note": "credential_seq_tenant (baseline:1554) and receipt_seq_tenant (1601) are FOR ALL, tenant-only, never redefined; assign_receipt_number keeps a client number (1015)."
+    },
+    {
+      "id": "WP-DB-008",
+      "result": "accurate",
+      "note": "audit_log_tenant_insert (1552) tenant-only; force_actor leaves NULL actor on INSERT (1208); death side effect inserts audit_log without woreda_id (59:108)."
+    },
+    {
+      "id": "WP-CRY-007",
+      "result": "accurate",
+      "note": "Only UNIQUE constraints on receipt are (woreda_id, receipt_number) (baseline:580) and verification_token (13:14); no UNIQUE(payment_id)."
+    },
+    {
+      "id": "WP-AZ-004",
+      "result": "accurate",
+      "note": "Only server-side module_key reads are 'services' in 62:138, 65:191, 66:394; none in supabase/functions."
+    },
+    {
+      "id": "WP-AUTH-004",
+      "result": "accurate",
+      "note": "useIdleTimeout.ts:79-84 sets lastActivity = now and writes it before reading the stored value."
+    },
+    {
+      "id": "WP-LOC-001",
+      "result": "accurate",
+      "note": "Reproduced: TZ=Africa/Addis_Ababa node -> new Date(2026,9,20).toISOString().slice(0,10) = 2026-10-19; call site woreda.rental-accounts.$occupancyId.tsx:262-263."
+    },
+    {
+      "id": "WP-WF-007",
+      "result": "accurate",
+      "note": "active->revoked is non-system (25:533) so user_has_perm('credential.revoke') is checked for the fee recorder; no later UPDATE of that workflow_transition row."
+    },
+    {
+      "id": "WP-PRV-002",
+      "result": "accurate",
+      "note": "residentSchema.ts payload includes national_id_no/ethnicity/religion; edit route diffs and writes old/new into audit_log (woreda.residents.$residentId.edit.tsx:229-249)."
+    },
+    {
+      "id": "WP-INV-001",
+      "result": "accurate",
+      "note": "All 8 functions import https://esm.sh/@supabase/supabase-js@2; no deno.json/deno.lock/import_map under supabase/."
+    },
+    {
+      "id": "WP-APP-004",
+      "result": "accurate",
+      "note": "credential-request-documents, credential-templates, rental-request-documents (later limited in 72:262) etc. created with NULL limits in 01:24-48; attachments without limits (48:345)."
+    }
+  ],
+  "findings": [
+    {
+      "id": "WP-VER-001",
+      "title": "SECURITY DEFINER functions trust a caller-supplied key without re-checking the caller's woreda: cross-tenant reads via the birth-registration trigger, rental_eligibility() and get_credential_live_status()",
+      "severity": "Critical",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:L/A:N (6.8; severity set to Critical by audit rule R7, cross-tenant exposure)",
+      "confidence": "Likely",
+      "category": "Tenant Isolation",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "TEN-02",
+          "TEN-04",
+          "A-08",
+          "E-06"
+        ],
+        "owasp_top10": [
+          "A01:2021"
+        ],
+        "owasp_api": [
+          "API1:2023"
+        ],
+        "asvs": [
+          "V4.2.1",
+          "V4.1.3"
+        ],
+        "iso27001": [
+          "A.8.3",
+          "A.5.15"
+        ],
+        "nist_csf": [
+          "PR.AA-05",
+          "PR.DS-01"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql",
+          "line": 141,
+          "snippet": "SELECT ethnicity, religion, current_household_id ... FROM public.resident WHERE resident_id = v_mother_id;  -- SECURITY DEFINER, no woreda predicate"
+        },
+        {
+          "path": "supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql",
+          "line": 163,
+          "snippet": "COALESCE(d->>'mother_name', (SELECT full_name_am FROM public.resident WHERE resident_id = v_mother_id)),"
+        },
+        {
+          "path": "supabase/migrations/00000000000032_task2_tenant_scoped_definer_triggers.sql",
+          "line": 68,
+          "snippet": "Out of scope for this task ... mother-lookup reads inside generate_resident_on_birth_approval() ... no woreda check ... which is Task 14."
+        },
+        {
+          "path": "supabase/migrations/00000000000031_rental_eligibility.sql",
+          "line": 74,
+          "snippet": "SELECT r.woreda_id, h.house_type INTO v_woreda_id, v_house_type FROM public.resident r ... WHERE r.resident_id = _resident_id;  -- woreda taken from the target, not the caller"
+        },
+        {
+          "path": "supabase/migrations/00000000000031_rental_eligibility.sql",
+          "line": 197,
+          "snippet": "GRANT EXECUTE ON FUNCTION public.rental_eligibility(uuid, uuid, text) TO authenticated;"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1323,
+          "snippet": "get_credential_live_status(_credential_number text) ... SECURITY DEFINER ... WHERE credential_number = _credential_number"
+        },
+        {
+          "path": "supabase/migrations/00000000000007_tighten_anon_grants.sql",
+          "line": 84,
+          "snippet": "GRANT EXECUTE ON FUNCTION public.get_credential_live_status(text) TO authenticated, service_role;"
+        }
+      ],
+      "description": "Three SECURITY DEFINER functions bypass RLS and look up a row by a key that the caller controls, without checking that the row belongs to the caller's woreda. (1) generate_resident_on_birth_approval() copies a mother's ethnicity, religion, household id and Amharic name from any woreda into a new resident in the event's woreda. The gap was explicitly deferred in migration 32 and never closed by the Task 14 migrations. (2) rental_eligibility() reports a resident's kebele-house occupancy, household-head status and in-flight rental request number for any woreda. It is granted to authenticated and probably to anon. (3) get_credential_live_status() returns the status of any credential number in any woreda. This reopens the enumeration that migration 34 closed for verify_credential_token(). Merges WP-DB-003, WP-DB-009 and WP-DB-010.",
+      "attack_scenario": "A civil registrar in woreda A obtains one tenant-B resident UUID, for example from a document or a former colleague. They insert a birth event directly at awaiting_payment (WP-WF-001), with event_details.mother_resident_id set to that UUID. The routine fee is recorded and the paid -> registered system transition fires, which writes B's special-category data into a woreda-A resident row. The same UUID passed to /rest/v1/rpc/rental_eligibility returns B's rental standing. Separately, any staff member in any woreda can loop get_credential_live_status over the 13-digit Luhn key space and map other woredas' issued and revoked cards.",
+      "impact": "Cross-tenant disclosure of special-category PII (ethnicity, religion), identity data and housing status. This breaks the platform's core isolation promise that RLS alone keeps tenants apart. Because the foreign data is copied into a resident row, it persists and spreads through exports and audit logs.",
+      "recommendation": "In every SECURITY DEFINER function that takes an id, re-derive the caller's woreda (get_user_woreda_id(), status-checked per WP-DB-001) and add AND woreda_id = <caller or NEW.woreda_id> to every lookup. Reject rather than silently skip on a mismatch. Extend enforce_vital_event_preconditions() so that mother_resident_id (and any *_resident_id inside event_details) must belong to NEW.woreda_id. Drop get_credential_live_status() (it has no callers), or give it the same staff/same-woreda predicate as verify_credential_token(). Add the woreda predicate plus a permission check (rental.view) to rental_eligibility(), and REVOKE EXECUTE FROM anon explicitly. Add a CI lint that flags SECURITY DEFINER bodies which SELECT from tenant tables without a woreda predicate.",
+      "secure_fix_example": "-- in generate_resident_on_birth_approval()\nSELECT ethnicity, religion, current_household_id\n  INTO v_mother_ethnicity, v_mother_religion, v_mother_household_id\n  FROM public.resident\n WHERE resident_id = v_mother_id AND woreda_id = NEW.woreda_id;\nIF v_mother_id IS NOT NULL AND NOT FOUND THEN\n  RAISE EXCEPTION 'mother_resident_id does not belong to this woreda' USING ERRCODE = 'check_violation';\nEND IF;\n\nREVOKE EXECUTE ON FUNCTION public.rental_eligibility(uuid, uuid, text) FROM anon;\nDROP FUNCTION IF EXISTS public.get_credential_live_status(text);",
+      "effort": "S",
+      "status": "Open",
+      "merged_from": [
+        "WP-DB-003",
+        "WP-DB-009",
+        "WP-DB-010"
+      ]
+    }
+  ],
+  "checklist": [
+    {
+      "id": "TEN-02",
+      "status": "FAIL",
+      "evidence": "59:141/163 (mother lookup), 31:74 (rental_eligibility), baseline:1323 (get_credential_live_status)",
+      "note": "Policies derive woreda server-side, but three SECURITY DEFINER paths trust a client-supplied key across tenants (WP-VER-001)."
+    },
+    {
+      "id": "TEN-04",
+      "status": "FAIL",
+      "evidence": "WP-VER-001 locations",
+      "note": "search_path is pinned on all definer functions (database agent), but tenant re-check is missing in at least three."
+    },
+    {
+      "id": "TEN-06",
+      "status": "PARTIAL",
+      "evidence": "00000000000001_storage.sql:124 and 35 sibling policies",
+      "note": "Per-woreda prefix scoping holds; no permission scoping inside the tenant (WP-DB-002)."
+    },
+    {
+      "id": "RBAC-01",
+      "status": "FAIL",
+      "evidence": "baseline:1626 etc.; 12:39",
+      "note": "Read keys and 4 of 5 CP keys unenforced server-side (WP-DB-004, WP-AZ-001)."
+    },
+    {
+      "id": "MC-01",
+      "status": "FAIL",
+      "evidence": "46:219; baseline:1213",
+      "note": "Maker != checker compares stale actor columns after a return cycle (WP-WF-003); complaint path bypasses it for letters (WP-WF-002)."
+    },
+    {
+      "id": "MC-02",
+      "status": "FAIL",
+      "evidence": "29:203; 58:100; 61:35",
+      "note": "Civil events and service requests can be INSERTed at late states (WP-WF-001); non-status content unfrozen (WP-WF-004)."
+    },
+    {
+      "id": "BL-02",
+      "status": "PARTIAL",
+      "evidence": "59:97-99",
+      "note": "Death side effect atomic and idempotent, but only 'active' credentials revoked and deceased status reversible (WP-WF-006)."
+    },
+    {
+      "id": "CRY-03",
+      "status": "FAIL",
+      "evidence": "src/routes/v.$token.tsx:179,215,262",
+      "note": "Online revocation check exists but fails open on miss or error; token malleability defeats exact-match lookup (WP-CRY-001)."
+    },
+    {
+      "id": "C-02",
+      "status": "FAIL",
+      "evidence": "src/components/ui/rich-text-editor.tsx:46",
+      "note": "One unsanitised innerHTML sink for stored letter HTML; CSP allows 'unsafe-inline' (WP-APP-001)."
+    },
+    {
+      "id": "OPS-01",
+      "status": "FAIL",
+      "evidence": "docs/staging-runbook.md:9",
+      "note": "No staging; backups/PITR unevidenced (WP-OPS-001, WP-OPS-002 needs live confirmation)."
+    },
+    {
+      "id": "E-06",
+      "status": "FAIL",
+      "evidence": "supabase/functions/invite-platform-admin/index.ts:84",
+      "note": "Edge Functions check role/woreda but not console scope (WP-AZ-001)."
+    }
+  ],
+  "drift": [
+    {
+      "claim": "A pending app_user authenticates fine but user_has_perm() requires status = 'active', so every query comes back empty",
+      "source": "CLAUDE.md:331-332",
+      "verdict": "CONTRADICTED",
+      "evidence": "supabase/migrations/00000000000000_baseline.sql:1335 get_user_woreda_id() has no status check; tenant SELECT policies use only it (WP-DB-001)."
+    },
+    {
+      "claim": "a query missing a woreda_id filter still can't cross tenants (tenant isolation is enforced by RLS)",
+      "source": "CLAUDE.md:141-142",
+      "verdict": "CONTRADICTED",
+      "evidence": "SECURITY DEFINER paths bypass RLS without a woreda re-check: 59:141, 31:74, baseline:1323 (WP-VER-001)."
+    },
+    {
+      "claim": "user_has_perm() is what actually gates a query's RLS",
+      "source": "CLAUDE.md:262-263",
+      "verdict": "CONTRADICTED",
+      "evidence": "Core SELECT policies do not call user_has_perm (baseline:1553-1655; WP-DB-004)."
+    },
+    {
+      "claim": "Console permissions scope what an individual super_admin can do inside /admin",
+      "source": "CLAUDE.md:313-315",
+      "verdict": "CONTRADICTED",
+      "evidence": "Only console.console_users.manage is enforced server-side (12:39-44, 12:150, invite-platform-admin/index.ts:84); WP-AZ-001."
+    },
+    {
+      "claim": "enforce_workflow_transition() also enforces maker != checker (one person can never both verify and approve the same row)",
+      "source": "CLAUDE.md:515-516",
+      "verdict": "CONTRADICTED",
+      "evidence": "46:219 compares persisted columns; force_actor_columns (baseline:1213) leaves stale verifier after a return cycle (WP-WF-003)."
+    },
+    {
+      "claim": "A tenant can change who holds a permission, but never remove a verification/approval/payment gate",
+      "source": "CLAUDE.md:520-522",
+      "verdict": "CONTRADICTED",
+      "evidence": "INSERT guard covers only credential tables (29:203-211); vital_event/service_request insertable at late states (WP-WF-001)."
+    },
+    {
+      "claim": "v.$token.tsx checks the signature client-side, then calls verify_credential_token() for live revocation status (a valid signature doesn't mean a still-valid card)",
+      "source": "CLAUDE.md:645-647",
+      "verdict": "CONTRADICTED",
+      "evidence": "The call happens, but a registry miss or error renders the green verified banner (src/routes/v.$token.tsx:179,262); WP-CRY-001."
+    },
+    {
+      "claim": "Mother-lookup reads in generate_resident_on_birth_approval() are deferred to Task 14",
+      "source": "supabase/migrations/00000000000032_task2_tenant_scoped_definer_triggers.sql:68-71",
+      "verdict": "NOT FOUND",
+      "evidence": "Task 14 migrations 58/59/60/65/66 redefine the function and preconditions without a mother woreda check (59:141)."
+    },
+    {
+      "claim": "letterTemplate.ts owns an allow-list sanitiser; template HTML is untrusted and renders into the print surface",
+      "source": "CLAUDE.md:690-693",
+      "verdict": "CONFIRMED",
+      "evidence": "Sanitiser applied on print/issuance/preview/save, but the editor sink rich-text-editor.tsx:46 renders stored HTML unsanitised (WP-APP-001)."
+    }
+  ],
+  "artifacts": []
+}

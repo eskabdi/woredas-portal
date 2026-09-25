@@ -1,0 +1,2 @@
+# appsec: rowsToCsv behaviour for CR-embedded and ';'-embedded values
+"Name,Addr\n\"Abebe\r=HYPERLINK(\"\"https://evil\"\",\"\"x\"\")\",ok\n'=1+1,x;=2+2"

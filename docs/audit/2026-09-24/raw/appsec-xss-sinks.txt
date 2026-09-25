@@ -1,0 +1,11 @@
+# XSS sinks (rg dangerouslySetInnerHTML|innerHTML|document.write|eval|new Function|bindPopup|javascript:|srcdoc)
+src/routes/woreda.services.$requestId.print.tsx:174:          dangerouslySetInnerHTML={{ __html: bodyHtml }}
+src/lib/letterTemplate.ts:110:  return root.innerHTML;
+src/lib/__tests__/letterTemplate.test.ts:63:  it("strips a javascript: URL from an <a href>", () => {
+src/lib/__tests__/letterTemplate.test.ts:64:    const out = sanitizeLetterHtml('<a href="javascript:alert(1)">link</a>');
+src/lib/__tests__/letterTemplate.test.ts:65:    expect(out).not.toContain("javascript:");
+src/components/settings/LetterTemplatesTab.tsx:239:                  dangerouslySetInnerHTML={{ __html: previewHtml }}
+src/components/ui/rich-text-editor.tsx:46:    if (el && el.innerHTML !== value) el.innerHTML = value || "";
+src/components/ui/rich-text-editor.tsx:52:    onChange(ref.current?.innerHTML ?? "");
+src/components/ui/rich-text-editor.tsx:143:          onInput={(e) => onChange((e.currentTarget as HTMLDivElement).innerHTML)}
+src/components/ui/chart.tsx:73:      dangerouslySetInnerHTML={{

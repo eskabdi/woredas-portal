@@ -1,0 +1,179 @@
+{
+ "generated_by": "audit-api-edge 2026-09-24",
+ "as_is": true,
+ "synthetic_values": "All ids, names, tokens and numbers are synthetic placeholders; no production data.",
+ "endpoint": "POST /functions/v1/invite-tenant-user",
+ "classification": "Private",
+ "auth": "bearer JWT; active tenant_admin of woredaId or active super_admin",
+ "responses": {
+  "200": {
+   "emitted": true,
+   "response": {
+    "success": true,
+    "user_id": "00000000-0000-4000-8000-000000000003"
+   },
+   "evidence": "supabase/functions/invite-tenant-user/index.ts:256",
+   "request": {
+    "headers": {
+     "Authorization": "Bearer <user access token>",
+     "apikey": "<publishable key>",
+     "Content-Type": "application/json"
+    },
+    "body": {
+     "email": "new.staff@example.invalid",
+     "full_name": "Example Staff",
+     "role": "registry_clerk",
+     "woredaId": "00000000-0000-4000-8000-000000000002",
+     "department": null,
+     "job_title": null,
+     "reports_to_user_id": null,
+     "signature_path": null,
+     "photo_path": null
+    }
+   }
+  },
+  "400": [
+   {
+    "emitted": true,
+    "response": {
+     "error": "Missing required fields"
+    },
+    "evidence": "supabase/functions/invite-tenant-user/index.ts:69-71"
+   },
+   {
+    "emitted": true,
+    "response": {
+     "error": "Cannot provision this role through tenant self-service."
+    },
+    "evidence": "supabase/functions/invite-tenant-user/index.ts:73-75",
+    "request": {
+     "body": {
+      "role": "tenant_admin"
+     }
+    }
+   },
+   {
+    "emitted": true,
+    "response": {
+     "error": "Invalid role"
+    },
+    "evidence": "supabase/functions/invite-tenant-user/index.ts:76-78",
+    "request": {
+     "body": {
+      "role": "print_officer"
+     }
+    },
+    "note": "print_officer and custom are rejected although they are valid app_user roles."
+   },
+   {
+    "emitted": true,
+    "response": {
+     "error": "Invalid reports-to user"
+    },
+    "evidence": "supabase/functions/invite-tenant-user/index.ts:102-110"
+   },
+   {
+    "emitted": true,
+    "response": {
+     "error": "User already registered"
+    },
+    "evidence": "supabase/functions/invite-tenant-user/index.ts:121, :147-153, :163-169",
+    "request": "Duplicate is 400, not 409."
+   },
+   {
+    "emitted": true,
+    "response": {
+     "error": "Invite sent but profile setup failed"
+    },
+    "evidence": "supabase/functions/invite-tenant-user/index.ts:236-243",
+    "request": "Also produced by the app_user.username UNIQUE collision (same e-mail local part, different domain) AFTER the invite e-mail was already sent."
+   }
+  ],
+  "401": [
+   {
+    "emitted": true,
+    "response": {
+     "error": "Missing authorization header"
+    },
+    "evidence": "supabase/functions/invite-tenant-user/index.ts:35",
+    "request": {
+     "headers": {
+      "apikey": "<publishable key>"
+     },
+     "body": {}
+    },
+    "note": "Reached only if gateway verify_jwt=false; with verify_jwt=true the platform gateway answers first (body shape platform-defined, Needs-live-verification)."
+   },
+   {
+    "emitted": true,
+    "response": {
+     "error": "Unauthorized"
+    },
+    "evidence": "supabase/functions/invite-tenant-user/index.ts:54",
+    "request": {
+     "headers": {
+      "Authorization": "Bearer <expired or revoked token>"
+     }
+    }
+   }
+  ],
+  "403": [
+   {
+    "emitted": true,
+    "response": {
+     "error": "Forbidden"
+    },
+    "evidence": "supabase/functions/invite-tenant-user/index.ts:88-89, :93"
+   }
+  ],
+  "404": {
+   "emitted": false,
+   "reason": "Not emitted."
+  },
+  "405": {
+   "emitted": true,
+   "response": {
+    "error": "Method not allowed"
+   },
+   "evidence": "supabase/functions/invite-tenant-user/index.ts:31",
+   "request": {
+    "method": "GET"
+   }
+  },
+  "409": {
+   "emitted": false,
+   "reason": "Not emitted; duplicates map to 400."
+  },
+  "422": {
+   "emitted": false,
+   "reason": "Not emitted."
+  },
+  "429": {
+   "emitted": true,
+   "response": {
+    "error": "Too many requests"
+   },
+   "evidence": "supabase/functions/invite-tenant-user/index.ts:99-100",
+   "request": "20 per 600 s per caller; fails open if rate_limit_hit errors."
+  },
+  "500": [
+   {
+    "emitted": true,
+    "response": {
+     "error": "SITE_URL is not configured"
+    },
+    "evidence": "supabase/functions/invite-tenant-user/index.ts:45-46"
+   },
+   {
+    "emitted": true,
+    "response": {
+     "error": "Internal error"
+    },
+    "evidence": "supabase/functions/invite-tenant-user/index.ts:257-258",
+    "request": {
+     "body": "<malformed JSON>"
+    }
+   }
+  ]
+ }
+}

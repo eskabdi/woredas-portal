@@ -1,0 +1,8 @@
+{
+ "id_card_template": {
+  "in_types_not_migrations": [],
+  "in_migrations_not_types": [
+   "status"
+  ]
+ }
+}

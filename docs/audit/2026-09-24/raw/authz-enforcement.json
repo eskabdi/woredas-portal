@@ -1,0 +1,377 @@
+{
+ "resident.create": [
+  "RLS resident.INSERT"
+ ],
+ "resident.read": [
+  "RLS resident_document.SELECT",
+  "fn entity_read_perm_ok()"
+ ],
+ "resident.update": [
+  "RLS resident.UPDATE",
+  "RLS resident_document.DELETE",
+  "RLS resident_document.INSERT",
+  "RLS resident_document.UPDATE",
+  "fn entity_attach_perm_ok()"
+ ],
+ "resident.delete": [
+  "RLS resident.DELETE"
+ ],
+ "household.create": [
+  "RLS household.INSERT",
+  "RLS household_change_log.INSERT"
+ ],
+ "household.read": [
+  "RLS resident_document.SELECT",
+  "fn entity_read_perm_ok()"
+ ],
+ "household.update": [
+  "RLS household.DELETE",
+  "RLS household.UPDATE",
+  "RLS household_change_log.INSERT",
+  "RLS household_change_log.UPDATE",
+  "RLS household_location.DELETE",
+  "RLS household_location.INSERT",
+  "RLS household_location.UPDATE",
+  "fn entity_attach_perm_ok()"
+ ],
+ "credential.issue": [
+  "RLS credential_request.INSERT",
+  "RLS credential_request.UPDATE",
+  "RLS credential_request_status_history.INSERT",
+  "RLS credential_status_history.INSERT",
+  "RLS residence_credential.INSERT",
+  "RLS residence_credential.UPDATE",
+  "fn entity_attach_perm_ok()"
+ ],
+ "credential.read": [
+  "fn entity_read_perm_ok()",
+  "fn get_credential_kpis()"
+ ],
+ "credential.print": [
+  "RLS credential_print_log.UPDATE",
+  "RLS credential_status_history.INSERT",
+  "RLS residence_credential.UPDATE",
+  "edge sign-credential"
+ ],
+ "credential.verify": [
+  "RLS credential_request.UPDATE",
+  "RLS credential_request_status_history.INSERT"
+ ],
+ "credential.revoke": [
+  "FSM residence_credential",
+  "RLS credential_status_history.INSERT",
+  "RLS residence_credential.DELETE",
+  "RLS residence_credential.UPDATE"
+ ],
+ "credential.renew": [
+  "RLS credential_status_history.INSERT",
+  "RLS residence_credential.UPDATE"
+ ],
+ "credential.approve": [
+  "FSM credential_request",
+  "RLS credential_request.DELETE",
+  "RLS credential_request.UPDATE",
+  "RLS credential_request_status_history.INSERT",
+  "RLS credential_status_history.INSERT",
+  "RLS residence_credential.UPDATE",
+  "fn entity_approve_perm_ok()",
+  "fn validate_credential_fee_amount()"
+ ],
+ "credential.submit": [
+  "FSM credential_request",
+  "fn entity_attach_perm_ok()"
+ ],
+ "credential.review": [
+  "FSM credential_request"
+ ],
+ "credential.resubmit": [
+  "FSM credential_request"
+ ],
+ "credential.return": [
+  "FSM credential_request"
+ ],
+ "credential.reject": [
+  "FSM credential_request"
+ ],
+ "credential.record_payment": [
+  "FSM credential_request"
+ ],
+ "credential.preview_print": [
+  "FSM residence_credential"
+ ],
+ "credential.confirm_print": [
+  "FSM credential_request",
+  "FSM residence_credential"
+ ],
+ "credential.activate": [
+  "FSM credential_request",
+  "FSM residence_credential"
+ ],
+ "credential.suspend": [
+  "FSM residence_credential"
+ ],
+ "credential.create_request": [],
+ "credential.authorize_reprint": [
+  "RLS credential_print_log.INSERT"
+ ],
+ "credential.configure_policy": [
+  "RLS credential_policy.INSERT",
+  "RLS credential_policy.UPDATE"
+ ],
+ "credential.view": [],
+ "civil.register": [
+  "RLS vital_event.INSERT",
+  "RLS vital_event.UPDATE"
+ ],
+ "civil.approve": [
+  "FSM vital_event",
+  "RLS vital_event.DELETE",
+  "RLS vital_event.UPDATE",
+  "fn validate_credential_fee_amount()"
+ ],
+ "civil.read": [
+  "fn get_civil_kpis()",
+  "fn resolve_civil_fee()"
+ ],
+ "civil.create_event": [
+  "RLS vital_event.INSERT",
+  "RLS vital_event.UPDATE"
+ ],
+ "civil.submit": [
+  "FSM vital_event",
+  "RLS vital_event.UPDATE"
+ ],
+ "civil.resubmit": [
+  "FSM vital_event",
+  "RLS vital_event.UPDATE"
+ ],
+ "civil.verify": [
+  "FSM vital_event",
+  "RLS vital_event.UPDATE"
+ ],
+ "civil.return": [
+  "FSM vital_event",
+  "RLS vital_event.UPDATE"
+ ],
+ "civil.reject": [
+  "FSM vital_event",
+  "RLS vital_event.UPDATE"
+ ],
+ "civil.record_payment": [
+  "FSM vital_event",
+  "RLS vital_event.UPDATE",
+  "fn resolve_civil_fee()"
+ ],
+ "civil.view": [],
+ "payment.collect": [
+  "RLS credential_request.UPDATE",
+  "RLS credential_request_status_history.INSERT",
+  "RLS payment.INSERT",
+  "RLS payment.UPDATE",
+  "RLS receipt.INSERT",
+  "RLS receipt.UPDATE"
+ ],
+ "payment.read": [],
+ "receipt.print": [
+  "RLS receipt.INSERT",
+  "RLS receipt.UPDATE"
+ ],
+ "report.view": [],
+ "report.export": [],
+ "audit.view": [],
+ "tenant.manage": [
+  "RLS credential_print_log.DELETE",
+  "RLS fee_schedule.DELETE",
+  "RLS fee_schedule.INSERT",
+  "RLS fee_schedule.UPDATE",
+  "RLS household_change_log.DELETE",
+  "RLS kebele_rental_house.DELETE",
+  "RLS payment.DELETE",
+  "RLS receipt.DELETE",
+  "RLS rental_occupancy.DELETE",
+  "RLS rental_occupancy_request.DELETE",
+  "RLS service_request.DELETE",
+  "RLS service_request.INSERT",
+  "RLS service_request.UPDATE",
+  "RLS service_request_attachment.DELETE",
+  "RLS service_request_attachment.INSERT",
+  "RLS service_request_attachment.UPDATE",
+  "RLS service_type.DELETE",
+  "RLS service_type.INSERT",
+  "RLS service_type.UPDATE",
+  "RLS woreda_settings.DELETE",
+  "RLS woreda_settings.INSERT",
+  "RLS woreda_settings.UPDATE",
+  "fn resolve_rental_checkpoint_core()",
+  "fn validate_credential_fee_amount()"
+ ],
+ "user.manage": [],
+ "platform.manage": [],
+ "tenant.create": [],
+ "rental.view": [
+  "RLS arrears_installment_charge.SELECT",
+  "RLS arrears_repayment_installment.SELECT",
+  "RLS arrears_repayment_plan.SELECT",
+  "RLS payment_reconciliation_exception.SELECT",
+  "RLS rent_account.SELECT",
+  "RLS rent_charge.SELECT",
+  "RLS rent_payment_settlement.SELECT",
+  "RLS rent_rate_history.SELECT",
+  "RLS rent_reminder.SELECT",
+  "RLS rental_payment.SELECT",
+  "fn entity_read_perm_ok()",
+  "fn get_rent_account_ledger_summary()"
+ ],
+ "rental.create": [
+  "FSM rental_occupancy_request",
+  "RLS kebele_rental_house.INSERT",
+  "RLS kebele_rental_house.UPDATE",
+  "RLS rental_occupancy_request.INSERT",
+  "RLS rental_occupancy_request.UPDATE",
+  "RLS rental_request_document.DELETE",
+  "RLS rental_request_document.INSERT",
+  "RLS rental_request_document.UPDATE",
+  "fn entity_attach_perm_ok()"
+ ],
+ "rental.approve": [
+  "FSM rental_occupancy_request",
+  "RLS kebele_rental_house.UPDATE",
+  "RLS rental_occupancy_request.UPDATE",
+  "fn entity_approve_perm_ok()",
+  "fn provision_rent_account()"
+ ],
+ "rental.vacate": [
+  "RLS kebele_rental_house.UPDATE",
+  "RLS rental_occupancy_request.INSERT",
+  "RLS rental_occupancy_request.UPDATE"
+ ],
+ "rental.report": [
+  "RLS service_request_checkpoint.SELECT",
+  "fn get_rental_arrears_aging_report()",
+  "fn get_rental_billing_collection_report()",
+  "fn get_rental_checkpoint_activity_report()",
+  "fn get_rental_plan_compliance_report()",
+  "fn get_rental_reconciliation_report()"
+ ],
+ "rental.policy.configure": [
+  "RLS rental_policy.INSERT",
+  "RLS rental_policy.UPDATE"
+ ],
+ "rental.billing": [
+  "fn generate_rent_charges()",
+  "fn generate_rent_reminders()",
+  "fn provision_rent_account()",
+  "fn refresh_rent_ledger_statuses()"
+ ],
+ "rental.collect": [
+  "fn settle_arrears_installments()",
+  "fn settle_rent_payment()"
+ ],
+ "rental.settle": [
+  "fn resolve_reconciliation_exception()"
+ ],
+ "rental.reverse": [
+  "fn reverse_rental_payment()"
+ ],
+ "rental.plan.create": [
+  "FSM arrears_repayment_plan",
+  "RLS arrears_repayment_plan.UPDATE",
+  "fn create_arrears_repayment_plan()"
+ ],
+ "rental.plan.approve": [
+  "FSM arrears_repayment_plan",
+  "RLS arrears_repayment_plan.UPDATE"
+ ],
+ "rental.plan.manage": [
+  "FSM arrears_repayment_plan",
+  "RLS arrears_repayment_plan.UPDATE"
+ ],
+ "revenue.view": [],
+ "revenue.collect": [
+  "RLS credential_request.UPDATE",
+  "RLS credential_request_status_history.INSERT",
+  "RLS payment.INSERT",
+  "RLS payment.UPDATE",
+  "RLS receipt.INSERT"
+ ],
+ "revenue.receipt_reprint": [
+  "RLS receipt.UPDATE"
+ ],
+ "service.create": [
+  "RLS service_request.INSERT",
+  "RLS service_request.UPDATE",
+  "RLS service_request_attachment.DELETE",
+  "RLS service_request_attachment.INSERT",
+  "RLS service_request_attachment.UPDATE",
+  "fn entity_attach_perm_ok()",
+  "fn resolve_rental_checkpoint_core()"
+ ],
+ "service.read": [
+  "RLS service_request_checkpoint.SELECT",
+  "fn entity_read_perm_ok()",
+  "fn get_service_kpis()",
+  "fn resolve_service_fee()"
+ ],
+ "service.verify": [
+  "FSM service_request",
+  "RLS service_request.UPDATE",
+  "RLS service_request_attachment.INSERT",
+  "RLS service_request_attachment.UPDATE"
+ ],
+ "service.approve": [
+  "FSM service_request",
+  "RLS service_request.UPDATE",
+  "fn entity_approve_perm_ok()",
+  "fn validate_credential_fee_amount()"
+ ],
+ "service.issue": [
+  "FSM service_request",
+  "RLS service_request.UPDATE"
+ ],
+ "service.submit": [
+  "FSM service_request",
+  "RLS service_request.INSERT",
+  "RLS service_request.UPDATE",
+  "fn entity_attach_perm_ok()",
+  "fn resolve_rental_checkpoint_core()"
+ ],
+ "service.resubmit": [
+  "FSM service_request",
+  "RLS service_request.UPDATE"
+ ],
+ "service.return": [
+  "FSM service_request",
+  "RLS service_request.UPDATE"
+ ],
+ "service.reject": [
+  "FSM service_request",
+  "RLS service_request.UPDATE"
+ ],
+ "service.record_payment": [
+  "FSM service_request",
+  "RLS service_request.UPDATE",
+  "fn resolve_service_fee()"
+ ],
+ "service.issue_letter": [
+  "FSM service_request",
+  "RLS service_request.UPDATE"
+ ],
+ "service.complete": [
+  "FSM service_request",
+  "RLS service_request.UPDATE"
+ ],
+ "service.checkpoint_override": [
+  "fn enforce_rental_checkpoint()"
+ ],
+ "complaint.manage": [
+  "RLS service_request.INSERT",
+  "RLS service_request.UPDATE",
+  "RLS service_request_attachment.DELETE",
+  "RLS service_request_attachment.INSERT",
+  "RLS service_request_attachment.UPDATE",
+  "fn resolve_rental_checkpoint_core()"
+ ],
+ "approval.queue.view": [
+  "RLS approval.SELECT"
+ ]
+}

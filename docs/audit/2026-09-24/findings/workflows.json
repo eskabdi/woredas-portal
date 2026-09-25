@@ -1,0 +1,1178 @@
+{
+  "agent": "audit-workflows",
+  "findings": [
+    {
+      "id": "WP-WF-001",
+      "title": "Workflow INSERT guard covers only the credential tables: civil events and service requests can be created directly at approved, awaiting_payment, registered or issued",
+      "severity": "High",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:N (6.5)",
+      "confidence": "Likely",
+      "category": "Business Logic",
+      "module": "Civil Registration",
+      "refs": {
+        "insa": [
+          "MC-02",
+          "BL-02"
+        ],
+        "owasp_top10": [
+          "A01:2021",
+          "A04:2021"
+        ],
+        "owasp_api": [
+          "API5:2023",
+          "API6:2023"
+        ],
+        "asvs": [
+          "V11.1.1",
+          "V11.1.2"
+        ],
+        "iso27001": [
+          "A.5.3",
+          "A.8.26"
+        ],
+        "nist_csf": [
+          "PR.AA-05"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000029_workflow_insert_guard.sql",
+          "line": 87,
+          "snippet": "IF TG_TABLE_NAME = 'credential_request' THEN ... (only credential_request and residence_credential are checked)"
+        },
+        {
+          "path": "supabase/migrations/00000000000029_workflow_insert_guard.sql",
+          "line": 203,
+          "snippet": "CREATE TRIGGER zz_enforce_workflow_insert BEFORE INSERT ON public.credential_request / residence_credential (no other table)"
+        },
+        {
+          "path": "supabase/migrations/00000000000058_task14a_civil_registration_fsm.sql",
+          "line": 100,
+          "snippet": "CREATE POLICY vital_event_insert ... user_has_any_perm(ARRAY['civil.register', 'civil.create_event'])  -- no status predicate"
+        },
+        {
+          "path": "supabase/migrations/00000000000061_task14b_service_request_fsm.sql",
+          "line": 35,
+          "snippet": "CREATE POLICY service_request_insert ... 'service.create', 'service.submit', 'complaint.manage', 'tenant.manage'  -- no status predicate"
+        },
+        {
+          "path": "supabase/migrations/00000000000064_task14b_verify_letter_completed_status.sql",
+          "line": 47,
+          "snippet": "AND sr.status IN ('issued', 'resolved', 'closed', 'completed')"
+        },
+        {
+          "path": "supabase/migrations/00000000000062_task14b_payment_issuance_and_preconditions.sql",
+          "line": 70,
+          "snippet": "IF NEW.status = 'issued' AND (OLD.status IS DISTINCT FROM 'issued') THEN  -- issuance gate is BEFORE UPDATE only"
+        },
+        {
+          "path": "supabase/migrations/00000000000058_task14a_civil_registration_fsm.sql",
+          "line": 70,
+          "snippet": "IF NEW.status IS NOT DISTINCT FROM OLD.status THEN RETURN NULL;  -- history writer is AFTER UPDATE only"
+        },
+        {
+          "path": "supabase/migrations/00000000000089_rental_review_round6_fixes.sql",
+          "line": 99,
+          "snippet": "IF TG_OP = 'INSERT' AND NEW.status NOT IN ('draft', 'submitted') THEN  -- the rental table has the guard the others lack"
+        }
+      ],
+      "description": "enforce_workflow_transition() is a BEFORE UPDATE trigger. Migration 29 added the missing BEFORE INSERT arm (enforce_workflow_insert) after the project's own review showed a credential could be POSTed at 'paid', but it only handles credential_request and residence_credential. When vital_event (migration 58) and service_request (migration 61) were brought under the engine, no INSERT guard was added. The vital_event and service_request INSERT policies check permission and woreda only, and no BEFORE INSERT trigger on either table (preconditions, numbering, force_actor, rental checkpoint) checks the status. rental_occupancy_request has its own insert guard (migration 89), and arrears_repayment_plan has no INSERT policy, so neither is affected. The engine's audit writers (log_workflow_transition, log_workflow_status_history) are AFTER UPDATE triggers, so a row inserted at a late state leaves no trigger-written history.",
+      "attack_scenario": "(1) A registry_clerk (holds civil.create_event) POSTs /vital_event {event_type:'death', resident_id:<victim>, status:'awaiting_payment', ...}. The death precondition only checks that the resident is active. The event never goes through verification or approval. A finance_clerk or tenant_admin then records the routine zero fee, and the paid -> registered system transition marks the victim deceased and revokes their active ID. (2) A registry_clerk (holds service.create) POSTs /service_request {category:'letter', status:'issued', issued_at:now(), resident_id:<any>, letter_summary:'<any text>'}. The token trigger assigns a verification_token, and the anonymous verify_service_letter() RPC returns the letter as genuine. Nobody verified, approved, charged for or issued it.",
+      "impact": "A single clerk can forge civil-registration outcomes (deaths, births, marriages, divorces recorded as 'registered') and publicly verifiable official letters without the maker-checker, payment or issuance gates. Nothing is recorded in workflow_status_history, and the only audit trace is whatever the client chooses to write.",
+      "recommendation": "Extend enforce_workflow_insert() to vital_event and service_request (allow only 'draft'/'submitted'). Require actor columns other than requested_by to be NULL at insert. Attach it as zz_enforce_workflow_insert on both tables in the same deploy unit. Add an AFTER INSERT history/audit row for every workflow table so creation is logged.",
+      "secure_fix_example": "IF TG_TABLE_NAME IN ('vital_event','service_request') THEN\n  IF NEW.status NOT IN ('draft','submitted') THEN RAISE EXCEPTION 'workflow: % must be created at draft or submitted', TG_TABLE_NAME USING ERRCODE='insufficient_privilege'; END IF;\n  IF NEW.verified_by_user_id IS NOT NULL OR NEW.approved_by_user_id IS NOT NULL OR NEW.issued_by_user_id IS NOT NULL OR NEW.issued_at IS NOT NULL THEN RAISE EXCEPTION 'workflow: actor/issuance fields are set by transitions only'; END IF;\n  RETURN NEW;\nEND IF;\n-- CREATE TRIGGER zz_enforce_workflow_insert BEFORE INSERT ON public.vital_event / public.service_request ...",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-WF-002",
+      "title": "Service-request FSM ignores category: letters can take the complaint path (pending_approval -> in_progress -> resolved -> closed), which skips approval SoD and payment, and the public verifier accepts resolved/closed",
+      "severity": "High",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:N (6.5)",
+      "confidence": "Likely",
+      "category": "Business Logic",
+      "module": "Services",
+      "refs": {
+        "insa": [
+          "MC-01",
+          "MC-02"
+        ],
+        "owasp_top10": [
+          "A04:2021"
+        ],
+        "owasp_api": [
+          "API6:2023"
+        ],
+        "asvs": [
+          "V11.1.1"
+        ],
+        "iso27001": [
+          "A.5.3"
+        ],
+        "nist_csf": [
+          "PR.AA-05"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000061_task14b_service_request_fsm.sql",
+          "line": 126,
+          "snippet": "('service_request', 'pending_approval',  'in_progress',       'service.approve', false, 'As-built (complaint): ...')"
+        },
+        {
+          "path": "supabase/migrations/00000000000061_task14b_service_request_fsm.sql",
+          "line": 128,
+          "snippet": "('service_request', 'in_progress',       'resolved',          'service.issue', ...)"
+        },
+        {
+          "path": "supabase/migrations/00000000000061_task14b_service_request_fsm.sql",
+          "line": 129,
+          "snippet": "('service_request', 'resolved',          'closed',            'service.issue', ...)"
+        },
+        {
+          "path": "supabase/migrations/00000000000061_task14b_service_request_fsm.sql",
+          "line": 114,
+          "snippet": "('service_request', 'under_review', 'pending_approval', 'service.verify', ... 'verify skips straight to pending_approval')"
+        },
+        {
+          "path": "supabase/migrations/00000000000046_task10_credential_lifecycle.sql",
+          "line": 204,
+          "snippet": "IF NEW.status = 'approved' ...  -- maker != checker is evaluated only on entry into 'approved'"
+        },
+        {
+          "path": "supabase/migrations/00000000000064_task14b_verify_letter_completed_status.sql",
+          "line": 47,
+          "snippet": "AND sr.status IN ('issued', 'resolved', 'closed', 'completed')"
+        },
+        {
+          "path": "supabase/migrations/00000000000061_task14b_service_request_fsm.sql",
+          "line": 45,
+          "snippet": "CREATE POLICY service_request_update ... (any service.* holder may update any non-status column, incl. issued_at, letter_summary, subject, resident_id)"
+        },
+        {
+          "path": "src/routes/woreda.services.$requestId.index.tsx",
+          "line": 846,
+          "snippet": "transition(isLetter ? \"approved\" : nextAfterApproval(req), {  -- category routing exists only in the UI"
+        }
+      ],
+      "description": "workflow_transition is keyed by entity, not by service_request.category. Migration 61 seeded the complaint edges (under_review->pending_approval, pending_approval->in_progress, in_progress->resolved, resolved->closed, issued->closed) on the same entity as the letter FSM, and its own comments say they are meant only for complaints. The database cannot tell a letter from a complaint. The engine checks maker != checker only on entry into 'approved', and the payment and issuance gates fire only on 'paid' and 'issued', so a letter taken along the complaint edges skips all three. verify_service_letter() then accepts 'resolved' and 'closed' as valid verification states, and requires only a non-null issued_at, which any updater can set. The issued letter's content (letter_summary, subject, issued_letter_html, resident_id) is also not pinned after issuance, so a genuine issued letter can be edited later and still verify.",
+      "attack_scenario": "A tenant_admin alone, or a supervisor (service.verify + service.approve) working with any registry_clerk/civil_registrar (service.issue), PATCHes a fee-bearing letter request submitted -> under_review -> pending_approval -> in_progress -> resolved -> closed and sets issued_at in any update. The public /verify/letter/<token> page then reports it as an authentic issued letter. No verifier/approver separation is checked and no fee is collected. Separately, any service.* holder can PATCH letter_summary on an already-issued letter and change what the public page shows.",
+      "impact": "Official letters (residence confirmation, clearance and similar) can be made publicly verifiable without approval or payment, and genuine letters can be altered after issuance. This undermines the letter verification surface and service-fee revenue.",
+      "recommendation": "Make the FSM category-aware. Either split complaints into their own entity value in workflow_transition, or add a category predicate column that enforce_workflow_transition() matches. Remove 'resolved' and 'closed' from verify_service_letter() for category='letter'. Set issued_at and issued_by only inside the paid->issued transition, and add a pin trigger that freezes letter content columns once status reaches 'issued'.",
+      "secure_fix_example": "-- in enforce_workflow_transition(): \nIF v_entity = 'service_request' AND NEW.category = 'letter' AND NEW.status IN ('in_progress','resolved','closed') THEN\n  RAISE EXCEPTION 'workflow: complaint-only transition used on a letter' USING ERRCODE='check_violation';\nEND IF;\n-- verify_service_letter(): AND ((sr.category='letter' AND sr.status IN ('issued','completed')) )",
+      "effort": "M",
+      "status": "Open"
+    },
+    {
+      "id": "WP-WF-003",
+      "title": "Maker != checker compares stale actor columns: after a return cycle, one user can re-verify and approve the same credential, civil or service request",
+      "severity": "High",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:N (6.5)",
+      "confidence": "Likely",
+      "category": "Business Logic",
+      "module": "Credentials",
+      "refs": {
+        "insa": [
+          "MC-01"
+        ],
+        "owasp_top10": [
+          "A04:2021",
+          "A01:2021"
+        ],
+        "owasp_api": [
+          "API6:2023"
+        ],
+        "asvs": [
+          "V11.1.2",
+          "V1.11.2"
+        ],
+        "iso27001": [
+          "A.5.3"
+        ],
+        "nist_csf": [
+          "PR.AA-05"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1214,
+          "snippet": "AND (to_jsonb(NEW) ->> col) IS DISTINCT FROM (to_jsonb(OLD) ->> col) THEN  -- force_actor_columns pins only a changed, non-null value"
+        },
+        {
+          "path": "supabase/migrations/00000000000046_task10_credential_lifecycle.sql",
+          "line": 154,
+          "snippet": "'workflow: verified_by_user_id cannot be cleared once recorded'"
+        },
+        {
+          "path": "supabase/migrations/00000000000046_task10_credential_lifecycle.sql",
+          "line": 219,
+          "snippet": "IF v_approver = v_verifier THEN  -- compares whatever the columns hold, not who acted in this cycle"
+        },
+        {
+          "path": "supabase/migrations/00000000000025_workflow_engine.sql",
+          "line": 516,
+          "snippet": "('credential_request','pending_approval','returned', 'credential.return', ... 're-enters verification')"
+        },
+        {
+          "path": "supabase/migrations/00000000000027_workflow_abandon_paths.sql",
+          "line": 49,
+          "snippet": "('credential_request','approved','returned','credential.return',false,"
+        },
+        {
+          "path": "supabase/migrations/00000000000058_task14a_civil_registration_fsm.sql",
+          "line": 174,
+          "snippet": "('vital_event', 'pending_approval',  'returned', 'civil.return', ...)"
+        },
+        {
+          "path": "src/routes/woreda.credentials.$requestId.index.tsx",
+          "line": 1121,
+          "snippet": "request.verified_by_user_id === actorUserId && (  -- self-approval blocked only in the UI"
+        },
+        {
+          "path": "supabase/migrations/00000000000089_rental_review_round6_fixes.sql",
+          "line": 172,
+          "snippet": "IF auth.uid() IS NOT NULL AND NEW.verified_by_user_id IS DISTINCT FROM auth.uid() THEN  -- rental pins the verifier; the generic engine does not"
+        }
+      ],
+      "description": "The generic engine never requires that the user who moves a row into 'verified' is recorded as verified_by_user_id. It also forbids clearing the actor columns, and force_actor_columns() only re-pins a column when the caller sends a new non-null value. After any return (verified/pending_approval/approved/awaiting_payment -> returned for credentials, pending_approval -> returned for civil and services), verified_by_user_id and approved_by_user_id keep the previous cycle's values. The approval check then compares the current approver with a verifier who may not have acted in this cycle. It also does not check requester != approver for these three entities, and the DB does not require the verification checklist (rental does both).",
+      "attack_scenario": "Cycle 1: clerk V verifies a credential request (verified_by=V), and an approver returns it. Cycle 2: tenant_admin T (holds credential.review and credential.approve) PATCHes returned->under_review->verified without sending verified_by_user_id, so it stays V. T then PATCHes verified->pending_approval->approved with approved_by_user_id=T. The check sees T != V and passes, although T performed both the verification and the approval. If the request had been approved before, T can also omit approved_by_user_id: the stale approver from cycle 1 stays on record and the approval is attributed to the wrong person. For service requests a supervisor holds both service.verify and service.approve by default.",
+      "impact": "The four-eyes control on ID issuance, civil registration and letters can be defeated by one person with both verbs (tenant_admin by default; supervisor for services; anyone via user_permission_override), and the approval record can name someone who did not approve.",
+      "recommendation": "Do what migration 89 already does for rental. In enforce_workflow_transition(), on entry into 'verified' require NEW.verified_by_user_id = auth.uid(). On entry into 'approved' require NEW.approved_by_user_id = auth.uid(), NEW.approved_by_user_id <> NEW.verified_by_user_id, and NEW.approved_by_user_id <> NEW.requested_by_user_id. Reset both columns (through a system context) on every transition into 'returned'. Enforce the verification checklist in the database.",
+      "secure_fix_example": "IF NEW.status = 'verified' AND OLD.status <> 'verified' AND (NEW.verified_by_user_id IS DISTINCT FROM auth.uid()) THEN RAISE EXCEPTION 'workflow: verifier must be the caller'; END IF;\nIF NEW.status = 'approved' AND OLD.status <> 'approved' THEN\n  IF NEW.approved_by_user_id IS DISTINCT FROM auth.uid() THEN RAISE EXCEPTION 'workflow: approver must be the caller'; END IF;\n  IF NEW.approved_by_user_id IN (NEW.verified_by_user_id, NEW.requested_by_user_id) THEN RAISE EXCEPTION 'workflow: maker/checker conflict'; END IF;\nEND IF;",
+      "effort": "M",
+      "status": "Open"
+    },
+    {
+      "id": "WP-WF-004",
+      "title": "Approved content is not frozen: the subject of an approved request (resident, event type, event details, letter subject) can be changed before the side effect fires",
+      "severity": "High",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:N (6.5)",
+      "confidence": "Likely",
+      "category": "Business Logic",
+      "module": "Civil Registration",
+      "refs": {
+        "insa": [
+          "MC-02",
+          "BL-02"
+        ],
+        "owasp_top10": [
+          "A04:2021",
+          "A08:2021"
+        ],
+        "owasp_api": [
+          "API6:2023",
+          "API3:2023"
+        ],
+        "asvs": [
+          "V11.1.1",
+          "V11.1.4"
+        ],
+        "iso27001": [
+          "A.8.26"
+        ],
+        "nist_csf": [
+          "PR.DS-01"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000070_mint_guard_deceased_check.sql",
+          "line": 120,
+          "snippet": "NEW.woreda_id, NEW.resident_id, NEW.issuing_kebele_id,  -- the ID card is minted for whatever resident_id the row holds at payment time"
+        },
+        {
+          "path": "supabase/migrations/00000000000046_task10_credential_lifecycle.sql",
+          "line": 31,
+          "snippet": "pin_credential_identity_fields(): pins only credential_number, serial_number, qr_payload on residence_credential"
+        },
+        {
+          "path": "supabase/migrations/00000000000033_task2_followup_pin_and_rental_scope.sql",
+          "line": 66,
+          "snippet": "IF OLD.resident_id IS NOT NULL  -- NULL -> value is allowed; event_type / event_details are never pinned"
+        },
+        {
+          "path": "supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql",
+          "line": 91,
+          "snippet": "IF NEW.event_type = 'death' AND NEW.status = 'registered' ...  -- side effect keyed on the current event_type/resident_id"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1569,
+          "snippet": "CREATE POLICY credential_request_update ... user_has_any_perm('{credential.issue,credential.approve,credential.verify,payment.collect,revenue.collect}')"
+        },
+        {
+          "path": "supabase/migrations/00000000000089_rental_review_round6_fixes.sql",
+          "line": 157,
+          "snippet": "OR NEW.resident_id IS DISTINCT FROM OLD.resident_id  -- rental locks checklist-signed fields once verified; no equivalent elsewhere"
+        }
+      ],
+      "description": "The engine polices status changes only. Any column that is not the status or an actor column can be rewritten by any holder of the table's UPDATE policy at any stage, including after approval. There is no pin trigger for credential_request (resident_id, request_type, credential_type, issuing_kebele_id), vital_event (event_type, event_details, event_date, household_id; resident_id is pinned only once non-null), service_request (resident_id, subject, purpose, addressed_to), or residence_credential (resident_id, expiry_date, issue_date, credential_type). The mint trigger, the birth/death side effects and the letter render all read these columns when the side effect fires, not the values that were verified and approved. The rental module already solved this: after verification it locks the verified fields.",
+      "attack_scenario": "(a) After a supervisor approves a credential request for resident A, a registry_clerk (or a viewer, see WP-WF-005) PATCHes resident_id=B. When the fee is recorded, the mint issues B's ID card. B was never verified or approved (the mint guard only checks age, photo, phone and status). (b) On an approved birth event (resident_id is NULL until registration), a clerk holding civil.verify PATCHes {event_type:'death', resident_id:<victim>}. The precondition re-check passes, and on payment the victim is marked deceased and their ID revoked. (c) A clerk PATCHes residence_credential.expiry_date to a later date for an active card. Staff lookups and renewal logic then see the forged expiry.",
+      "impact": "Verification and approval can be applied to one subject and the outcome to another: ID cards for unapproved residents, deaths recorded against people nobody reviewed, and letters rendered for someone else.",
+      "recommendation": "Add a pin trigger per workflow table that rejects changes to subject columns once status has left draft/submitted/under_review/returned. Use the rental guard in migration 89 as the template. Also pin residence_credential.resident_id, issue_date, expiry_date and credential_type once the row exists.",
+      "secure_fix_example": "CREATE FUNCTION pin_credential_request_subject() RETURNS trigger AS $$ BEGIN\n IF OLD.status NOT IN ('draft','submitted','under_review','returned') AND (NEW.resident_id,NEW.request_type,NEW.credential_type,NEW.issuing_kebele_id) IS DISTINCT FROM (OLD.resident_id,OLD.request_type,OLD.credential_type,OLD.issuing_kebele_id) THEN\n  RAISE EXCEPTION 'credential_request: subject fields are frozen after verification'; END IF; RETURN NEW; END $$ LANGUAGE plpgsql;",
+      "effort": "M",
+      "status": "Open"
+    },
+    {
+      "id": "WP-WF-005",
+      "title": "credential_request UPDATE policy gives write access to read-only roles (viewer, auditor via credential.verify) and to finance_clerk",
+      "severity": "High",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:N (6.5)",
+      "confidence": "Likely",
+      "category": "AuthZ",
+      "module": "Credentials",
+      "refs": {
+        "insa": [
+          "MC-02",
+          "RBAC-01"
+        ],
+        "owasp_top10": [
+          "A01:2021"
+        ],
+        "owasp_api": [
+          "API5:2023",
+          "API3:2023"
+        ],
+        "asvs": [
+          "V4.1.3",
+          "V4.2.1"
+        ],
+        "iso27001": [
+          "A.5.15",
+          "A.8.2"
+        ],
+        "nist_csf": [
+          "PR.AA-05"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1569,
+          "snippet": "CREATE POLICY credential_request_update ... user_has_any_perm('{credential.issue,credential.approve,credential.verify,payment.collect,revenue.collect}')"
+        },
+        {
+          "path": "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql",
+          "line": 109,
+          "snippet": "WHEN 'viewer' THEN ARRAY['resident.read',...,'credential.verify',...]"
+        },
+        {
+          "path": "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql",
+          "line": 108,
+          "snippet": "WHEN 'auditor' THEN ARRAY[...,'credential.verify',...]"
+        },
+        {
+          "path": "supabase/migrations/00000000000025_workflow_engine.sql",
+          "line": 34,
+          "snippet": "`credential.verify` already gates the public ID-lookup screen and is deliberately held by viewer and auditor"
+        }
+      ],
+      "description": "The baseline credential_request_update policy is still the latest definition. It admits any user holding credential.verify, which migration 25 itself describes as the public ID-lookup permission held by the read-only viewer and auditor roles, and also payment.collect/revenue.collect holders. The FSM stops these users from changing status, but they can rewrite every other column: resident_id, request_type, credential_type, issuing_kebele_id, verification_checklist, return_reason/reject_reason and payment_id. They can also claim verified_by_user_id, which force_actor_columns pins to them, so a read-only user can be recorded as the request's verifier.",
+      "attack_scenario": "An auditor PATCHes /credential_request?credential_request_id=eq.<approved-id> {resident_id:<other resident>}. The request is later paid and the card is minted for the other resident (see WP-WF-004). Or a viewer PATCHes verified_by_user_id on a request that the approver verified personally. The pin records the viewer as verifier, and the approver's self-approval then passes the maker != checker check.",
+      "impact": "In-tenant privilege escalation: roles meant to be read-only can change ID issuance requests, and a read-only user can stand in as the second person in the four-eyes control.",
+      "recommendation": "Rewrite credential_request_update to require the workflow verbs that actually need row writes (credential.submit/review/resubmit/return/reject/approve/record_payment/confirm_print/activate), and never credential.verify. Review residence_credential_update the same way (see WP-WF-012). Then fix WP-WF-004 so that even legitimate updaters cannot change subject fields after verification.",
+      "secure_fix_example": "DROP POLICY credential_request_update ON public.credential_request;\nCREATE POLICY credential_request_update ON public.credential_request FOR UPDATE TO authenticated\n USING (woreda_id = get_user_woreda_id() AND user_has_any_perm(ARRAY['credential.submit','credential.review','credential.resubmit','credential.return','credential.reject','credential.approve','credential.record_payment','credential.confirm_print','credential.activate']))\n WITH CHECK (same);",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-WF-006",
+      "title": "Registered deaths are neither complete nor irreversible: only 'active' credentials are revoked, and any resident.update holder can set the deceased resident back to active",
+      "severity": "High",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:N (6.5)",
+      "confidence": "Likely",
+      "category": "Business Logic",
+      "module": "Civil Registration",
+      "refs": {
+        "insa": [
+          "BL-02",
+          "MC-03"
+        ],
+        "owasp_top10": [
+          "A04:2021"
+        ],
+        "owasp_api": [
+          "API6:2023"
+        ],
+        "asvs": [
+          "V11.1.1"
+        ],
+        "iso27001": [
+          "A.8.26",
+          "A.5.3"
+        ],
+        "nist_csf": [
+          "PR.DS-01"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql",
+          "line": 94,
+          "snippet": "UPDATE public.resident SET residency_status = 'deceased' ..."
+        },
+        {
+          "path": "supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql",
+          "line": 99,
+          "snippet": "SET status = 'revoked', ... WHERE resident_id = NEW.resident_id AND status = 'active' ...  -- suspended/ready_to_print/printing/printed survive"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1627,
+          "snippet": "CREATE POLICY resident_update ... user_has_any_perm('{resident.update}')  -- no trigger guards residency_status"
+        },
+        {
+          "path": "src/components/residents/ResidentActions.tsx",
+          "line": 132,
+          "snippet": ".update({ residency_status: \"active\" })  -- client reactivation path; DB accepts deceased -> active too"
+        },
+        {
+          "path": "supabase/migrations/00000000000025_workflow_engine.sql",
+          "line": 534,
+          "snippet": "('residence_credential','suspended','active','credential.suspend',...)  -- no residency check on lift"
+        },
+        {
+          "path": "supabase/migrations/00000000000025_workflow_engine.sql",
+          "line": 531,
+          "snippet": "('residence_credential','printed','active','credential.activate',...)  -- handover not re-checked against death"
+        }
+      ],
+      "description": "apply_death_on_approval() (latest definition in migration 59) runs atomically inside the paid -> registered system transition, and it is idempotent. But (1) it revokes only credentials whose status is 'active'. A suspended card, or one at ready_to_print/printing/printed, survives the death. suspended -> active (credential.suspend) and printed -> active (credential.activate) do not re-check residency. The print eligibility check at ready_to_print->printing does, but a card that is already printed is not re-checked. (2) resident.residency_status is ordinary data. Any holder of resident.update (registry_clerk, civil_registrar, tenant_admin) can PATCH 'deceased' back to 'active'. No trigger ties the change to the registered death event, requires a reason, or writes an audit row (resident only has an AFTER INSERT audit trigger).",
+      "attack_scenario": "A resident's card is suspended when they die. After registration, a supervisor lifts the suspension (suspended -> active) and the deceased person has a valid, publicly verifiable ID. Or a registry_clerk PATCHes resident.residency_status='active' on a deceased resident. The mint guard's deceased check (migration 70) then passes, and a new ID can be requested and issued for the dead person.",
+      "impact": "The death outcome can be reversed without authorisation or trace, and IDs of deceased residents can stay or become valid. This is an identity-fraud risk.",
+      "recommendation": "Revoke every non-terminal credential of the deceased (ready_to_print, printing, printed, active, suspended) in apply_death_on_approval(). Block suspended->active and printed->active when the resident is deceased. Add a BEFORE UPDATE trigger on resident that forbids leaving 'deceased' unless a system context set by an authorised correction workflow is present, with a reason and an audit row.",
+      "secure_fix_example": "UPDATE public.residence_credential SET status='revoked', revoked_at=now(), revoked_reason=v_reason\n WHERE resident_id=NEW.resident_id AND woreda_id=NEW.woreda_id AND status IN ('ready_to_print','printing','printed','active','suspended');\n-- resident guard:\nIF OLD.residency_status='deceased' AND NEW.residency_status<>'deceased' AND coalesce(current_setting('app.death_correction',true),'')<>'on' THEN RAISE EXCEPTION 'resident: a registered death can only be reversed through the correction workflow'; END IF;",
+      "effort": "M",
+      "status": "Open"
+    },
+    {
+      "id": "WP-WF-007",
+      "title": "Death finalisation fails when the fee is recorded by a finance_clerk (nested revocation needs credential.revoke), leaving an orphaned payment and receipt; revocation audit rows have no woreda or actor",
+      "severity": "Medium",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:L (5.4)",
+      "confidence": "Needs-live-verification",
+      "category": "Business Logic",
+      "module": "Civil Registration",
+      "refs": {
+        "insa": [
+          "BL-02",
+          "LOG-01"
+        ],
+        "owasp_top10": [
+          "A04:2021",
+          "A09:2021"
+        ],
+        "owasp_api": [],
+        "asvs": [
+          "V7.1.3"
+        ],
+        "iso27001": [
+          "A.8.15"
+        ],
+        "nist_csf": [
+          "DE.CM-09"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql",
+          "line": 239,
+          "snippet": "PERFORM set_config('app.system_transition', 'on', true); UPDATE public.vital_event SET status = 'registered' ..."
+        },
+        {
+          "path": "supabase/migrations/00000000000025_workflow_engine.sql",
+          "line": 533,
+          "snippet": "('residence_credential','active','revoked','credential.revoke',false,...)  -- not is_system: checked with user_has_perm(auth.uid())"
+        },
+        {
+          "path": "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql",
+          "line": 107,
+          "snippet": "WHEN 'finance_clerk' THEN ARRAY[...,'civil.record_payment',...]  -- no credential.revoke"
+        },
+        {
+          "path": "supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql",
+          "line": 108,
+          "snippet": "INSERT INTO public.audit_log (entity_name, entity_id, action_type, new_value_json)  -- no woreda_id, no actor"
+        },
+        {
+          "path": "src/routes/woreda.civil.$eventId.tsx",
+          "line": 1264,
+          "snippet": ".from(\"payment\").insert(...)  -- payment, receipt and paid transition are three separate calls"
+        }
+      ],
+      "description": "The death side effect revokes credentials with a plain UPDATE of residence_credential. That fires zz_enforce_workflow_transition on residence_credential. active -> revoked is not a system row, so the engine checks user_has_perm('credential.revoke') for auth.uid(), which is the user who recorded the civil fee. The system GUC does not exempt non-system rows. finance_clerk holds civil.record_payment but not credential.revoke, so for a deceased resident with an active card the whole paid transition rolls back. The payment and receipt were already committed by earlier client calls, so they are left behind. The side effect's own audit_log and credential_status_history inserts omit woreda_id and the actor, so tenant-scoped audit views (woreda_id = get_user_woreda_id()) do not show them.",
+      "attack_scenario": "Not an attack: a routine death registration processed by the cashier fails with 'requires credential.revoke'. The operational workaround is to have tenant_admin record the payment, which concentrates approve, cash and revoke powers in one account.",
+      "impact": "Death registrations stall, confirmed payments and receipts are orphaned, SoD is pushed toward tenant_admin, and revocations caused by death do not appear in the woreda audit view.",
+      "recommendation": "Perform the death revocation under a dedicated system context: add an is_system row for active->revoked driven only by the death trigger, or have the trigger set the GUC and the engine accept it for that one edge. Include woreda_id and the actor in every side-effect audit and history insert. Move payment + receipt + status change into one SECURITY DEFINER RPC (see WP-WF-009).",
+      "secure_fix_example": "-- workflow_transition: ('residence_credential','active','revoked',NULL,true,'System: death registration')\n-- apply_death_on_approval(): INSERT INTO audit_log (woreda_id, actor_user_id, ...) VALUES (NEW.woreda_id, auth.uid(), ...)",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-WF-008",
+      "title": "Divorce events cannot be paid or registered (no fee mapping), and marriage/divorce registration has no side effects and minimal party validation",
+      "severity": "Medium",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:L (5.4)",
+      "confidence": "Likely",
+      "category": "Business Logic",
+      "module": "Civil Registration",
+      "refs": {
+        "insa": [
+          "BL-02"
+        ],
+        "owasp_top10": [
+          "A04:2021"
+        ],
+        "owasp_api": [],
+        "asvs": [
+          "V11.1.3",
+          "V5.1.3"
+        ],
+        "iso27001": [
+          "A.8.26"
+        ],
+        "nist_csf": [
+          "PR.DS-01"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql",
+          "line": 401,
+          "snippet": "WHEN 'marriage' THEN 'Civil Registration - Marriage' ELSE NULL  -- no 'divorce'"
+        },
+        {
+          "path": "supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql",
+          "line": 411,
+          "snippet": "RAISE EXCEPTION 'resolve_civil_fee: unknown event_type %'"
+        },
+        {
+          "path": "supabase/migrations/00000000000066_payment_hardening_review_fixes.sql",
+          "line": 100,
+          "snippet": "WHEN 'marriage' THEN 'Civil Registration - Marriage' END  -- fee guard: divorce -> v_expected NULL -> raises"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 618,
+          "snippet": "vital_event_event_type_check ... 'birth','death','marriage','divorce'"
+        },
+        {
+          "path": "src/routes/woreda.civil.$eventId.tsx",
+          "line": 188,
+          "snippet": "supabase.rpc(\"resolve_civil_fee\", { _event_type: eventType! })"
+        }
+      ],
+      "description": "Divorce is a legal event_type with a creation form (woreda.civil.divorce.new.tsx). But neither resolve_civil_fee() nor the exact-match fee guard maps it to a fee_schedule row, so the payment card errors and no civil_registration_fee payment can be inserted. A divorce can reach approved/awaiting_payment but never paid/registered. Marriage and divorce also have no registration side effects (resident.marital_status is never updated). The only party validation is that a supplied spouse resident_id belongs to the woreda. Nothing checks that the spouses are distinct, alive, adult, not already married (marriage) or actually married to each other (divorce). Free-text parties without a resident_id are accepted.",
+      "attack_scenario": "Functional: every divorce registration dead-ends at awaiting_payment. Integrity: a marriage can be registered between a resident and themselves, or with a deceased resident.",
+      "impact": "A statutory civil event cannot be completed, and registered marriages/divorces are not reflected in, or checked against, the resident registry.",
+      "recommendation": "Add a 'Civil Registration - Divorce' fee row, and map it in resolve_civil_fee(), validate_credential_fee_amount() and check:fee-catalog. Add marriage/divorce preconditions (distinct residents, alive, age >= 18, current marital status) and a side effect that updates marital_status at 'registered'.",
+      "secure_fix_example": "WHEN 'divorce' THEN 'Civil Registration - Divorce'  -- in both CASE expressions, plus a seeded fee_schedule row per woreda",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-WF-009",
+      "title": "Fee payment for credentials, civil events and services is a non-atomic client-side sequence, with no one-payment-per-request or one-receipt-per-payment constraint",
+      "severity": "Medium",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N (4.3)",
+      "confidence": "Likely",
+      "category": "Business Logic",
+      "module": "Revenue",
+      "refs": {
+        "insa": [
+          "BL-01",
+          "MC-02"
+        ],
+        "owasp_top10": [
+          "A04:2021"
+        ],
+        "owasp_api": [
+          "API6:2023"
+        ],
+        "asvs": [
+          "V11.1.2",
+          "V11.1.4"
+        ],
+        "iso27001": [
+          "A.8.26"
+        ],
+        "nist_csf": [
+          "PR.DS-01"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "src/lib/offlineSync.ts",
+          "line": 244,
+          "snippet": ".from(\"payment\").insert({... status: \"confirmed\" ...})"
+        },
+        {
+          "path": "src/lib/offlineSync.ts",
+          "line": 265,
+          "snippet": "await supabase.from(\"receipt\").insert({...})"
+        },
+        {
+          "path": "src/lib/offlineSync.ts",
+          "line": 277,
+          "snippet": ".update({ status: \"paid\", payment_id: paymentId })  -- three separate PostgREST calls"
+        },
+        {
+          "path": "supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql",
+          "line": 32,
+          "snippet": "CREATE UNIQUE INDEX IF NOT EXISTS payment_vital_event_id_unique  -- only civil payments are unique per request"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 580,
+          "snippet": "receipt_woreda_id_receipt_number_key UNIQUE (woreda_id, receipt_number)  -- no UNIQUE(payment_id)"
+        },
+        {
+          "path": "supabase/migrations/00000000000066_payment_hardening_review_fixes.sql",
+          "line": 76,
+          "snippet": "validate_credential_fee_amount(): checks amount/link/woreda, never the linked request's status"
+        }
+      ],
+      "description": "Recording a fee means inserting a confirmed payment, inserting a receipt, and then PATCHing the request to 'paid'. These are three separate client calls, both online (PaymentCard in the credential, civil and service detail routes) and in offline replay. The database has no single transaction or RPC for them. Only vital_event has a unique payment-per-request index. credential_request and service_request can collect any number of confirmed payments, and receipt has no unique constraint on payment_id. The fee guard also accepts a payment for a request at any status (e.g. 'submitted'). A double submit, a retry after a network failure, or a mint-guard rejection at the final step leaves extra confirmed payments with official receipts. A second 'paid' PATCH also silently repoints payment_id.",
+      "attack_scenario": "A cashier double-clicks or retries after a timeout. Two confirmed payments and two publicly verifiable receipts exist for one ID request. Or a finance clerk collects and receipts a fee for a request that was never approved. The receipt verifies publicly even if the request is later rejected.",
+      "impact": "Double charging, orphaned receipts that are hard to reconcile, and money collected before approval, all against the 'payment after approval' control.",
+      "recommendation": "Replace the client sequence with one SECURITY DEFINER RPC per module (the pattern settle_rent_payment() already uses): resolve the fee server-side, lock the request FOR UPDATE, require status IN ('approved','awaiting_payment'), insert payment + receipt, transition to paid, and accept an idempotency key. Add partial unique indexes on payment(credential_request_id) and payment(service_request_id) WHERE status='confirmed', and UNIQUE(receipt.payment_id).",
+      "secure_fix_example": "CREATE UNIQUE INDEX payment_one_confirmed_per_credential_request ON public.payment (credential_request_id) WHERE credential_request_id IS NOT NULL AND status='confirmed';\nCREATE UNIQUE INDEX receipt_one_per_payment ON public.receipt (payment_id);",
+      "effort": "M",
+      "status": "Open"
+    },
+    {
+      "id": "WP-WF-010",
+      "title": "Fee-waiver control is weak: any module's approve permission authorises it, the approver can waive their own approval, the audit entry is written by the client, and unaudited fee-catalog edits can zero a fee outright",
+      "severity": "Medium",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:N/I:H/A:N (4.9)",
+      "confidence": "Likely",
+      "category": "Business Logic",
+      "module": "Revenue",
+      "refs": {
+        "insa": [
+          "MC-03",
+          "MC-01"
+        ],
+        "owasp_top10": [
+          "A04:2021",
+          "A09:2021"
+        ],
+        "owasp_api": [
+          "API6:2023"
+        ],
+        "asvs": [
+          "V11.1.6",
+          "V7.1.3"
+        ],
+        "iso27001": [
+          "A.5.3",
+          "A.8.15"
+        ],
+        "nist_csf": [
+          "PR.AA-05"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000066_payment_hardening_review_fixes.sql",
+          "line": 165,
+          "snippet": "OR public.user_has_any_perm(ARRAY['credential.approve', 'service.approve', 'civil.approve', 'tenant.manage'])"
+        },
+        {
+          "path": "src/lib/offlineSync.ts",
+          "line": 332,
+          "snippet": "action_type: waived ? \"PAYMENT_WAIVED\" : \"PAYMENT_COLLECTED\"  -- audit row inserted by the client after the fact, error ignored"
+        },
+        {
+          "path": "src/routes/woreda.credentials.$requestId.index.tsx",
+          "line": 1736,
+          "snippet": "action_type: waived ? \"PAYMENT_WAIVED\" : \"PAYMENT_COLLECTED\","
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1579,
+          "snippet": "CREATE POLICY fee_schedule_update ... user_has_any_perm('{tenant.manage}')  -- no audit trigger on fee_schedule/service_type"
+        }
+      ],
+      "description": "The waiver branch of validate_credential_fee_amount() requires a reason of at least 5 characters and amount = 0 (good). Authorisation, though, is 'any of credential.approve, service.approve, civil.approve, tenant.manage', not the approve permission of the module being waived, contrary to docs/architecture.md. The user inserting the payment also needs payment.collect/revenue.collect, which by default only tenant_admin has alongside an approve verb. So in practice the same tenant_admin can approve a request and waive its fee, and no second person is involved. No trigger writes the PAYMENT_WAIVED audit row: the browser inserts it after the payment succeeds and ignores errors, and any tenant user can forge audit_log (WP-DB-008). tenant_admin can also set fee_schedule.standard_fee or service_type.fee_amount to 0, collect 'exact-match' zero payments with no waiver or reason, and restore the fee. None of these catalog edits is audited.",
+      "attack_scenario": "A tenant_admin approves a relative's ID request, records a waiver with the reason 'hardship', and then deletes the client-written audit row (audit_log is mutable, WP-DB-008). Or the tenant_admin temporarily zeroes 'New ID Issuance' in Settings, processes several requests, and restores the fee. The only remaining trace is payment rows with amount 0 and waived=false.",
+      "impact": "Revenue can be waived or suppressed by one person with no durable, trigger-written evidence.",
+      "recommendation": "Require the waiver to be authorised by a second user holding the approve permission of that module and different from the request's approver. Store waived_by/waiver_authorised_by as pinned actor columns. Write the waiver audit row inside the trigger. Add audit triggers (old/new values) on fee_schedule and service_type fee columns.",
+      "secure_fix_example": "-- in validate_credential_fee_amount():\nIF NEW.waived AND NEW.payment_type='credential_fee' AND NOT user_has_perm('credential.approve') THEN RAISE ...; END IF;\nIF NEW.waived AND EXISTS (SELECT 1 FROM credential_request WHERE credential_request_id=NEW.credential_request_id AND approved_by_user_id=auth.uid()) THEN RAISE EXCEPTION 'waiver requires a different authoriser'; END IF;\nINSERT INTO audit_log(woreda_id, actor_user_id, entity_name, entity_id, action_type, new_value_json) VALUES (NEW.woreda_id, auth.uid(), 'payment', NEW.payment_id::text, 'PAYMENT_WAIVED', jsonb_build_object('reason', NEW.waiver_reason));",
+      "effort": "M",
+      "status": "Open"
+    },
+    {
+      "id": "WP-WF-011",
+      "title": "Non-rental payment status and links can be changed by any payment.collect holder via direct PATCH, and uncategorised payment types yield publicly verifiable receipts for arbitrary amounts",
+      "severity": "Medium",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N (4.3)",
+      "confidence": "Likely",
+      "category": "Business Logic",
+      "module": "Revenue",
+      "refs": {
+        "insa": [
+          "MC-03"
+        ],
+        "owasp_top10": [
+          "A01:2021",
+          "A04:2021"
+        ],
+        "owasp_api": [
+          "API3:2023"
+        ],
+        "asvs": [
+          "V11.1.4"
+        ],
+        "iso27001": [
+          "A.8.15",
+          "A.5.3"
+        ],
+        "nist_csf": [
+          "PR.AA-05"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1600,
+          "snippet": "CREATE POLICY payment_update ... user_has_any_perm('{payment.collect,revenue.collect}')"
+        },
+        {
+          "path": "supabase/migrations/00000000000086_rental_review_round3_fixes.sql",
+          "line": 74,
+          "snippet": "IF (OLD.payment_type = 'rental_rent' OR NEW.payment_type = 'rental_rent') AND (...)  -- status guard only for rental"
+        },
+        {
+          "path": "supabase/migrations/00000000000066_payment_hardening_review_fixes.sql",
+          "line": 76,
+          "snippet": "IF NEW.payment_type NOT IN ('service_fee', 'civil_registration_fee', 'credential_fee') THEN RETURN NEW;"
+        },
+        {
+          "path": "supabase/migrations/00000000000013_receipt_verification.sql",
+          "line": 180,
+          "snippet": "AND p.status = 'confirmed'  -- verify_receipt follows the mutable status"
+        }
+      ],
+      "description": "Only rental_rent payments are protected against status, amount, date or payer changes outside reverse_rental_payment(). For credential_fee, service_fee, civil_registration_fee, penalty and house_rent rows, any payment.collect/revenue.collect holder (finance_clerk) can PATCH status between pending/confirmed/reversed. No reason, second person or trigger-written audit row is required. Reversing a fee after the credential was minted or the letter issued has no effect on those outcomes. 'penalty' and 'house_rent' payments skip the fee guard entirely, so any cashier can create a confirmed payment of any amount, not linked to any obligation, and it gets an official receipt that verify_receipt() confirms publicly.",
+      "attack_scenario": "A finance clerk takes cash, records a 'penalty' payment for 50 ETB but tells the payer 500 ETB and hands over a printed receipt. Later the clerk flips a genuine credential_fee payment to 'reversed' to cover a till shortage. No audit row records either change.",
+      "impact": "Cash-handling fraud and reconciliation gaps outside the rental module, which already has the proper controls.",
+      "recommendation": "Generalise guard_rental_payment_status_change() to all payment types. Make status/amount/type changes possible only through a reversal RPC that requires a reason, reverser != poster, and writes audit. Either retire the free-form 'penalty'/'house_rent' types or require them to be linked to an obligation and priced by the fee guard.",
+      "secure_fix_example": "-- drop the rental-only predicate:\nIF (NEW.status IS DISTINCT FROM OLD.status OR NEW.amount IS DISTINCT FROM OLD.amount OR NEW.payment_type IS DISTINCT FROM OLD.payment_type) AND coalesce(current_setting('app.system_transition',true),'')<>'on' THEN RAISE EXCEPTION 'payment: use reverse_payment()'; END IF;",
+      "effort": "M",
+      "status": "Open"
+    },
+    {
+      "id": "WP-WF-012",
+      "title": "print_officer cannot print: the role lacks the permissions the credential RLS policies, print route and sign-credential require, so printing falls back to intake roles",
+      "severity": "Medium",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N (4.3)",
+      "confidence": "Likely",
+      "category": "AuthZ",
+      "module": "Credentials",
+      "refs": {
+        "insa": [
+          "MC-01",
+          "RBAC-01"
+        ],
+        "owasp_top10": [
+          "A04:2021"
+        ],
+        "owasp_api": [
+          "API5:2023"
+        ],
+        "asvs": [
+          "V1.4.1"
+        ],
+        "iso27001": [
+          "A.5.3"
+        ],
+        "nist_csf": [
+          "PR.AA-05"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql",
+          "line": 110,
+          "snippet": "WHEN 'print_officer' THEN ARRAY['credential.read','credential.view','credential.preview_print','credential.confirm_print','credential.authorize_reprint','credential.activate','approval.queue.view']"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1622,
+          "snippet": "CREATE POLICY residence_credential_update ... '{credential.issue,credential.approve,credential.print,credential.revoke,credential.renew}'"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1569,
+          "snippet": "CREATE POLICY credential_request_update ... '{credential.issue,credential.approve,credential.verify,payment.collect,revenue.collect}'"
+        },
+        {
+          "path": "src/routes/woreda.credentials.$requestId.print.tsx",
+          "line": 59,
+          "snippet": "permission={P.CREDENTIAL_PRINT}"
+        },
+        {
+          "path": "supabase/functions/sign-credential/index.ts",
+          "line": 122,
+          "snippet": "_perm: \"credential.print\""
+        }
+      ],
+      "description": "print_officer was added (Task 4) as a dedicated printing role for segregation of duties. It holds the workflow verbs (preview_print, confirm_print, activate), but none of the permissions the UPDATE RLS policies of residence_credential and credential_request admit. It also lacks credential.print, which the print route and the sign-credential Edge Function require. For this role every print-state PATCH matches zero rows, and the print page shows an access-denied state. Printing therefore has to be done by registry_clerk/civil_registrar, the same roles that take the request and verify it.",
+      "attack_scenario": "Not an attack. In operation, the clerk who took and verified a request also prints and hands over the card, which the print_officer role was meant to prevent.",
+      "impact": "The dedicated print role cannot work, and printing falls back to the intake/verification roles.",
+      "recommendation": "Align the RLS UPDATE policies and the sign-credential/print route gates with the workflow verbs (credential.preview_print, confirm_print, activate). Then remove the print verbs from the intake roles if SoD is intended.",
+      "secure_fix_example": "-- residence_credential_update USING (... user_has_any_perm(ARRAY['credential.preview_print','credential.confirm_print','credential.activate','credential.suspend','credential.revoke']))",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-WF-013",
+      "title": "Rental billing gaps: client-chosen billing start period, termination month never billed, and account provisioning separate from the approval",
+      "severity": "Medium",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N (4.3)",
+      "confidence": "Likely",
+      "category": "Business Logic",
+      "module": "Rental",
+      "refs": {
+        "insa": [
+          "BL-02"
+        ],
+        "owasp_top10": [
+          "A04:2021"
+        ],
+        "owasp_api": [
+          "API6:2023"
+        ],
+        "asvs": [
+          "V11.1.3"
+        ],
+        "iso27001": [
+          "A.8.26"
+        ],
+        "nist_csf": [
+          "PR.DS-01"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000087_rental_review_round4_fixes.sql",
+          "line": 141,
+          "snippet": "IF _billing_start_period_key !~ '^[0-9]{4}-(0[1-9]|1[0-2])$' THEN  -- format only; not reconciled with rent_start_date"
+        },
+        {
+          "path": "src/routes/woreda.rental-houses.requests.$requestId.index.tsx",
+          "line": 339,
+          "snippet": "_billing_start_period_key: billingStartPeriodKey,  -- computed in the browser, separate call after approval"
+        },
+        {
+          "path": "supabase/migrations/00000000000076_rental_phase2_financial_core.sql",
+          "line": 585,
+          "snippet": "AND ra.status = 'active'  -- generate_rent_charges skips terminated accounts"
+        },
+        {
+          "path": "supabase/migrations/00000000000084_rental_review_regression_fixes.sql",
+          "line": 120,
+          "snippet": "SET status = 'terminated'  -- billing_end_period_key never set"
+        },
+        {
+          "path": "supabase/migrations/00000000000087_rental_review_round4_fixes.sql",
+          "line": 93,
+          "snippet": "--   - Terminating an occupancy never sets rent_account.billing_end_period_key, ... never charged"
+        }
+      ],
+      "description": "The rental financial core (settlement, arrears and reversal RPCs) is well built: amounts are recomputed server-side, month charges are indivisible, charges are locked FOR UPDATE in canonical order, idempotency is a DB constraint, and reverser != collector. Three gaps remain around it. (1) provision_rent_account() takes the billing start period from the client and only checks its format. A rental.approve/rental.billing holder can start billing months or years after the occupancy began (free rent) or before it. (2) Terminating an occupancy sets rent_account.status='terminated' but never billing_end_period_key, and generate_rent_charges() only bills active accounts. The termination month, and any month not yet generated, is never charged. The code's own header (migration 87) records this as a known gap. (3) The rent account is provisioned by a second client call after the approval commits. If that call fails, the occupancy is active with no billable account.",
+      "attack_scenario": "An approver provisions an account with _billing_start_period_key two years after rent_start_date, and the tenant is never billed for those months. A clerk approves a termination just before the monthly billing run, and the final month is never charged.",
+      "impact": "Rent revenue is lost with no exception record. The 'no partial month' rule holds, but whole months fall outside the ledger.",
+      "recommendation": "Derive the billing start period server-side from rental_occupancy.rent_start_date (Pagume -> next Meskerem), or reject a key that differs from the derived one. Provision the account inside apply_rental_occupancy_on_approval(). On termination, set billing_end_period_key and generate the final charge before closing the account.",
+      "secure_fix_example": "IF _billing_start_period_key <> public.ec_period_key_for(v_occ.rent_start_date) THEN RAISE EXCEPTION 'billing start must match the occupancy start period'; END IF;  -- helper to be added",
+      "effort": "M",
+      "status": "Open"
+    },
+    {
+      "id": "WP-WF-014",
+      "title": "Rental payment reversal does not require a reason",
+      "severity": "Low",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:N/I:L/A:N (2.7)",
+      "confidence": "Confirmed",
+      "category": "Logging",
+      "module": "Rental",
+      "refs": {
+        "insa": [
+          "MC-03",
+          "LOG-01"
+        ],
+        "owasp_top10": [
+          "A09:2021"
+        ],
+        "owasp_api": [],
+        "asvs": [
+          "V7.1.3"
+        ],
+        "iso27001": [
+          "A.8.15"
+        ],
+        "nist_csf": [
+          "DE.CM-09"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000089_rental_review_round6_fixes.sql",
+          "line": 436,
+          "snippet": "_reason text  -- never validated in the body"
+        },
+        {
+          "path": "supabase/migrations/00000000000089_rental_review_round6_fixes.sql",
+          "line": 567,
+          "snippet": "'reason', _reason, 'charges_reopened', v_reopened_count,"
+        },
+        {
+          "path": "src/routes/woreda.rental-accounts.$occupancyId.tsx",
+          "line": 336,
+          "snippet": "_reason: reverseReason || null,"
+        }
+      ],
+      "description": "reverse_rental_payment() correctly requires rental.reverse (tenant_admin only, reserved key), enforces reverser != collector, locks rows, and writes an audit row. But the reason is optional both in the RPC and in the UI, so a reversal can be recorded with a NULL reason.",
+      "attack_scenario": "A tenant_admin reverses a colleague's collection without giving any justification. The audit row records reason: null.",
+      "impact": "Reversals cannot be justified after the fact. This is an MC-03 gap for the most sensitive rental money operation.",
+      "recommendation": "Reject NULL or short reasons in the RPC (length(trim(_reason)) >= 10) and make the field mandatory in the dialog.",
+      "secure_fix_example": "IF _reason IS NULL OR length(btrim(_reason)) < 10 THEN RAISE EXCEPTION 'reverse_rental_payment: a reason is required' USING ERRCODE='check_violation'; END IF;",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-WF-015",
+      "title": "Service letter print route has no status or permission gate",
+      "severity": "Low",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:L/I:L/A:N (5.4)",
+      "confidence": "Confirmed",
+      "category": "AuthZ",
+      "module": "Services",
+      "refs": {
+        "insa": [
+          "MC-02"
+        ],
+        "owasp_top10": [
+          "A01:2021"
+        ],
+        "owasp_api": [
+          "API5:2023"
+        ],
+        "asvs": [
+          "V4.1.1"
+        ],
+        "iso27001": [
+          "A.8.26"
+        ],
+        "nist_csf": [
+          "PR.AA-05"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "src/routes/woreda.services.$requestId.print.tsx",
+          "line": 16,
+          "snippet": "export const Route = createFileRoute(\"/woreda/services/$requestId/print\")({  -- no PermissionGate in file"
+        },
+        {
+          "path": "src/routes/woreda.services.$requestId.print.tsx",
+          "line": 61,
+          "snippet": "\"request_number, subject, ..., issued_at, status, verification_token, ...\"  -- status fetched but never checked"
+        }
+      ],
+      "description": "The letter print page renders a complete official letter, including the woreda letterhead template and a verification QR, for any service request the user can read. It checks neither the status (submitted, rejected, unpaid) nor any permission. If issued_at is null it uses today's date.",
+      "attack_scenario": "Any woreda staff member (print_officer, viewer) opens /woreda/services/<id>/print for a request that was rejected or never paid and prints an official-looking letter. The QR fails online verification, but a reader who does not scan it is misled.",
+      "impact": "Official-looking but unissued letters can be printed. Online verification limits the damage.",
+      "recommendation": "Gate the route with PermissionGate (service.issue_letter) and render only when status IN ('issued','completed'), using issued_letter_html (the issuance snapshot) instead of re-rendering the live template.",
+      "secure_fix_example": "if (!['issued','completed'].includes(data.status)) return <NotIssued/>;",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-WF-016",
+      "title": "FSM hygiene: a live UI button strands complaints in approval_returned, system transitions no process drives (active->expired, overdue), and an incomplete terminal list in the engine",
+      "severity": "Low",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:N/I:L/A:L (3.7)",
+      "confidence": "Confirmed",
+      "category": "Quality",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "MC-02"
+        ],
+        "owasp_top10": [
+          "A04:2021"
+        ],
+        "owasp_api": [],
+        "asvs": [
+          "V11.1.1"
+        ],
+        "iso27001": [
+          "A.8.26"
+        ],
+        "nist_csf": [
+          "PR.PS-06"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000061_task14b_service_request_fsm.sql",
+          "line": 117,
+          "snippet": "('service_request', 'pending_approval', 'approval_returned', 'service.return', ...)  -- no row has approval_returned as from_status"
+        },
+        {
+          "path": "src/routes/woreda.services.$requestId.index.tsx",
+          "line": 872,
+          "snippet": "transition(isLetter ? \"returned\" : \"approval_returned\", {"
+        },
+        {
+          "path": "supabase/migrations/00000000000025_workflow_engine.sql",
+          "line": 536,
+          "snippet": "('residence_credential','active','expired',NULL,true,'Past expiry_date; no scheduled job sets this yet')"
+        },
+        {
+          "path": "supabase/migrations/00000000000046_task10_credential_lifecycle.sql",
+          "line": 182,
+          "snippet": "IF OLD.status = ANY (ARRAY['rejected','expired','revoked','replaced']) ...  -- completed/closed/registered/cancelled/defaulted rely on seed absence only"
+        },
+        {
+          "path": "docs/audit/2026-09-24/raw/workflows-fsm-reconstructed.txt",
+          "line": 1,
+          "snippet": "Reconstructed FSM (83 transitions) with sink/unreachable analysis"
+        }
+      ],
+      "description": "The reconstructed FSM (83 transitions, raw/workflows-fsm-reconstructed.txt) shows the following. (a) service_request 'approval_returned' is a non-terminal sink, and the complaint 'Return' button at approval writes it, so the complaint is permanently stuck. (b) rental_occupancy_request 'draft' has no exit, and vital_event 'approval_returned'/'issued' and rental 'pending_approval' are dead states. (c) No process drives the only credential system transition, active -> expired, so DB status stays 'active' after expiry. The public verifier compensates using the signed payload's expiry, but staff lookups and the one-active-credential index do not. (d) Nothing in the app calls refresh_rent_ledger_statuses(), and there is no scheduler, so 'overdue' is derived at read time instead of stored. (e) The engine's own terminal-state test lists only rejected/expired/revoked/replaced. The terminal states of the newer FSMs (completed, closed, registered, cancelled, defaulted, rental approved) are protected only by the absence of seed rows.",
+      "attack_scenario": "Not an attack: complaints returned at approval cannot be progressed, and expired IDs remain 'active' for staff.",
+      "impact": "Operational dead-ends and weaker protection against a future seed mistake reopening a terminal state.",
+      "recommendation": "Seed approval_returned -> under_review for service_request (or change the button to write 'returned'). Add a scheduled SECURITY DEFINER job (pg_cron or an Edge cron) for active->expired and ledger refresh. Extend the terminal array in enforce_workflow_transition() to every terminal state of every entity.",
+      "secure_fix_example": "INSERT INTO workflow_transition VALUES (...'service_request','approval_returned','under_review','service.resubmit',false,...);\nIF OLD.status = ANY (ARRAY['rejected','expired','revoked','replaced','completed','closed','registered','cancelled','defaulted']) AND NOT v_rule.is_system THEN ...",
+      "effort": "S",
+      "status": "Open"
+    }
+  ],
+  "checklist": [
+    {
+      "id": "MC-01",
+      "status": "FAIL",
+      "evidence": "supabase/migrations/00000000000046_task10_credential_lifecycle.sql:204-222; supabase/migrations/00000000000061_task14b_service_request_fsm.sql:126; supabase/migrations/00000000000089_rental_review_round6_fixes.sql:172-217; supabase/migrations/00000000000088_rental_review_round5_fixes.sql:420-445",
+      "note": "The DB enforces verifier != approver on entry into 'approved' for credential_request, vital_event, service_request and rental_occupancy_request. Rental also enforces requester != verifier != approver with pinned actors, and arrears plans enforce requester != approver. It fails because (a) the generic check compares stale actor columns, so one user can verify and approve after a return (WP-WF-003); (b) complaint approval (pending_approval -> in_progress) has no check and letters can use it (WP-WF-002); (c) requester != approver is not enforced for credentials, civil or services; (d) waiver authorisation is not separated from approval (WP-WF-010)."
+    },
+    {
+      "id": "MC-02",
+      "status": "PARTIAL",
+      "evidence": "supabase/migrations/00000000000025_workflow_engine.sql:190-327; supabase/migrations/00000000000029_workflow_insert_guard.sql:85-117; raw/workflows-fsm-reconstructed.txt",
+      "note": "UPDATE status changes on 6 tables are rejected unless the (entity, from, to) triple is seeded and the caller holds the permission; system rows require a transaction-scoped GUC set only inside SECURITY DEFINER bodies (all 60+ set_config calls use is_local=true). Gaps: vital_event/service_request can be INSERTed at any status (WP-WF-001), letter/complaint edges are shared (WP-WF-002), subject fields are not frozen after approval (WP-WF-004), and read-only roles have UPDATE on credential_request (WP-WF-005)."
+    },
+    {
+      "id": "MC-03",
+      "status": "FAIL",
+      "evidence": "supabase/migrations/00000000000066_payment_hardening_review_fixes.sql:156-180; supabase/migrations/00000000000046_task10_credential_lifecycle.sql:257-262; supabase/migrations/00000000000089_rental_review_round6_fixes.sql:434-575; supabase/migrations/00000000000000_baseline.sql:1600",
+      "note": "Credential revocation: tenant_admin-only (credential.revoke reserved), non-empty reason enforced by the engine, trigger-written audit row: PASS. Fee waiver: reason >= 5 chars and a role check, but the role check spans modules, no second person, client-written audit (WP-WF-010): PARTIAL. Rental reversal: role + reverser != collector + audit, reason optional (WP-WF-014): PARTIAL. Non-rental payment reversal: no role beyond payment.collect, no reason, no audit (WP-WF-011): FAIL. Deletions: hard DELETE policies on payment/receipt/requests (see WP-DB-011): FAIL. Reversing a registered death: any resident.update holder, no reason or audit (WP-WF-006): FAIL."
+    },
+    {
+      "id": "BL-01",
+      "status": "PARTIAL",
+      "evidence": "supabase/migrations/00000000000000_baseline.sql:1004-1027; supabase/migrations/00000000000002_credential.sql:76-119; supabase/migrations/00000000000000_baseline.sql:580,592",
+      "note": "Workflow part: receipt and credential numbers come from an INSERT ... ON CONFLICT DO UPDATE ... RETURNING counter (row-locked, race-safe) and are UNIQUE per woreda. But receipts are not unique per payment and payments are not unique per credential/service request, so double submits create duplicate money records (WP-WF-009). Client-supplied numbers and writable counters are covered by WP-DB-006 (database agent)."
+    },
+    {
+      "id": "BL-02",
+      "status": "PARTIAL",
+      "evidence": "supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql:82-170,231-258; supabase/migrations/00000000000033_task2_followup_pin_and_rental_scope.sql:60-77",
+      "note": "Birth -> resident and death -> revoke run in the same transaction as the system-only paid -> registered transition (atomic). Birth is idempotent (resident_id IS NULL guard + pin); 'registered' has no outbound edge. Gaps: death revokes only 'active' cards and is reversible through resident.update (WP-WF-006); finalisation fails for a finance_clerk payer (WP-WF-007); divorce cannot be registered (WP-WF-008); approved events can be retyped before registration (WP-WF-004); insert-at-state bypass (WP-WF-001); cross-woreda mother lookup (WP-DB-003, database agent)."
+    }
+  ],
+  "drift": [
+    {
+      "claim": "enforce_workflow_transition() is attached to every workflow-bearing table: credential_request, residence_credential, vital_event, rental_occupancy_request, service_request",
+      "source": "CLAUDE.md (Workflow engine section); docs/architecture.md:179-184",
+      "verdict": "CONTRADICTED",
+      "evidence": "It is also attached to arrears_repayment_plan (supabase/migrations/00000000000080_rental_phase4_arrears.sql:300); workflow_transition_entity_check was widened for it at 80:111-114. Six tables, not five."
+    },
+    {
+      "claim": "The same function also enforces maker != checker (one person can never both verify and approve the same row)",
+      "source": "CLAUDE.md; docs/architecture.md:189-190",
+      "verdict": "CONTRADICTED",
+      "evidence": "Only on entry into 'approved', against possibly stale actor columns (WP-WF-003); the complaint edge pending_approval->in_progress has no check (supabase/migrations/00000000000061_task14b_service_request_fsm.sql:126)."
+    },
+    {
+      "claim": "INV-05 Maker != checker enforced beyond UI: PASS; Workflow integrity Green: enforce_workflow_transition() blocks every illegal status change",
+      "source": "docs/go-live-declaration.md:25,46",
+      "verdict": "CONTRADICTED",
+      "evidence": "INSERT-at-state bypass for vital_event/service_request (WP-WF-001), category-blind letter edges (WP-WF-002), stale-actor bypass (WP-WF-003)."
+    },
+    {
+      "claim": "Waiver requires supervisor-level authorization for that module",
+      "source": "docs/architecture.md:386-388; CLAUDE.md (Fee resolution section)",
+      "verdict": "CONTRADICTED",
+      "evidence": "supabase/migrations/00000000000066_payment_hardening_review_fixes.sql:165 accepts any of credential.approve/service.approve/civil.approve/tenant.manage regardless of module."
+    },
+    {
+      "claim": "Three resolver functions map their module's type to a fee_schedule row (resolve_civil_fee covers civil registration)",
+      "source": "CLAUDE.md (Fee resolution section)",
+      "verdict": "CONTRADICTED",
+      "evidence": "resolve_civil_fee() maps birth/death/marriage only; 'divorce' raises (supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql:397-412)."
+    },
+    {
+      "claim": "Fee resolvers fail closed, resolve the caller's own woreda, require status='active' and effective_from <= current_date",
+      "source": "CLAUDE.md (Fee resolution section)",
+      "verdict": "CONFIRMED",
+      "evidence": "supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql:386-440; 00000000000054:67-116; 00000000000062:162-197 (civil/credential also accept effective_from IS NULL)."
+    },
+    {
+      "claim": "Zero-fee rule: a free service still writes a real payment and receipt",
+      "source": "CLAUDE.md",
+      "verdict": "CONFIRMED",
+      "evidence": "Payment gates require a confirmed, receipted, type-matched payment linked to the same request: supabase/migrations/00000000000066_payment_hardening_review_fixes.sql:207-290; 00000000000070:53-68."
+    },
+    {
+      "claim": "workflow_transition carries no woreda_id; FSMs are platform-fixed",
+      "source": "CLAUDE.md; docs/architecture.md:192-196",
+      "verdict": "CONFIRMED",
+      "evidence": "supabase/migrations/00000000000025_workflow_engine.sql:60-69,105-108 (write policy is_super_admin() only)."
+    },
+    {
+      "claim": "System transitions are blocked from a live user session (GUC set only inside SECURITY DEFINER functions)",
+      "source": "CLAUDE.md; 00000000000025_workflow_engine.sql:183-187",
+      "verdict": "CONFIRMED",
+      "evidence": "All set_config('app.system_transition'|'app.minting_credential', ..., true) calls are transaction-scoped and inside DEFINER bodies (raw grep). Migration 29:55-64 corrects migration 25's stated rationale; the real boundary is that set_config is not exposed via PostgREST."
+    },
+    {
+      "claim": "SET LOCAL by a PostgREST caller does not survive into the trigger's execution context",
+      "source": "supabase/migrations/00000000000025_workflow_engine.sql:184-187 (comment)",
+      "verdict": "CONTRADICTED",
+      "evidence": "The project's own migration 29 (00000000000029_workflow_insert_guard.sql:55-58) states the claim is factually wrong."
+    },
+    {
+      "claim": "enforce_workflow_transition()'s generic maker-checker is wired only to credential_request and residence_credential, never to rental_occupancy_request",
+      "source": "supabase/migrations/00000000000087_rental_review_round4_fixes.sql:62-65 (comment)",
+      "verdict": "CONTRADICTED",
+      "evidence": "The trigger on rental_occupancy_request (supabase/migrations/00000000000058_task14a_civil_registration_fsm.sql:150) has no WHEN clause and the function body checks approved/verified columns generically; only the migration-26 WHEN clauses are table-specific."
+    },
+    {
+      "claim": "log_workflow_transition() writes audit_log rows for credential_request/residence_credential; log_workflow_status_history() writes workflow_status_history for vital_event/rental_occupancy_request/service_request",
+      "source": "CLAUDE.md",
+      "verdict": "CONFIRMED",
+      "evidence": "supabase/migrations/00000000000025_workflow_engine.sql:398-414; 00000000000058:143-157; 00000000000061:77-80 (plus arrears_repayment_plan via 00000000000080:305). Both are AFTER UPDATE only; inserts are not logged."
+    },
+    {
+      "claim": "print_officer is a working print role (Task 4 adds print_officer)",
+      "source": "supabase/migrations/00000000000025_workflow_engine.sql:44-47; src/config/permissions.ts:455-463",
+      "verdict": "CONTRADICTED",
+      "evidence": "The role lacks every permission the credential UPDATE RLS policies, print route and sign-credential accept (WP-WF-012)."
+    },
+    {
+      "claim": "Reports' rental paid/unpaid count reads payment.rental_request_id, which settle_rent_payment() never sets",
+      "source": "supabase/migrations/00000000000087_rental_review_round4_fixes.sql (header, known gaps)",
+      "verdict": "CONFIRMED",
+      "evidence": "src/hooks/useReportsAggregate.ts:211 still selects rental_request:rental_request_id; settle_rent_payment() inserts payment without rental_request_id (supabase/migrations/00000000000087_rental_review_round4_fixes.sql:710-716)."
+    }
+  ],
+  "artifacts": [
+    "docs/audit/2026-09-24/findings/workflows.md (Mermaid stateDiagram-v2 per workflow: credential_request, residence_credential, vital_event, service_request, rental_occupancy_request, arrears_repayment_plan, rent_charge/payment)",
+    "docs/audit/2026-09-24/raw/workflows-fsm-reconstructed.txt (final workflow_transition table replayed from all 90 migrations: 83 transitions, sink/unreachable analysis, permission cross-check)"
+  ]
+}

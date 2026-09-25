@@ -1,0 +1,27 @@
+# audit-locale EC conversion vectors (src/utils/ethiopianCalendar.ts @ HEAD 9950f16), run with bun, TZ=Africa/Addis_Ababa
+PASS V1 Meskerem 1 2017 (non-leap follow) 2024-09-11 -> {"year":2017,"month":1,"day":1} | inverse {"y":2017,"m":1,"d":1} -> 2024-09-11 | fmt: 1 መስከረም 2017 | valid: true
+PASS V2 Pagume 5 2016 (last day of common year) 2024-09-10 -> {"year":2016,"month":13,"day":5} | inverse {"y":2016,"m":13,"d":5} -> 2024-09-10 | fmt: 5 ጳጉሜ 2016 | valid: true
+PASS V2b Pagume 5 2018 2026-09-10 -> {"year":2018,"month":13,"day":5} | inverse {"y":2018,"m":13,"d":5} -> 2026-09-10 | fmt: 5 ጳጉሜ 2018 | valid: true
+PASS V3 Pagume 6 2015 (leap) 2023-09-11 -> {"year":2015,"month":13,"day":6} | inverse {"y":2015,"m":13,"d":6} -> 2023-09-11 | fmt: 6 ጳጉሜ 2015 | valid: true
+PASS V3b Meskerem 1 2016 after leap 2023-09-12 -> {"year":2016,"month":1,"day":1} | inverse {"y":2016,"m":1,"d":1} -> 2023-09-12 | fmt: 1 መስከረም 2016 | valid: true
+PASS V4 year boundary Meskerem 1 2019 2026-09-11 -> {"year":2019,"month":1,"day":1} | inverse {"y":2019,"m":1,"d":1} -> 2026-09-11 | fmt: 1 መስከረም 2019 | valid: true
+PASS V4b Pagume 5 2018 prev day 2026-09-10 -> {"year":2018,"month":13,"day":5} | inverse {"y":2018,"m":13,"d":5} -> 2026-09-10 | fmt: 5 ጳጉሜ 2018 | valid: true
+PASS V5 Greg leap day 2024-02-29 2024-02-29 -> {"year":2016,"month":6,"day":21} | inverse {"y":2016,"m":6,"d":21} -> 2024-02-29 | fmt: 21 የካቲት 2016 | valid: true
+PASS V5b 2028-02-29 2028-02-29 -> {"year":2020,"month":6,"day":21} | inverse {"y":2020,"m":6,"d":21} -> 2028-02-29 | fmt: 21 የካቲት 2020 | valid: true
+PASS V6 today 2026-09-24 -> {"year":2019,"month":1,"day":14} | inverse {"y":2019,"m":1,"d":14} -> 2026-09-24 | fmt: 14 መስከረም 2019 | valid: true
+PASS V7 Genna 2027-01-07 2027-01-07 -> {"year":2019,"month":4,"day":29} | inverse {"y":2019,"m":4,"d":29} -> 2027-01-07 | fmt: 29 ታኅሣሥ 2019 | valid: true
+PASS V8 Pagume 6 2019 (leap, 2019%4=3) 2027-09-11 -> {"year":2019,"month":13,"day":6} | inverse {"y":2019,"m":13,"d":6} -> 2027-09-11 | fmt: 6 ጳጉሜ 2019 | valid: true
+PASS V8b Meskerem 1 2020 2027-09-12 -> {"year":2020,"month":1,"day":1} | inverse {"y":2020,"m":1,"d":1} -> 2027-09-12 | fmt: 1 መስከረም 2020 | valid: true
+isValid P6 2018 false P6 2015 true P6 2019 true
+sweep 1900-2100 roundtrip mismatches: 0
+datetime fmt 19:00 -> 14 መስከረም 2019 19:00
+
+# Timezone reproduction (TZ=Africa/Addis_Ababa then TZ=UTC)
+TZ Africa/Addis_Ababa local Tue Oct 20 2026 00:00:00 GMT+0300 (East Africa Time) | toISOString().slice = 2026-10-19 | expected 2026-10-20
+01:30 EAT on 2026-09-24 -> toISOString().slice = 2026-09-23
+addEthiopianMonths('2026-09-24',1) = 2026-10-23 expected 2026-10-24 (Tikimt 14 2019)
+start on Pagume 3 2018 (2026-09-08) +1 -> 2026-10-12
+TZ UTC local Tue Oct 20 2026 00:00:00 GMT+0000 (Coordinated Universal Time) | toISOString().slice = 2026-10-20 | expected 2026-10-20
+01:30 EAT on 2026-09-24 -> toISOString().slice = 2026-09-23
+addEthiopianMonths('2026-09-24',1) = 2026-10-24 expected 2026-10-24 (Tikimt 14 2019)
+start on Pagume 3 2018 (2026-09-08) +1 -> 2026-10-13

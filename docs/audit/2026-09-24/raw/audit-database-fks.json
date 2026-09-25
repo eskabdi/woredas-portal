@@ -1,0 +1,1522 @@
+[
+ {
+  "table": "app_user",
+  "col": "console_role_id",
+  "ref": "console_role",
+  "ref_col": "console_role_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000009_console_roles.sql"
+ },
+ {
+  "table": "app_user",
+  "col": "custom_role_id",
+  "ref": "tenant_role",
+  "ref_col": "tenant_role_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000038_task13_tenant_role_schema.sql"
+ },
+ {
+  "table": "app_user",
+  "col": "invited_by_user_id",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:630"
+ },
+ {
+  "table": "app_user",
+  "col": "reports_to_user_id",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": "SET NULL",
+  "loc": "supabase/migrations/00000000000014_app_user_staff_fields.sql:15"
+ },
+ {
+  "table": "app_user",
+  "col": "user_id",
+  "ref": "users",
+  "ref_col": "id",
+  "on_delete": "CASCADE",
+  "loc": "supabase/migrations/00000000000000_baseline.sql:631"
+ },
+ {
+  "table": "app_user",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:632"
+ },
+ {
+  "table": "approval",
+  "col": "approver_user_id",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000048_task11_schema_gaps.sql:277"
+ },
+ {
+  "table": "approval",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": "CASCADE",
+  "loc": "supabase/migrations/00000000000048_task11_schema_gaps.sql:275"
+ },
+ {
+  "table": "arrears_installment_charge",
+  "col": "installment_id",
+  "ref": "arrears_repayment_installment",
+  "ref_col": "installment_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000080_rental_phase4_arrears.sql:422"
+ },
+ {
+  "table": "arrears_installment_charge",
+  "col": "rent_charge_id",
+  "ref": "rent_charge",
+  "ref_col": "rent_charge_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000080_rental_phase4_arrears.sql:423"
+ },
+ {
+  "table": "arrears_installment_charge",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000080_rental_phase4_arrears.sql:183"
+ },
+ {
+  "table": "arrears_plan_sequence",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000080_rental_phase4_arrears.sql:183"
+ },
+ {
+  "table": "arrears_repayment_installment",
+  "col": "plan_id",
+  "ref": "arrears_repayment_plan",
+  "ref_col": "plan_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000080_rental_phase4_arrears.sql:359"
+ },
+ {
+  "table": "arrears_repayment_installment",
+  "col": "settled_by_payment_id",
+  "ref": "rental_payment",
+  "ref_col": "payment_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000080_rental_phase4_arrears.sql:366"
+ },
+ {
+  "table": "arrears_repayment_installment",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000080_rental_phase4_arrears.sql:183"
+ },
+ {
+  "table": "arrears_repayment_plan",
+  "col": "approved_by_user_id",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000080_rental_phase4_arrears.sql:212"
+ },
+ {
+  "table": "arrears_repayment_plan",
+  "col": "rent_account_id",
+  "ref": "rent_account",
+  "ref_col": "rent_account_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000080_rental_phase4_arrears.sql:198"
+ },
+ {
+  "table": "arrears_repayment_plan",
+  "col": "requested_by_user_id",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000080_rental_phase4_arrears.sql:211"
+ },
+ {
+  "table": "arrears_repayment_plan",
+  "col": "resident_id",
+  "ref": "resident",
+  "ref_col": "resident_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000080_rental_phase4_arrears.sql:199"
+ },
+ {
+  "table": "arrears_repayment_plan",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000080_rental_phase4_arrears.sql:183"
+ },
+ {
+  "table": "attachment",
+  "col": "uploaded_by",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000048_task11_schema_gaps.sql:324"
+ },
+ {
+  "table": "attachment",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": "CASCADE",
+  "loc": "supabase/migrations/00000000000048_task11_schema_gaps.sql:322"
+ },
+ {
+  "table": "audit_log",
+  "col": "actor_user_id",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:633"
+ },
+ {
+  "table": "audit_log",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:634"
+ },
+ {
+  "table": "console_role",
+  "col": "updated_by",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000009_console_roles.sql:27"
+ },
+ {
+  "table": "console_role_permission",
+  "col": "console_role_id",
+  "ref": "console_role",
+  "ref_col": "console_role_id",
+  "on_delete": "CASCADE",
+  "loc": "supabase/migrations/00000000000009_console_roles.sql:34"
+ },
+ {
+  "table": "credential_number_sequence",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:635"
+ },
+ {
+  "table": "credential_policy",
+  "col": "updated_by",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000048_task11_schema_gaps.sql:392"
+ },
+ {
+  "table": "credential_policy",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": "CASCADE",
+  "loc": "supabase/migrations/00000000000048_task11_schema_gaps.sql:390"
+ },
+ {
+  "table": "credential_print_log",
+  "col": "credential_id",
+  "ref": "residence_credential",
+  "ref_col": "credential_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:636"
+ },
+ {
+  "table": "credential_print_log",
+  "col": "printed_by_user_id",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:637"
+ },
+ {
+  "table": "credential_print_log",
+  "col": "reprint_authorized_by_user_id",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:638"
+ },
+ {
+  "table": "credential_print_log",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:639"
+ },
+ {
+  "table": "credential_request",
+  "col": "approved_by_user_id",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:643"
+ },
+ {
+  "table": "credential_request",
+  "col": "credential_id",
+  "ref": "residence_credential",
+  "ref_col": "credential_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:644"
+ },
+ {
+  "table": "credential_request",
+  "col": "household_id",
+  "ref": "household",
+  "ref_col": "household_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:645"
+ },
+ {
+  "table": "credential_request",
+  "col": "issuing_kebele_id",
+  "ref": "kebele",
+  "ref_col": "kebele_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:646"
+ },
+ {
+  "table": "credential_request",
+  "col": "office_id",
+  "ref": "office",
+  "ref_col": "office_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000048_task11_schema_gaps.sql:128"
+ },
+ {
+  "table": "credential_request",
+  "col": "payment_id",
+  "ref": "payment",
+  "ref_col": "payment_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:647"
+ },
+ {
+  "table": "credential_request",
+  "col": "prior_credential_id",
+  "ref": "residence_credential",
+  "ref_col": "credential_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:648"
+ },
+ {
+  "table": "credential_request",
+  "col": "requested_by_user_id",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:649"
+ },
+ {
+  "table": "credential_request",
+  "col": "resident_id",
+  "ref": "resident",
+  "ref_col": "resident_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:650"
+ },
+ {
+  "table": "credential_request",
+  "col": "verified_by_user_id",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:651"
+ },
+ {
+  "table": "credential_request",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:652"
+ },
+ {
+  "table": "credential_request_sequence",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:640"
+ },
+ {
+  "table": "credential_request_status_history",
+  "col": "changed_by_user_id",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:641"
+ },
+ {
+  "table": "credential_request_status_history",
+  "col": "credential_request_id",
+  "ref": "credential_request",
+  "ref_col": "credential_request_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:642"
+ },
+ {
+  "table": "credential_status_history",
+  "col": "changed_by_user_id",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:653"
+ },
+ {
+  "table": "credential_status_history",
+  "col": "credential_id",
+  "ref": "residence_credential",
+  "ref_col": "credential_id",
+  "on_delete": "CASCADE",
+  "loc": "supabase/migrations/00000000000000_baseline.sql:654"
+ },
+ {
+  "table": "credential_verification_log",
+  "col": "matched_credential_id",
+  "ref": "residence_credential",
+  "ref_col": "credential_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000034_task3_harden_credential_verification.sql:83"
+ },
+ {
+  "table": "credential_verification_log",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000034_task3_harden_credential_verification.sql:82"
+ },
+ {
+  "table": "fee_schedule",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:655"
+ },
+ {
+  "table": "household",
+  "col": "alternate_head_resident_id",
+  "ref": "resident",
+  "ref_col": "resident_id",
+  "on_delete": "SET NULL",
+  "loc": "supabase/migrations/00000000000000_baseline.sql:659"
+ },
+ {
+  "table": "household",
+  "col": "household_head_resident_id",
+  "ref": "resident",
+  "ref_col": "resident_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:660"
+ },
+ {
+  "table": "household",
+  "col": "kebele_id",
+  "ref": "kebele",
+  "ref_col": "kebele_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:661"
+ },
+ {
+  "table": "household",
+  "col": "spouse_resident_id",
+  "ref": "resident",
+  "ref_col": "resident_id",
+  "on_delete": "SET NULL",
+  "loc": "supabase/migrations/00000000000000_baseline.sql:662"
+ },
+ {
+  "table": "household",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:663"
+ },
+ {
+  "table": "household_change_log",
+  "col": "household_id",
+  "ref": "household",
+  "ref_col": "household_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:656"
+ },
+ {
+  "table": "household_change_log",
+  "col": "registered_by_user_id",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:657"
+ },
+ {
+  "table": "household_change_log",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:658"
+ },
+ {
+  "table": "household_location",
+  "col": "captured_by",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000048_task11_schema_gaps.sql:157"
+ },
+ {
+  "table": "household_location",
+  "col": "household_id",
+  "ref": "household",
+  "ref_col": "household_id",
+  "on_delete": "CASCADE",
+  "loc": "supabase/migrations/00000000000048_task11_schema_gaps.sql:153"
+ },
+ {
+  "table": "household_location",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": "CASCADE",
+  "loc": "supabase/migrations/00000000000048_task11_schema_gaps.sql:155"
+ },
+ {
+  "table": "id_card_template",
+  "col": "updated_by",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:664"
+ },
+ {
+  "table": "kebele",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": "CASCADE",
+  "loc": "supabase/migrations/00000000000000_baseline.sql:667"
+ },
+ {
+  "table": "kebele_rental_house",
+  "col": "kebele_id",
+  "ref": "kebele",
+  "ref_col": "kebele_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:665"
+ },
+ {
+  "table": "kebele_rental_house",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:666"
+ },
+ {
+  "table": "office",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": "CASCADE",
+  "loc": "supabase/migrations/00000000000048_task11_schema_gaps.sql:71"
+ },
+ {
+  "table": "payment",
+  "col": "credential_request_id",
+  "ref": "credential_request",
+  "ref_col": "credential_request_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:668"
+ },
+ {
+  "table": "payment",
+  "col": "household_id",
+  "ref": "household",
+  "ref_col": "household_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:669"
+ },
+ {
+  "table": "payment",
+  "col": "posted_by_user_id",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:670"
+ },
+ {
+  "table": "payment",
+  "col": "rental_request_id",
+  "ref": "rental_occupancy_request",
+  "ref_col": "rental_request_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:671"
+ },
+ {
+  "table": "payment",
+  "col": "resident_id",
+  "ref": "resident",
+  "ref_col": "resident_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:672"
+ },
+ {
+  "table": "payment",
+  "col": "service_request_id",
+  "ref": "service_request",
+  "ref_col": "service_request_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:673"
+ },
+ {
+  "table": "payment",
+  "col": "vital_event_id",
+  "ref": "vital_event",
+  "ref_col": "vital_event_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql"
+ },
+ {
+  "table": "payment",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:674"
+ },
+ {
+  "table": "payment_reconciliation_exception",
+  "col": "created_by",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000078_rental_phase3_settlement.sql:177"
+ },
+ {
+  "table": "payment_reconciliation_exception",
+  "col": "rent_account_id",
+  "ref": "rent_account",
+  "ref_col": "rent_account_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000078_rental_phase3_settlement.sql:233"
+ },
+ {
+  "table": "payment_reconciliation_exception",
+  "col": "resolved_by",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000078_rental_phase3_settlement.sql:244"
+ },
+ {
+  "table": "payment_reconciliation_exception",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000078_rental_phase3_settlement.sql:138"
+ },
+ {
+  "table": "receipt",
+  "col": "payment_id",
+  "ref": "payment",
+  "ref_col": "payment_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:676"
+ },
+ {
+  "table": "receipt",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:677"
+ },
+ {
+  "table": "receipt_sequence",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:675"
+ },
+ {
+  "table": "rent_account",
+  "col": "created_by",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000076_rental_phase2_financial_core.sql:105"
+ },
+ {
+  "table": "rent_account",
+  "col": "household_id",
+  "ref": "household",
+  "ref_col": "household_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000076_rental_phase2_financial_core.sql:95"
+ },
+ {
+  "table": "rent_account",
+  "col": "kebele_id",
+  "ref": "kebele",
+  "ref_col": "kebele_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000076_rental_phase2_financial_core.sql:93"
+ },
+ {
+  "table": "rent_account",
+  "col": "occupancy_id",
+  "ref": "rental_occupancy",
+  "ref_col": "occupancy_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000076_rental_phase2_financial_core.sql:91"
+ },
+ {
+  "table": "rent_account",
+  "col": "rental_house_id",
+  "ref": "kebele_rental_house",
+  "ref_col": "rental_house_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000076_rental_phase2_financial_core.sql:92"
+ },
+ {
+  "table": "rent_account",
+  "col": "resident_id",
+  "ref": "resident",
+  "ref_col": "resident_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000076_rental_phase2_financial_core.sql:94"
+ },
+ {
+  "table": "rent_account",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000076_rental_phase2_financial_core.sql:76"
+ },
+ {
+  "table": "rent_account_sequence",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000076_rental_phase2_financial_core.sql:76"
+ },
+ {
+  "table": "rent_charge",
+  "col": "occupancy_id",
+  "ref": "rental_occupancy",
+  "ref_col": "occupancy_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000076_rental_phase2_financial_core.sql:91"
+ },
+ {
+  "table": "rent_charge",
+  "col": "rent_account_id",
+  "ref": "rent_account",
+  "ref_col": "rent_account_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000076_rental_phase2_financial_core.sql:174"
+ },
+ {
+  "table": "rent_charge",
+  "col": "settled_by_payment_id",
+  "ref": "payment",
+  "ref_col": "payment_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000076_rental_phase2_financial_core.sql:230"
+ },
+ {
+  "table": "rent_charge",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000076_rental_phase2_financial_core.sql:76"
+ },
+ {
+  "table": "rent_payment_settlement",
+  "col": "created_by",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000078_rental_phase3_settlement.sql:177"
+ },
+ {
+  "table": "rent_payment_settlement",
+  "col": "payment_id",
+  "ref": "rental_payment",
+  "ref_col": "payment_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000078_rental_phase3_settlement.sql:171"
+ },
+ {
+  "table": "rent_payment_settlement",
+  "col": "rent_charge_id",
+  "ref": "rent_charge",
+  "ref_col": "rent_charge_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000078_rental_phase3_settlement.sql:172"
+ },
+ {
+  "table": "rent_payment_settlement",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000078_rental_phase3_settlement.sql:138"
+ },
+ {
+  "table": "rent_rate_history",
+  "col": "approved_by",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000076_rental_phase2_financial_core.sql:181"
+ },
+ {
+  "table": "rent_rate_history",
+  "col": "rent_account_id",
+  "ref": "rent_account",
+  "ref_col": "rent_account_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000076_rental_phase2_financial_core.sql:174"
+ },
+ {
+  "table": "rent_rate_history",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000076_rental_phase2_financial_core.sql:76"
+ },
+ {
+  "table": "rent_reminder",
+  "col": "rent_account_id",
+  "ref": "rent_account",
+  "ref_col": "rent_account_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000080_rental_phase4_arrears.sql:198"
+ },
+ {
+  "table": "rent_reminder",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000080_rental_phase4_arrears.sql:183"
+ },
+ {
+  "table": "rental_occupancy",
+  "col": "household_id",
+  "ref": "household",
+  "ref_col": "household_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:687"
+ },
+ {
+  "table": "rental_occupancy",
+  "col": "originating_request_id",
+  "ref": "rental_occupancy_request",
+  "ref_col": "rental_request_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:688"
+ },
+ {
+  "table": "rental_occupancy",
+  "col": "rental_house_id",
+  "ref": "kebele_rental_house",
+  "ref_col": "rental_house_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:689"
+ },
+ {
+  "table": "rental_occupancy",
+  "col": "resident_id",
+  "ref": "resident",
+  "ref_col": "resident_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:690"
+ },
+ {
+  "table": "rental_occupancy",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:691"
+ },
+ {
+  "table": "rental_occupancy_request",
+  "col": "approved_by_user_id",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:678"
+ },
+ {
+  "table": "rental_occupancy_request",
+  "col": "existing_occupancy_id",
+  "ref": "rental_occupancy",
+  "ref_col": "occupancy_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:679"
+ },
+ {
+  "table": "rental_occupancy_request",
+  "col": "household_id",
+  "ref": "household",
+  "ref_col": "household_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:680"
+ },
+ {
+  "table": "rental_occupancy_request",
+  "col": "rental_house_id",
+  "ref": "kebele_rental_house",
+  "ref_col": "rental_house_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:681"
+ },
+ {
+  "table": "rental_occupancy_request",
+  "col": "requested_by_user_id",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:682"
+ },
+ {
+  "table": "rental_occupancy_request",
+  "col": "resident_id",
+  "ref": "resident",
+  "ref_col": "resident_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:683"
+ },
+ {
+  "table": "rental_occupancy_request",
+  "col": "resulting_occupancy_id",
+  "ref": "rental_occupancy",
+  "ref_col": "occupancy_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:684"
+ },
+ {
+  "table": "rental_occupancy_request",
+  "col": "verified_by_user_id",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:685"
+ },
+ {
+  "table": "rental_occupancy_request",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:686"
+ },
+ {
+  "table": "rental_payment",
+  "col": "payer_resident_id",
+  "ref": "resident",
+  "ref_col": "resident_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000078_rental_phase3_settlement.sql:140"
+ },
+ {
+  "table": "rental_payment",
+  "col": "payment_id",
+  "ref": "payment",
+  "ref_col": "payment_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000078_rental_phase3_settlement.sql:137"
+ },
+ {
+  "table": "rental_payment",
+  "col": "rent_account_id",
+  "ref": "rent_account",
+  "ref_col": "rent_account_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000078_rental_phase3_settlement.sql:139"
+ },
+ {
+  "table": "rental_payment",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000078_rental_phase3_settlement.sql:138"
+ },
+ {
+  "table": "rental_policy",
+  "col": "updated_by",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000071_rental_phase0_policy.sql:191"
+ },
+ {
+  "table": "rental_policy",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000071_rental_phase0_policy.sql:140"
+ },
+ {
+  "table": "rental_request_document",
+  "col": "rental_request_id",
+  "ref": "rental_occupancy_request",
+  "ref_col": "rental_request_id",
+  "on_delete": "CASCADE",
+  "loc": "supabase/migrations/00000000000000_baseline.sql:692"
+ },
+ {
+  "table": "rental_request_document",
+  "col": "uploaded_by_user_id",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:693"
+ },
+ {
+  "table": "rental_request_document",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:694"
+ },
+ {
+  "table": "rental_request_sequence",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:695"
+ },
+ {
+  "table": "residence_credential",
+  "col": "credential_request_id",
+  "ref": "credential_request",
+  "ref_col": "credential_request_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:696"
+ },
+ {
+  "table": "residence_credential",
+  "col": "issuing_kebele_id",
+  "ref": "kebele",
+  "ref_col": "kebele_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:697"
+ },
+ {
+  "table": "residence_credential",
+  "col": "issuing_office_id",
+  "ref": "office",
+  "ref_col": "office_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000048_task11_schema_gaps.sql:126"
+ },
+ {
+  "table": "residence_credential",
+  "col": "requested_by_user_id",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:698"
+ },
+ {
+  "table": "residence_credential",
+  "col": "resident_id",
+  "ref": "resident",
+  "ref_col": "resident_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:699"
+ },
+ {
+  "table": "residence_credential",
+  "col": "revoked_by_user_id",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:700"
+ },
+ {
+  "table": "residence_credential",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:701"
+ },
+ {
+  "table": "resident",
+  "col": "current_household_id",
+  "ref": "household",
+  "ref_col": "household_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:703"
+ },
+ {
+  "table": "resident",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:704"
+ },
+ {
+  "table": "resident_document",
+  "col": "household_id",
+  "ref": "household",
+  "ref_col": "household_id",
+  "on_delete": "SET NULL",
+  "loc": "supabase/migrations/00000000000004_resident_documents.sql:54"
+ },
+ {
+  "table": "resident_document",
+  "col": "resident_id",
+  "ref": "resident",
+  "ref_col": "resident_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000004_resident_documents.sql:52"
+ },
+ {
+  "table": "resident_document",
+  "col": "uploaded_by_user_id",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000004_resident_documents.sql:56"
+ },
+ {
+  "table": "resident_document",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": "CASCADE",
+  "loc": "supabase/migrations/00000000000004_resident_documents.sql:50"
+ },
+ {
+  "table": "resident_number_sequence",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": "CASCADE",
+  "loc": "supabase/migrations/00000000000000_baseline.sql:702"
+ },
+ {
+  "table": "role_permission",
+  "col": "updated_by",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000018_role_permission_audit_trail.sql"
+ },
+ {
+  "table": "role_permission",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": "CASCADE",
+  "loc": "supabase/migrations/00000000000000_baseline.sql:705"
+ },
+ {
+  "table": "service_request",
+  "col": "approved_by_user_id",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:712"
+ },
+ {
+  "table": "service_request",
+  "col": "household_id",
+  "ref": "household",
+  "ref_col": "household_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:713"
+ },
+ {
+  "table": "service_request",
+  "col": "issued_by_user_id",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:714"
+ },
+ {
+  "table": "service_request",
+  "col": "kebele_id",
+  "ref": "kebele",
+  "ref_col": "kebele_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:715"
+ },
+ {
+  "table": "service_request",
+  "col": "payment_id",
+  "ref": "payment",
+  "ref_col": "payment_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:716"
+ },
+ {
+  "table": "service_request",
+  "col": "requested_by_user_id",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:717"
+ },
+ {
+  "table": "service_request",
+  "col": "resident_id",
+  "ref": "resident",
+  "ref_col": "resident_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:718"
+ },
+ {
+  "table": "service_request",
+  "col": "service_type_id",
+  "ref": "service_type",
+  "ref_col": "service_type_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:719"
+ },
+ {
+  "table": "service_request",
+  "col": "verified_by_user_id",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:720"
+ },
+ {
+  "table": "service_request",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:721"
+ },
+ {
+  "table": "service_request_attachment",
+  "col": "service_request_id",
+  "ref": "service_request",
+  "ref_col": "service_request_id",
+  "on_delete": "CASCADE",
+  "loc": "supabase/migrations/00000000000000_baseline.sql:706"
+ },
+ {
+  "table": "service_request_attachment",
+  "col": "uploaded_by_user_id",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:707"
+ },
+ {
+  "table": "service_request_attachment",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:708"
+ },
+ {
+  "table": "service_request_checkpoint",
+  "col": "active_plan_id",
+  "ref": "arrears_repayment_plan",
+  "ref_col": "plan_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:155"
+ },
+ {
+  "table": "service_request_checkpoint",
+  "col": "rent_account_id",
+  "ref": "rent_account",
+  "ref_col": "rent_account_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:148"
+ },
+ {
+  "table": "service_request_checkpoint",
+  "col": "rental_house_id",
+  "ref": "kebele_rental_house",
+  "ref_col": "rental_house_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:147"
+ },
+ {
+  "table": "service_request_checkpoint",
+  "col": "resident_id",
+  "ref": "resident",
+  "ref_col": "resident_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:146"
+ },
+ {
+  "table": "service_request_checkpoint",
+  "col": "service_request_id",
+  "ref": "service_request",
+  "ref_col": "service_request_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:145"
+ },
+ {
+  "table": "service_request_checkpoint",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:144"
+ },
+ {
+  "table": "service_request_sequence",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": "CASCADE",
+  "loc": "supabase/migrations/00000000000000_baseline.sql:709"
+ },
+ {
+  "table": "service_request_status_history",
+  "col": "changed_by_user_id",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:710"
+ },
+ {
+  "table": "service_request_status_history",
+  "col": "service_request_id",
+  "ref": "service_request",
+  "ref_col": "service_request_id",
+  "on_delete": "CASCADE",
+  "loc": "supabase/migrations/00000000000000_baseline.sql:711"
+ },
+ {
+  "table": "service_type",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": "CASCADE",
+  "loc": "supabase/migrations/00000000000000_baseline.sql:722"
+ },
+ {
+  "table": "tenant_module_config",
+  "col": "updated_by",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:723"
+ },
+ {
+  "table": "tenant_module_config",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:724"
+ },
+ {
+  "table": "tenant_role",
+  "col": "created_by",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000038_task13_tenant_role_schema.sql:37"
+ },
+ {
+  "table": "tenant_role",
+  "col": "updated_by",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000038_task13_tenant_role_schema.sql:38"
+ },
+ {
+  "table": "tenant_role",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000038_task13_tenant_role_schema.sql:26"
+ },
+ {
+  "table": "tenant_role_permission",
+  "col": "tenant_role_id",
+  "ref": "tenant_role",
+  "ref_col": "tenant_role_id",
+  "on_delete": "CASCADE",
+  "loc": "supabase/migrations/00000000000038_task13_tenant_role_schema.sql:48"
+ },
+ {
+  "table": "tenant_role_permission",
+  "col": "updated_by",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000038_task13_tenant_role_schema.sql:38"
+ },
+ {
+  "table": "user_permission_override",
+  "col": "updated_by",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": "SET NULL",
+  "loc": "supabase/migrations/00000000000017_user_permission_overrides.sql:33"
+ },
+ {
+  "table": "user_permission_override",
+  "col": "user_id",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": "CASCADE",
+  "loc": "supabase/migrations/00000000000017_user_permission_overrides.sql:27"
+ },
+ {
+  "table": "user_permission_override",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": "CASCADE",
+  "loc": "supabase/migrations/00000000000017_user_permission_overrides.sql:28"
+ },
+ {
+  "table": "vital_event",
+  "col": "approved_by_user_id",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:726"
+ },
+ {
+  "table": "vital_event",
+  "col": "household_id",
+  "ref": "household",
+  "ref_col": "household_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:727"
+ },
+ {
+  "table": "vital_event",
+  "col": "issued_by_user_id",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:728"
+ },
+ {
+  "table": "vital_event",
+  "col": "payment_id",
+  "ref": "payment",
+  "ref_col": "payment_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql"
+ },
+ {
+  "table": "vital_event",
+  "col": "requested_by_user_id",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:729"
+ },
+ {
+  "table": "vital_event",
+  "col": "resident_id",
+  "ref": "resident",
+  "ref_col": "resident_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:730"
+ },
+ {
+  "table": "vital_event",
+  "col": "verified_by_user_id",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:731"
+ },
+ {
+  "table": "vital_event",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:732"
+ },
+ {
+  "table": "vital_event_sequence",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:725"
+ },
+ {
+  "table": "woreda_settings",
+  "col": "updated_by",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:733"
+ },
+ {
+  "table": "woreda_settings",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": "CASCADE",
+  "loc": "supabase/migrations/00000000000000_baseline.sql:734"
+ },
+ {
+  "table": "workflow_status_history",
+  "col": "changed_by_user_id",
+  "ref": "app_user",
+  "ref_col": "user_id",
+  "on_delete": null,
+  "loc": "supabase/migrations/00000000000058_task14a_civil_registration_fsm.sql:45"
+ },
+ {
+  "table": "workflow_status_history",
+  "col": "woreda_id",
+  "ref": "woreda",
+  "ref_col": "woreda_id",
+  "on_delete": "CASCADE",
+  "loc": "supabase/migrations/00000000000058_task14a_civil_registration_fsm.sql:39"
+ }
+]

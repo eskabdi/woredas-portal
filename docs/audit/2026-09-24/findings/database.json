@@ -1,0 +1,1183 @@
+{
+  "agent": "audit-database",
+  "findings": [
+    {
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:L/A:N (7.1)",
+      "confidence": "Confirmed",
+      "refs": {
+        "insa": [
+          "TEN-02",
+          "D-01",
+          "C-05"
+        ],
+        "owasp_top10": [
+          "A01:2021"
+        ],
+        "owasp_api": [
+          "API1:2023",
+          "API5:2023"
+        ],
+        "asvs": [
+          "V4.1.3",
+          "V4.2.1",
+          "V3.3.1"
+        ],
+        "iso27001": [
+          "A.5.18",
+          "A.8.2"
+        ],
+        "nist_csf": [
+          "PR.AA-05"
+        ]
+      },
+      "secure_fix_example": "CREATE OR REPLACE FUNCTION public.get_user_woreda_id() RETURNS uuid LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$ SELECT woreda_id FROM public.app_user WHERE user_id = auth.uid() AND status = 'active' $$;",
+      "effort": "S",
+      "status": "Open",
+      "id": "WP-DB-001",
+      "title": "get_user_woreda_id() ignores app_user.status: suspended, pending and inactive staff keep tenant-wide data access",
+      "severity": "High",
+      "category": "AuthZ",
+      "module": "Platform",
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1335,
+          "snippet": "CREATE OR REPLACE FUNCTION public.get_user_woreda_id() ... SELECT woreda_id FROM public.app_user WHERE user_id = auth.uid();"
+        },
+        {
+          "path": "supabase/migrations/00000000000011_status_check_admin_helpers.sql",
+          "line": 3,
+          "snippet": "is_super_admin() and is_tenant_admin() (baseline.sql) check only `role`, never `status` ... A suspended super_admin or tenant_admin therefore still passes"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1626,
+          "snippet": "CREATE POLICY resident_select ON public.resident ... USING ((is_super_admin() OR (woreda_id = get_user_woreda_id())))"
+        },
+        {
+          "path": "supabase/migrations/00000000000023_pii_encryption.sql",
+          "line": 352,
+          "snippet": "caller_woreda   := public.get_user_woreda_id();"
+        },
+        {
+          "path": "src/components/settings/UsersRolesTab.tsx",
+          "line": 254,
+          "snippet": "async function suspendUserAction(user) { ... .from(\"app_user\").update({ status: \"suspended\" })"
+        },
+        {
+          "path": "docs/audit/2026-09-24/raw/audit-database-status-ungated-policies.txt",
+          "line": 1,
+          "snippet": "TOTAL 52 policy clauses on 43 tables; write-capable: audit_log, 6 sequence tables, kebele, service_request_status_history; plus 36 storage.objects policies"
+        }
+      ],
+      "description": "Migration 11 fixed is_super_admin()/is_tenant_admin() to require status='active', and user_has_perm() already did, but get_user_woreda_id() was never given the same check. It is the only tenant predicate in 52 policy clauses on 43 tables, all 36 tenant storage.objects policies, and decrypt_pii_text()/decrypt_pii_numeric(). Suspending a user in the UI only sets app_user.status='suspended'. It does not ban the GoTrue user or revoke the refresh token.",
+      "attack_scenario": "A clerk is suspended after misconduct but keeps a valid refresh token. Calling PostgREST directly (GET /rest/v1/resident_decrypted?select=*) still returns every resident in the woreda, including decrypted national ID and phone number. The clerk can also download or delete scanned documents in storage, write the credential/receipt counter tables, and insert audit_log rows. An invited user who is still 'pending' gets the same read access.",
+      "impact": "Taking a staff member's access away does not work at the database layer: any pending, suspended or inactive account keeps confidentiality exposure of the whole tenant's PII, plus limited integrity impact.",
+      "recommendation": "Make get_user_woreda_id() return NULL unless status='active', which fixes every dependent policy at once. Also make suspension a server-side action that bans the auth user or revokes their sessions (Edge Function using auth.admin.updateUserById with ban_duration, or signOut(scope: global))."
+    },
+    {
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:L/I:H/A:L (7.1)",
+      "confidence": "Confirmed",
+      "refs": {
+        "insa": [
+          "TEN-06",
+          "C-08",
+          "CLS-01"
+        ],
+        "owasp_top10": [
+          "A01:2021"
+        ],
+        "owasp_api": [
+          "API5:2023"
+        ],
+        "asvs": [
+          "V4.2.1",
+          "V12.5.1"
+        ],
+        "iso27001": [
+          "A.8.3"
+        ],
+        "nist_csf": [
+          "PR.DS-01",
+          "PR.AA-05"
+        ]
+      },
+      "secure_fix_example": "CREATE POLICY tenant_assets_write ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id='tenant-assets' AND storage_path_woreda_id(name)=get_user_woreda_id() AND user_has_perm('tenant.manage'));",
+      "effort": "M",
+      "status": "Open",
+      "id": "WP-DB-002",
+      "title": "Storage policies check only the woreda path prefix: any tenant user can overwrite official signatures/stamps/logos and read or delete every scanned legal document",
+      "severity": "High",
+      "category": "AuthZ",
+      "module": "Settings",
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000001_storage.sql",
+          "line": 124,
+          "snippet": "CREATE POLICY tenant_assets_insert_scoped ON storage.objects ... WITH CHECK (((bucket_id = 'tenant-assets'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id()))))"
+        },
+        {
+          "path": "supabase/migrations/00000000000001_storage.sql",
+          "line": 130,
+          "snippet": "CREATE POLICY tenant_assets_update_scoped ... USING (((bucket_id = 'tenant-assets'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id()))))"
+        },
+        {
+          "path": "src/routes/woreda.settings.woreda-configuration.tsx",
+          "line": 687,
+          "snippet": "const path = `${woredaId}/${field}.${storageExtension(upload, \"png\")}`; ... .upload(path, upload, { upsert: true ... })"
+        },
+        {
+          "path": "supabase/migrations/00000000000014_app_user_staff_fields.sql",
+          "line": 31,
+          "snippet": "staff_assets_insert_scoped ... (storage_path_woreda_id(name) = get_user_woreda_id())"
+        },
+        {
+          "path": "supabase/migrations/00000000000004_resident_documents.sql",
+          "line": 118,
+          "snippet": "resident_documents_select_scoped ... (public.storage_path_woreda_id(name) = public.get_user_woreda_id())"
+        },
+        {
+          "path": "supabase/migrations/00000000000004_resident_documents.sql",
+          "line": 71,
+          "snippet": "resident_document_select ... AND public.user_has_any_perm('{resident.read,household.read}'::text[])"
+        }
+      ],
+      "description": "All 36 tenant storage.objects policies (buckets tenant-assets, staff-assets, resident-photos, resident-documents, resident-clearance-letters, credential-request-documents, rental-request-documents, service-request-documents, attachments) check nothing but the object's woreda path prefix. No permission is required to SELECT, INSERT, UPDATE or DELETE. The official branding assets live at predictable paths (`${woredaId}/<field>.<ext>`, uploaded with upsert). The resident_document table requires resident.read or household.read, but the same PDFs in the bucket do not.",
+      "attack_scenario": "A 'viewer' or 'print_officer' (or a custom role with no grants) calls the Storage API directly: upload('tenant-assets', `${woredaId}/supervisor_signature_url.webp`, forged, {upsert:true}). Every ID card, letter and receipt printed afterwards carries the forged supervisor signature or stamp. The same account can list and download every scanned legal document, or delete residents' photos and documents.",
+      "impact": "The integrity of the official seal and signature on issued civic documents fails. Residents' scanned legal documents are disclosed to roles that are not meant to see them, and evidence can be destroyed within the tenant.",
+      "recommendation": "Add permission predicates per bucket and command. For example, tenant-assets writes need user_has_perm('tenant.manage'), staff-assets writes need 'user.manage' or ownership of the object, resident-documents SELECT needs resident.read, and DELETE needs a dedicated permission. Consider object versioning or immutable paths for signed assets, and log uploads to the audit trail."
+    },
+    {
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:L/I:L/A:N (4.7)",
+      "confidence": "Likely",
+      "refs": {
+        "insa": [
+          "TEN-04",
+          "BL-02"
+        ],
+        "owasp_top10": [
+          "A01:2021"
+        ],
+        "owasp_api": [
+          "API1:2023"
+        ],
+        "asvs": [
+          "V4.2.1"
+        ],
+        "iso27001": [
+          "A.8.3"
+        ],
+        "nist_csf": [
+          "PR.AA-05"
+        ]
+      },
+      "secure_fix_example": "IF v_mother_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.resident r WHERE r.resident_id = v_mother_id AND r.woreda_id = NEW.woreda_id) THEN RAISE EXCEPTION USING ERRCODE='check_violation', MESSAGE='mother not in this woreda'; END IF;",
+      "effort": "S",
+      "status": "Open",
+      "id": "WP-DB-003",
+      "title": "Birth-approval trigger (SECURITY DEFINER) reads another tenant's resident via unchecked event_details.mother_resident_id",
+      "severity": "High",
+      "category": "Tenant Isolation",
+      "module": "Civil Registration",
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql",
+          "line": 136,
+          "snippet": "v_mother_id := NULLIF(d->>'mother_resident_id', '')::UUID;"
+        },
+        {
+          "path": "supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql",
+          "line": 139,
+          "snippet": "SELECT ethnicity, religion, current_household_id INTO v_mother_ethnicity, v_mother_religion, v_mother_household_id FROM public.resident WHERE resident_id = v_mother_id;"
+        },
+        {
+          "path": "supabase/migrations/00000000000066_payment_hardening_review_fixes.sql",
+          "line": 406,
+          "snippet": "enforce_vital_event_preconditions(): checks household_id (birth), resident_id (death), spouse1/spouse2 (marriage) against NEW.woreda_id -- no check on mother_resident_id"
+        }
+      ],
+      "description": "generate_resident_on_birth_approval() runs as the table owner, so RLS does not apply. When a birth reaches 'registered' it copies the mother's ethnicity, religion, current_household_id and full_name_am into a new resident row in the event's woreda. It looks the mother up by the client-supplied mother_resident_id and never checks the mother's woreda_id. Neither enforce_vital_event_preconditions() nor assert_vital_event_woreda_consistency() validates this key.",
+      "attack_scenario": "A civil registrar in woreda A who knows a resident UUID from woreda B (from a leaked export, a shared document or a former colleague) records a birth with mother_resident_id set to that UUID. Once a second registrar approves it and the event reaches 'registered', woreda A holds a new resident row containing woreda B's special-category data (ethnicity, religion), the mother's Amharic name, and a foreign current_household_id.",
+      "impact": "A DEFINER trigger moves data across the tenant boundary, and cross-tenant foreign keys are created. Under hard rule R7 cross-tenant exposure is Critical. It is rated High here only because the attacker must already hold a foreign v4 UUID and needs a second approver. The orchestrator should re-rate if foreign UUIDs turn out to be obtainable.",
+      "recommendation": "Filter every lookup by NEW.woreda_id (WHERE resident_id = v_mother_id AND woreda_id = NEW.woreda_id), and reject a foreign mother_resident_id in enforce_vital_event_preconditions() the same way spouse ids are rejected. Audit every other DEFINER function for id lookups without a woreda filter."
+    },
+    {
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N (6.5)",
+      "confidence": "Confirmed",
+      "refs": {
+        "insa": [
+          "CLS-01",
+          "RBAC-01",
+          "B-04",
+          "D-01"
+        ],
+        "owasp_top10": [
+          "A01:2021"
+        ],
+        "owasp_api": [
+          "API1:2023",
+          "API3:2023"
+        ],
+        "asvs": [
+          "V4.1.3",
+          "V4.2.1"
+        ],
+        "iso27001": [
+          "A.5.15",
+          "A.8.3"
+        ],
+        "nist_csf": [
+          "PR.AA-05"
+        ]
+      },
+      "secure_fix_example": "DROP POLICY resident_select ON public.resident; CREATE POLICY resident_select ON public.resident FOR SELECT TO authenticated USING (is_super_admin() OR (woreda_id = get_user_woreda_id() AND user_has_any_perm('{resident.read,household.read}')));",
+      "effort": "M",
+      "status": "Open",
+      "id": "WP-DB-004",
+      "title": "Read permissions (resident.read, household.read, civil.read, payment.read, audit.view ...) are not enforced by SELECT RLS",
+      "severity": "High",
+      "category": "AuthZ",
+      "module": "Platform",
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1626,
+          "snippet": "resident_select ... USING ((is_super_admin() OR (woreda_id = get_user_woreda_id())))"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1586,
+          "snippet": "household_select ... USING ((is_super_admin() OR (woreda_id = get_user_woreda_id())))"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1655,
+          "snippet": "vital_event_select ... USING ((is_super_admin() OR (woreda_id = get_user_woreda_id())))"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1599,
+          "snippet": "payment_select ... USING ((is_super_admin() OR (woreda_id = get_user_woreda_id())))"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1553,
+          "snippet": "audit_log_tenant_read ... USING ((is_super_admin() OR (woreda_id = get_user_woreda_id())))"
+        },
+        {
+          "path": "src/config/permissions.ts",
+          "line": 455,
+          "snippet": "print_officer: [P.CREDENTIAL_READ, ... ] -- no RESIDENT_READ, HOUSEHOLD_READ, CIVIL_READ, PAYMENT_READ, AUDIT_VIEW; custom: []"
+        }
+      ],
+      "description": "The core PII and financial tables (resident, household, household_location, vital_event, payment, receipt, credential_request, residence_credential, service_request, rental_occupancy(_request), credential_print_log, audit_log and the history tables) all have SELECT policies that check only the tenant. Any authenticated member of the woreda can read every row, whatever their role. Newer tables (resident_document, the rent_* ledger, arrears_*, service_request_checkpoint) do require a *.read / rental.view permission, which shows the intended model.",
+      "attack_scenario": "A print_officer, whose role has no resident, civil, payment or audit permission, or a custom role with zero grants, queries /rest/v1/resident_decrypted, /vital_event, /payment and /audit_log and gets the full tenant dataset. A tenant_admin who revokes resident.read from a role in the matrix changes only what the UI shows.",
+      "impact": "Least privilege does not exist at the data layer. The RBAC matrix, custom roles and per-user denies are cosmetic for reads, and every staff account can bulk-export PII (including special-category ethnicity and religion data).",
+      "recommendation": "Add the matching read-permission predicate to each SELECT policy, e.g. resident: user_has_any_perm('{resident.read,household.read}'); vital_event: civil.read/civil.view; payment/receipt: payment.read/revenue.view; audit_log: audit.view. Keep the *_decrypted views security_invoker so they inherit the check, and make decrypt_pii_*() require the corresponding read permission."
+    },
+    {
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:H/PR:H/UI:N/S:U/C:H/I:N/A:N (4.4)",
+      "confidence": "Confirmed",
+      "refs": {
+        "insa": [
+          "A-08",
+          "CLS-01",
+          "PRV-01"
+        ],
+        "owasp_top10": [
+          "A02:2021"
+        ],
+        "owasp_api": [],
+        "asvs": [
+          "V6.1.1",
+          "V8.3.4"
+        ],
+        "iso27001": [
+          "A.8.24",
+          "A.5.34"
+        ],
+        "nist_csf": [
+          "PR.DS-01"
+        ]
+      },
+      "secure_fix_example": "",
+      "effort": "L",
+      "status": "Open",
+      "id": "WP-DB-005",
+      "title": "Restricted PII is still stored and served in plaintext; encryption covers only a subset of columns and special-category data is out of scope",
+      "severity": "Medium",
+      "category": "Privacy",
+      "module": "Residents",
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000023_pii_encryption.sql",
+          "line": 5,
+          "snippet": "This migration is ADDITIVE AND INERT ... Plaintext stays authoritative until a later migration retires it."
+        },
+        {
+          "path": "supabase/migrations/00000000000023_pii_encryption.sql",
+          "line": 25,
+          "snippet": "Still plaintext on the SAME rows, a stolen dump exposes all of it: ... full_name, full_name_am, date_of_birth ... household.address_line, gps_lat, gps_lng"
+        },
+        {
+          "path": "supabase/migrations/00000000000044_task6_household_rent_national_id_pii.sql",
+          "line": 8,
+          "snippet": "plaintext stays authoritative through this stage (no application write path changes)"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 360,
+          "snippet": "ethnicity text, religion text,"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 351,
+          "snippet": "national_id_no text,"
+        }
+      ],
+      "description": "Column encryption (pgp_sym under a per-woreda HMAC-derived key from Vault) adds *_enc copies of phone, email, national_id_no and the amount columns, but every plaintext column is kept and remains authoritative, so a dump or backup still holds all of them. Several fields are not in scope at all: ethnicity and religion (special-category data), full names, DOB, GPS, address, vital_event.event_details and issued_letter_html. No column GRANTs or masking views limit which roles see which columns.",
+      "attack_scenario": "A database backup or snapshot leaks, or someone with read access to the SQL editor or Management API exports resident: national_id_no, ethnicity, religion, GPS and names are all plaintext.",
+      "impact": "A-08 is not met: the encryption-at-rest claim covers copies, not the data of record.",
+      "recommendation": "Finish stage 3/4 of the documented rollout: cut reads over to *_decrypted, then NULL or drop the plaintext columns. Add ethnicity, religion, GPS and event_details to the encryption scope, or record a justified exception. Add masked views (e.g. national_id last-4) for roles that do not need the full value."
+    },
+    {
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:L (5.4)",
+      "confidence": "Confirmed",
+      "refs": {
+        "insa": [
+          "BL-01",
+          "C-06"
+        ],
+        "owasp_top10": [
+          "A04:2021",
+          "A01:2021"
+        ],
+        "owasp_api": [
+          "API6:2023"
+        ],
+        "asvs": [
+          "V4.1.3",
+          "V11.1.1"
+        ],
+        "iso27001": [
+          "A.8.3"
+        ],
+        "nist_csf": [
+          "PR.DS-10"
+        ]
+      },
+      "secure_fix_example": "",
+      "effort": "S",
+      "status": "Open",
+      "id": "WP-DB-006",
+      "title": "Document-number counter tables are writable by every tenant user, and numbering triggers accept client-supplied numbers",
+      "severity": "Medium",
+      "category": "Business Logic",
+      "module": "Revenue",
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1554,
+          "snippet": "CREATE POLICY credential_seq_tenant ON public.credential_number_sequence AS PERMISSIVE FOR ALL TO authenticated USING ((is_super_admin() OR (woreda_id = get_user_woreda_id()))) WITH CHECK (...)"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1601,
+          "snippet": "CREATE POLICY receipt_seq_tenant ON public.receipt_sequence AS PERMISSIVE FOR ALL ..."
+        },
+        {
+          "path": "supabase/migrations/00000000000084_rental_review_regression_fixes.sql",
+          "line": 173,
+          "snippet": "3. Sequence tables: SELECT-only for clients. Both are written only by their own SECURITY DEFINER trigger functions"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1015,
+          "snippet": "IF NEW.receipt_number IS NOT NULL AND NEW.receipt_number <> '' THEN RETURN NEW;"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1076,
+          "snippet": "IF NEW.resident_number IS NOT NULL AND NEW.resident_number <> '' AND NEW.resident_number <> 'AUTO' THEN"
+        }
+      ],
+      "description": "Six baseline counter tables (credential_number_sequence, credential_request_sequence, receipt_sequence, rental_request_sequence, resident_number_sequence, vital_event_sequence) have FOR ALL policies that check only the tenant. Migration 84 made the two newer counters SELECT-only and gave the reason, but did not apply the same fix to the older six. Separately, 9 of the 11 assign_* numbering triggers keep any non-empty number the client sends, and there is no format CHECK on receipt_number, resident_number, request_number or event_number. The upsert-based increment itself is race-safe (ON CONFLICT DO UPDATE ... RETURNING).",
+      "attack_scenario": "A viewer PATCHes receipt_sequence to set last_value back by 10. From then on every receipt insert collides with receipt_woreda_id_receipt_number_key and cashiering stops until an administrator repairs the counter. Or a cashier inserts a receipt with a hand-picked receipt_number that sits outside the official series.",
+      "impact": "Any tenant user can deny issuance of credentials, receipts and certificates. The official numbering series can contain forged or out-of-sequence numbers.",
+      "recommendation": "Replace the six FOR ALL policies with SELECT-only policies, as migration 84 did. Always overwrite the number in the BEFORE INSERT trigger except when a dedicated service-only flag is set. Add format CHECK constraints (the Luhn/13-digit rule for credential_number, prefix patterns for the others)."
+    },
+    {
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:L (5.4)",
+      "confidence": "Confirmed",
+      "refs": {
+        "insa": [
+          "ET-10",
+          "TEN-02"
+        ],
+        "owasp_top10": [
+          "A01:2021"
+        ],
+        "owasp_api": [
+          "API5:2023"
+        ],
+        "asvs": [
+          "V4.1.3"
+        ],
+        "iso27001": [
+          "A.8.3"
+        ],
+        "nist_csf": [
+          "PR.AA-05"
+        ]
+      },
+      "secure_fix_example": "",
+      "effort": "S",
+      "status": "Open",
+      "id": "WP-DB-007",
+      "title": "Kebele reference data is writable by every tenant user",
+      "severity": "Medium",
+      "category": "AuthZ",
+      "module": "Settings",
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1596,
+          "snippet": "CREATE POLICY kebele_tenant_isolation ON public.kebele AS PERMISSIVE FOR ALL TO authenticated USING ((is_super_admin() OR (woreda_id = get_user_woreda_id()))) WITH CHECK ((is_super_admin() OR (woreda_id = get_user_woreda_id())))"
+        }
+      ],
+      "description": "kebele has one FOR ALL policy that checks only the tenant, with no permission predicate. Kebele numbers are embedded in credential numbers (assign_credential_number) and printed on documents.",
+      "attack_scenario": "A viewer renames kebeles, inserts fake ones, or changes kebele_number. Credentials minted afterwards carry the wrong kebele segment.",
+      "impact": "The reference hierarchy Region > Woreda > Kebele can be tampered with, and so can the identifiers printed on credentials.",
+      "recommendation": "Allow SELECT for tenant users and restrict INSERT/UPDATE/DELETE to super_admin (or tenant.manage)."
+    },
+    {
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N (4.3)",
+      "confidence": "Confirmed",
+      "refs": {
+        "insa": [
+          "LOG-01",
+          "D-05",
+          "MC-03"
+        ],
+        "owasp_top10": [
+          "A09:2021"
+        ],
+        "owasp_api": [],
+        "asvs": [
+          "V7.3.3",
+          "V7.3.4"
+        ],
+        "iso27001": [
+          "A.8.15"
+        ],
+        "nist_csf": [
+          "DE.CM-09",
+          "PR.PS-04"
+        ]
+      },
+      "secure_fix_example": "",
+      "effort": "M",
+      "status": "Open",
+      "id": "WP-DB-008",
+      "title": "Audit trail integrity: any tenant user can forge audit_log rows, and several log tables are mutable or deletable",
+      "severity": "Medium",
+      "category": "Logging",
+      "module": "Platform",
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1552,
+          "snippet": "CREATE POLICY audit_log_tenant_insert ON public.audit_log ... WITH CHECK ((is_super_admin() OR (woreda_id = get_user_woreda_id())))"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1208,
+          "snippet": "IF TG_OP = 'INSERT' THEN IF to_jsonb(NEW) ->> col IS NOT NULL THEN NEW := jsonb_populate_record(NEW, jsonb_build_object(col, uid));  -- a NULL actor is left NULL"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1636,
+          "snippet": "service_request_status_history_insert ... WITH CHECK ((EXISTS (SELECT 1 FROM service_request sr WHERE ... sr.woreda_id = get_user_woreda_id())))  -- no permission"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1583,
+          "snippet": "household_change_log_update ... user_has_any_perm('{household.update}')  (DELETE at :1580 with tenant.manage)"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1558,
+          "snippet": "credential_print_log_update ... user_has_any_perm('{credential.print}')"
+        },
+        {
+          "path": "supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql",
+          "line": 108,
+          "snippet": "INSERT INTO public.audit_log (entity_name, entity_id, action_type, new_value_json) -- no woreda_id: tenant cannot see automatic death revocations"
+        }
+      ],
+      "description": "audit_log is insert-only at the RLS level (no UPDATE/DELETE policy), which is correct. But any tenant user, including suspended ones (WP-DB-001), can INSERT arbitrary rows. force_actor_columns() only overwrites a non-NULL actor, so a forged row can carry a NULL actor, which reads as a 'system' event. Most audit rows are written from the client, not by triggers. service_request_status_history accepts inserts with no permission check. household_change_log and credential_print_log can be UPDATEd and DELETEd. apply_death_on_approval() writes revocation audit rows with woreda_id NULL, so only super admins can see them.",
+      "attack_scenario": "A clerk injects USER_SUSPENDED or CREDENTIAL_REVOKED rows with actor NULL to confuse an investigation, or edits credential_print_log.reprint_reason after an unauthorised reprint.",
+      "impact": "The audit trail cannot be relied on as evidence, and LOG-01 is only partially met.",
+      "recommendation": "Remove client INSERT on audit_log and write audit rows only from SECURITY DEFINER triggers/RPCs, or at least force actor_user_id := auth.uid() unconditionally. Make the *_history and *_log tables append-only (drop the UPDATE/DELETE policies) and require the relevant permission on INSERT. Populate woreda_id in trigger-written audit rows."
+    },
+    {
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N (3.7)",
+      "confidence": "Needs-live-verification",
+      "refs": {
+        "insa": [
+          "TEN-04",
+          "TEN-05",
+          "E-06"
+        ],
+        "owasp_top10": [
+          "A01:2021"
+        ],
+        "owasp_api": [
+          "API1:2023"
+        ],
+        "asvs": [
+          "V4.2.1"
+        ],
+        "iso27001": [
+          "A.8.3"
+        ],
+        "nist_csf": [
+          "PR.AA-05"
+        ]
+      },
+      "secure_fix_example": "",
+      "effort": "S",
+      "status": "Open",
+      "id": "WP-DB-009",
+      "title": "rental_eligibility() is SECURITY DEFINER, does no tenant check, and is likely still executable by anon",
+      "severity": "Medium",
+      "category": "Tenant Isolation",
+      "module": "Rental",
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000031_rental_eligibility.sql",
+          "line": 55,
+          "snippet": "CREATE OR REPLACE FUNCTION public.rental_eligibility(_resident_id uuid, _rental_house_id uuid, _request_type text) ... SECURITY DEFINER"
+        },
+        {
+          "path": "supabase/migrations/00000000000031_rental_eligibility.sql",
+          "line": 196,
+          "snippet": "REVOKE ALL ON FUNCTION public.rental_eligibility(uuid, uuid, text) FROM PUBLIC;  -- anon not named"
+        },
+        {
+          "path": "supabase/migrations/00000000000007_tighten_anon_grants.sql",
+          "line": 73,
+          "snippet": "Revoking from anon alone does NOT close a function ... The revoke has to name PUBLIC"
+        }
+      ],
+      "description": "The function looks up any resident by UUID across all woredas and returns whether they hold an active occupancy (with its occupancy_id), plus the request_number of any in-flight request. It never calls get_user_woreda_id() or any permission helper. Its REVOKE names only PUBLIC. Supabase's stock default ACL grants EXECUTE to anon explicitly, so anon probably keeps it. Migration 07 documents the inverse of this trap.",
+      "attack_scenario": "Anyone holding the publishable key calls POST /rest/v1/rpc/rental_eligibility with a known resident UUID and learns that person's kebele-house status and request numbers in any woreda. An authenticated user from another woreda can do the same.",
+      "impact": "Low-volume cross-tenant (and possibly unauthenticated) information disclosure. It is limited because resident UUIDs are unguessable.",
+      "recommendation": "REVOKE EXECUTE ... FROM anon. Inside the function, require v_woreda_id = get_user_woreda_id() (or super admin) plus a rental permission before returning details. Verify live with Appendix C query 3/4 (has_function_privilege('anon','public.rental_eligibility(uuid,uuid,text)','EXECUTE'))."
+    },
+    {
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:L/I:N/A:N (5.0)",
+      "confidence": "Confirmed",
+      "refs": {
+        "insa": [
+          "TEN-04",
+          "CRY-03"
+        ],
+        "owasp_top10": [
+          "A01:2021"
+        ],
+        "owasp_api": [
+          "API1:2023"
+        ],
+        "asvs": [
+          "V4.2.1"
+        ],
+        "iso27001": [
+          "A.8.3"
+        ],
+        "nist_csf": [
+          "PR.AA-05"
+        ]
+      },
+      "secure_fix_example": "",
+      "effort": "S",
+      "status": "Open",
+      "id": "WP-DB-010",
+      "title": "get_credential_live_status() lets any authenticated user read credential status across tenants",
+      "severity": "Medium",
+      "category": "Tenant Isolation",
+      "module": "Credentials",
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1323,
+          "snippet": "get_credential_live_status(_credential_number text) ... STABLE SECURITY DEFINER ... SELECT status::text FROM public.residence_credential WHERE credential_number = _credential_number LIMIT 1;"
+        },
+        {
+          "path": "supabase/migrations/00000000000007_tighten_anon_grants.sql",
+          "line": 84,
+          "snippet": "GRANT EXECUTE ON FUNCTION public.get_credential_live_status(text) TO authenticated, service_role;"
+        }
+      ],
+      "description": "Migration 07 closed this function to anon but left it open to all authenticated users, with no woreda filter. Credential numbers follow a structured, sequential pattern (WW-KK-YY-NNNNNN-C), so they can be enumerated. The comment in migration 07 says the function has zero callers.",
+      "attack_scenario": "A staff member of woreda A enumerates woreda B's credential numbers and reads their status (active, revoked, suspended). This reveals issuance volume and revocations in another tenant.",
+      "impact": "Cross-tenant metadata disclosure (status only, no PII). R7 was considered: the exposure is limited to a status value that is also available through public QR verification of an individual card.",
+      "recommendation": "Drop the function, since it has no callers, or add AND woreda_id = get_user_woreda_id()."
+    },
+    {
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:N/I:H/A:L (5.5)",
+      "confidence": "Confirmed",
+      "refs": {
+        "insa": [
+          "MC-03",
+          "LOG-01"
+        ],
+        "owasp_top10": [
+          "A04:2021"
+        ],
+        "owasp_api": [
+          "API5:2023"
+        ],
+        "asvs": [
+          "V4.1.3",
+          "V7.3.3"
+        ],
+        "iso27001": [
+          "A.8.3",
+          "A.5.33"
+        ],
+        "nist_csf": [
+          "PR.DS-01"
+        ]
+      },
+      "secure_fix_example": "",
+      "effort": "M",
+      "status": "Open",
+      "id": "WP-DB-011",
+      "title": "Hard-DELETE policies on registry and financial records with cascading history loss",
+      "severity": "Medium",
+      "category": "Business Logic",
+      "module": "Platform",
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1597,
+          "snippet": "payment_delete ... user_has_any_perm('{tenant.manage}')"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1602,
+          "snippet": "receipt_delete ... user_has_any_perm('{tenant.manage}')"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1642,
+          "snippet": "service_request_delete ... user_has_any_perm(ARRAY['tenant.manage'])"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 711,
+          "snippet": "service_request_status_history_service_request_id_fkey ... ON DELETE CASCADE"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1653,
+          "snippet": "vital_event_delete ... user_has_any_perm('{civil.approve}')"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1624,
+          "snippet": "resident_delete ... user_has_any_perm('{resident.delete}')"
+        }
+      ],
+      "description": "DELETE policies exist on payment, receipt, service_request, vital_event, credential_request, resident, rental_occupancy_request, residence_credential, fee_schedule and other tables. No trigger records the deletion. Deleting a service_request cascades its status history and attachments (FK ON DELETE CASCADE). Most other FKs are NO ACTION, which blocks some deletes but not a receipt or a payment that has no receipt.",
+      "attack_scenario": "A tenant admin deletes a receipt, and the public /verify/receipt/<token> page then shows it as invalid. Or they delete a completed service request, and its whole status history is removed with it.",
+      "impact": "Records and trails can be destroyed without a server-side trace, and MC-03 is not met.",
+      "recommendation": "Replace hard deletes with soft-delete/void statuses that go through workflow_transition. Drop DELETE policies on financial, registry and history tables, or restrict them to super_admin with a DEFINER RPC that records the reason and writes an audit row."
+    },
+    {
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:L/I:L/A:N (4.7)",
+      "confidence": "Likely",
+      "refs": {
+        "insa": [
+          "TEN-02",
+          "A-07"
+        ],
+        "owasp_top10": [
+          "A01:2021"
+        ],
+        "owasp_api": [
+          "API1:2023"
+        ],
+        "asvs": [
+          "V4.2.1"
+        ],
+        "iso27001": [
+          "A.8.3"
+        ],
+        "nist_csf": [
+          "PR.DS-10"
+        ]
+      },
+      "secure_fix_example": "",
+      "effort": "L",
+      "status": "Open",
+      "id": "WP-DB-012",
+      "title": "No composite (woreda_id, id) foreign keys; cross-tenant references are only partly blocked by triggers",
+      "severity": "Medium",
+      "category": "Tenant Isolation",
+      "module": "Platform",
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 661,
+          "snippet": "ALTER TABLE public.household ADD CONSTRAINT household_kebele_id_fkey FOREIGN KEY (kebele_id) REFERENCES kebele(kebele_id);"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 703,
+          "snippet": "resident_current_household_id_fkey FOREIGN KEY (current_household_id) REFERENCES household(household_id);"
+        },
+        {
+          "path": "supabase/migrations/00000000000066_payment_hardening_review_fixes.sql",
+          "line": 346,
+          "snippet": "IF NEW.category <> 'letter' THEN RETURN NEW; END IF;  -- complaints skip the resident/household woreda check"
+        },
+        {
+          "path": "supabase/migrations/00000000000064_task14b_verify_letter_completed_status.sql",
+          "line": 41,
+          "snippet": "LEFT JOIN public.resident r ON r.resident_id = sr.resident_id  -- no woreda match (verify_receipt does add one)"
+        }
+      ],
+      "description": "All 190 FKs reference a bare surrogate id. Tenant consistency is enforced only by per-table triggers: vital_event, rental_occupancy(_request), office, household_location, the credential mint, letters, and approval/attachment via entity_belongs_to_woreda. Several FKs have no guard at all: household.kebele_id, resident.current_household_id, household head/spouse ids, complaint-category service_request.resident_id/household_id, and credential issuing_kebele_id. The anon RPC verify_service_letter() joins resident without a woreda match.",
+      "attack_scenario": "Given a foreign UUID, a clerk links a complaint-category service_request to another woreda's resident. Once it is closed with a verification token, the anonymous letter-verification RPC returns that foreign resident's full name.",
+      "impact": "Cross-tenant links can form in the data, and DEFINER readers may disclose foreign PII through them. See also WP-DB-003.",
+      "recommendation": "Add UNIQUE (woreda_id, <pk>) on parent tables and composite FKs (woreda_id, child_fk) REFERENCES parent (woreda_id, pk) on tenant tables. Add AND r.woreda_id = sr.woreda_id to verify_service_letter()."
+    },
+    {
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N (3.7)",
+      "confidence": "Confirmed",
+      "refs": {
+        "insa": [
+          "CRY-02",
+          "E-03"
+        ],
+        "owasp_top10": [
+          "A02:2021"
+        ],
+        "owasp_api": [],
+        "asvs": [
+          "V6.3.1",
+          "V6.3.2"
+        ],
+        "iso27001": [
+          "A.8.24"
+        ],
+        "nist_csf": [
+          "PR.DS-01"
+        ]
+      },
+      "secure_fix_example": "",
+      "effort": "S",
+      "status": "Open",
+      "id": "WP-DB-013",
+      "title": "Public verification tokens: non-CSPRNG generation, client-chosen tokens accepted, letter token not pinned, real token quoted in a migration",
+      "severity": "Low",
+      "category": "Crypto",
+      "module": "QR",
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1236,
+          "snippet": "v_token := v_token || substr(v_alphabet, 1 + floor(random() * length(v_alphabet))::INT, 1);"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 997,
+          "snippet": "IF NEW.verification_token IS NULL OR NEW.verification_token = '' THEN NEW.verification_token := public.gen_letter_verification_token();"
+        },
+        {
+          "path": "supabase/migrations/00000000000013_receipt_verification.sql",
+          "line": 79,
+          "snippet": "pin_receipt_verification_token() -- receipts are pinned; service_request.verification_token has no equivalent"
+        },
+        {
+          "path": "supabase/migrations/00000000000064_task14b_verify_letter_completed_status.sql",
+          "line": 12,
+          "snippet": "full FSM to 'completed' (request ABOKER-SRV-26-00003, token SJ44…[REDACTED])"
+        }
+      ],
+      "description": "Letter and receipt tokens are 12 characters from a 32-symbol alphabet (about 60 bits), but they are drawn from random(), which is not a CSPRNG. The BEFORE INSERT triggers keep any token the client supplies. service_request.verification_token can be changed on UPDATE by any holder of the service.* permissions. A real production letter token is written verbatim in a migration comment. verify_service_letter returns the resident's name to anonymous callers.",
+      "attack_scenario": "An insider creates a letter with verification_token 'AAAAAAAAAAAA', which makes the resident's name trivially discoverable through the anonymous verify endpoint. Or they reassign the token of an already-printed letter so the paper copy no longer verifies.",
+      "impact": "Low: weakens the integrity of the public verification surface and discloses a little PII.",
+      "recommendation": "Generate tokens with extensions.gen_random_bytes and ignore client-supplied tokens. Add a pin trigger on service_request.verification_token. Remove the real token from the migration comment, and treat that letter's token as disclosed (regenerate it if it is a real resident's letter)."
+    },
+    {
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:U/C:L/I:L/A:N (4.6)",
+      "confidence": "Needs-live-verification",
+      "refs": {
+        "insa": [
+          "C-08"
+        ],
+        "owasp_top10": [
+          "A05:2021"
+        ],
+        "owasp_api": [
+          "API8:2023"
+        ],
+        "asvs": [
+          "V12.1.1",
+          "V12.2.1"
+        ],
+        "iso27001": [
+          "A.8.9"
+        ],
+        "nist_csf": [
+          "PR.PS-01"
+        ]
+      },
+      "secure_fix_example": "",
+      "effort": "S",
+      "status": "Open",
+      "id": "WP-DB-014",
+      "title": "Seven of ten storage buckets have no MIME or size limit",
+      "severity": "Low",
+      "category": "Config",
+      "module": "Platform",
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000001_storage.sql",
+          "line": 24,
+          "snippet": "VALUES ('credential-request-documents', 'credential-request-documents', 'f', NULL, NULL)  (same NULL, NULL for credential-templates, resident-clearance-letters, resident-photos, service-request-documents, tenant-assets)"
+        },
+        {
+          "path": "supabase/migrations/00000000000014_app_user_staff_fields.sql",
+          "line": 23,
+          "snippet": "VALUES ('staff-assets', 'staff-assets', 'f', NULL, NULL)"
+        },
+        {
+          "path": "supabase/migrations/00000000000048_task11_schema_gaps.sql",
+          "line": 345,
+          "snippet": "INSERT INTO storage.buckets (id, name, public) VALUES ('attachments', 'attachments', false)"
+        }
+      ],
+      "description": "Only resident-documents (PDF, 10 MB) and rental-request-documents (PDF/JPEG/PNG, 5 MB, migration 72) have server-side limits. For the other buckets, type and size are checked only in the browser. Combined with WP-DB-002, a low-privilege user can upload arbitrary SVG/HTML or very large files.",
+      "attack_scenario": "Using the Storage API directly, a user uploads an SVG containing script to tenant-assets. It is later opened through a signed URL.",
+      "impact": "Low: a stored-content risk (on the storage origin) and storage exhaustion. Buckets are private, and the ON CONFLICT DO NOTHING inserts mean live settings may differ.",
+      "recommendation": "UPDATE storage.buckets to set allowed_mime_types (image/webp, image/png, image/jpeg, application/pdf as appropriate) and file_size_limit on every bucket, and verify live."
+    },
+    {
+      "cvss_v3_1": "",
+      "confidence": "Needs-live-verification",
+      "refs": {
+        "insa": [
+          "TEN-01",
+          "TEN-04",
+          "TEN-05"
+        ],
+        "owasp_top10": [
+          "A05:2021"
+        ],
+        "owasp_api": [
+          "API8:2023"
+        ],
+        "asvs": [
+          "V1.4.1"
+        ],
+        "iso27001": [
+          "A.8.2"
+        ],
+        "nist_csf": [
+          "PR.PS-01"
+        ]
+      },
+      "secure_fix_example": "",
+      "effort": "S",
+      "status": "Open",
+      "id": "WP-DB-015",
+      "title": "Defence in depth: anon keeps table DML grants, FORCE ROW LEVEL SECURITY is not used, and DEFINER search_path omits pg_temp",
+      "severity": "Low",
+      "category": "Config",
+      "module": "Platform",
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000007_tighten_anon_grants.sql",
+          "line": 32,
+          "snippet": "REVOKE TRUNCATE, TRIGGER, REFERENCES ON ALL TABLES IN SCHEMA public FROM anon, authenticated;  -- SELECT/INSERT/UPDATE/DELETE deliberately kept"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1665,
+          "snippet": "GRANT DELETE ON public.app_user TO anon; GRANT INSERT ... GRANT UPDATE ON public.app_user TO anon"
+        },
+        {
+          "path": "docs/audit/2026-09-24/raw/audit-database-rls-inventory.txt",
+          "line": 1,
+          "snippet": "66/66 tables ENABLE ROW LEVEL SECURITY; FORCE = 0/66"
+        },
+        {
+          "path": "supabase/migrations/00000000000023_pii_encryption.sql",
+          "line": 148,
+          "snippet": "pii_root_key() ... SECURITY DEFINER SET search_path TO 'public', 'vault'"
+        }
+      ],
+      "description": "anon holds SELECT/INSERT/UPDATE/DELETE on 63 of 66 tables. Only credential_verification_log, rate_limit_bucket and service_request_checkpoint had them revoked. Isolation from anon therefore depends entirely on no policy ever being written TO anon or TO public. Today all policies are TO authenticated. No table uses FORCE ROW LEVEL SECURITY. All 130 SECURITY DEFINER functions (54 callable, 76 trigger functions) pin search_path to 'public' (plus 'vault' for pii_root_key), which is good, but pg_temp is not placed last, and several of them create temp tables.",
+      "attack_scenario": "A future migration adds a policy without a TO clause, which defaults to PUBLIC. anon then gets DML immediately, because the grant is already there.",
+      "impact": "Hardening gap only; nothing is exploitable today from the migrations.",
+      "recommendation": "REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon and grant back only what the public RPCs need. Use ALTER DEFAULT PRIVILEGES to stop new grants. Use SET search_path = '' (with schema-qualified references) or 'public, pg_temp'. Add a CI lint that rejects CREATE POLICY without TO authenticated."
+    },
+    {
+      "cvss_v3_1": "",
+      "confidence": "Confirmed",
+      "refs": {
+        "insa": [
+          "C-06",
+          "ET-12"
+        ],
+        "owasp_top10": [
+          "A03:2021"
+        ],
+        "owasp_api": [
+          "API8:2023"
+        ],
+        "asvs": [
+          "V5.1.3"
+        ],
+        "iso27001": [
+          "A.8.28"
+        ],
+        "nist_csf": [
+          "PR.DS-10"
+        ]
+      },
+      "secure_fix_example": "",
+      "effort": "S",
+      "status": "Open",
+      "id": "WP-DB-016",
+      "title": "No DB-level format constraints for national ID (FAN), phone or other identity inputs",
+      "severity": "Low",
+      "category": "Quality",
+      "module": "Residents",
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 350,
+          "snippet": "phone_number text, national_id_no text,"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 597,
+          "snippet": "resident_email_format CHECK (...)  -- the only format CHECK on resident; none for phone/national_id_no"
+        }
+      ],
+      "description": "Enumerated fields such as sex, marital_status, residency_status and house_type do have CHECK constraints. phone_number (+251 format), national_id_no (16-digit FAN), household.phone_number and service_request.applicant_phone have no DB constraint at all. Validation for them exists only in client Zod schemas.",
+      "attack_scenario": "A direct PostgREST insert stores a malformed or oversized national ID. Duplicate detection through the blind index then fails to match normalised values.",
+      "impact": "Data quality and integrity problems. C-06 is not met at the DB layer.",
+      "recommendation": "Add CHECK (national_id_no ~ '^[0-9]{16}$') and a +251 phone pattern, as NOT VALID first and then VALIDATE after cleansing the data."
+    },
+    {
+      "cvss_v3_1": "",
+      "confidence": "Confirmed",
+      "refs": {
+        "insa": [
+          "A-07",
+          "G-01"
+        ],
+        "owasp_top10": [],
+        "owasp_api": [
+          "API9:2023"
+        ],
+        "asvs": [
+          "V1.1.2"
+        ],
+        "iso27001": [
+          "A.5.37"
+        ],
+        "nist_csf": [
+          "ID.AM-07"
+        ]
+      },
+      "secure_fix_example": "",
+      "effort": "S",
+      "status": "Open",
+      "id": "WP-DB-017",
+      "title": "Schema documentation drift: docs/erd.md lists 52 tables (14 rental tables missing) and the 'additive-only' migration claim is false",
+      "severity": "Info",
+      "category": "Docs",
+      "module": "Platform",
+      "evidence": [
+        {
+          "path": "docs/erd.md",
+          "line": 10,
+          "snippet": "That live enumeration found **52 tables**, zero drift against the migrations"
+        },
+        {
+          "path": "CLAUDE.md",
+          "line": 582,
+          "snippet": "project is **additive-only**: no `DROP`"
+        },
+        {
+          "path": "supabase/migrations/00000000000010_id_card_template_draft.sql",
+          "line": 28,
+          "snippet": "DROP CONSTRAINT id_card_template_status_check, DROP COLUMN status;"
+        }
+      ],
+      "description": "Migrations and src/integrations/supabase/types.ts agree exactly: 66 tables, 17 views, 64 non-trigger functions, and every column; the only raw diff, id_card_template.status, is explained by its DROP COLUMN in migration 10. docs/erd.md, however, omits rent_account, rent_charge, rent_rate_history, rent_payment_settlement, rental_payment, rental_policy, rent_reminder, arrears_* (4), payment_reconciliation_exception, service_request_checkpoint and rent_account_sequence. The live database was not reachable, so migrations vs live remains Needs-live-verification.",
+      "attack_scenario": "",
+      "impact": "Reviewers and INSA assessors are working from a stale ERD.",
+      "recommendation": "Use the regenerated architecture/erd.md (this audit), and regenerate docs/erd.md from the catalog in CI."
+    }
+  ],
+  "checklist": [
+    {
+      "id": "A-07",
+      "status": "PARTIAL",
+      "evidence": "docs/erd.md:10 (52 tables) vs 66 tables in migrations; docs/audit/2026-09-24/architecture/erd.md (generated, 66 entities, 189 FK relationships); raw/audit-database-fks.json",
+      "note": "The repo ERD is stale (14 rental tables missing). The regenerated ERD is complete from migrations; live match is UNVERIFIED. Tables without FKs: id_card_template_field / id_card_template_field_draft (no FK to id_card_template), workflow_transition, rate_limit_bucket (by design)."
+    },
+    {
+      "id": "A-08",
+      "status": "FAIL",
+      "evidence": "supabase/migrations/00000000000023_pii_encryption.sql:5,25; 00000000000044_task6_household_rent_national_id_pii.sql:8; baseline.sql:350-361",
+      "note": "Sensitive columns are marked in architecture/erd.md (53). Passwords live only in auth.users (no password or secret columns in public). pgp_sym encryption exists for phone/email/national_id/amounts, but the plaintext stays authoritative, and ethnicity/religion/GPS/names are not encrypted (WP-DB-005)."
+    },
+    {
+      "id": "TEN-01",
+      "status": "PARTIAL",
+      "evidence": "raw/audit-database-rls-inventory.txt (66/66 ENABLE ROW LEVEL SECURITY; 0/66 FORCE)",
+      "note": "Every public table has RLS enabled in the migrations; none is FORCED. Live relrowsecurity is UNVERIFIED (Appendix C q1)."
+    },
+    {
+      "id": "TEN-02",
+      "status": "PARTIAL",
+      "evidence": "baseline.sql:1335 get_user_woreda_id(); raw/audit-database-status-ungated-policies.txt",
+      "note": "Policies derive woreda server-side (never from the client). woreda_id is NOT NULL on all tenant tables except app_user/audit_log/credential_verification_log (nullable by design). 4 child tables have no woreda_id and are scoped through the parent. But get_user_woreda_id() ignores status (WP-DB-001), and there are no composite tenant FKs (WP-DB-012)."
+    },
+    {
+      "id": "TEN-03",
+      "status": "PASS",
+      "evidence": "raw/audit-database-rls-inventory.txt (every INSERT policy has WITH CHECK; UPDATE/ALL policies without WITH CHECK reuse USING, which is woreda-scoped)",
+      "note": "Rows cannot be moved to another woreda through RLS. woreda_id moves on app_user/tenant_role are additionally pinned by triggers (migrations 42, 19)."
+    },
+    {
+      "id": "TEN-04",
+      "status": "PARTIAL",
+      "evidence": "17/17 views security_invoker (raw inventory); 130/130 DEFINER functions pin search_path; raw/audit-database-definer-rpc-checks.txt",
+      "note": "Gaps where tenant re-checks are missing: rental_eligibility (WP-DB-009), get_credential_live_status (WP-DB-010), generate_resident_on_birth_approval (WP-DB-003); decrypt_pii_* check tenant but not permission."
+    },
+    {
+      "id": "TEN-05",
+      "status": "PARTIAL",
+      "evidence": "raw/audit-database-table-anon-grants.txt; raw/audit-database-fn-acl.txt",
+      "note": "No policy admits anon or PUBLIC (all TO authenticated), so anon reads nothing from tenant tables. However anon keeps DML grants on 63 tables, and rental_eligibility() is probably anon-executable. Live Appendix C q4 is needed."
+    },
+    {
+      "id": "TEN-06",
+      "status": "PASS",
+      "evidence": "raw/audit-database-rls-inventory.txt, storage section (36 tenant policies use storage_path_woreda_id(name) = get_user_woreda_id(); credential-templates is platform-level by design)",
+      "note": "Scoping per woreda holds. It is not permission-gated inside the tenant (WP-DB-002) and not status-gated (WP-DB-001)."
+    },
+    {
+      "id": "CLS-01",
+      "status": "FAIL",
+      "evidence": "baseline.sql:1626 resident_select; src/config/permissions.ts:455 print_officer",
+      "note": "No column grants or masked views. Every tenant role, including print_officer and zero-grant custom roles, reads national_id_no, ethnicity, religion, GPS and photos (WP-DB-004, WP-DB-005)."
+    }
+  ],
+  "drift": [
+    {
+      "claim": "A pending app_user authenticates fine but user_has_perm() requires status = 'active', so every query comes back empty",
+      "source": "CLAUDE.md:331",
+      "verdict": "CONTRADICTED",
+      "evidence": "43 tables' SELECT policies depend only on get_user_woreda_id() (baseline.sql:1335), which ignores status; pending users read the tenant's data (raw/audit-database-status-ungated-policies.txt)"
+    },
+    {
+      "claim": "Every migration in this project is additive-only: no DROP (one sanctioned exception A5, migration 39)",
+      "source": "CLAUDE.md:582",
+      "verdict": "CONTRADICTED",
+      "evidence": "supabase/migrations/00000000000010_id_card_template_draft.sql:28 DROP COLUMN status; 28 DROP CONSTRAINT statements across 16 migrations"
+    },
+    {
+      "claim": "docs/erd.md: live enumeration found 52 tables, zero drift against the migrations",
+      "source": "docs/erd.md:10; CLAUDE.md:152",
+      "verdict": "CONTRADICTED",
+      "evidence": "migrations and types.ts define 66 tables; the 14 rental Phase 0-5 tables (migrations 71-83) are absent from docs/erd.md"
+    },
+    {
+      "claim": "types.ts inventory: 66 tables, 17 views, 64 functions, 0 enums",
+      "source": "00-context/shared-context.md",
+      "verdict": "CONFIRMED",
+      "evidence": "raw/audit-database-column-drift.json (no column drift apart from a dropped column); 153 functions in migrations = 64 callable + 89 trigger functions"
+    },
+    {
+      "claim": "Tenant isolation is enforced by RLS (get_user_woreda_id() in migrations)",
+      "source": "CLAUDE.md Architecture",
+      "verdict": "CONFIRMED",
+      "evidence": "66/66 tables have RLS enabled with woreda-scoped policies; exceptions are listed in WP-DB-001/003/009/010/012"
+    },
+    {
+      "claim": "Nine buckets, all private",
+      "source": "CLAUDE.md Storage section",
+      "verdict": "CONTRADICTED",
+      "evidence": "10 buckets are created in migrations (credential-request-documents, credential-templates, rental-request-documents, resident-clearance-letters, resident-photos, service-request-documents, tenant-assets, resident-documents, staff-assets, attachments); all are public=false"
+    },
+    {
+      "claim": "tenant-isolation-review agent: 'All seven buckets are private'",
+      "source": ".claude/agents/tenant-isolation-review.md",
+      "verdict": "CONTRADICTED",
+      "evidence": "10 buckets (see above)"
+    },
+    {
+      "claim": "No policy in public admits anon or PUBLIC",
+      "source": "supabase/migrations/00000000000007_tighten_anon_grants.sql:8",
+      "verdict": "CONFIRMED",
+      "evidence": "raw/audit-database-table-anon-grants.txt: every latest policy is TO authenticated"
+    },
+    {
+      "claim": "Views use security_invoker (migrations 06/45 re-assert it)",
+      "source": "docs/erd.md / migrations 06, 45",
+      "verdict": "CONFIRMED",
+      "evidence": "17/17 views security_invoker=true at their latest definition"
+    },
+    {
+      "claim": "Credential number is 13 digits with a Luhn check digit",
+      "source": "CLAUDE.md",
+      "verdict": "CONFIRMED",
+      "evidence": "supabase/migrations/00000000000002_credential.sql:76 assign_credential_number(): 12-digit body + luhn_check_digit; no CHECK constraint enforces the format on the column (WP-DB-006)"
+    },
+    {
+      "claim": "tenant_admin cannot create or promote a super_admin (A7 / console guard)",
+      "source": "CLAUDE.md Custom roles / console permissions",
+      "verdict": "CONFIRMED",
+      "evidence": "baseline.sql:1551 CHECK role <> 'tenant_admin' does not block 'super_admin', but trg_guard_console_role_assignment (00000000000012_enforce_console_rbac.sql:158) raises unless the caller has console.console_users.manage"
+    },
+    {
+      "claim": "rent_account_sequence / arrears_plan_sequence are SELECT-only for clients",
+      "source": "supabase/migrations/00000000000084_rental_review_regression_fixes.sql:173",
+      "verdict": "CONFIRMED",
+      "evidence": "Same file :178-187; the six baseline counters were not given the same treatment (WP-DB-006)"
+    }
+  ],
+  "artifacts": [
+    "docs/audit/2026-09-24/findings/database.md",
+    "docs/audit/2026-09-24/architecture/erd.md",
+    "docs/audit/2026-09-24/raw/audit-database-parse.py",
+    "docs/audit/2026-09-24/raw/audit-database-rls-inventory.txt",
+    "docs/audit/2026-09-24/raw/audit-database-catalog.json",
+    "docs/audit/2026-09-24/raw/audit-database-function-bodies.sql",
+    "docs/audit/2026-09-24/raw/audit-database-table-ddl.sql",
+    "docs/audit/2026-09-24/raw/audit-database-view-bodies.sql",
+    "docs/audit/2026-09-24/raw/audit-database-fn-acl.py",
+    "docs/audit/2026-09-24/raw/audit-database-fn-acl.txt",
+    "docs/audit/2026-09-24/raw/audit-database-fn-acl.json",
+    "docs/audit/2026-09-24/raw/audit-database-definer-rpc-checks.txt",
+    "docs/audit/2026-09-24/raw/audit-database-status-ungated-policies.txt",
+    "docs/audit/2026-09-24/raw/audit-database-table-anon-grants.txt",
+    "docs/audit/2026-09-24/raw/audit-database-column-drift.py",
+    "docs/audit/2026-09-24/raw/audit-database-column-drift.json",
+    "docs/audit/2026-09-24/raw/audit-database-fk.py",
+    "docs/audit/2026-09-24/raw/audit-database-fks.json",
+    "docs/audit/2026-09-24/raw/audit-database-erd.py",
+    "docs/audit/2026-09-24/raw/audit-database-erd.mmd"
+  ]
+}

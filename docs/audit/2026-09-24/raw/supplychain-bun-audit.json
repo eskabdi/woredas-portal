@@ -1,0 +1,1 @@
+{"js-yaml":[{"id":1193727,"url":"https://github.com/advisories/GHSA-2883-xcg3-v3hh","title":"js-yaml: maxTotalMergeKeys does not limit CPU use for empty merge sources","severity":"high","vulnerable_versions":">=4.0.0 <4.3.2","cwe":["CWE-400","CWE-407"],"cvss":{"score":7.5,"vectorString":"CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"}}]}
