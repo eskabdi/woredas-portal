@@ -528,4 +528,16 @@ COMMIT;
 --        SELECT 1 FROM public.resident r
 --         WHERE r.resident_id::text = lower(btrim(refs.ref_value)) AND r.woreda_id = refs.woreda_id)
 --    GROUP BY 1, 2 ORDER BY 1, 2;
+--
+-- And the column references the paid re-check still validates (household_id
+-- for every event type, resident_id for non-death events). Should be 0; a
+-- row listed here would be refused at "Record payment", so resolve it first.
+--
+--   SELECT ve.status, 'household_id' AS col, count(*)
+--     FROM public.vital_event ve JOIN public.household h ON h.household_id = ve.household_id
+--    WHERE h.woreda_id <> ve.woreda_id GROUP BY 1
+--   UNION ALL
+--   SELECT ve.status, 'resident_id', count(*)
+--     FROM public.vital_event ve JOIN public.resident r ON r.resident_id = ve.resident_id
+--    WHERE r.woreda_id <> ve.woreda_id AND ve.event_type <> 'death' GROUP BY 1;
 -- ---------------------------------------------------------------------------

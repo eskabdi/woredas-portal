@@ -344,8 +344,11 @@ executable by `anon`) and `get_credential_live_status()` (a cross-tenant
 credential-status oracle for every authenticated user). Migration
 `00000000000090_p0_2_definer_woreda_scope.sql` pins every such lookup to the
 event's or caller's woreda, extends `enforce_vital_event_preconditions()` to
-reject any out-of-woreda resident or household reference on every civil
-event type, revokes `rental_eligibility()` from `anon`, and retires
+reject an out-of-woreda `household_id` or `resident_id` column value and any
+out-of-woreda top-level `*_resident_id` or `spouse1`/`spouse2.resident_id`
+reference in `event_details`, on every civil event type (a deeper nested
+reference, such as an `informant.resident_id`, is not checked; no form writes
+one today), revokes `rental_eligibility()` from `anon`, and retires
 `get_credential_live_status()` (no client grant at all). To make a fourth
 case harder to land unnoticed, `bun run check:definer-tenant-predicate`
 (`scripts/check-definer-tenant-predicate.ts`, run in CI) statically flags

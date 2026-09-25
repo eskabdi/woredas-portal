@@ -485,7 +485,11 @@ function OccupantRegistrationPage() {
             onClick={openConfirm}
             // Blocked client-side purely so the officer is not sent into a form
             // the database will refuse. The trigger is the real gate.
-            disabled={mutation.isPending || !!ineligible || eligibility.isLoading}
+            // An eligibility check that errored (network, or the database
+            // refusing the caller since migration 90) is not a pass.
+            disabled={
+              mutation.isPending || !!ineligible || eligibility.isLoading || eligibility.isError
+            }
             className="bg-[#0b2a63] font-am-body text-white hover:bg-[#0b2a63]/90"
           >
             {mutation.isPending ? (
@@ -578,6 +582,13 @@ function OccupantRegistrationPage() {
         <Card className="border-slate-200 p-5">
           <SectionTitle icon={UserSearch} am="የተከራይ መታወቂያ መረጃ" />
           <div className="mt-4 space-y-4">
+            {resident && houseId && eligibility.isError && (
+              <div className="rounded-md border-2 border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                <span className="font-am-body">ብቁነቱን ማረጋገጥ አልተቻለም</span> / Eligibility could not be
+                checked, so this registration cannot continue. Try again, or ask an administrator to
+                confirm your rental permissions.
+              </div>
+            )}
             {resident && houseId && (eligibility.isLoading || eligibility.data) && (
               <div
                 className={

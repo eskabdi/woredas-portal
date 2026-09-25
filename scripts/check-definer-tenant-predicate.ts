@@ -51,9 +51,12 @@ const MIGRATIONS_DIR = join(import.meta.dirname, "..", "supabase", "migrations")
 // before this statement reads its children; "trigger-fk" means a trigger
 // resolving NEW's own foreign key, whose same-woreda property is not
 // independently re-checked here. Every entry is a candidate for follow-up
-// review (audit 2026-09-24 register, P2-11); none is known to be exploitable.
+// review (audit 2026-09-24 register, P2-11). None is known to expose tenant
+// row data; user_permission_override_target_role_ok is the one known
+// cross-woreda oracle (whether a user id is an admin), recorded in its reason.
 export const REVIEWED_BASELINE: Record<string, string> = {
-  "activate_arrears_repayment_plan:arrears_repayment_installment": "trigger-fk: NEW.plan_id",
+  "activate_arrears_repayment_plan:arrears_repayment_installment":
+    "trigger on the plan row updating its own children by NEW.plan_id (the row's own key)",
   "advance_vital_event_to_registered:vital_event":
     "trigger updating its own row by NEW.vital_event_id",
   "assign_credential_number:kebele": "trigger-fk: NEW.issuing_kebele_id",
@@ -100,8 +103,10 @@ export const REVIEWED_BASELINE: Record<string, string> = {
   "provision_rent_account:rent_account": "parent-scoped (rental_occupancy)",
   "provision_rent_account:rental_occupancy":
     "row fetched by id, woreda compared with get_user_woreda_id() before use",
-  "release_arrears_plan_charges:arrears_installment_charge": "trigger-fk: NEW.plan_id",
-  "release_arrears_plan_charges:arrears_repayment_installment": "trigger-fk: NEW.plan_id",
+  "release_arrears_plan_charges:arrears_installment_charge":
+    "trigger on the plan row updating its own children by NEW.plan_id (the row's own key)",
+  "release_arrears_plan_charges:arrears_repayment_installment":
+    "trigger on the plan row updating its own children by NEW.plan_id (the row's own key)",
   "resolve_reconciliation_exception:payment_reconciliation_exception":
     "row fetched by id, woreda compared with get_user_woreda_id() before use",
   "resolve_rental_checkpoint_core:resident":
@@ -152,7 +157,7 @@ export const REVIEWED_BASELINE: Record<string, string> = {
   "verify_service_letter:kebele":
     "public verifier keyed by the letter's verification_token; cross-tenant by design",
   "verify_service_letter:resident":
-    "public verifier keyed by the letter's verification_token; cross-tenant by design",
+    "public verifier keyed by the letter's verification_token; the resident join is not woreda-pinned, but enforce_service_request_preconditions refuses a cross-woreda resident_id at write time (migration 66)",
   "verify_service_letter:service_request":
     "public verifier keyed by the letter's verification_token; cross-tenant by design",
   "verify_service_letter:service_type":
@@ -359,7 +364,10 @@ export function findUnscopedLookups(
     const body = def.body.replace(/'(?:[^']|'')*'|--[^\n]*/g, (t) => (t[0] === "'" ? "''" : ""));
     const anchors = [...ANCHORS, ...anchoredVariables(body, ANCHORS)];
     const cuts = statementBoundaries(body);
-    const ref = /\b(?:FROM|JOIN|UPDATE)\s+(?:ONLY\s+)?(?:public\.)?(\w+)/gi;
+    // FROM / JOIN / UPDATE / DELETE .. USING, optionally unqualified or
+    // quoted, plus a comma-joined `, public.<t>` in a FROM list.
+    const ref =
+      /(?:\b(?:FROM|JOIN|UPDATE|USING)\s+(?:ONLY\s+)?(?:public\.)?|,\s*public\.)"?(\w+)"?/gi;
     let r: RegExpExecArray | null;
     while ((r = ref.exec(body))) {
       if (!tenantTables.has(r[1])) continue;

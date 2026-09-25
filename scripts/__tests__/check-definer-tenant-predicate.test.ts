@@ -140,6 +140,26 @@ describe("check-definer-tenant-predicate (WP-VER-001 regression lock)", () => {
       ).toEqual(["f:resident"]);
     });
 
+    it("sees comma joins, DELETE .. USING and quoted identifiers", () => {
+      expect(
+        unscoped(
+          fn(
+            "BEGIN PERFORM 1 FROM public.woreda w, public.resident r WHERE r.resident_id = _id; END;",
+          ),
+        ),
+      ).toEqual(["f:resident"]);
+      expect(
+        unscoped(
+          fn(
+            "BEGIN DELETE FROM public.woreda w USING public.resident r WHERE r.resident_id = _id; END;",
+          ),
+        ),
+      ).toEqual(["f:resident"]);
+      expect(
+        unscoped(fn('BEGIN PERFORM 1 FROM public."resident" WHERE resident_id = _id; END;')),
+      ).toEqual(["f:resident"]);
+    });
+
     it("ignores a woreda_id or `--` inside a string literal", () => {
       expect(
         unscoped(
