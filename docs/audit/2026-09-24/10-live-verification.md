@@ -77,7 +77,7 @@ Nothing was written to any system. Tokens came from the session environment and 
 | Why ethnicity is collected | For the government to have population data and to support minorities | Purpose recorded on WP-PRV-005. **Still open:** the legal provision relied on (counsel), whether it can be optional ("prefer not to say"), and a purpose for religion, cause of death and divorce grounds. |
 | "Region" | Only the administrative location (regional state) | Not special-category data; no finding. Separate from where data is hosted (WP-OPS-011). |
 | Backups / PITR and Pro-tier features | Not set up; nothing requiring Supabase or Vercel Pro has been done | P0-1 cannot be met on the Free plan (see §4). |
-| Proclamation No. 1321/2024 | Not answered | Still open (legal counsel). |
+| Proclamation No. 1321/2024, legal basis for special-category fields | The owner stated (2026-09-25) that these legal questions are already answered by the answers above | Recorded as the owner's position. No statutory citation or purpose for religion, cause of death or divorce grounds is on file, so WP-PRV-005 stays open in the register until one is added. |
 | Staging approval | Not approved (Pro not purchased) | P1-1 blocked. |
 
 ## 3. What changed in the audit
