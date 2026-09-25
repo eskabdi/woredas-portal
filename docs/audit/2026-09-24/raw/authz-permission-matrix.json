@@ -1,0 +1,1090 @@
+{
+ "P": {
+  "RESIDENT_CREATE": "resident.create",
+  "RESIDENT_READ": "resident.read",
+  "RESIDENT_UPDATE": "resident.update",
+  "RESIDENT_DELETE": "resident.delete",
+  "HOUSEHOLD_CREATE": "household.create",
+  "HOUSEHOLD_READ": "household.read",
+  "HOUSEHOLD_UPDATE": "household.update",
+  "CREDENTIAL_ISSUE": "credential.issue",
+  "CREDENTIAL_READ": "credential.read",
+  "CREDENTIAL_PRINT": "credential.print",
+  "CREDENTIAL_VERIFY": "credential.verify",
+  "CREDENTIAL_REVOKE": "credential.revoke",
+  "CREDENTIAL_RENEW": "credential.renew",
+  "CREDENTIAL_APPROVE": "credential.approve",
+  "CREDENTIAL_SUBMIT": "credential.submit",
+  "CREDENTIAL_REVIEW": "credential.review",
+  "CREDENTIAL_RESUBMIT": "credential.resubmit",
+  "CREDENTIAL_RETURN": "credential.return",
+  "CREDENTIAL_REJECT": "credential.reject",
+  "CREDENTIAL_RECORD_PAYMENT": "credential.record_payment",
+  "CREDENTIAL_PREVIEW_PRINT": "credential.preview_print",
+  "CREDENTIAL_CONFIRM_PRINT": "credential.confirm_print",
+  "CREDENTIAL_ACTIVATE": "credential.activate",
+  "CREDENTIAL_SUSPEND": "credential.suspend",
+  "CREDENTIAL_CREATE_REQUEST": "credential.create_request",
+  "CREDENTIAL_AUTHORIZE_REPRINT": "credential.authorize_reprint",
+  "CREDENTIAL_CONFIGURE_POLICY": "credential.configure_policy",
+  "CREDENTIAL_VIEW": "credential.view",
+  "CIVIL_REGISTER": "civil.register",
+  "CIVIL_APPROVE": "civil.approve",
+  "CIVIL_READ": "civil.read",
+  "CIVIL_CREATE_EVENT": "civil.create_event",
+  "CIVIL_SUBMIT": "civil.submit",
+  "CIVIL_RESUBMIT": "civil.resubmit",
+  "CIVIL_VERIFY": "civil.verify",
+  "CIVIL_RETURN": "civil.return",
+  "CIVIL_REJECT": "civil.reject",
+  "CIVIL_RECORD_PAYMENT": "civil.record_payment",
+  "CIVIL_VIEW": "civil.view",
+  "PAYMENT_COLLECT": "payment.collect",
+  "PAYMENT_READ": "payment.read",
+  "RECEIPT_PRINT": "receipt.print",
+  "REPORT_VIEW": "report.view",
+  "REPORT_EXPORT": "report.export",
+  "AUDIT_VIEW": "audit.view",
+  "TENANT_MANAGE": "tenant.manage",
+  "USER_MANAGE": "user.manage",
+  "PLATFORM_MANAGE": "platform.manage",
+  "TENANT_CREATE": "tenant.create",
+  "RENTAL_VIEW": "rental.view",
+  "RENTAL_CREATE": "rental.create",
+  "RENTAL_APPROVE": "rental.approve",
+  "RENTAL_VACATE": "rental.vacate",
+  "RENTAL_REPORT": "rental.report",
+  "RENTAL_POLICY_CONFIGURE": "rental.policy.configure",
+  "RENTAL_BILLING": "rental.billing",
+  "RENTAL_COLLECT": "rental.collect",
+  "RENTAL_SETTLE": "rental.settle",
+  "RENTAL_REVERSE": "rental.reverse",
+  "RENTAL_PLAN_CREATE": "rental.plan.create",
+  "RENTAL_PLAN_APPROVE": "rental.plan.approve",
+  "RENTAL_PLAN_MANAGE": "rental.plan.manage",
+  "REVENUE_VIEW": "revenue.view",
+  "REVENUE_COLLECT": "revenue.collect",
+  "REVENUE_RECEIPT_REPRINT": "revenue.receipt_reprint",
+  "SERVICE_CREATE": "service.create",
+  "SERVICE_READ": "service.read",
+  "SERVICE_VERIFY": "service.verify",
+  "SERVICE_APPROVE": "service.approve",
+  "SERVICE_ISSUE": "service.issue",
+  "SERVICE_SUBMIT": "service.submit",
+  "SERVICE_RESUBMIT": "service.resubmit",
+  "SERVICE_RETURN": "service.return",
+  "SERVICE_REJECT": "service.reject",
+  "SERVICE_RECORD_PAYMENT": "service.record_payment",
+  "SERVICE_ISSUE_LETTER": "service.issue_letter",
+  "SERVICE_COMPLETE": "service.complete",
+  "SERVICE_CHECKPOINT_OVERRIDE": "service.checkpoint_override",
+  "COMPLAINT_MANAGE": "complaint.manage",
+  "APPROVAL_QUEUE_VIEW": "approval.queue.view"
+ },
+ "drift": [],
+ "seed_divergence": [
+  [
+   "auditor",
+   "credential.verify",
+   true,
+   {
+    "8e94339e": false,
+    "b0d23d2d": false,
+    "40ce607b": false,
+    "81ac2ad6": false,
+    "70954b2c": false,
+    "d43c7fea": false
+   }
+  ],
+  [
+   "finance_clerk",
+   "credential.verify",
+   true,
+   {
+    "8e94339e": false,
+    "b0d23d2d": false,
+    "40ce607b": false,
+    "81ac2ad6": false,
+    "70954b2c": false,
+    "d43c7fea": false
+   }
+  ],
+  [
+   "viewer",
+   "credential.verify",
+   true,
+   {
+    "8e94339e": false,
+    "b0d23d2d": false,
+    "40ce607b": false,
+    "81ac2ad6": false,
+    "70954b2c": false,
+    "d43c7fea": false
+   }
+  ]
+ ],
+ "matrix": [
+  {
+   "key": "resident.create",
+   "const": "RESIDENT_CREATE",
+   "roles": [
+    "tenant_admin",
+    "civil_registrar",
+    "registry_clerk"
+   ],
+   "in_seed": true,
+   "server_refs": 1,
+   "client_refs": 2
+  },
+  {
+   "key": "resident.read",
+   "const": "RESIDENT_READ",
+   "roles": [
+    "tenant_admin",
+    "supervisor",
+    "civil_registrar",
+    "registry_clerk",
+    "finance_clerk",
+    "auditor",
+    "viewer"
+   ],
+   "in_seed": true,
+   "server_refs": 3,
+   "client_refs": 10
+  },
+  {
+   "key": "resident.update",
+   "const": "RESIDENT_UPDATE",
+   "roles": [
+    "tenant_admin",
+    "civil_registrar",
+    "registry_clerk"
+   ],
+   "in_seed": true,
+   "server_refs": 8,
+   "client_refs": 11
+  },
+  {
+   "key": "resident.delete",
+   "const": "RESIDENT_DELETE",
+   "roles": [
+    "tenant_admin"
+   ],
+   "in_seed": true,
+   "server_refs": 1,
+   "client_refs": 0
+  },
+  {
+   "key": "household.create",
+   "const": "HOUSEHOLD_CREATE",
+   "roles": [
+    "tenant_admin",
+    "registry_clerk"
+   ],
+   "in_seed": true,
+   "server_refs": 3,
+   "client_refs": 3
+  },
+  {
+   "key": "household.read",
+   "const": "HOUSEHOLD_READ",
+   "roles": [
+    "tenant_admin",
+    "supervisor",
+    "civil_registrar",
+    "registry_clerk",
+    "finance_clerk",
+    "auditor",
+    "viewer"
+   ],
+   "in_seed": true,
+   "server_refs": 3,
+   "client_refs": 8
+  },
+  {
+   "key": "household.update",
+   "const": "HOUSEHOLD_UPDATE",
+   "roles": [
+    "tenant_admin",
+    "registry_clerk"
+   ],
+   "in_seed": true,
+   "server_refs": 12,
+   "client_refs": 4
+  },
+  {
+   "key": "credential.issue",
+   "const": "CREDENTIAL_ISSUE",
+   "roles": [
+    "tenant_admin",
+    "civil_registrar",
+    "registry_clerk"
+   ],
+   "in_seed": true,
+   "server_refs": 11,
+   "client_refs": 5
+  },
+  {
+   "key": "credential.read",
+   "const": "CREDENTIAL_READ",
+   "roles": [
+    "tenant_admin",
+    "supervisor",
+    "civil_registrar",
+    "registry_clerk",
+    "finance_clerk",
+    "auditor",
+    "viewer",
+    "print_officer"
+   ],
+   "in_seed": true,
+   "server_refs": 4,
+   "client_refs": 3
+  },
+  {
+   "key": "credential.print",
+   "const": "CREDENTIAL_PRINT",
+   "roles": [
+    "tenant_admin",
+    "civil_registrar",
+    "registry_clerk"
+   ],
+   "in_seed": true,
+   "server_refs": 7,
+   "client_refs": 4
+  },
+  {
+   "key": "credential.verify",
+   "const": "CREDENTIAL_VERIFY",
+   "roles": [
+    "tenant_admin",
+    "supervisor",
+    "civil_registrar",
+    "registry_clerk",
+    "finance_clerk",
+    "auditor",
+    "viewer"
+   ],
+   "in_seed": true,
+   "server_refs": 3,
+   "client_refs": 3
+  },
+  {
+   "key": "credential.revoke",
+   "const": "CREDENTIAL_REVOKE",
+   "roles": [
+    "tenant_admin"
+   ],
+   "in_seed": true,
+   "server_refs": 6,
+   "client_refs": 1
+  },
+  {
+   "key": "credential.renew",
+   "const": "CREDENTIAL_RENEW",
+   "roles": [
+    "tenant_admin"
+   ],
+   "in_seed": true,
+   "server_refs": 3,
+   "client_refs": 0
+  },
+  {
+   "key": "credential.approve",
+   "const": "CREDENTIAL_APPROVE",
+   "roles": [
+    "tenant_admin",
+    "supervisor"
+   ],
+   "in_seed": true,
+   "server_refs": 15,
+   "client_refs": 2
+  },
+  {
+   "key": "credential.submit",
+   "const": "CREDENTIAL_SUBMIT",
+   "roles": [
+    "tenant_admin",
+    "civil_registrar",
+    "registry_clerk"
+   ],
+   "in_seed": false,
+   "server_refs": 3,
+   "client_refs": 0
+  },
+  {
+   "key": "credential.review",
+   "const": "CREDENTIAL_REVIEW",
+   "roles": [
+    "tenant_admin",
+    "civil_registrar",
+    "registry_clerk"
+   ],
+   "in_seed": false,
+   "server_refs": 5,
+   "client_refs": 0
+  },
+  {
+   "key": "credential.resubmit",
+   "const": "CREDENTIAL_RESUBMIT",
+   "roles": [
+    "tenant_admin",
+    "civil_registrar",
+    "registry_clerk"
+   ],
+   "in_seed": false,
+   "server_refs": 3,
+   "client_refs": 0
+  },
+  {
+   "key": "credential.return",
+   "const": "CREDENTIAL_RETURN",
+   "roles": [
+    "tenant_admin",
+    "supervisor",
+    "civil_registrar",
+    "registry_clerk"
+   ],
+   "in_seed": false,
+   "server_refs": 7,
+   "client_refs": 0
+  },
+  {
+   "key": "credential.reject",
+   "const": "CREDENTIAL_REJECT",
+   "roles": [
+    "tenant_admin",
+    "supervisor"
+   ],
+   "in_seed": false,
+   "server_refs": 4,
+   "client_refs": 0
+  },
+  {
+   "key": "credential.record_payment",
+   "const": "CREDENTIAL_RECORD_PAYMENT",
+   "roles": [
+    "tenant_admin",
+    "finance_clerk"
+   ],
+   "in_seed": false,
+   "server_refs": 2,
+   "client_refs": 1
+  },
+  {
+   "key": "credential.preview_print",
+   "const": "CREDENTIAL_PREVIEW_PRINT",
+   "roles": [
+    "tenant_admin",
+    "civil_registrar",
+    "registry_clerk",
+    "print_officer"
+   ],
+   "in_seed": false,
+   "server_refs": 2,
+   "client_refs": 2
+  },
+  {
+   "key": "credential.confirm_print",
+   "const": "CREDENTIAL_CONFIRM_PRINT",
+   "roles": [
+    "tenant_admin",
+    "civil_registrar",
+    "registry_clerk",
+    "print_officer"
+   ],
+   "in_seed": false,
+   "server_refs": 2,
+   "client_refs": 0
+  },
+  {
+   "key": "credential.activate",
+   "const": "CREDENTIAL_ACTIVATE",
+   "roles": [
+    "tenant_admin",
+    "civil_registrar",
+    "registry_clerk",
+    "print_officer"
+   ],
+   "in_seed": false,
+   "server_refs": 3,
+   "client_refs": 1
+  },
+  {
+   "key": "credential.suspend",
+   "const": "CREDENTIAL_SUSPEND",
+   "roles": [
+    "tenant_admin",
+    "supervisor"
+   ],
+   "in_seed": false,
+   "server_refs": 2,
+   "client_refs": 1
+  },
+  {
+   "key": "credential.create_request",
+   "const": "CREDENTIAL_CREATE_REQUEST",
+   "roles": [
+    "tenant_admin",
+    "civil_registrar",
+    "registry_clerk"
+   ],
+   "in_seed": false,
+   "server_refs": 0,
+   "client_refs": 0
+  },
+  {
+   "key": "credential.authorize_reprint",
+   "const": "CREDENTIAL_AUTHORIZE_REPRINT",
+   "roles": [
+    "tenant_admin",
+    "supervisor",
+    "print_officer"
+   ],
+   "in_seed": false,
+   "server_refs": 1,
+   "client_refs": 0
+  },
+  {
+   "key": "credential.configure_policy",
+   "const": "CREDENTIAL_CONFIGURE_POLICY",
+   "roles": [
+    "tenant_admin"
+   ],
+   "in_seed": false,
+   "server_refs": 3,
+   "client_refs": 0
+  },
+  {
+   "key": "credential.view",
+   "const": "CREDENTIAL_VIEW",
+   "roles": [
+    "tenant_admin",
+    "supervisor",
+    "civil_registrar",
+    "registry_clerk",
+    "finance_clerk",
+    "auditor",
+    "viewer",
+    "print_officer"
+   ],
+   "in_seed": false,
+   "server_refs": 0,
+   "client_refs": 0
+  },
+  {
+   "key": "civil.register",
+   "const": "CIVIL_REGISTER",
+   "roles": [
+    "tenant_admin",
+    "civil_registrar"
+   ],
+   "in_seed": true,
+   "server_refs": 6,
+   "client_refs": 7
+  },
+  {
+   "key": "civil.approve",
+   "const": "CIVIL_APPROVE",
+   "roles": [
+    "tenant_admin",
+    "supervisor"
+   ],
+   "in_seed": true,
+   "server_refs": 10,
+   "client_refs": 4
+  },
+  {
+   "key": "civil.read",
+   "const": "CIVIL_READ",
+   "roles": [
+    "tenant_admin",
+    "supervisor",
+    "civil_registrar",
+    "registry_clerk",
+    "auditor",
+    "viewer"
+   ],
+   "in_seed": true,
+   "server_refs": 3,
+   "client_refs": 3
+  },
+  {
+   "key": "civil.create_event",
+   "const": "CIVIL_CREATE_EVENT",
+   "roles": [
+    "tenant_admin",
+    "civil_registrar",
+    "registry_clerk"
+   ],
+   "in_seed": false,
+   "server_refs": 4,
+   "client_refs": 0
+  },
+  {
+   "key": "civil.submit",
+   "const": "CIVIL_SUBMIT",
+   "roles": [
+    "tenant_admin",
+    "civil_registrar",
+    "registry_clerk"
+   ],
+   "in_seed": false,
+   "server_refs": 4,
+   "client_refs": 0
+  },
+  {
+   "key": "civil.resubmit",
+   "const": "CIVIL_RESUBMIT",
+   "roles": [
+    "tenant_admin",
+    "civil_registrar",
+    "registry_clerk"
+   ],
+   "in_seed": false,
+   "server_refs": 3,
+   "client_refs": 2
+  },
+  {
+   "key": "civil.verify",
+   "const": "CIVIL_VERIFY",
+   "roles": [
+    "tenant_admin",
+    "civil_registrar",
+    "registry_clerk"
+   ],
+   "in_seed": false,
+   "server_refs": 4,
+   "client_refs": 3
+  },
+  {
+   "key": "civil.return",
+   "const": "CIVIL_RETURN",
+   "roles": [
+    "tenant_admin",
+    "civil_registrar",
+    "registry_clerk"
+   ],
+   "in_seed": false,
+   "server_refs": 4,
+   "client_refs": 1
+  },
+  {
+   "key": "civil.reject",
+   "const": "CIVIL_REJECT",
+   "roles": [
+    "tenant_admin",
+    "supervisor"
+   ],
+   "in_seed": false,
+   "server_refs": 3,
+   "client_refs": 1
+  },
+  {
+   "key": "civil.record_payment",
+   "const": "CIVIL_RECORD_PAYMENT",
+   "roles": [
+    "tenant_admin",
+    "finance_clerk"
+   ],
+   "in_seed": false,
+   "server_refs": 5,
+   "client_refs": 3
+  },
+  {
+   "key": "civil.view",
+   "const": "CIVIL_VIEW",
+   "roles": [
+    "tenant_admin",
+    "supervisor",
+    "civil_registrar",
+    "registry_clerk",
+    "finance_clerk",
+    "auditor",
+    "viewer"
+   ],
+   "in_seed": false,
+   "server_refs": 0,
+   "client_refs": 0
+  },
+  {
+   "key": "payment.collect",
+   "const": "PAYMENT_COLLECT",
+   "roles": [
+    "tenant_admin",
+    "finance_clerk"
+   ],
+   "in_seed": true,
+   "server_refs": 9,
+   "client_refs": 2
+  },
+  {
+   "key": "payment.read",
+   "const": "PAYMENT_READ",
+   "roles": [
+    "tenant_admin",
+    "supervisor",
+    "finance_clerk",
+    "auditor",
+    "viewer"
+   ],
+   "in_seed": true,
+   "server_refs": 0,
+   "client_refs": 0
+  },
+  {
+   "key": "receipt.print",
+   "const": "RECEIPT_PRINT",
+   "roles": [
+    "tenant_admin",
+    "supervisor",
+    "finance_clerk"
+   ],
+   "in_seed": true,
+   "server_refs": 3,
+   "client_refs": 0
+  },
+  {
+   "key": "report.view",
+   "const": "REPORT_VIEW",
+   "roles": [
+    "super_admin",
+    "tenant_admin",
+    "supervisor",
+    "auditor"
+   ],
+   "in_seed": true,
+   "server_refs": 0,
+   "client_refs": 1
+  },
+  {
+   "key": "report.export",
+   "const": "REPORT_EXPORT",
+   "roles": [
+    "tenant_admin",
+    "supervisor"
+   ],
+   "in_seed": true,
+   "server_refs": 0,
+   "client_refs": 2
+  },
+  {
+   "key": "audit.view",
+   "const": "AUDIT_VIEW",
+   "roles": [
+    "super_admin",
+    "tenant_admin",
+    "supervisor",
+    "auditor"
+   ],
+   "in_seed": true,
+   "server_refs": 0,
+   "client_refs": 7
+  },
+  {
+   "key": "tenant.manage",
+   "const": "TENANT_MANAGE",
+   "roles": [
+    "super_admin",
+    "tenant_admin"
+   ],
+   "in_seed": true,
+   "server_refs": 30,
+   "client_refs": 1
+  },
+  {
+   "key": "user.manage",
+   "const": "USER_MANAGE",
+   "roles": [
+    "super_admin",
+    "tenant_admin"
+   ],
+   "in_seed": true,
+   "server_refs": 0,
+   "client_refs": 0
+  },
+  {
+   "key": "platform.manage",
+   "const": "PLATFORM_MANAGE",
+   "roles": [
+    "super_admin"
+   ],
+   "in_seed": true,
+   "server_refs": 0,
+   "client_refs": 0
+  },
+  {
+   "key": "tenant.create",
+   "const": "TENANT_CREATE",
+   "roles": [
+    "super_admin"
+   ],
+   "in_seed": true,
+   "server_refs": 0,
+   "client_refs": 0
+  },
+  {
+   "key": "rental.view",
+   "const": "RENTAL_VIEW",
+   "roles": [
+    "tenant_admin",
+    "supervisor",
+    "registry_clerk",
+    "finance_clerk",
+    "auditor"
+   ],
+   "in_seed": true,
+   "server_refs": 15,
+   "client_refs": 8
+  },
+  {
+   "key": "rental.create",
+   "const": "RENTAL_CREATE",
+   "roles": [
+    "tenant_admin",
+    "registry_clerk"
+   ],
+   "in_seed": true,
+   "server_refs": 20,
+   "client_refs": 7
+  },
+  {
+   "key": "rental.approve",
+   "const": "RENTAL_APPROVE",
+   "roles": [
+    "tenant_admin",
+    "supervisor"
+   ],
+   "in_seed": true,
+   "server_refs": 18,
+   "client_refs": 1
+  },
+  {
+   "key": "rental.vacate",
+   "const": "RENTAL_VACATE",
+   "roles": [
+    "tenant_admin"
+   ],
+   "in_seed": true,
+   "server_refs": 7,
+   "client_refs": 1
+  },
+  {
+   "key": "rental.report",
+   "const": "RENTAL_REPORT",
+   "roles": [
+    "tenant_admin",
+    "auditor"
+   ],
+   "in_seed": true,
+   "server_refs": 6,
+   "client_refs": 1
+  },
+  {
+   "key": "rental.policy.configure",
+   "const": "RENTAL_POLICY_CONFIGURE",
+   "roles": [
+    "tenant_admin"
+   ],
+   "in_seed": false,
+   "server_refs": 3,
+   "client_refs": 0
+  },
+  {
+   "key": "rental.billing",
+   "const": "RENTAL_BILLING",
+   "roles": [
+    "tenant_admin"
+   ],
+   "in_seed": true,
+   "server_refs": 9,
+   "client_refs": 1
+  },
+  {
+   "key": "rental.collect",
+   "const": "RENTAL_COLLECT",
+   "roles": [
+    "tenant_admin",
+    "registry_clerk",
+    "finance_clerk"
+   ],
+   "in_seed": false,
+   "server_refs": 9,
+   "client_refs": 4
+  },
+  {
+   "key": "rental.settle",
+   "const": "RENTAL_SETTLE",
+   "roles": [
+    "tenant_admin",
+    "finance_clerk"
+   ],
+   "in_seed": false,
+   "server_refs": 6,
+   "client_refs": 0
+  },
+  {
+   "key": "rental.reverse",
+   "const": "RENTAL_REVERSE",
+   "roles": [
+    "tenant_admin"
+   ],
+   "in_seed": false,
+   "server_refs": 6,
+   "client_refs": 1
+  },
+  {
+   "key": "rental.plan.create",
+   "const": "RENTAL_PLAN_CREATE",
+   "roles": [
+    "tenant_admin",
+    "finance_clerk"
+   ],
+   "in_seed": false,
+   "server_refs": 10,
+   "client_refs": 3
+  },
+  {
+   "key": "rental.plan.approve",
+   "const": "RENTAL_PLAN_APPROVE",
+   "roles": [
+    "tenant_admin",
+    "supervisor"
+   ],
+   "in_seed": false,
+   "server_refs": 5,
+   "client_refs": 1
+  },
+  {
+   "key": "rental.plan.manage",
+   "const": "RENTAL_PLAN_MANAGE",
+   "roles": [
+    "tenant_admin",
+    "supervisor"
+   ],
+   "in_seed": false,
+   "server_refs": 5,
+   "client_refs": 1
+  },
+  {
+   "key": "revenue.view",
+   "const": "REVENUE_VIEW",
+   "roles": [
+    "tenant_admin",
+    "supervisor",
+    "finance_clerk",
+    "auditor"
+   ],
+   "in_seed": true,
+   "server_refs": 0,
+   "client_refs": 1
+  },
+  {
+   "key": "revenue.collect",
+   "const": "REVENUE_COLLECT",
+   "roles": [
+    "tenant_admin",
+    "finance_clerk"
+   ],
+   "in_seed": true,
+   "server_refs": 7,
+   "client_refs": 0
+  },
+  {
+   "key": "revenue.receipt_reprint",
+   "const": "REVENUE_RECEIPT_REPRINT",
+   "roles": [
+    "tenant_admin",
+    "supervisor",
+    "finance_clerk"
+   ],
+   "in_seed": true,
+   "server_refs": 2,
+   "client_refs": 2
+  },
+  {
+   "key": "service.create",
+   "const": "SERVICE_CREATE",
+   "roles": [
+    "tenant_admin",
+    "civil_registrar",
+    "registry_clerk"
+   ],
+   "in_seed": true,
+   "server_refs": 11,
+   "client_refs": 3
+  },
+  {
+   "key": "service.read",
+   "const": "SERVICE_READ",
+   "roles": [
+    "tenant_admin",
+    "supervisor",
+    "civil_registrar",
+    "registry_clerk",
+    "finance_clerk",
+    "auditor",
+    "viewer"
+   ],
+   "in_seed": true,
+   "server_refs": 5,
+   "client_refs": 3
+  },
+  {
+   "key": "service.verify",
+   "const": "SERVICE_VERIFY",
+   "roles": [
+    "tenant_admin",
+    "supervisor",
+    "civil_registrar",
+    "registry_clerk"
+   ],
+   "in_seed": true,
+   "server_refs": 11,
+   "client_refs": 2
+  },
+  {
+   "key": "service.approve",
+   "const": "SERVICE_APPROVE",
+   "roles": [
+    "tenant_admin",
+    "supervisor"
+   ],
+   "in_seed": true,
+   "server_refs": 10,
+   "client_refs": 3
+  },
+  {
+   "key": "service.issue",
+   "const": "SERVICE_ISSUE",
+   "roles": [
+    "tenant_admin",
+    "civil_registrar",
+    "registry_clerk"
+   ],
+   "in_seed": true,
+   "server_refs": 7,
+   "client_refs": 1
+  },
+  {
+   "key": "service.submit",
+   "const": "SERVICE_SUBMIT",
+   "roles": [
+    "tenant_admin",
+    "civil_registrar",
+    "registry_clerk"
+   ],
+   "in_seed": false,
+   "server_refs": 6,
+   "client_refs": 0
+  },
+  {
+   "key": "service.resubmit",
+   "const": "SERVICE_RESUBMIT",
+   "roles": [
+    "tenant_admin",
+    "civil_registrar",
+    "registry_clerk"
+   ],
+   "in_seed": false,
+   "server_refs": 4,
+   "client_refs": 1
+  },
+  {
+   "key": "service.return",
+   "const": "SERVICE_RETURN",
+   "roles": [
+    "tenant_admin",
+    "civil_registrar",
+    "registry_clerk"
+   ],
+   "in_seed": false,
+   "server_refs": 6,
+   "client_refs": 1
+  },
+  {
+   "key": "service.reject",
+   "const": "SERVICE_REJECT",
+   "roles": [
+    "tenant_admin",
+    "supervisor"
+   ],
+   "in_seed": false,
+   "server_refs": 4,
+   "client_refs": 1
+  },
+  {
+   "key": "service.record_payment",
+   "const": "SERVICE_RECORD_PAYMENT",
+   "roles": [
+    "tenant_admin",
+    "finance_clerk"
+   ],
+   "in_seed": false,
+   "server_refs": 5,
+   "client_refs": 3
+  },
+  {
+   "key": "service.issue_letter",
+   "const": "SERVICE_ISSUE_LETTER",
+   "roles": [
+    "tenant_admin",
+    "civil_registrar",
+    "registry_clerk"
+   ],
+   "in_seed": false,
+   "server_refs": 3,
+   "client_refs": 2
+  },
+  {
+   "key": "service.complete",
+   "const": "SERVICE_COMPLETE",
+   "roles": [
+    "tenant_admin",
+    "civil_registrar",
+    "registry_clerk"
+   ],
+   "in_seed": true,
+   "server_refs": 5,
+   "client_refs": 1
+  },
+  {
+   "key": "service.checkpoint_override",
+   "const": "SERVICE_CHECKPOINT_OVERRIDE",
+   "roles": [
+    "tenant_admin",
+    "supervisor"
+   ],
+   "in_seed": false,
+   "server_refs": 3,
+   "client_refs": 1
+  },
+  {
+   "key": "complaint.manage",
+   "const": "COMPLAINT_MANAGE",
+   "roles": [
+    "tenant_admin",
+    "supervisor",
+    "registry_clerk"
+   ],
+   "in_seed": true,
+   "server_refs": 9,
+   "client_refs": 0
+  },
+  {
+   "key": "approval.queue.view",
+   "const": "APPROVAL_QUEUE_VIEW",
+   "roles": [
+    "tenant_admin",
+    "supervisor",
+    "civil_registrar",
+    "registry_clerk",
+    "finance_clerk",
+    "print_officer"
+   ],
+   "in_seed": true,
+   "server_refs": 2,
+   "client_refs": 1
+  }
+ ]
+}

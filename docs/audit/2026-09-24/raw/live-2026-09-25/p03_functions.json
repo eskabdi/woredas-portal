@@ -1,0 +1,70 @@
+{
+ "endpoint": "https://api.supabase.com/v1/projects/tugzuexfyzbdnghbmrjl/functions",
+ "http_status": "200",
+ "result": [
+  {
+   "slug": "invite-tenant-user",
+   "status": "ACTIVE",
+   "version": 19,
+   "verify_jwt": false,
+   "import_map": false,
+   "updated_at": 1789942252191
+  },
+  {
+   "slug": "invite-platform-admin",
+   "status": "ACTIVE",
+   "version": 17,
+   "verify_jwt": false,
+   "import_map": false,
+   "updated_at": 1789942368194
+  },
+  {
+   "slug": "resend-platform-invite",
+   "status": "ACTIVE",
+   "version": 17,
+   "verify_jwt": false,
+   "import_map": false,
+   "updated_at": 1789942699724
+  },
+  {
+   "slug": "sign-credential",
+   "status": "ACTIVE",
+   "version": 17,
+   "verify_jwt": false,
+   "import_map": false,
+   "updated_at": 1789209530716
+  },
+  {
+   "slug": "activate-invited-user",
+   "status": "ACTIVE",
+   "version": 12,
+   "verify_jwt": false,
+   "import_map": false,
+   "updated_at": 1789209530716
+  },
+  {
+   "slug": "record-login",
+   "status": "ACTIVE",
+   "version": 12,
+   "verify_jwt": false,
+   "import_map": false,
+   "updated_at": 1789209530716
+  },
+  {
+   "slug": "send-password-reset-link",
+   "status": "ACTIVE",
+   "version": 3,
+   "verify_jwt": true,
+   "import_map": false,
+   "updated_at": 1789944307064
+  },
+  {
+   "slug": "resend-tenant-invite",
+   "status": "ACTIVE",
+   "version": 1,
+   "verify_jwt": true,
+   "import_map": false,
+   "updated_at": 1789944307064
+  }
+ ]
+}

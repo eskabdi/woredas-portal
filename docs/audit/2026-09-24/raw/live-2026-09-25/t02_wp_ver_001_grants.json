@@ -1,0 +1,86 @@
+{
+ "query": "select p.proname, pg_get_function_identity_arguments(p.oid) as args, p.prosecdef, p.proconfig, has_function_privilege('anon',p.oid,'EXECUTE') as anon_exec, has_function_privilege('authenticated',p.oid,'EXECUTE') as auth_exec from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname in ('rental_eligibility','get_credential_live_status','generate_resident_on_birth_approval','enforce_vital_event_preconditions','verify_credential_token','verify_service_letter','verify_receipt','user_permission_override_target_role_ok')",
+ "http_status": "201",
+ "result": [
+  {
+   "proname": "enforce_vital_event_preconditions",
+   "args": "",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "proname": "generate_resident_on_birth_approval",
+   "args": "",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "proname": "get_credential_live_status",
+   "args": "_credential_number text",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "proname": "rental_eligibility",
+   "args": "_resident_id uuid, _rental_house_id uuid, _request_type text",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "proname": "user_permission_override_target_role_ok",
+   "args": "_user_id uuid",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "anon_exec": false,
+   "auth_exec": true
+  },
+  {
+   "proname": "verify_credential_token",
+   "args": "_token text",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "proname": "verify_receipt",
+   "args": "_token text",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "anon_exec": true,
+   "auth_exec": true
+  },
+  {
+   "proname": "verify_service_letter",
+   "args": "_token text",
+   "prosecdef": true,
+   "proconfig": [
+    "search_path=public"
+   ],
+   "anon_exec": true,
+   "auth_exec": true
+  }
+ ]
+}

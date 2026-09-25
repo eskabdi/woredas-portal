@@ -1,0 +1,15 @@
+# grep -rnE '\b(btoa|atob)\(' src supabase  (HEAD 9950f16)
+src/utils/harariCredentialCrypto.ts:103:  const bin = atob(b64);
+src/utils/harariCredentialCrypto.ts:158:  const bin = atob(pem);
+supabase/functions/sign-credential/index.ts:38:  return btoa(bin).replace(/=+$/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+supabase/functions/sign-credential/index.ts:50:  const bin = atob(b64);
+
+# private-key search: working tree + full history (git log --all -p), PEM bodies only
+working tree matches (excluding docs/audit): .claude/agents/secret-sweep.md 
+history PEM bodies following a BEGIN ... PRIVATE KEY line: 0
+distinct credential public keys ever committed: 1
+
+# bun run build (HEAD 9950f16), then scan of client bundle .output/public
+private-key markers (BEGIN * PRIVATE KEY | HARARI_EC_PRIVATE_KEY | service_role) in .output/public: 0 files
+public key (SPKI P-256, expected) present in: .output/public/assets/credentialCryptoConfig-BLalL5wj.js 
+git status after build (tracked files): 0 modified

@@ -1,0 +1,56 @@
+Callable (non-trigger) SECURITY DEFINER functions: in-body tenant/permission re-checks (heuristic grep of latest definition)
+fn | args | anon | uses get_user_woreda_id | perm check | is_super_admin | woreda param | latest
+create_arrears_repayment_plan | _rent_account_id uuid, _installment_count integer, _installment_due_da | False | True | True | True | False | 00000000000087_rental_review_round4_fixes.sql:303
+current_console_permissions |  | False | False | False | False | False | 00000000000012_enforce_console_rbac.sql:65
+current_permissions |  | False | False | False | False | False | 00000000000039_task13_custom_role_resolution.sql:119
+decrypt_pii_numeric | _cipher bytea, _woreda_id uuid | False | False | False | False | True | 00000000000023_pii_encryption.sql:371
+decrypt_pii_text | _cipher bytea, _woreda_id uuid | False | True | False | True | True | 00000000000023_pii_encryption.sql:324
+derive_woreda_key | _woreda_id uuid | False | False | False | False | True | 00000000000023_pii_encryption.sql:177
+encrypt_pii_numeric | _value numeric, _woreda_id uuid | False | False | False | False | True | 00000000000023_pii_encryption.sql:278
+encrypt_pii_text | _plain text, _woreda_id uuid | False | False | False | False | True | 00000000000023_pii_encryption.sql:252
+entity_approve_perm_ok | _entity text | False | False | True | False | False | 00000000000053_task11_review_round2.sql:152
+entity_attach_perm_ok | _entity text | False | False | True | False | False | 00000000000053_task11_review_round2.sql:132
+entity_belongs_to_woreda | _entity text, _entity_id uuid, _woreda_id uuid | False | True | False | True | True | 00000000000053_task11_review_round2.sql:75
+entity_read_perm_ok | _entity text | False | False | True | False | False | 00000000000053_task11_review_round2.sql:112
+generate_rent_charges | _target_period text, _due_date date | False | True | True | True | False | 00000000000076_rental_phase2_financial_core.sql:533
+generate_rent_reminders |  | False | True | True | True | False | 00000000000080_rental_phase4_arrears.sql:999
+get_civil_kpis |  | False | True | True | True | False | 00000000000067_task14c_civil_kpis.sql:13
+get_credential_kpis |  | False | True | True | True | False | 00000000000057_task12b_credential_kpis.sql:39
+get_credential_live_status | _credential_number text | False | False | False | False | False | 00000000000000_baseline.sql:1323
+get_rent_account_ledger_summary | _rent_account_id uuid | False | True | True | True | False | 00000000000087_rental_review_round4_fixes.sql:457
+get_rental_arrears_aging_report | _current_period_key text | False | True | True | True | False | 00000000000083_rental_phase5_checkpoint.sql:581
+get_rental_billing_collection_report |  | False | True | True | True | False | 00000000000083_rental_phase5_checkpoint.sql:543
+get_rental_checkpoint_activity_report | _start_date date, _end_date date | False | True | True | True | False | 00000000000083_rental_phase5_checkpoint.sql:688
+get_rental_plan_compliance_report |  | False | True | True | True | False | 00000000000083_rental_phase5_checkpoint.sql:646
+get_rental_reconciliation_report |  | False | True | True | True | False | 00000000000083_rental_phase5_checkpoint.sql:724
+get_service_kpis |  | False | True | True | True | False | 00000000000062_task14b_payment_issuance_and_preconditions.sql:211
+get_user_woreda_id |  | False | True | False | False | False | 00000000000000_baseline.sql:1335
+is_active_app_user |  | False | False | False | False | False | 00000000000002_credential.sql:185
+is_super_admin |  | False | False | False | True | False | 00000000000011_status_check_admin_helpers.sql:15
+is_tenant_admin |  | False | False | True | False | False | 00000000000011_status_check_admin_helpers.sql:25
+my_national_id_blind_index | _id text | False | True | False | False | False | 00000000000044_task6_household_rent_national_id_pii.sql:103
+my_phone_blind_index | _phone text | False | True | False | False | False | 00000000000023_pii_encryption.sql:394
+national_id_blind_index | _id text, _woreda_id uuid | False | False | False | False | True | 00000000000044_task6_household_rent_national_id_pii.sql:78
+phone_blind_index | _phone text, _woreda_id uuid | False | False | False | False | True | 00000000000023_pii_encryption.sql:294
+pii_encryption_status |  | False | False | False | False | False | 00000000000044_task6_household_rent_national_id_pii.sql:192
+pii_root_key |  | False | False | False | False | False | 00000000000023_pii_encryption.sql:148
+provision_rent_account | _occupancy_id uuid, _billing_start_period_key text | False | True | True | True | False | 00000000000087_rental_review_round4_fixes.sql:115
+rate_limit_hit | _bucket_key text, _window_seconds integer | False | False | False | False | False | 00000000000022_rate_limit.sql:46
+refresh_rent_ledger_statuses |  | False | True | True | True | False | 00000000000081_rental_phase4_review_fixes.sql:527
+rental_eligibility | _resident_id uuid, _rental_house_id uuid, _request_type text | True | False | False | False | False | 00000000000031_rental_eligibility.sql:55
+resolve_civil_fee | _event_type text | False | True | True | True | False | 00000000000059_task14a_civil_payment_and_preconditions.sql:386
+resolve_credential_fee | _request_type text | False | True | False | False | False | 00000000000054_task12_fee_catalog_repair.sql:67
+resolve_reconciliation_exception | _exception_id uuid, _status text, _resolution_note text | False | True | True | True | False | 00000000000086_rental_review_round3_fixes.sql:196
+resolve_rental_checkpoint | _resident_id uuid | False | False | False | False | False | 00000000000083_rental_phase5_checkpoint.sql:342
+resolve_rental_checkpoint_core | _resident_id uuid | False | True | True | True | False | 00000000000083_rental_phase5_checkpoint.sql:218
+resolve_service_fee | _service_type_id uuid | False | True | True | True | False | 00000000000062_task14b_payment_issuance_and_preconditions.sql:162
+reverse_rental_payment | _payment_id uuid, _reason text | False | True | True | True | False | 00000000000089_rental_review_round6_fixes.sql:434
+settle_arrears_installments | _plan_id uuid, _installment_ids uuid[], _payment_amount numeric, _paym | False | True | True | True | False | 00000000000089_rental_review_round6_fixes.sql:233
+settle_rent_payment | _rent_account_id uuid, _rent_charge_ids uuid[], _payment_amount numeri | False | True | True | True | False | 00000000000087_rental_review_round4_fixes.sql:582
+user_has_any_perm | _perms text[] | False | False | True | False | False | 00000000000000_baseline.sql:1381
+user_has_console_perm | _perm text | False | False | True | False | False | 00000000000009_console_roles.sql:60
+user_has_perm | _perm text | False | False | True | False | False | 00000000000039_task13_custom_role_resolution.sql:83
+user_permission_override_target_role_ok | _user_id uuid | False | False | False | False | False | 00000000000019_override_hardening.sql:60
+verify_credential_token | _token TEXT | True | True | False | True | False | 00000000000034_task3_harden_credential_verification.sql:145
+verify_receipt | _token text | True | False | False | False | False | 00000000000013_receipt_verification.sql:134
+verify_service_letter | _token text | True | False | False | False | False | 00000000000064_task14b_verify_letter_completed_status.sql:22

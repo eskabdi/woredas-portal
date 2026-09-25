@@ -1,0 +1,1031 @@
+openapi: 3.1.0
+info:
+  title: woredas-portal API surface (AS-IS, audit 2026-09-24)
+  version: "as-is-9950f16"
+  summary: Reverse-engineered, as-built description of every custom server-side endpoint plus the key PostgREST resources.
+  description: |
+    Produced by the audit-api-edge auditor from repository HEAD 9950f16e426eedd586c6fd85f6c328d9923542d1.
+    It describes what the code DOES, not what the project documentation says it does. Where the two differ,
+    the difference is recorded in docs/audit/2026-09-24/findings/api-edge.json (drift[]).
+
+    Surface (full list in docs/audit/2026-09-24/api/endpoint-inventory.json):
+      - 8 Supabase Edge Functions under /functions/v1 (all POST + OPTIONS; all run with the service-role key and re-check authorization by hand).
+      - 3 anonymous (Public) RPCs under /rest/v1/rpc: verify_credential_token, verify_service_letter, verify_receipt.
+      - 25 Private RPCs with a client caller, 26 further RPCs that are EXECUTE-able by `authenticated` (and 7 of them by `anon`, modelled)
+        but have no client caller ("Internal, exposed"), and 10 functions correctly closed to both roles.
+      - 66 tables and 17 security_invoker views exposed by PostgREST under /rest/v1/<name>; all RLS-protected; 21 tables have no client use.
+      - Supabase Auth (/auth/v1) and Storage (/storage/v1) are platform services and are only referenced, not specified.
+
+    Conventions used in this spec:
+      - `x-classification`: Public | Private | Private (self-scoped) | Internal (INSA E-04). None of these classifications exist as code comments in the repository.
+      - `x-authz`: the authorization check the code actually performs, with file:line.
+      - `x-verify-jwt`: gateway JWT verification. supabase/config.toml has no [functions.*] block and scripts/deploy-functions.sh passes no
+        --no-verify-jwt flag, so the repository deploy path yields verify_jwt=true (CLI default). docs/security-hardening.md:41 and the
+        CLAUDE.md single-file fallback (verify_jwt:false) say otherwise. Live value: Needs-live-verification.
+      - Error shapes: Edge Functions return `{"error": "<fixed string>"}`. PostgREST returns `{"code","details","hint","message"}` with the HTTP status
+        derived from SQLSTATE (42501 -> 401 anon / 403 authenticated; 22xxx/23xxx/P0xxx -> 400; 53xxx -> 503; missing function -> 404 PGRST202).
+        No endpoint emits 422 and only the Edge Functions' own limiter emits 429.
+  contact:
+    name: audit-api-edge (woredas-portal audit 2026-09-24)
+servers:
+  - url: https://{projectRef}.supabase.co
+    description: Supabase project (ref intentionally not recorded here)
+    variables:
+      projectRef:
+        default: "<project-ref>"
+tags:
+  - name: edge-functions
+    description: Hand-written Deno functions (supabase/functions/*). Service-role, bypass RLS.
+  - name: public-rpc
+    description: Anonymous verification RPCs backing /v/$token, /verify/letter/$token, /verify/receipt/$token.
+  - name: private-rpc
+    description: Authenticated RPCs with a client caller in src/.
+  - name: internal-rpc-exposed
+    description: Helper functions that are callable via /rest/v1/rpc by authenticated (some by anon) but have no client caller.
+  - name: postgrest-resources
+    description: Key RLS-protected tables/views. Row shape = src/integrations/supabase/types.ts (generated) -> Tables[<name>]['Row'].
+security:
+  - apikey: []
+    bearerAuth: []
+
+paths:
+  # ---------------------------------------------------------------- Edge Functions
+  /functions/v1/sign-credential:
+    post:
+      tags: [edge-functions]
+      operationId: signCredential
+      summary: ES256-sign a ready_to_print residence credential and store qr_payload (compare-and-swap).
+      x-classification: Private
+      x-source: supabase/functions/sign-credential/index.ts:63-285
+      x-client-caller: src/utils/harariCredentialCrypto.ts:90
+      x-verify-jwt: "true per repo deploy path; Needs-live-verification"
+      x-authz: >
+        admin.auth.getUser(jwt) (:89) -> app_user row must exist (:112) and be active (:116) -> body.woredaId must equal caller woreda
+        unless super_admin (:117) -> user_has_perm('credential.print') via caller JWT unless super_admin (:120-127) ->
+        credential.woreda_id must equal body.woredaId (:146). super_admin is never checked against any console permission.
+      x-rate-limit: none
+      x-notes:
+        - "HARARI_EC_PRIVATE_KEY presence is checked BEFORE authentication (:72) - an unauthenticated caller can learn whether the key is configured."
+        - "Malformed JSON body falls through to the catch-all 500 'Credential signing failed' (:283), not 400."
+        - "audit_log insert result is not checked (:270-279)."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [credentialId, woredaId]
+              properties:
+                credentialId: { type: string, format: uuid }
+                woredaId: { type: string, format: uuid, description: "Client-supplied; cross-checked, not trusted." }
+              additionalProperties: true
+      responses:
+        "200":
+          description: Signed and stored.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, token]
+                properties:
+                  success: { const: true }
+                  token: { type: string, description: "base64url(JSON compact payload) + '.' + base64url(raw 64-byte ECDSA P-256 signature)" }
+        "400": { $ref: "#/components/responses/EdgeBadRequest" }
+        "401": { $ref: "#/components/responses/EdgeUnauthorized" }
+        "403": { $ref: "#/components/responses/EdgeForbidden" }
+        "404": { $ref: "#/components/responses/EdgeNotFound" }
+        "405": { $ref: "#/components/responses/EdgeMethodNotAllowed" }
+        "409": { $ref: "#/components/responses/EdgeConflict" }
+        "500": { $ref: "#/components/responses/EdgeServerError" }
+    options:
+      tags: [edge-functions]
+      operationId: signCredentialPreflight
+      summary: CORS preflight (identical for all 8 functions).
+      x-classification: Public
+      security: []
+      x-source: supabase/functions/_shared/response.ts:93-101
+      responses:
+        "200":
+          description: >
+            Always 200. Access-Control-Allow-Origin echoes the request Origin only when it is SITE_URL or http://localhost:5173
+            (response.ts:87-91), otherwise it is the empty string. Allow-Methods "POST, OPTIONS"; no Allow-Credentials.
+          headers:
+            Access-Control-Allow-Origin: { schema: { type: string } }
+            Access-Control-Allow-Headers: { schema: { type: string, const: "authorization, x-client-info, apikey, content-type" } }
+            Access-Control-Allow-Methods: { schema: { type: string, const: "POST, OPTIONS" } }
+            Vary: { schema: { type: string, const: Origin } }
+
+  /functions/v1/invite-tenant-user:
+    post:
+      tags: [edge-functions]
+      operationId: inviteTenantUser
+      summary: Invite a staff member into a woreda (six staff roles only).
+      x-classification: Private
+      x-source: supabase/functions/invite-tenant-user/index.ts:29-260
+      x-client-caller: src/components/settings/UsersRolesTab.tsx:787
+      x-verify-jwt: "true per repo deploy path; Needs-live-verification"
+      x-authz: >
+        userClient.auth.getUser() (:53) -> caller app_user active (:88) -> tenant_admin of body.woredaId OR super_admin (:91-93).
+        No console-permission check for a super_admin caller. Role allow-list (:20-27) excludes print_officer and custom.
+      x-rate-limit: "20 per 600 s keyed invite-tenant-user:<caller user_id>, fail-open (:99)"
+      x-notes:
+        - "No schema validation: email format, string types and lengths of full_name/department/job_title, and signature_path/photo_path (arbitrary storage paths) are not validated."
+        - "username = email local part (:134); app_user.username is UNIQUE (baseline.sql:536) so two different domains with the same local part collide AFTER the invite email was sent."
+        - "Email address is written into audit_log.new_value_json (:213, :252)."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, full_name, role, woredaId]
+              properties:
+                email: { type: string, description: "Not validated server-side beyond truthiness" }
+                full_name: { type: string }
+                role: { type: string, enum: [registry_clerk, civil_registrar, finance_clerk, supervisor, auditor, viewer] }
+                woredaId: { type: string, format: uuid }
+                department: { type: [string, "null"] }
+                job_title: { type: [string, "null"] }
+                reports_to_user_id: { type: [string, "null"], format: uuid, description: "Must be an app_user of woredaId (:102-110)" }
+                signature_path: { type: [string, "null"], description: "Stored verbatim; no prefix/bucket validation" }
+                photo_path: { type: [string, "null"], description: "Stored verbatim; no prefix/bucket validation" }
+      responses:
+        "200":
+          description: Invited (or pending invite in same woreda refreshed).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { const: true }
+                  user_id: { type: string, format: uuid }
+        "400": { $ref: "#/components/responses/EdgeBadRequest" }
+        "401": { $ref: "#/components/responses/EdgeUnauthorized" }
+        "403": { $ref: "#/components/responses/EdgeForbidden" }
+        "405": { $ref: "#/components/responses/EdgeMethodNotAllowed" }
+        "429": { $ref: "#/components/responses/EdgeTooManyRequests" }
+        "500": { $ref: "#/components/responses/EdgeServerError" }
+
+  /functions/v1/invite-platform-admin:
+    post:
+      tags: [edge-functions]
+      operationId: invitePlatformAdmin
+      summary: Invite a super_admin or tenant_admin.
+      x-classification: Private
+      x-source: supabase/functions/invite-platform-admin/index.ts:15-237
+      x-client-caller: "src/components/admin/PlatformUsersTab.tsx:679; src/routes/admin.tenants.$woredaId.provision.tsx:166"
+      x-verify-jwt: "true per repo deploy path; Needs-live-verification"
+      x-authz: >
+        getUser (:39) -> caller must be active super_admin (:70) -> console.console_users.manage ONLY when role=super_admin (:84-94).
+        Minting a tenant_admin for any woreda requires no console permission (console.users.manage / console.tenants.manage are not checked anywhere server-side).
+      x-rate-limit: "10 per 600 s keyed invite-platform-admin:<caller>, fail-open (:99)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, full_name, role]
+              properties:
+                email: { type: string }
+                full_name: { type: string }
+                role: { type: string, enum: [super_admin, tenant_admin] }
+                woredaId: { type: [string, "null"], format: uuid, description: "Required for tenant_admin; must be absent for super_admin" }
+      responses:
+        "200":
+          description: Invited.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { const: true }
+                  user_id: { type: string, format: uuid }
+                  warning: { type: [string, "null"], description: "Contains the existing tenant admin's full_name when one exists (:113)" }
+        "400": { $ref: "#/components/responses/EdgeBadRequest" }
+        "401": { $ref: "#/components/responses/EdgeUnauthorized" }
+        "403": { $ref: "#/components/responses/EdgeForbidden" }
+        "405": { $ref: "#/components/responses/EdgeMethodNotAllowed" }
+        "429": { $ref: "#/components/responses/EdgeTooManyRequests" }
+        "500": { $ref: "#/components/responses/EdgeServerError" }
+
+  /functions/v1/resend-platform-invite:
+    post:
+      tags: [edge-functions]
+      operationId: resendPlatformInvite
+      summary: Re-send the invite e-mail of a super_admin/tenant_admin (email resolved server-side).
+      x-classification: Private
+      x-source: supabase/functions/resend-platform-invite/index.ts:8-118
+      x-client-caller: src/components/admin/PlatformUsersTab.tsx:307
+      x-authz: "getUser -> active super_admin (:46). No console-permission check. Target must be super_admin/tenant_admin (:63-65); target status not checked."
+      x-rate-limit: "10 per 600 s, fail-open (:54)"
+      x-notes:
+        - "Request body is {user_id} only. docs/openapi.yaml:282 documents a required `email` field that the code never reads."
+        - "audit_log row carries the target e-mail and no woreda_id (:105-112)."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id]
+              properties:
+                user_id: { type: string, format: uuid }
+      responses:
+        "200": { $ref: "#/components/responses/EdgeSuccess" }
+        "400": { $ref: "#/components/responses/EdgeBadRequest" }
+        "401": { $ref: "#/components/responses/EdgeUnauthorized" }
+        "403": { $ref: "#/components/responses/EdgeForbidden" }
+        "405": { $ref: "#/components/responses/EdgeMethodNotAllowed" }
+        "429": { $ref: "#/components/responses/EdgeTooManyRequests" }
+        "500": { $ref: "#/components/responses/EdgeServerError" }
+
+  /functions/v1/resend-tenant-invite:
+    post:
+      tags: [edge-functions]
+      operationId: resendTenantInvite
+      summary: Re-send a pending staff member's invite (tenant-scoped).
+      x-classification: Private
+      x-source: supabase/functions/resend-tenant-invite/index.ts:30-173
+      x-client-caller: src/components/settings/UsersRolesTab.tsx:283
+      x-authz: "getUser -> active tenant_admin with woreda (target filtered to caller woreda in the same query, :85-91) or super_admin. Target role in six-role allow-list (:96) and status pending (:99)."
+      x-rate-limit: "10 per 600 s, fail-open (:78)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id]
+              properties:
+                user_id: { type: string, format: uuid }
+      responses:
+        "200": { $ref: "#/components/responses/EdgeSuccess" }
+        "400": { $ref: "#/components/responses/EdgeBadRequest" }
+        "401": { $ref: "#/components/responses/EdgeUnauthorized" }
+        "403": { $ref: "#/components/responses/EdgeForbidden" }
+        "404": { $ref: "#/components/responses/EdgeNotFound" }
+        "405": { $ref: "#/components/responses/EdgeMethodNotAllowed" }
+        "429": { $ref: "#/components/responses/EdgeTooManyRequests" }
+        "500": { $ref: "#/components/responses/EdgeServerError" }
+
+  /functions/v1/send-password-reset-link:
+    post:
+      tags: [edge-functions]
+      operationId: sendPasswordResetLink
+      summary: Admin-initiated GoTrue recovery e-mail for an active staff (or, for super_admin callers, admin) account.
+      x-classification: Private
+      x-source: supabase/functions/send-password-reset-link/index.ts:26-194
+      x-client-caller: "src/components/settings/UsersRolesTab.tsx:304; src/components/admin/PlatformUsersTab.tsx:325"
+      x-authz: >
+        getUser -> active tenant_admin (target filtered to caller woreda, :102-108; staff roles only, :118) or super_admin
+        (any target incl. other super_admins, :116-117; no console-permission check). Self-target rejected (:86). Target must be active (:125).
+      x-rate-limit: "10 per 600 s, fail-open (:78-84)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id]
+              properties:
+                user_id: { type: string, format: uuid }
+      responses:
+        "200": { $ref: "#/components/responses/EdgeSuccess" }
+        "400": { $ref: "#/components/responses/EdgeBadRequest" }
+        "401": { $ref: "#/components/responses/EdgeUnauthorized" }
+        "403": { $ref: "#/components/responses/EdgeForbidden" }
+        "404": { $ref: "#/components/responses/EdgeNotFound" }
+        "405": { $ref: "#/components/responses/EdgeMethodNotAllowed" }
+        "429": { $ref: "#/components/responses/EdgeTooManyRequests" }
+        "500": { $ref: "#/components/responses/EdgeServerError" }
+
+  /functions/v1/activate-invited-user:
+    post:
+      tags: [edge-functions]
+      operationId: activateInvitedUser
+      summary: Flip the caller's own app_user from pending to active.
+      x-classification: Private (self-scoped)
+      x-source: supabase/functions/activate-invited-user/index.ts:17-101
+      x-client-caller: src/routes/set-password.tsx:128
+      x-authz: "getUser; identity from JWT only; UPDATE ... WHERE user_id = caller AND status = 'pending' (:71-76). Does not verify that a password was actually set."
+      x-rate-limit: none
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object, description: "Ignored" }
+      responses:
+        "200":
+          description: Activated, or no-op with current status.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { const: true }
+                  status: { type: string, enum: [active, inactive, suspended] }
+        "401": { $ref: "#/components/responses/EdgeUnauthorized" }
+        "404": { $ref: "#/components/responses/EdgeNotFound" }
+        "405": { $ref: "#/components/responses/EdgeMethodNotAllowed" }
+        "500": { $ref: "#/components/responses/EdgeServerError" }
+
+  /functions/v1/record-login:
+    post:
+      tags: [edge-functions]
+      operationId: recordLogin
+      summary: Write last_login_at on the caller's own app_user row.
+      x-classification: Private (self-scoped)
+      x-source: supabase/functions/record-login/index.ts:20-61
+      x-client-caller: src/routes/login.tsx:132,142
+      x-authz: "getUser; identity from JWT only; no status check (a suspended account's timestamp is updated too)."
+      x-rate-limit: none
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object, description: "Ignored" }
+      responses:
+        "200": { $ref: "#/components/responses/EdgeSuccess" }
+        "401": { $ref: "#/components/responses/EdgeUnauthorized" }
+        "404": { $ref: "#/components/responses/EdgeNotFound" }
+        "405": { $ref: "#/components/responses/EdgeMethodNotAllowed" }
+        "500": { $ref: "#/components/responses/EdgeServerError" }
+
+  # ---------------------------------------------------------------- Public RPCs
+  /rest/v1/rpc/verify_credential_token:
+    post:
+      tags: [public-rpc]
+      operationId: verifyCredentialToken
+      summary: Public / staff verification of a residence ID card.
+      x-classification: Public
+      x-source: supabase/migrations/00000000000034_task3_harden_credential_verification.sql:145-305
+      x-client-caller: "src/routes/v.$token.tsx; src/components/verification/HararildScanner.tsx"
+      x-authz: "SECURITY DEFINER; anon matches only on qr_payload; bare 13-digit number only for active staff of same woreda or super_admin."
+      x-rate-limit: "anon only: 30 per 60 s keyed on cf-connecting-ip / x-real-ip / XFF first hop, fail-open; rejection is RAISE 53000 -> HTTP 503 (not 429)"
+      security:
+        - apikey: []
+        - apikey: []
+          bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [_token]
+              properties:
+                _token: { type: string, description: "qr_payload (anon) or 13-digit credential number (staff)" }
+      responses:
+        "200":
+          description: Array with 0 or 1 row. For anon, status collapses expired/suspended/revoked/replaced to 'invalid' and photo_path/date_of_birth are null.
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 1
+                items: { $ref: "#/components/schemas/VerifyCredentialRow" }
+        "400": { $ref: "#/components/responses/PgrstBadRequest" }
+        "401": { $ref: "#/components/responses/PlatformNoApiKey" }
+        "404": { $ref: "#/components/responses/PgrstFunctionNotFound" }
+        "503": { $ref: "#/components/responses/PgrstRateLimited" }
+
+  /rest/v1/rpc/verify_service_letter:
+    post:
+      tags: [public-rpc]
+      operationId: verifyServiceLetter
+      summary: Public verification of an issued service letter.
+      x-classification: Public
+      x-source: supabase/migrations/00000000000064_task14b_verify_letter_completed_status.sql:22-50
+      x-client-caller: src/routes/verify.letter.$token.tsx:51
+      x-authz: "SECURITY DEFINER SQL; no caller check by design; matches service_request.verification_token with issued_at NOT NULL and status IN (issued,resolved,closed,completed)."
+      x-rate-limit: "none; no verification log"
+      security:
+        - apikey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [_token]
+              properties:
+                _token: { type: string, description: "12 chars from a 32-symbol alphabet generated with random() (baseline.sql:1223-1240)" }
+      responses:
+        "200":
+          description: Array with 0 or 1 row.
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 1
+                items: { $ref: "#/components/schemas/VerifyLetterRow" }
+        "401": { $ref: "#/components/responses/PlatformNoApiKey" }
+        "404": { $ref: "#/components/responses/PgrstFunctionNotFound" }
+
+  /rest/v1/rpc/verify_receipt:
+    post:
+      tags: [public-rpc]
+      operationId: verifyReceipt
+      summary: Public verification of a printed revenue receipt.
+      x-classification: Public
+      x-source: supabase/migrations/00000000000013_receipt_verification.sql:134-189
+      x-client-caller: src/routes/verify.receipt.$token.tsx:65
+      x-authz: "SECURITY DEFINER SQL; no caller check by design; joins re-pinned to receipt.woreda_id; payment.status must be confirmed."
+      x-rate-limit: "none; no verification log"
+      security:
+        - apikey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [_token]
+              properties:
+                _token: { type: string }
+      responses:
+        "200":
+          description: Array with 0 or 1 row.
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 1
+                items: { $ref: "#/components/schemas/VerifyReceiptRow" }
+        "401": { $ref: "#/components/responses/PlatformNoApiKey" }
+        "404": { $ref: "#/components/responses/PgrstFunctionNotFound" }
+
+  # ---------------------------------------------------------------- Private RPCs (client-called)
+  /rest/v1/rpc/current_permissions:
+    post:
+      tags: [private-rpc]
+      operationId: currentPermissions
+      x-classification: Private
+      x-source: supabase/migrations/00000000000039_task13_custom_role_resolution.sql:119
+      x-client-caller: src/hooks/useAuthBootstrap.ts:84
+      x-authz: "Self only (auth.uid())."
+      responses:
+        "200": { description: "text[] of permission keys", content: { application/json: { schema: { type: array, items: { type: string } } } } }
+        default: { $ref: "#/components/responses/PgrstError" }
+  /rest/v1/rpc/current_console_permissions:
+    post:
+      tags: [private-rpc]
+      operationId: currentConsolePermissions
+      x-classification: Private
+      x-source: supabase/migrations/00000000000012_enforce_console_rbac.sql:65-78
+      x-client-caller: src/hooks/useAuthBootstrap.ts:65
+      x-authz: "Self only; active super_admin with a console role."
+      responses:
+        "200": { description: "text[]", content: { application/json: { schema: { type: array, items: { type: string } } } } }
+        default: { $ref: "#/components/responses/PgrstError" }
+  /rest/v1/rpc/resolve_credential_fee:
+    post:
+      tags: [private-rpc]
+      operationId: resolveCredentialFee
+      x-classification: Private
+      x-source: supabase/migrations/00000000000054_task12_fee_catalog_repair.sql:67-118
+      x-authz: "Caller's own woreda (get_user_woreda_id); no permission check (read-only fee lookup); raises when no active row."
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [_request_type], properties: { _request_type: { type: string } } } } } }
+      responses:
+        "200": { description: "numeric fee", content: { application/json: { schema: { type: number } } } }
+        default: { $ref: "#/components/responses/PgrstError" }
+  /rest/v1/rpc/resolve_service_fee:
+    post:
+      tags: [private-rpc]
+      operationId: resolveServiceFee
+      x-classification: Private
+      x-source: supabase/migrations/00000000000062_task14b_payment_issuance_and_preconditions.sql:162-200
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [_service_type_id], properties: { _service_type_id: { type: string, format: uuid } } } } } }
+      responses:
+        "200": { description: "numeric fee", content: { application/json: { schema: { type: number } } } }
+        default: { $ref: "#/components/responses/PgrstError" }
+  /rest/v1/rpc/resolve_civil_fee:
+    post:
+      tags: [private-rpc]
+      operationId: resolveCivilFee
+      x-classification: Private
+      x-source: supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql:386-444
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [_event_type], properties: { _event_type: { type: string } } } } } }
+      responses:
+        "200": { description: "numeric fee", content: { application/json: { schema: { type: number } } } }
+        default: { $ref: "#/components/responses/PgrstError" }
+  /rest/v1/rpc/my_phone_blind_index:
+    post:
+      tags: [private-rpc]
+      operationId: myPhoneBlindIndex
+      x-classification: Private
+      x-source: supabase/migrations/00000000000023_pii_encryption.sql:394
+      x-authz: "Caller's own woreda key only."
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [_phone], properties: { _phone: { type: string } } } } } }
+      responses:
+        "200": { description: "hex HMAC", content: { application/json: { schema: { type: [string, "null"] } } } }
+        default: { $ref: "#/components/responses/PgrstError" }
+  /rest/v1/rpc/my_national_id_blind_index:
+    post:
+      tags: [private-rpc]
+      operationId: myNationalIdBlindIndex
+      x-classification: Private
+      x-source: supabase/migrations/00000000000044_task6_household_rent_national_id_pii.sql:103-114
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [_id], properties: { _id: { type: string } } } } } }
+      responses:
+        "200": { description: "hex HMAC", content: { application/json: { schema: { type: [string, "null"] } } } }
+        default: { $ref: "#/components/responses/PgrstError" }
+  /rest/v1/rpc/settle_rent_payment:
+    post:
+      tags: [private-rpc]
+      operationId: settleRentPayment
+      x-classification: Private
+      x-source: supabase/migrations/00000000000087_rental_review_round4_fixes.sql:582-750
+      x-client-caller: src/routes/woreda.rental-accounts.$occupancyId.tsx:299
+      x-authz: "Woreda from get_user_woreda_id (:609-613); rental.collect or super_admin (:615-618); rent_account and payer re-pinned to caller woreda (:647-658); idempotency key."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [_rent_account_id, _rent_charge_ids, _payment_amount, _payment_date, _channel, _reference_number, _payer_resident_id, _idempotency_key]
+              properties:
+                _rent_account_id: { type: string, format: uuid }
+                _rent_charge_ids: { type: array, items: { type: string, format: uuid } }
+                _payment_amount: { type: number }
+                _payment_date: { type: string, format: date }
+                _channel: { type: string }
+                _reference_number: { type: [string, "null"] }
+                _payer_resident_id: { type: [string, "null"], format: uuid }
+                _idempotency_key: { type: [string, "null"] }
+      responses:
+        "200":
+          description: "{status: settled|idempotent_replay|mismatch, ...}"
+          content: { application/json: { schema: { type: object, properties: { status: { type: string, enum: [settled, idempotent_replay, mismatch] }, payment_id: { type: string, format: uuid }, exception_id: { type: string, format: uuid }, expected_amount: { type: number }, received_amount: { type: number } } } } }
+        "400": { $ref: "#/components/responses/PgrstBadRequest" }
+        "403": { $ref: "#/components/responses/PgrstForbidden" }
+        default: { $ref: "#/components/responses/PgrstError" }
+  /rest/v1/rpc/settle_arrears_installments:
+    post:
+      tags: [private-rpc]
+      operationId: settleArrearsInstallments
+      x-classification: Private
+      x-source: supabase/migrations/00000000000089_rental_review_round6_fixes.sql:233-425
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                _plan_id: { type: string, format: uuid }
+                _installment_ids: { type: array, items: { type: string, format: uuid } }
+                _payment_amount: { type: number }
+                _payment_date: { type: string, format: date }
+                _channel: { type: string }
+                _reference_number: { type: [string, "null"] }
+                _payer_resident_id: { type: [string, "null"], format: uuid }
+                _idempotency_key: { type: [string, "null"] }
+      responses:
+        "200": { description: "{status, payment_id} jsonb", content: { application/json: { schema: { type: object } } } }
+        default: { $ref: "#/components/responses/PgrstError" }
+  /rest/v1/rpc/reverse_rental_payment:
+    post:
+      tags: [private-rpc]
+      operationId: reverseRentalPayment
+      x-classification: Private
+      x-source: supabase/migrations/00000000000089_rental_review_round6_fixes.sql:434-575
+      x-authz: "rental.reverse or super_admin (:458); payment in caller woreda (:465); collector cannot reverse own payment (:476-484)."
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [_payment_id, _reason], properties: { _payment_id: { type: string, format: uuid }, _reason: { type: string } } } } } }
+      responses:
+        "200": { description: "{status: reversed, charges_reopened, arrears_installments_reopened}", content: { application/json: { schema: { type: object } } } }
+        "400": { $ref: "#/components/responses/PgrstBadRequest" }
+        "403": { $ref: "#/components/responses/PgrstForbidden" }
+        default: { $ref: "#/components/responses/PgrstError" }
+  /rest/v1/rpc/provision_rent_account:
+    post:
+      tags: [private-rpc]
+      operationId: provisionRentAccount
+      x-classification: Private
+      x-source: supabase/migrations/00000000000087_rental_review_round4_fixes.sql:115
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { _occupancy_id: { type: string, format: uuid }, _billing_start_period_key: { type: string } } } } } }
+      responses:
+        "200": { description: "rent_account_id", content: { application/json: { schema: { type: string, format: uuid } } } }
+        default: { $ref: "#/components/responses/PgrstError" }
+  /rest/v1/rpc/generate_rent_charges:
+    post:
+      tags: [private-rpc]
+      operationId: generateRentCharges
+      x-classification: Private
+      x-source: supabase/migrations/00000000000076_rental_phase2_financial_core.sql:533
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { _target_period: { type: string }, _due_date: { type: string, format: date } } } } } }
+      responses:
+        "200": { description: "jsonb summary", content: { application/json: { schema: { type: object } } } }
+        default: { $ref: "#/components/responses/PgrstError" }
+  /rest/v1/rpc/create_arrears_repayment_plan:
+    post:
+      tags: [private-rpc]
+      operationId: createArrearsRepaymentPlan
+      x-classification: Private
+      x-source: supabase/migrations/00000000000087_rental_review_round4_fixes.sql:303
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { _rent_account_id: { type: string, format: uuid }, _installment_count: { type: integer }, _installment_due_dates: { type: array, items: { type: string, format: date } }, _reason: { type: string } } } } } }
+      responses:
+        "200": { description: "plan id", content: { application/json: { schema: { type: string, format: uuid } } } }
+        default: { $ref: "#/components/responses/PgrstError" }
+  /rest/v1/rpc/resolve_rental_checkpoint:
+    post:
+      tags: [private-rpc]
+      operationId: resolveRentalCheckpoint
+      x-classification: Private
+      x-source: supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:342-356
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [_resident_id], properties: { _resident_id: { type: string, format: uuid } } } } } }
+      responses:
+        "200": { description: "jsonb verdict", content: { application/json: { schema: { type: object } } } }
+        default: { $ref: "#/components/responses/PgrstError" }
+  /rest/v1/rpc/rental_eligibility:
+    post:
+      tags: [private-rpc]
+      operationId: rentalEligibility
+      x-classification: Private
+      x-exposure: "anon-executable (modelled): migration 31 revokes PUBLIC only (:196-198); no caller-woreda check (WP-DB-009)"
+      x-source: supabase/migrations/00000000000031_rental_eligibility.sql:55-198
+      x-client-caller: src/routes/woreda.rental-houses.occupants.new.tsx:179
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { _resident_id: { type: string, format: uuid }, _rental_house_id: { type: string, format: uuid }, _request_type: { type: string } } } } } }
+      responses:
+        "200": { description: "{eligible, house_type, reasons[], active_occupancy_id?}", content: { application/json: { schema: { type: object } } } }
+        default: { $ref: "#/components/responses/PgrstError" }
+  /rest/v1/rpc/get_credential_kpis:
+    post:
+      tags: [private-rpc]
+      operationId: getCredentialKpis
+      x-classification: Private
+      x-source: supabase/migrations/00000000000057_task12b_credential_kpis.sql:39-150
+      responses:
+        "200": { description: "jsonb", content: { application/json: { schema: { type: object } } } }
+        default: { $ref: "#/components/responses/PgrstError" }
+  /rest/v1/rpc/get_service_kpis:
+    post:
+      tags: [private-rpc]
+      operationId: getServiceKpis
+      x-classification: Private
+      x-source: supabase/migrations/00000000000062_task14b_payment_issuance_and_preconditions.sql:211-280
+      responses:
+        "200": { description: "jsonb", content: { application/json: { schema: { type: object } } } }
+        default: { $ref: "#/components/responses/PgrstError" }
+  /rest/v1/rpc/get_civil_kpis:
+    post:
+      tags: [private-rpc]
+      operationId: getCivilKpis
+      x-classification: Private
+      x-source: supabase/migrations/00000000000067_task14c_civil_kpis.sql:13-82
+      responses:
+        "200": { description: "jsonb", content: { application/json: { schema: { type: object } } } }
+        default: { $ref: "#/components/responses/PgrstError" }
+  /rest/v1/rpc/get_rental_billing_collection_report:
+    post:
+      tags: [private-rpc]
+      operationId: getRentalBillingCollectionReport
+      x-classification: Private
+      x-source: supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:543-579
+      x-see-also: "get_rental_arrears_aging_report(_current_period_key) :581, get_rental_plan_compliance_report() :646, get_rental_checkpoint_activity_report(_start_date,_end_date) :688, get_rental_reconciliation_report() :724 - same auth pattern"
+      responses:
+        "200": { description: "TABLE(period_key, billed_total, collected_total, outstanding_total)", content: { application/json: { schema: { type: array, items: { type: object } } } } }
+        default: { $ref: "#/components/responses/PgrstError" }
+  /rest/v1/rpc/publish_id_card_template:
+    post:
+      tags: [private-rpc]
+      operationId: publishIdCardTemplate
+      x-classification: Private
+      x-source: supabase/migrations/00000000000010_id_card_template_draft.sql:120-127
+      x-authz: "is_super_admin() only; console.credential_template.manage is NOT checked server-side."
+      responses:
+        "204": { description: "void" }
+        default: { $ref: "#/components/responses/PgrstError" }
+
+  # ---------------------------------------------------------------- Internal but exposed
+  /rest/v1/rpc/get_credential_live_status:
+    post:
+      tags: [internal-rpc-exposed]
+      operationId: getCredentialLiveStatus
+      x-classification: Internal
+      x-exposure: "EXECUTE authenticated (00000000000007); no caller; no woreda filter (WP-DB-010)"
+      x-source: supabase/migrations/00000000000000_baseline.sql:1323-1333
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { _credential_number: { type: string } } } } } }
+      responses:
+        "200": { description: "status text or null", content: { application/json: { schema: { type: [string, "null"] } } } }
+        default: { $ref: "#/components/responses/PgrstError" }
+  /rest/v1/rpc/decrypt_pii_text:
+    post:
+      tags: [internal-rpc-exposed]
+      operationId: decryptPiiText
+      x-classification: Internal
+      x-exposure: "EXECUTE authenticated (00000000000023); returns NULL unless super_admin or caller woreda = _woreda_id; any staff role can decrypt own-woreda ciphertext regardless of read permission"
+      x-source: supabase/migrations/00000000000023_pii_encryption.sql:324-369
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { _cipher: { type: string, description: bytea hex }, _woreda_id: { type: string, format: uuid } } } } } }
+      responses:
+        "200": { description: "plaintext or null", content: { application/json: { schema: { type: [string, "null"] } } } }
+        default: { $ref: "#/components/responses/PgrstError" }
+  /rest/v1/rpc/default_role_perms:
+    post:
+      tags: [internal-rpc-exposed]
+      operationId: defaultRolePerms
+      x-classification: Internal
+      x-exposure: "INVOKER, no GRANT/REVOKE in any migration -> anon-executable under Supabase default ACL (modelled); discloses the compiled role matrix to unauthenticated callers"
+      x-source: supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:96
+      security:
+        - apikey: []
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { _role: { type: string } } } } } }
+      responses:
+        "200": { description: "text[]", content: { application/json: { schema: { type: array, items: { type: string } } } } }
+        default: { $ref: "#/components/responses/PgrstError" }
+  /rest/v1/rpc/user_has_perm:
+    post:
+      tags: [internal-rpc-exposed]
+      operationId: userHasPerm
+      x-classification: Internal
+      x-exposure: "Must stay EXECUTE-able by authenticated because RLS policies call it; reachable as an RPC because it lives in the exposed public schema"
+      x-source: supabase/migrations/00000000000039_task13_custom_role_resolution.sql:83
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { _perm: { type: string } } } } } }
+      responses:
+        "200": { description: "boolean", content: { application/json: { schema: { type: boolean } } } }
+        default: { $ref: "#/components/responses/PgrstError" }
+
+  # ---------------------------------------------------------------- Key PostgREST resources
+  /rest/v1/resident:
+    get:
+      tags: [postgrest-resources]
+      operationId: listResidents
+      x-classification: Private
+      x-authz: "RLS: SELECT is woreda-scoped only (no resident.read check - WP-DB-004); INSERT/UPDATE gated by user_has_perm."
+      x-client-usage: "select 23, update 11, insert 1 across 18 files"
+      parameters:
+        - $ref: "#/components/parameters/select"
+        - $ref: "#/components/parameters/limit"
+        - $ref: "#/components/parameters/offset"
+        - $ref: "#/components/parameters/order"
+      responses:
+        "200": { $ref: "#/components/responses/PgrstRows" }
+        default: { $ref: "#/components/responses/PgrstError" }
+    post:
+      tags: [postgrest-resources]
+      operationId: createResident
+      x-classification: Private
+      parameters: [ { $ref: "#/components/parameters/Prefer" } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/Row" } } } }
+      responses:
+        "201": { $ref: "#/components/responses/PgrstRows" }
+        default: { $ref: "#/components/responses/PgrstError" }
+    patch:
+      tags: [postgrest-resources]
+      operationId: updateResident
+      x-classification: Private
+      x-note: "PostgREST returns 204/200 with zero rows when RLS filters the target out - callers must .select() and check (CLAUDE.md house rule)."
+      parameters: [ { $ref: "#/components/parameters/Prefer" }, { $ref: "#/components/parameters/select" } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/Row" } } } }
+      responses:
+        "200": { $ref: "#/components/responses/PgrstRows" }
+        "204": { description: "No content (Prefer return=minimal)" }
+        default: { $ref: "#/components/responses/PgrstError" }
+  /rest/v1/resident_decrypted:
+    get:
+      tags: [postgrest-resources]
+      operationId: listResidentsDecrypted
+      x-classification: Private
+      x-authz: "security_invoker view over resident + decrypt_pii_text(); any woreda member can read decrypted phone/national ID (WP-DB-004)."
+      parameters: [ { $ref: "#/components/parameters/select" }, { $ref: "#/components/parameters/limit" } ]
+      responses:
+        "200": { $ref: "#/components/responses/PgrstRows" }
+        default: { $ref: "#/components/responses/PgrstError" }
+  /rest/v1/residence_credential:
+    get:
+      tags: [postgrest-resources]
+      operationId: listResidenceCredentials
+      x-classification: Private
+      parameters: [ { $ref: "#/components/parameters/select" }, { $ref: "#/components/parameters/limit" } ]
+      responses:
+        "200": { $ref: "#/components/responses/PgrstRows" }
+        default: { $ref: "#/components/responses/PgrstError" }
+    patch:
+      tags: [postgrest-resources]
+      operationId: updateResidenceCredential
+      x-classification: Private
+      x-authz: "status changes pass enforce_workflow_transition() (migration 46:135); qr_payload is written only by sign-credential."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/Row" } } } }
+      responses:
+        "200": { $ref: "#/components/responses/PgrstRows" }
+        default: { $ref: "#/components/responses/PgrstError" }
+  /rest/v1/payment:
+    get:
+      tags: [postgrest-resources]
+      operationId: listPayments
+      x-classification: Private
+      parameters: [ { $ref: "#/components/parameters/select" }, { $ref: "#/components/parameters/limit" } ]
+      responses:
+        "200": { $ref: "#/components/responses/PgrstRows" }
+        default: { $ref: "#/components/responses/PgrstError" }
+    post:
+      tags: [postgrest-resources]
+      operationId: createPayment
+      x-classification: Private
+      x-authz: "validate_credential_fee_amount() exact-match fee guard (migration 66:66)."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/Row" } } } }
+      responses:
+        "201": { $ref: "#/components/responses/PgrstRows" }
+        default: { $ref: "#/components/responses/PgrstError" }
+  /rest/v1/audit_log:
+    get:
+      tags: [postgrest-resources]
+      operationId: listAuditLog
+      x-classification: Private
+      parameters: [ { $ref: "#/components/parameters/select" }, { $ref: "#/components/parameters/limit" } ]
+      responses:
+        "200": { $ref: "#/components/responses/PgrstRows" }
+        default: { $ref: "#/components/responses/PgrstError" }
+    post:
+      tags: [postgrest-resources]
+      operationId: insertAuditLog
+      x-classification: Private
+      x-authz: "Client-written (68 insert call sites in src/); actor forced by force_actor_columns trigger (baseline.sql:1196); content otherwise caller-controlled (WP-DB-008)."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/Row" } } } }
+      responses:
+        "201": { $ref: "#/components/responses/PgrstRows" }
+        default: { $ref: "#/components/responses/PgrstError" }
+  /rest/v1/app_user:
+    get:
+      tags: [postgrest-resources]
+      operationId: listAppUsers
+      x-classification: Private
+      parameters: [ { $ref: "#/components/parameters/select" } ]
+      responses:
+        "200": { $ref: "#/components/responses/PgrstRows" }
+        default: { $ref: "#/components/responses/PgrstError" }
+    patch:
+      tags: [postgrest-resources]
+      operationId: updateAppUser
+      x-classification: Private
+      x-authz: "app_user_super_admin_write (baseline.sql:1550) lets any active super_admin write any row; console_role_id guarded by trg_guard_console_role_assignment (migration 12:94-160)."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/Row" } } } }
+      responses:
+        "200": { $ref: "#/components/responses/PgrstRows" }
+        default: { $ref: "#/components/responses/PgrstError" }
+  /rest/v1/role_permission:
+    get:
+      tags: [postgrest-resources]
+      operationId: listRolePermissions
+      x-classification: Private
+      responses:
+        "200": { $ref: "#/components/responses/PgrstRows" }
+        default: { $ref: "#/components/responses/PgrstError" }
+    post:
+      tags: [postgrest-resources]
+      operationId: upsertRolePermission
+      x-classification: Private
+      parameters: [ { $ref: "#/components/parameters/Prefer" } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/Row" } } } }
+      responses:
+        "201": { $ref: "#/components/responses/PgrstRows" }
+        default: { $ref: "#/components/responses/PgrstError" }
+  /rest/v1/user_permission_override:
+    get:
+      tags: [postgrest-resources]
+      operationId: listUserPermissionOverrides
+      x-classification: Private
+      responses:
+        "200": { $ref: "#/components/responses/PgrstRows" }
+        default: { $ref: "#/components/responses/PgrstError" }
+    delete:
+      tags: [postgrest-resources]
+      operationId: deleteUserPermissionOverride
+      x-classification: Private
+      responses:
+        "204": { description: "Deleted (or zero rows matched - indistinguishable without Prefer return=representation)" }
+        default: { $ref: "#/components/responses/PgrstError" }
+
+components:
+  securitySchemes:
+    apikey:
+      type: apiKey
+      in: header
+      name: apikey
+      description: >
+        Supabase publishable (anon) key. Identifies the project; not a secret and not an authorization boundary.
+        Required by the platform gateway for /rest/v1; sent by supabase-js on every call.
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >
+        Supabase Auth access token (or the anon key when no session). Edge Functions validate it server-side with
+        GoTrue getUser(); PostgREST derives role + auth.uid() from it. Signing algorithm (legacy HS256 secret vs.
+        asymmetric signing keys) and access-token lifetime are dashboard settings: Needs-live-verification.
+  parameters:
+    select: { name: select, in: query, required: false, schema: { type: string }, description: "PostgREST column/embedding selector" }
+    limit: { name: limit, in: query, required: false, schema: { type: integer } }
+    offset: { name: offset, in: query, required: false, schema: { type: integer } }
+    order: { name: order, in: query, required: false, schema: { type: string } }
+    Prefer: { name: Prefer, in: header, required: false, schema: { type: string, examples: ["return=representation", "resolution=merge-duplicates"] } }
+  schemas:
+    EdgeError:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string, description: "Fixed string; never raw driver text (safeError, _shared/response.ts:137-146)" }
+    PostgrestError:
+      type: object
+      properties:
+        code: { type: string, description: "SQLSTATE or PGRSTxxx" }
+        details: { type: [string, "null"] }
+        hint: { type: [string, "null"] }
+        message: { type: string, description: "RAISE EXCEPTION text is returned verbatim" }
+    Row:
+      type: object
+      additionalProperties: true
+      description: "Row shape = src/integrations/supabase/types.ts Tables[<table>]['Row'|'Insert'|'Update'] (generated, matches migrations column-for-column per WP-DB replay)."
+    VerifyCredentialRow:
+      type: object
+      properties:
+        credential_number: { type: string }
+        status: { type: string }
+        issue_date: { type: [string, "null"], format: date }
+        expiry_date: { type: [string, "null"], format: date }
+        resident_full_name: { type: [string, "null"] }
+        woreda_name_am: { type: [string, "null"] }
+        woreda_name_en: { type: [string, "null"] }
+        kebele_name_am: { type: [string, "null"] }
+        kebele_name_en: { type: [string, "null"] }
+        photo_path: { type: [string, "null"], description: "staff only" }
+        date_of_birth: { type: [string, "null"], format: date, description: "staff only" }
+    VerifyLetterRow:
+      type: object
+      properties:
+        request_number: { type: string }
+        issued_at: { type: string, format: date-time }
+        subject: { type: [string, "null"] }
+        resident_full_name: { type: [string, "null"] }
+        letter_summary: { type: [string, "null"] }
+        service_type_am: { type: [string, "null"] }
+        service_type_en: { type: [string, "null"] }
+        woreda_name_am: { type: [string, "null"] }
+        woreda_name_en: { type: [string, "null"] }
+        kebele_name_am: { type: [string, "null"] }
+        kebele_name_en: { type: [string, "null"] }
+    VerifyReceiptRow:
+      type: object
+      properties:
+        receipt_number: { type: string }
+        receipt_date: { type: string, format: date }
+        total_amount: { type: number }
+        payment_type: { type: string }
+        channel: { type: [string, "null"] }
+        printed_at: { type: [string, "null"], format: date-time }
+        paid_by_full_name: { type: [string, "null"] }
+        paid_by_full_name_am: { type: [string, "null"] }
+        woreda_name_am: { type: [string, "null"] }
+        woreda_name_en: { type: [string, "null"] }
+        kebele_name_am: { type: [string, "null"] }
+        kebele_name_en: { type: [string, "null"] }
+  responses:
+    EdgeSuccess:
+      description: OK
+      content: { application/json: { schema: { type: object, properties: { success: { const: true } } } } }
+    EdgeBadRequest:
+      description: Missing/invalid field or a business-rule rejection (see samples). Duplicate e-mail is also 400, never 409.
+      content: { application/json: { schema: { $ref: "#/components/schemas/EdgeError" } } }
+    EdgeUnauthorized:
+      description: "No Authorization header, or GoTrue getUser() rejected the token. If gateway verify_jwt=true, an invalid JWT is rejected by the platform before the function runs (body shape is platform-defined)."
+      content: { application/json: { schema: { $ref: "#/components/schemas/EdgeError" } } }
+    EdgeForbidden:
+      description: Authenticated but wrong role, status, woreda or permission.
+      content: { application/json: { schema: { $ref: "#/components/schemas/EdgeError" } } }
+    EdgeNotFound:
+      description: Target row not found (cross-tenant and non-existent are deliberately indistinguishable where the code folds the woreda filter into the query).
+      content: { application/json: { schema: { $ref: "#/components/schemas/EdgeError" } } }
+    EdgeConflict:
+      description: State conflict (sign-credential only).
+      content: { application/json: { schema: { $ref: "#/components/schemas/EdgeError" } } }
+    EdgeMethodNotAllowed:
+      description: Any method other than POST/OPTIONS.
+      content: { application/json: { schema: { $ref: "#/components/schemas/EdgeError" } } }
+    EdgeTooManyRequests:
+      description: Per-caller fixed-window limit exceeded (fails open if the limiter errors).
+      content: { application/json: { schema: { $ref: "#/components/schemas/EdgeError" } } }
+    EdgeServerError:
+      description: Fixed generic string; details only in function logs. Also returned for a malformed JSON body.
+      content: { application/json: { schema: { $ref: "#/components/schemas/EdgeError" } } }
+    PgrstRows:
+      description: Rows visible under RLS (possibly empty).
+      content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Row" } } } }
+    PgrstBadRequest:
+      description: "RAISE EXCEPTION with 22xxx/23xxx/P0xxx SQLSTATE (message returned verbatim)."
+      content: { application/json: { schema: { $ref: "#/components/schemas/PostgrestError" } } }
+    PgrstForbidden:
+      description: "SQLSTATE 42501 insufficient_privilege from an in-function permission check, or RLS WITH CHECK violation."
+      content: { application/json: { schema: { $ref: "#/components/schemas/PostgrestError" } } }
+    PgrstFunctionNotFound:
+      description: "PGRST202 - function/argument names not in schema cache (e.g. the removed _credential_digits parameter)."
+      content: { application/json: { schema: { $ref: "#/components/schemas/PostgrestError" } } }
+    PgrstRateLimited:
+      description: "verify_credential_token anon limiter: RAISE 'Too many requests' USING ERRCODE insufficient_resources (53000) -> HTTP 503."
+      content: { application/json: { schema: { $ref: "#/components/schemas/PostgrestError" } } }
+    PlatformNoApiKey:
+      description: "Platform gateway rejects a /rest/v1 request without the apikey header. Body shape is platform-defined (Needs-live-verification)."
+    PgrstError:
+      description: Any PostgREST error.
+      content: { application/json: { schema: { $ref: "#/components/schemas/PostgrestError" } } }

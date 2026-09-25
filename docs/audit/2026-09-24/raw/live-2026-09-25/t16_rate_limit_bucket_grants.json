@@ -1,0 +1,16 @@
+{
+ "query": "select r.rolname, has_table_privilege(r.oid,'public.rate_limit_bucket','SELECT') sel, has_table_privilege(r.oid,'public.rate_limit_bucket','INSERT') ins from pg_roles r where r.rolname in ('anon','authenticated')",
+ "http_status": "201",
+ "result": [
+  {
+   "rolname": "authenticated",
+   "sel": false,
+   "ins": false
+  },
+  {
+   "rolname": "anon",
+   "sel": false,
+   "ins": false
+  }
+ ]
+}

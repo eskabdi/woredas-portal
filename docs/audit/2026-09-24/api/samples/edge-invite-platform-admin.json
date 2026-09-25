@@ -1,0 +1,174 @@
+{
+ "generated_by": "audit-api-edge 2026-09-24",
+ "as_is": true,
+ "synthetic_values": "All ids, names, tokens and numbers are synthetic placeholders; no production data.",
+ "endpoint": "POST /functions/v1/invite-platform-admin",
+ "classification": "Private",
+ "auth": "bearer JWT; active super_admin; console.console_users.manage only for role=super_admin",
+ "responses": {
+  "200": {
+   "emitted": true,
+   "response": {
+    "success": true,
+    "user_id": "00000000-0000-4000-8000-000000000004",
+    "warning": null
+   },
+   "evidence": "supabase/functions/invite-platform-admin/index.ts:233",
+   "request": {
+    "headers": {
+     "Authorization": "Bearer <user access token>",
+     "apikey": "<publishable key>",
+     "Content-Type": "application/json"
+    },
+    "body": {
+     "email": "woreda.admin@example.invalid",
+     "full_name": "Example Admin",
+     "role": "tenant_admin",
+     "woredaId": "00000000-0000-4000-8000-000000000002"
+    }
+   },
+   "note": "Succeeds for a console-scoped super_admin holding none of console.users.manage / console.tenants.manage (WP-API-001)."
+  },
+  "400": [
+   {
+    "emitted": true,
+    "response": {
+     "error": "Missing required fields"
+    },
+    "evidence": "supabase/functions/invite-platform-admin/index.ts:47-49"
+   },
+   {
+    "emitted": true,
+    "response": {
+     "error": "Invalid role. Must be 'super_admin' or 'tenant_admin'."
+    },
+    "evidence": "supabase/functions/invite-platform-admin/index.ts:50-52"
+   },
+   {
+    "emitted": true,
+    "response": {
+     "error": "woredaId is required for tenant_admin role."
+    },
+    "evidence": "supabase/functions/invite-platform-admin/index.ts:53-55"
+   },
+   {
+    "emitted": true,
+    "response": {
+     "error": "super_admin must not be tied to a woreda."
+    },
+    "evidence": "supabase/functions/invite-platform-admin/index.ts:56-58"
+   },
+   {
+    "emitted": true,
+    "response": {
+     "error": "User already registered"
+    },
+    "evidence": "supabase/functions/invite-platform-admin/index.ts:121-128, :154-161"
+   },
+   {
+    "emitted": true,
+    "response": {
+     "error": "Invite sent but profile setup failed"
+    },
+    "evidence": "supabase/functions/invite-platform-admin/index.ts:213-221"
+   }
+  ],
+  "401": [
+   {
+    "emitted": true,
+    "response": {
+     "error": "Missing authorization header"
+    },
+    "evidence": "supabase/functions/invite-platform-admin/index.ts:21",
+    "request": {
+     "headers": {
+      "apikey": "<publishable key>"
+     },
+     "body": {}
+    },
+    "note": "Reached only if gateway verify_jwt=false; with verify_jwt=true the platform gateway answers first (body shape platform-defined, Needs-live-verification)."
+   },
+   {
+    "emitted": true,
+    "response": {
+     "error": "Unauthorized"
+    },
+    "evidence": "supabase/functions/invite-platform-admin/index.ts:40",
+    "request": {
+     "headers": {
+      "Authorization": "Bearer <expired or revoked token>"
+     }
+    }
+   }
+  ],
+  "403": [
+   {
+    "emitted": true,
+    "response": {
+     "error": "Forbidden"
+    },
+    "evidence": "supabase/functions/invite-platform-admin/index.ts:69"
+   },
+   {
+    "emitted": true,
+    "response": {
+     "error": "Forbidden: only an active super_admin can call this function."
+    },
+    "evidence": "supabase/functions/invite-platform-admin/index.ts:70-74"
+   },
+   {
+    "emitted": true,
+    "response": {
+     "error": "Forbidden: inviting a new super_admin requires console.console_users.manage."
+    },
+    "evidence": "supabase/functions/invite-platform-admin/index.ts:84-94"
+   }
+  ],
+  "404": {
+   "emitted": false,
+   "reason": "Not emitted."
+  },
+  "405": {
+   "emitted": true,
+   "response": {
+    "error": "Method not allowed"
+   },
+   "evidence": "supabase/functions/invite-platform-admin/index.ts:17",
+   "request": {
+    "method": "GET"
+   }
+  },
+  "409": {
+   "emitted": false,
+   "reason": "Not emitted."
+  },
+  "422": {
+   "emitted": false,
+   "reason": "Not emitted."
+  },
+  "429": {
+   "emitted": true,
+   "response": {
+    "error": "Too many requests"
+   },
+   "evidence": "supabase/functions/invite-platform-admin/index.ts:99-100",
+   "request": "10 per 600 s per caller; fail-open."
+  },
+  "500": [
+   {
+    "emitted": true,
+    "response": {
+     "error": "SITE_URL is not configured"
+    },
+    "evidence": "supabase/functions/invite-platform-admin/index.ts:31-32"
+   },
+   {
+    "emitted": true,
+    "response": {
+     "error": "Internal error"
+    },
+    "evidence": "supabase/functions/invite-platform-admin/index.ts:234-235"
+   }
+  ]
+ }
+}

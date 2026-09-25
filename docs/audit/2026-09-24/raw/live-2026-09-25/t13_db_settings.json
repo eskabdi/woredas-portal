@@ -1,0 +1,34 @@
+{
+ "query": "select name, setting from pg_settings where name in ('ssl','password_encryption','log_statement','log_min_duration_statement','statement_timeout','idle_in_transaction_session_timeout','timezone','shared_preload_libraries') order by 1",
+ "http_status": "201",
+ "result": [
+  {
+   "name": "idle_in_transaction_session_timeout",
+   "setting": "0"
+  },
+  {
+   "name": "log_min_duration_statement",
+   "setting": "-1"
+  },
+  {
+   "name": "log_statement",
+   "setting": "ddl"
+  },
+  {
+   "name": "password_encryption",
+   "setting": "scram-sha-256"
+  },
+  {
+   "name": "shared_preload_libraries",
+   "setting": "pg_stat_statements, pgaudit, plpgsql, plpgsql_check, pg_cron, pg_net, pgsodium, auto_explain, pg_tle, plan_filter, supabase_vault"
+  },
+  {
+   "name": "ssl",
+   "setting": "on"
+  },
+  {
+   "name": "statement_timeout",
+   "setting": "120000"
+  }
+ ]
+}

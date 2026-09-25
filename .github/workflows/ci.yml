@@ -38,4 +38,5 @@ jobs:
       - run: bun run check:role-perms-drift
       - run: bun run check:fee-catalog
       - run: bun run check:service-type-catalog
+      - run: bun run check:definer-tenant-predicate
       - run: bun run scripts/generate-permissions-doc.ts --check

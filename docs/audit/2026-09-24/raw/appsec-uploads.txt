@@ -1,0 +1,47 @@
+# storage uploads (client)
+src/routes/admin.credential-template.tsx:482:      .upload(path, upload, { upsert: true, contentType: upload.type });
+src/routes/woreda.settings.woreda-configuration.tsx:692:        .upload(path, upload, { upsert: true, contentType: upload.type });
+src/routes/woreda.rental-houses.occupants.new.tsx:362:          .upload(path, file, { contentType: file.type, upsert: false });
+src/routes/woreda.credentials.new.tsx:373:          .upload(path, file, { upsert: false, contentType: file.type }),
+src/routes/woreda.credentials.new.tsx:406:          .upload(path, file, { upsert: false, contentType: file.type }),
+src/routes/woreda.services.$requestId.index.tsx:382:        .upload(path, file, { contentType: file.type });
+src/routes/woreda.services.new.tsx:290:          .upload(path, pf.file, { contentType: pf.file.type, upsert: false });
+src/components/forms/ResidentWizardSteps.tsx:222:        .upload(path, upload, { upsert: false, contentType: upload.type });
+src/components/forms/ResidentWizardSteps.tsx:301:        .upload(path, file, { upsert: false, contentType: file.type });
+src/components/settings/UsersRolesTab.tsx:697:        .upload(path, upload, { upsert: false, contentType: upload.type });
+src/components/residents/ResidentProfileTabs.tsx:807:        .upload(path, file, { upsert: false, contentType: "application/pdf" });
+
+# bucket definitions / limits
+supabase/migrations/00000000000014_app_user_staff_fields.sql:23:INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+supabase/migrations/00000000000014_app_user_staff_fields.sql-24-VALUES ('staff-assets', 'staff-assets', 'f', NULL, NULL)
+--
+supabase/migrations/00000000000048_task11_schema_gaps.sql:345:INSERT INTO storage.buckets (id, name, public)
+supabase/migrations/00000000000048_task11_schema_gaps.sql-346-VALUES ('attachments', 'attachments', false)
+--
+supabase/migrations/00000000000001_storage.sql:24:INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+supabase/migrations/00000000000001_storage.sql-25-VALUES ('credential-request-documents', 'credential-request-documents', 'f', NULL, NULL)
+--
+supabase/migrations/00000000000001_storage.sql:28:INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+supabase/migrations/00000000000001_storage.sql-29-VALUES ('credential-templates', 'credential-templates', 'f', NULL, NULL)
+--
+supabase/migrations/00000000000001_storage.sql:32:INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+supabase/migrations/00000000000001_storage.sql-33-VALUES ('rental-request-documents', 'rental-request-documents', 'f', NULL, NULL)
+--
+supabase/migrations/00000000000001_storage.sql:36:INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+supabase/migrations/00000000000001_storage.sql-37-VALUES ('resident-clearance-letters', 'resident-clearance-letters', 'f', NULL, NULL)
+--
+supabase/migrations/00000000000001_storage.sql:40:INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+supabase/migrations/00000000000001_storage.sql-41-VALUES ('resident-photos', 'resident-photos', 'f', NULL, NULL)
+--
+supabase/migrations/00000000000001_storage.sql:44:INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+supabase/migrations/00000000000001_storage.sql-45-VALUES ('service-request-documents', 'service-request-documents', 'f', NULL, NULL)
+--
+supabase/migrations/00000000000001_storage.sql:48:INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+supabase/migrations/00000000000001_storage.sql-49-VALUES ('tenant-assets', 'tenant-assets', 'f', NULL, NULL)
+--
+supabase/migrations/00000000000004_resident_documents.sql:113:INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+supabase/migrations/00000000000004_resident_documents.sql-114-VALUES ('resident-documents', 'resident-documents', false, 10485760, ARRAY['application/pdf'])
+supabase/migrations/00000000000072_rental_phase1_integrity_hardening.sql:262:UPDATE storage.buckets
+supabase/migrations/00000000000072_rental_phase1_integrity_hardening.sql-263-SET file_size_limit = 5242880,
+supabase/migrations/00000000000072_rental_phase1_integrity_hardening.sql-264-    allowed_mime_types = ARRAY['application/pdf', 'image/jpeg', 'image/png']
+supabase/migrations/00000000000072_rental_phase1_integrity_hardening.sql-265-WHERE id = 'rental-request-documents';

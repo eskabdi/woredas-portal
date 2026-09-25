@@ -1,0 +1,255 @@
+# privacy-logging raw evidence (audit 2026-09-24, HEAD 9950f16)
+
+## 1. DB-side audit_log writers (INSERT INTO public.audit_log per migration)
+supabase/migrations/00000000000000_baseline.sql:1
+supabase/migrations/00000000000010_id_card_template_draft.sql:1
+supabase/migrations/00000000000025_workflow_engine.sql:1
+supabase/migrations/00000000000032_task2_tenant_scoped_definer_triggers.sql:1
+supabase/migrations/00000000000040_task13_role_audit_logging.sql:5
+supabase/migrations/00000000000041_task13_review_hardening.sql:5
+supabase/migrations/00000000000043_task5_resident_creation_audit.sql:1
+supabase/migrations/00000000000046_task10_credential_lifecycle.sql:1
+supabase/migrations/00000000000047_task10_revoke_tenant_admin_only.sql:1
+supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql:1
+supabase/migrations/00000000000076_rental_phase2_financial_core.sql:2
+supabase/migrations/00000000000077_rental_phase2_review_fixes.sql:1
+supabase/migrations/00000000000078_rental_phase3_settlement.sql:3
+supabase/migrations/00000000000079_rental_phase3_review_fixes.sql:3
+supabase/migrations/00000000000080_rental_phase4_arrears.sql:2
+supabase/migrations/00000000000081_rental_phase4_review_fixes.sql:3
+supabase/migrations/00000000000082_rental_phase4_review_fixes_2.sql:2
+supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:1
+supabase/migrations/00000000000085_rental_review_round2_fixes.sql:5
+supabase/migrations/00000000000086_rental_review_round3_fixes.sql:2
+supabase/migrations/00000000000087_rental_review_round4_fixes.sql:4
+supabase/migrations/00000000000088_rental_review_round5_fixes.sql:1
+supabase/migrations/00000000000089_rental_review_round6_fixes.sql:2
+
+## 2. Client/Edge files writing or reading audit_log (from("audit_log"))
+src/components/admin/PlatformUsersTab.tsx
+src/components/settings/RolesPermissionsTab.tsx
+src/components/settings/UsersRolesTab.tsx
+src/components/residents/ResidentActions.tsx
+src/components/residents/ResidentProfileTabs.tsx
+src/lib/offlineSync.ts
+src/routes/woreda.services.$requestId.index.tsx
+src/routes/woreda.rental-houses.$houseId.index.tsx
+src/routes/woreda.credentials.$requestId.index.tsx
+src/routes/woreda.households.new.tsx
+src/routes/woreda.rental-houses.new.tsx
+src/routes/woreda.residents.index.tsx
+src/routes/woreda.civil.marriage.new.tsx
+src/routes/woreda.civil.death.new.tsx
+src/routes/woreda.households.$householdId.index.tsx
+src/routes/woreda.dashboard.tsx
+src/routes/woreda.services.new.tsx
+src/routes/woreda.credentials.new.tsx
+src/routes/admin.console-roles.tsx
+src/routes/woreda.civil.$eventId.tsx
+src/routes/woreda.residents.$residentId.edit.tsx
+src/routes/woreda.audit.tsx
+src/routes/woreda.rental-houses.$houseId.edit.tsx
+src/routes/woreda.households.index.tsx
+src/routes/woreda.rental-houses.occupants.new.tsx
+src/routes/woreda.settings.woreda-configuration.tsx
+src/routes/woreda.civil.divorce.new.tsx
+src/routes/woreda.revenue.index.tsx
+src/routes/admin.credential-template.tsx
+src/routes/admin.audit.tsx
+src/routes/woreda.residents.$residentId.index.tsx
+src/routes/woreda.civil.birth.new.tsx
+src/routes/woreda.credentials.$requestId.print.tsx
+src/routes/woreda.households.$householdId.edit.tsx
+src/routes/admin.tenants.$woredaId.index.tsx
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx
+supabase/functions/send-password-reset-link/index.ts
+supabase/functions/resend-platform-invite/index.ts
+supabase/functions/activate-invited-user/index.ts
+supabase/functions/invite-tenant-user/index.ts
+supabase/functions/sign-credential/index.ts
+supabase/functions/invite-platform-admin/index.ts
+supabase/functions/resend-tenant-invite/index.ts
+
+## 3. Client-supplied action_at (browser clock) call sites
+src/components/residents/ResidentActions.tsx:102:      action_at: new Date().toISOString(),
+src/components/residents/ResidentActions.tsx:483:        action_at: new Date().toISOString(),
+src/lib/offlineSync.ts:161:    action_at: new Date().toISOString(),
+src/lib/offlineSync.ts:340:    action_at: new Date().toISOString(),
+src/routes/woreda.services.$requestId.index.tsx:1186:          action_at: new Date().toISOString(),
+src/routes/woreda.services.$requestId.index.tsx:1254:        action_at: new Date().toISOString(),
+src/routes/woreda.households.new.tsx:113:        action_at: new Date().toISOString(),
+src/routes/woreda.residents.index.tsx:635:      action_at: new Date().toISOString(),
+src/routes/woreda.residents.index.tsx:1017:        action_at: new Date().toISOString(),
+src/routes/woreda.civil.marriage.new.tsx:164:        action_at: new Date().toISOString(),
+src/routes/woreda.civil.death.new.tsx:161:        action_at: new Date().toISOString(),
+src/routes/woreda.households.$householdId.index.tsx:173:        action_at: new Date().toISOString(),
+src/routes/woreda.services.new.tsx:322:        action_at: new Date().toISOString(),
+src/routes/woreda.credentials.new.tsx:591:        action_at: new Date().toISOString(),
+src/routes/woreda.civil.$eventId.tsx:324:      action_at: new Date().toISOString(),
+src/routes/woreda.residents.$residentId.edit.tsx:249:          action_at: new Date().toISOString(),
+src/routes/woreda.households.index.tsx:540:        action_at: new Date().toISOString(),
+src/routes/woreda.civil.divorce.new.tsx:172:        action_at: new Date().toISOString(),
+src/routes/woreda.civil.birth.new.tsx:228:        action_at: new Date().toISOString(),
+src/routes/woreda.households.$householdId.edit.tsx:183:        action_at: new Date().toISOString(),
+
+## 4. Action types written by client/Edge code
+      2 action_type: "USER_REINVITED"
+      2 action_type: "RENTAL_REQUEST_CREATED"
+      2 action_type: "HOUSEHOLD_ASSIGNED"
+      2 action_type: "CONSOLE_ROLE_UPDATED"
+      1 action_type: "USER_SUSPENDED"
+      1 action_type: "USER_PERMISSION_OVERRIDE_SET"
+      1 action_type: "USER_PERMISSION_OVERRIDE_CLEARED"
+      1 action_type: "USER_PERMISSION_OVERRIDES_CLEARED"
+      1 action_type: "USER_PASSWORD_RESET_LINK_SENT"
+      1 action_type: "USER_INVITED"
+      1 action_type: "TENANT_MODULE_TOGGLED"
+      1 action_type: "TEMPLATE_FIELD_REMOVED"
+      1 action_type: "TEMPLATE_FIELD_ADDED"
+      1 action_type: "TEMPLATE_DRAFT_SAVED"
+      1 action_type: "SETTINGS_UPDATED"
+      1 action_type: "SERVICE_TYPE_UPDATED"
+      1 action_type: "SERVICE_TYPE_DELETED"
+      1 action_type: "SERVICE_TYPE_CREATED"
+      1 action_type: "SERVICE_REQUEST_SUBMITTED"
+      1 action_type: "SERVICE_REQUEST_PAID"
+      1 action_type: "SERVICE_REQUEST_AWAITING_PAYMENT"
+      1 action_type: "ROLE_PERMISSION_UPDATED"
+      1 action_type: "RESIDENT_UPDATED"
+      1 action_type: "REQUEST_VERIFIED"
+      1 action_type: "REQUEST_SUBMITTED"
+      1 action_type: "REQUEST_RETURNED"
+      1 action_type: "REQUEST_RESUBMITTED"
+      1 action_type: "REQUEST_REJECTED"
+      1 action_type: "REQUEST_APPROVED"
+      1 action_type: "REQUEST_APPROVAL_RETURNED"
+      1 action_type: "RENTAL_VACATE_REQUESTED"
+      1 action_type: "RENTAL_REQUEST_VERIFIED"
+      1 action_type: "RENTAL_REQUEST_RETURNED"
+      1 action_type: "RENTAL_REQUEST_REJECTED"
+      1 action_type: "RENTAL_REQUEST_APPROVED"
+      1 action_type: "RENTAL_REQUEST_APPROVAL_RETURNED"
+      1 action_type: "RENTAL_HOUSE_UPDATED"
+      1 action_type: "RENTAL_HOUSE_CREATED"
+      1 action_type: "QR_SIGNED"
+      1 action_type: "PLATFORM_ADMIN_SUSPENDED"
+      1 action_type: "PLATFORM_ADMIN_ROLE_CHANGED"
+      1 action_type: "PLATFORM_ADMIN_REINVITED"
+      1 action_type: "PLATFORM_ADMIN_REACTIVATED"
+      1 action_type: "PLATFORM_ADMIN_INVITE_RESENT"
+      1 action_type: "PLATFORM_ADMIN_INVITED"
+      1 action_type: "MARRIAGE_REGISTERED"
+      1 action_type: "HOUSEHOLD_UPDATED"
+      1 action_type: "HOUSEHOLD_DEACTIVATED"
+      1 action_type: "HOUSEHOLD_CREATED"
+      1 action_type: "HEAD_CHANGED"
+      1 action_type: "FEE_SCHEDULE_UPDATED"
+      1 action_type: "FEE_SCHEDULE_CREATED"
+      1 action_type: "DIVORCE_REGISTERED"
+      1 action_type: "DEATH_REGISTERED"
+      1 action_type: "CREDENTIAL_REVOKED"
+      1 action_type: "CREDENTIAL_ISSUED"
+      1 action_type: "CONSOLE_ROLE_PERMISSION_UPDATED"
+      1 action_type: "CONSOLE_ROLE_DELETED"
+      1 action_type: "CONSOLE_ROLE_CREATED"
+      1 action_type: "CONSOLE_ROLE_ASSIGNED"
+      1 action_type: "BIRTH_REGISTERED"
+      1 action_type: "ACTIVATED"
+
+## 5. Triggers on PII / permission tables (no audit trigger on UPDATE/DELETE of resident, household, role_permission, user_permission_override, woreda_settings, fee_schedule, tenant_module_config)
+supabase/migrations/00000000000000_baseline.sql:1495:CREATE TRIGGER trg_assign_resident_number BEFORE INSERT ON public.resident FOR EACH ROW EXECUTE FUNCTION assign_resident_number();
+supabase/migrations/00000000000000_baseline.sql:1496:CREATE TRIGGER role_permission_set_updated_at BEFORE UPDATE ON public.role_permission FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+supabase/migrations/00000000000012_enforce_console_rbac.sql-159-  BEFORE INSERT OR UPDATE ON public.app_user
+supabase/migrations/00000000000012_enforce_console_rbac.sql-218-  BEFORE UPDATE OR DELETE ON public.app_user
+supabase/migrations/00000000000017_user_permission_overrides.sql-65-  BEFORE INSERT OR UPDATE ON public.user_permission_override
+supabase/migrations/00000000000017_user_permission_overrides.sql-69-  BEFORE UPDATE ON public.user_permission_override
+supabase/migrations/00000000000019_override_hardening.sql-124-  AFTER UPDATE OF woreda_id ON public.app_user
+supabase/migrations/00000000000019_override_hardening.sql:130:CREATE TRIGGER trg_force_actor BEFORE INSERT OR UPDATE ON public.role_permission
+supabase/migrations/00000000000019_override_hardening.sql:133:CREATE TRIGGER trg_force_actor BEFORE INSERT OR UPDATE ON public.user_permission_override
+supabase/migrations/00000000000021_override_security_fixes.sql-110-  AFTER UPDATE OF role ON public.app_user
+supabase/migrations/00000000000023_pii_encryption.sql-503-  BEFORE INSERT OR UPDATE ON public.resident
+supabase/migrations/00000000000023_pii_encryption.sql-521-  BEFORE INSERT OR UPDATE ON public.household
+supabase/migrations/00000000000039_task13_custom_role_resolution.sql-74-  BEFORE INSERT OR UPDATE OF role, custom_role_id, woreda_id ON public.app_user
+supabase/migrations/00000000000040_task13_role_audit_logging.sql-95-  AFTER INSERT OR UPDATE OF role, custom_role_id ON public.app_user
+supabase/migrations/00000000000042_task13_woreda_pin_and_move_hardening.sql-83-  BEFORE UPDATE OF woreda_id ON public.app_user
+supabase/migrations/00000000000043_task5_resident_creation_audit.sql:47:CREATE TRIGGER resident_audit_created AFTER INSERT ON public.resident
+supabase/migrations/00000000000048_task11_schema_gaps.sql:173:CREATE TRIGGER trg_force_actor BEFORE INSERT OR UPDATE ON public.household_location
+supabase/migrations/00000000000048_task11_schema_gaps.sql-201-  AFTER INSERT OR UPDATE OF gps_lat, gps_lng ON public.household
+supabase/migrations/00000000000048_task11_schema_gaps.sql-221-  AFTER INSERT OR UPDATE OF gps_lat, gps_lng ON public.household_location
+supabase/migrations/00000000000049_task11_review_hardening.sql-65-  BEFORE INSERT OR UPDATE ON public.household_location
+supabase/migrations/00000000000052_task11_final_hardening.sql-20-  AFTER INSERT OR UPDATE OF gps_lat, gps_lng, woreda_id ON public.household
+
+## 6. console.* in src and supabase/functions (non-test)
+src/integrations/supabase/client.ts:18:    console.error(`[Supabase] ${message}`);
+src/integrations/supabase/auth-middleware.ts:18:      console.error(`[Supabase] ${message}`);
+src/integrations/supabase/client.server.ts:18:    console.error(`[Supabase] ${message}`);
+src/server.ts:34:  console.error(consumeLastCapturedError() ?? new Error(`h3 swallowed SSR error: ${body}`));
+src/server.ts:48:      console.error(error);
+src/start.ts:13:    console.error(error);
+src/routes/__root.tsx:38:  console.error(error);
+supabase/functions/_shared/rateLimit.ts:31:      console.error("rate_limit_hit failed (failing open):", error);
+supabase/functions/_shared/rateLimit.ts:36:    console.error("rate_limit_hit threw (failing open):", e);
+supabase/functions/_shared/response.ts:79:  console.error(logLabel, err);
+
+## 7. Browser storage (localStorage/sessionStorage/indexedDB/caches)
+src/components/layout/AppShell.tsx:396:    // Task 7: a half-typed wizard draft is localStorage, not session state.
+src/components/layout/AppShell.tsx:554:    // localStorage with the woreda portal -- these clear any leftover
+src/config/idleTimeout.ts:16:/** localStorage key sharing "last activity" across this origin's tabs, so an
+src/hooks/useFormDraft.ts:13:    const raw = localStorage.getItem(key);
+src/hooks/useFormDraft.ts:22:    localStorage.setItem(key, JSON.stringify(value));
+src/hooks/useFormDraft.ts:29: * Persists a react-hook-form wizard's in-progress values to localStorage so
+src/hooks/useFormDraft.ts:36: * localStorage is per-browser-origin, not per-tenant, so a bare wizard name
+src/hooks/useFormDraft.ts:96:      localStorage.removeItem(key);
+src/hooks/useFormDraft.ts:105:/** Called from both portal shells' sign-out handlers. localStorage is
+src/hooks/useFormDraft.ts:112:    for (let i = 0; i < localStorage.length; i++) {
+src/hooks/useFormDraft.ts:113:      const k = localStorage.key(i);
+src/hooks/useFormDraft.ts:116:    for (const k of toRemove) localStorage.removeItem(k);
+src/hooks/useIdleTimeout.ts:41:    const raw = localStorage.getItem(IDLE_LAST_ACTIVITY_STORAGE_KEY);
+src/hooks/useIdleTimeout.ts:51:    localStorage.setItem(IDLE_LAST_ACTIVITY_STORAGE_KEY, String(at));
+src/integrations/supabase/client.ts:24:      storage: typeof window !== "undefined" ? localStorage : undefined,
+src/lib/offlineQueue.ts:3: * src/hooks/useFormDraft.ts's persistence pattern exactly (localStorage,
+src/lib/offlineQueue.ts:5: * handlers) -- see docs/task12c-mapping-memo.md §1 for why localStorage
+src/lib/offlineQueue.ts:34:// once in WoredaShell). Re-parsing localStorage on every call always
+src/lib/offlineQueue.ts:43:    raw = localStorage.getItem(keyFor(woredaId));
+src/lib/offlineQueue.ts:63:    localStorage.setItem(keyFor(woredaId), JSON.stringify(items));
+src/lib/offlineQueue.ts:115: * clearAllWizardDrafts() and queryClient.clear() (F-08) -- localStorage is
+src/lib/offlineQueue.ts:122:    for (let i = 0; i < localStorage.length; i++) {
+src/lib/offlineQueue.ts:123:      const k = localStorage.key(i);
+src/lib/offlineQueue.ts:126:    for (const k of toRemove) localStorage.removeItem(k);
+src/utils/reportPresets.ts:14:    const raw = window.localStorage.getItem(KEY);
+src/utils/reportPresets.ts:33:    window.localStorage.setItem(KEY, JSON.stringify(presets));
+public/sw.js:30:        Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))),
+public/sw.js:47:      caches.match("/").then((cached) => cached ?? Response.error()),
+
+## 8. Offline-queue enqueue call sites
+src/routes/woreda.credentials.$requestId.index.tsx:1642:      enqueue(
+src/routes/woreda.civil.marriage.new.tsx:183:      enqueue(
+src/routes/woreda.civil.death.new.tsx:180:      enqueue(
+src/routes/woreda.services.new.tsx:265:      enqueue("service_request", "submit_intake", buildInsertPayload(), "service-new");
+src/routes/woreda.credentials.new.tsx:495:        enqueue("credential_request", "submit_intake", insertPayload, "credential-new");
+src/routes/woreda.civil.divorce.new.tsx:191:      enqueue(
+src/routes/woreda.civil.birth.new.tsx:251:      enqueue(
+
+## 9. Retention / purge / cron keywords in migrations
+supabase/migrations/00000000000022_rate_limit.sql:19:-- No pg_cron: this repo has none, and traffic is tiny (an internal-staff
+
+## 10. Consent / privacy notice / data-subject / proclamation references outside docs/audit
+(none)
+
+## 11. Export call sites and 5000-row caps
+src/routes/woreda.credentials.index.tsx:123:    const { data, error } = await q.order("created_at", { ascending: false }).range(0, 4999);
+src/routes/woreda.residents.index.tsx:308:    const q = buildResidentsQuery(phoneBlindIndex, nationalIdBlindIndex).range(0, 4999);
+src/routes/woreda.civil.index.tsx:288:    const q = buildQuery().range(0, 4999);
+src/routes/woreda.households.index.tsx:208:    const q = buildHouseholdsQuery().range(0, 4999);
+src/routes/woreda.rental-houses.requests.index.tsx:307:      const { data: allData, error } = await query.range(0, 4999);
+src/routes/woreda.rental-houses.index.tsx:270:      const { data: allData, error } = await query.range(0, 4999);
+
+## 12. Plaintext national_id_no selected by client
+src/components/forms/ResidentWizardSteps.tsx:137:      // national_id_no is encrypted at rest
+src/routes/woreda.credentials.$requestId.index.tsx:193:             resident_id, resident_number, national_id_no, full_name, full_name_am, sex, date_of_birth, photo_url
+src/routes/woreda.residents.index.tsx:152:  // resident.national_id_no is encrypted at rest
+src/routes/woreda.residents.$residentId.edit.tsx:121:      r.national_id_no as string | null,
+src/routes/woreda.credentials.$requestId.print.tsx:218:             resident_id, resident_number, national_id_no, full_name, full_name_am,
+src/routes/woreda.credentials.$requestId.print.tsx:455:  // national_id_no, unlike phone_number, IS still selected plaintext in the
+src/routes/woreda.credentials.$requestId.print.tsx:470:        r.national_id_no ?? null,
+src/routes/woreda.credentials.$requestId.print.tsx:1658:      cred?.credential_number || resident?.national_id_no || resident?.resident_number || "",

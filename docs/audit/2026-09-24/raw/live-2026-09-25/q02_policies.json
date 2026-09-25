@@ -1,0 +1,1734 @@
+{
+ "query": "select schemaname, tablename, policyname, cmd, roles, qual, with_check from pg_policies where schemaname in ('public','storage') order by tablename, cmd",
+ "http_status": "201",
+ "result": [
+  {
+   "schemaname": "public",
+   "tablename": "app_user",
+   "policyname": "app_user_super_admin_write",
+   "cmd": "ALL",
+   "roles": "{authenticated}",
+   "qual": "is_super_admin()",
+   "with_check": "is_super_admin()"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "app_user",
+   "policyname": "app_user_tenant_admin_write",
+   "cmd": "ALL",
+   "roles": "{authenticated}",
+   "qual": "(is_tenant_admin() AND (woreda_id = get_user_woreda_id()) AND (role <> 'tenant_admin'::text))",
+   "with_check": "(is_tenant_admin() AND (woreda_id = get_user_woreda_id()) AND (role <> 'tenant_admin'::text))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "app_user",
+   "policyname": "app_user_self_read",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "((user_id = auth.uid()) OR is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "approval",
+   "policyname": "approval_insert",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "((is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND entity_approve_perm_ok(entity))) AND entity_belongs_to_woreda(entity, entity_id, woreda_id))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "approval",
+   "policyname": "approval_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND (user_has_any_perm('{approval.queue.view}'::text[]) OR entity_approve_perm_ok(entity))))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "arrears_installment_charge",
+   "policyname": "arrears_installment_charge_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{rental.view}'::text[])))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "arrears_plan_sequence",
+   "policyname": "arrears_plan_sequence_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "arrears_repayment_installment",
+   "policyname": "arrears_repayment_installment_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{rental.view}'::text[])))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "arrears_repayment_plan",
+   "policyname": "arrears_repayment_plan_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{rental.view}'::text[])))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "arrears_repayment_plan",
+   "policyname": "arrears_repayment_plan_update",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{rental.plan.create,rental.plan.approve,rental.plan.manage}'::text[])))",
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{rental.plan.create,rental.plan.approve,rental.plan.manage}'::text[])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "attachment",
+   "policyname": "attachment_insert",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "((is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND entity_attach_perm_ok(entity))) AND entity_belongs_to_woreda(entity, entity_id, woreda_id))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "attachment",
+   "policyname": "attachment_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND entity_read_perm_ok(entity)))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "audit_log",
+   "policyname": "audit_log_tenant_insert",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "audit_log",
+   "policyname": "audit_log_tenant_read",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "console_role",
+   "policyname": "console_role_write_console_admin",
+   "cmd": "ALL",
+   "roles": "{authenticated}",
+   "qual": "user_has_console_perm('console.console_users.manage'::text)",
+   "with_check": "user_has_console_perm('console.console_users.manage'::text)"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "console_role",
+   "policyname": "console_role_read_super_admin",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "is_super_admin()",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "console_role_permission",
+   "policyname": "console_role_permission_write_console_admin",
+   "cmd": "ALL",
+   "roles": "{authenticated}",
+   "qual": "user_has_console_perm('console.console_users.manage'::text)",
+   "with_check": "user_has_console_perm('console.console_users.manage'::text)"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "console_role_permission",
+   "policyname": "console_role_permission_read_super_admin",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "is_super_admin()",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "credential_number_sequence",
+   "policyname": "credential_seq_tenant",
+   "cmd": "ALL",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "credential_policy",
+   "policyname": "credential_policy_insert",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{credential.configure_policy}'::text[])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "credential_policy",
+   "policyname": "credential_policy_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "credential_policy",
+   "policyname": "credential_policy_update",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{credential.configure_policy}'::text[])))",
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{credential.configure_policy}'::text[])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "credential_print_log",
+   "policyname": "credential_print_log_delete",
+   "cmd": "DELETE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{tenant.manage}'::text[])))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "credential_print_log",
+   "policyname": "credential_print_log_insert",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND (is_reprint = true) AND (reprint_reason IS NOT NULL) AND (btrim(reprint_reason) <> ''::text) AND user_has_any_perm('{credential.authorize_reprint}'::text[]) AND (EXISTS ( SELECT 1\n   FROM residence_credential rc\n  WHERE ((rc.credential_id = credential_print_log.credential_id) AND (rc.status = ANY (ARRAY['printed'::text, 'active'::text])))))))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "credential_print_log",
+   "policyname": "credential_print_log_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "credential_print_log",
+   "policyname": "credential_print_log_update",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{credential.print}'::text[])))",
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{credential.print}'::text[])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "credential_request",
+   "policyname": "credential_request_delete",
+   "cmd": "DELETE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{credential.approve}'::text[])))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "credential_request",
+   "policyname": "credential_request_insert",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{credential.issue}'::text[])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "credential_request",
+   "policyname": "credential_request_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "credential_request",
+   "policyname": "credential_request_update",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{credential.issue,credential.approve,credential.verify,payment.collect,revenue.collect}'::text[])))",
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{credential.issue,credential.approve,credential.verify,payment.collect,revenue.collect}'::text[])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "credential_request_sequence",
+   "policyname": "cred_req_seq_tenant",
+   "cmd": "ALL",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "credential_request_status_history",
+   "policyname": "cred_req_history_insert",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "(is_super_admin() OR (user_has_any_perm(ARRAY['credential.issue'::text, 'credential.approve'::text, 'credential.verify'::text, 'payment.collect'::text, 'revenue.collect'::text]) AND (EXISTS ( SELECT 1\n   FROM credential_request cr\n  WHERE ((cr.credential_request_id = credential_request_status_history.credential_request_id) AND (cr.woreda_id = get_user_woreda_id()))))))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "credential_request_status_history",
+   "policyname": "cred_req_history_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (EXISTS ( SELECT 1\n   FROM credential_request cr\n  WHERE ((cr.credential_request_id = credential_request_status_history.credential_request_id) AND (cr.woreda_id = get_user_woreda_id())))))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "credential_status_history",
+   "policyname": "credential_status_history_insert",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "(is_super_admin() OR (user_has_any_perm(ARRAY['credential.issue'::text, 'credential.approve'::text, 'credential.print'::text, 'credential.revoke'::text, 'credential.renew'::text]) AND (EXISTS ( SELECT 1\n   FROM residence_credential rc\n  WHERE ((rc.credential_id = credential_status_history.credential_id) AND (rc.woreda_id = get_user_woreda_id()))))))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "credential_status_history",
+   "policyname": "credential_status_history_read",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (EXISTS ( SELECT 1\n   FROM residence_credential rc\n  WHERE ((rc.credential_id = credential_status_history.credential_id) AND (rc.woreda_id = get_user_woreda_id())))))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "credential_verification_log",
+   "policyname": "credential_verification_log_tenant_read",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "fee_schedule",
+   "policyname": "fee_schedule_delete",
+   "cmd": "DELETE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{tenant.manage}'::text[])))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "fee_schedule",
+   "policyname": "fee_schedule_insert",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{tenant.manage}'::text[])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "fee_schedule",
+   "policyname": "fee_schedule_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "fee_schedule",
+   "policyname": "fee_schedule_update",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{tenant.manage}'::text[])))",
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{tenant.manage}'::text[])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "household",
+   "policyname": "household_delete",
+   "cmd": "DELETE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{household.update}'::text[])))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "household",
+   "policyname": "household_insert",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{household.create}'::text[])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "household",
+   "policyname": "household_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "household",
+   "policyname": "household_update",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{household.update}'::text[])))",
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{household.update}'::text[])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "household_change_log",
+   "policyname": "household_change_log_delete",
+   "cmd": "DELETE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{tenant.manage}'::text[])))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "household_change_log",
+   "policyname": "household_change_log_insert",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{household.update,household.create}'::text[])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "household_change_log",
+   "policyname": "household_change_log_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "household_change_log",
+   "policyname": "household_change_log_update",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{household.update}'::text[])))",
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{household.update}'::text[])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "household_location",
+   "policyname": "household_location_delete",
+   "cmd": "DELETE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{household.update}'::text[])))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "household_location",
+   "policyname": "household_location_insert",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{household.update}'::text[])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "household_location",
+   "policyname": "household_location_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "household_location",
+   "policyname": "household_location_update",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{household.update}'::text[])))",
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{household.update}'::text[])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "id_card_template",
+   "policyname": "id_card_template_write_super_admin",
+   "cmd": "ALL",
+   "roles": "{authenticated}",
+   "qual": "is_super_admin()",
+   "with_check": "is_super_admin()"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "id_card_template",
+   "policyname": "id_card_template_read_all",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "true",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "id_card_template_field",
+   "policyname": "template_write_super_admin",
+   "cmd": "ALL",
+   "roles": "{authenticated}",
+   "qual": "is_super_admin()",
+   "with_check": "is_super_admin()"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "id_card_template_field",
+   "policyname": "template_read_all",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "true",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "id_card_template_field_draft",
+   "policyname": "template_draft_write_super_admin",
+   "cmd": "ALL",
+   "roles": "{authenticated}",
+   "qual": "is_super_admin()",
+   "with_check": "is_super_admin()"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "id_card_template_field_draft",
+   "policyname": "template_draft_read_all",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "true",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "kebele",
+   "policyname": "kebele_tenant_isolation",
+   "cmd": "ALL",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "kebele_rental_house",
+   "policyname": "kebele_rental_house_delete",
+   "cmd": "DELETE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{tenant.manage}'::text[])))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "kebele_rental_house",
+   "policyname": "kebele_rental_house_insert",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{rental.create}'::text[])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "kebele_rental_house",
+   "policyname": "kebele_rental_house_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "kebele_rental_house",
+   "policyname": "kebele_rental_house_update",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{rental.create,rental.approve,rental.vacate}'::text[])))",
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{rental.create,rental.approve,rental.vacate}'::text[])))"
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "credential_templates_write_super_admin",
+   "cmd": "ALL",
+   "roles": "{authenticated}",
+   "qual": "((bucket_id = 'credential-templates'::text) AND is_super_admin())",
+   "with_check": "((bucket_id = 'credential-templates'::text) AND is_super_admin())"
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "service_docs_delete",
+   "cmd": "DELETE",
+   "roles": "{authenticated}",
+   "qual": "((bucket_id = 'service-request-documents'::text) AND (storage_path_woreda_id(name) = get_user_woreda_id()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "tenant_assets_delete_scoped",
+   "cmd": "DELETE",
+   "roles": "{authenticated}",
+   "qual": "((bucket_id = 'tenant-assets'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id())))",
+   "with_check": null
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "attachments_delete_scoped",
+   "cmd": "DELETE",
+   "roles": "{authenticated}",
+   "qual": "((bucket_id = 'attachments'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id())))",
+   "with_check": null
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "resident_documents_delete_scoped",
+   "cmd": "DELETE",
+   "roles": "{authenticated}",
+   "qual": "((bucket_id = 'resident-documents'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id())))",
+   "with_check": null
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "rentalreq_docs_delete_scoped",
+   "cmd": "DELETE",
+   "roles": "{authenticated}",
+   "qual": "((bucket_id = 'rental-request-documents'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id())))",
+   "with_check": null
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "credreq_docs_delete_scoped",
+   "cmd": "DELETE",
+   "roles": "{authenticated}",
+   "qual": "((bucket_id = 'credential-request-documents'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id())))",
+   "with_check": null
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "clearance_delete_scoped",
+   "cmd": "DELETE",
+   "roles": "{authenticated}",
+   "qual": "((bucket_id = 'resident-clearance-letters'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id())))",
+   "with_check": null
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "staff_assets_delete_scoped",
+   "cmd": "DELETE",
+   "roles": "{authenticated}",
+   "qual": "((bucket_id = 'staff-assets'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id())))",
+   "with_check": null
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "resident_photos_delete_scoped",
+   "cmd": "DELETE",
+   "roles": "{authenticated}",
+   "qual": "((bucket_id = 'resident-photos'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id())))",
+   "with_check": null
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "rentalreq_docs_insert_scoped",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "((bucket_id = 'rental-request-documents'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id())))"
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "credreq_docs_insert_scoped",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "((bucket_id = 'credential-request-documents'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id())))"
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "staff_assets_insert_scoped",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "((bucket_id = 'staff-assets'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id())))"
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "clearance_insert_scoped",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "((bucket_id = 'resident-clearance-letters'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id())))"
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "service_docs_insert",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "((bucket_id = 'service-request-documents'::text) AND (storage_path_woreda_id(name) = get_user_woreda_id()))"
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "attachments_insert_scoped",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "((bucket_id = 'attachments'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id())))"
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "resident_photos_insert_scoped",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "((bucket_id = 'resident-photos'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id())))"
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "resident_documents_insert_scoped",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "((bucket_id = 'resident-documents'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id())))"
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "tenant_assets_insert_scoped",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "((bucket_id = 'tenant-assets'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id())))"
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "tenant_assets_select_scoped",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "((bucket_id = 'tenant-assets'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id())))",
+   "with_check": null
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "attachments_select_scoped",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "((bucket_id = 'attachments'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id())))",
+   "with_check": null
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "resident_documents_select_scoped",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "((bucket_id = 'resident-documents'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id())))",
+   "with_check": null
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "credential_templates_read_all",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(bucket_id = 'credential-templates'::text)",
+   "with_check": null
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "staff_assets_select_scoped",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "((bucket_id = 'staff-assets'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id())))",
+   "with_check": null
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "credreq_docs_select_scoped",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "((bucket_id = 'credential-request-documents'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id())))",
+   "with_check": null
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "service_docs_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "((bucket_id = 'service-request-documents'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id())))",
+   "with_check": null
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "rentalreq_docs_select_scoped",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "((bucket_id = 'rental-request-documents'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id())))",
+   "with_check": null
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "resident_photos_select_scoped",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "((bucket_id = 'resident-photos'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id())))",
+   "with_check": null
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "clearance_select_scoped",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "((bucket_id = 'resident-clearance-letters'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id())))",
+   "with_check": null
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "credreq_docs_update_scoped",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "((bucket_id = 'credential-request-documents'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id())))",
+   "with_check": null
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "tenant_assets_update_scoped",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "((bucket_id = 'tenant-assets'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id())))",
+   "with_check": null
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "staff_assets_update_scoped",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "((bucket_id = 'staff-assets'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id())))",
+   "with_check": null
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "service_docs_update",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "((bucket_id = 'service-request-documents'::text) AND (storage_path_woreda_id(name) = get_user_woreda_id()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "resident_photos_update_scoped",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "((bucket_id = 'resident-photos'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id())))",
+   "with_check": null
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "resident_documents_update_scoped",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "((bucket_id = 'resident-documents'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id())))",
+   "with_check": null
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "rentalreq_docs_update_scoped",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "((bucket_id = 'rental-request-documents'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id())))",
+   "with_check": null
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "clearance_update_scoped",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "((bucket_id = 'resident-clearance-letters'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id())))",
+   "with_check": null
+  },
+  {
+   "schemaname": "storage",
+   "tablename": "objects",
+   "policyname": "attachments_update_scoped",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "((bucket_id = 'attachments'::text) AND (is_super_admin() OR (storage_path_woreda_id(name) = get_user_woreda_id())))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "office",
+   "policyname": "office_write_super_admin",
+   "cmd": "ALL",
+   "roles": "{authenticated}",
+   "qual": "is_super_admin()",
+   "with_check": "is_super_admin()"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "office",
+   "policyname": "office_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "payment",
+   "policyname": "payment_delete",
+   "cmd": "DELETE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{tenant.manage}'::text[])))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "payment",
+   "policyname": "payment_insert",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{payment.collect,revenue.collect}'::text[])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "payment",
+   "policyname": "payment_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "payment",
+   "policyname": "payment_update",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{payment.collect,revenue.collect}'::text[])))",
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{payment.collect,revenue.collect}'::text[])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "payment_reconciliation_exception",
+   "policyname": "payment_reconciliation_exception_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{rental.view}'::text[])))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "receipt",
+   "policyname": "receipt_delete",
+   "cmd": "DELETE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{tenant.manage}'::text[])))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "receipt",
+   "policyname": "receipt_insert",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{payment.collect,revenue.collect,receipt.print}'::text[])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "receipt",
+   "policyname": "receipt_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "receipt",
+   "policyname": "receipt_update",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{receipt.print,revenue.receipt_reprint,payment.collect}'::text[])))",
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{receipt.print,revenue.receipt_reprint,payment.collect}'::text[])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "receipt_sequence",
+   "policyname": "receipt_seq_tenant",
+   "cmd": "ALL",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "rent_account",
+   "policyname": "rent_account_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{rental.view}'::text[])))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "rent_account_sequence",
+   "policyname": "rent_account_sequence_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "rent_charge",
+   "policyname": "rent_charge_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{rental.view}'::text[])))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "rent_payment_settlement",
+   "policyname": "rent_payment_settlement_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{rental.view}'::text[])))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "rent_rate_history",
+   "policyname": "rent_rate_history_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{rental.view}'::text[])))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "rent_reminder",
+   "policyname": "rent_reminder_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{rental.view}'::text[])))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "rental_occupancy",
+   "policyname": "rental_occupancy_delete",
+   "cmd": "DELETE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{tenant.manage}'::text[])))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "rental_occupancy",
+   "policyname": "rental_occupancy_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "rental_occupancy_request",
+   "policyname": "rental_occupancy_request_delete",
+   "cmd": "DELETE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{tenant.manage}'::text[])))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "rental_occupancy_request",
+   "policyname": "rental_occupancy_request_insert",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{rental.create,rental.vacate}'::text[])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "rental_occupancy_request",
+   "policyname": "rental_occupancy_request_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "rental_occupancy_request",
+   "policyname": "rental_occupancy_request_update",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{rental.create,rental.approve,rental.vacate}'::text[])))",
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{rental.create,rental.approve,rental.vacate}'::text[])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "rental_payment",
+   "policyname": "rental_payment_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{rental.view}'::text[])))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "rental_policy",
+   "policyname": "rental_policy_insert",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{rental.policy.configure}'::text[])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "rental_policy",
+   "policyname": "rental_policy_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "rental_policy",
+   "policyname": "rental_policy_update",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{rental.policy.configure}'::text[])))",
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{rental.policy.configure}'::text[])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "rental_request_document",
+   "policyname": "rental_request_document_delete",
+   "cmd": "DELETE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{rental.create}'::text[])))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "rental_request_document",
+   "policyname": "rental_request_document_insert",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{rental.create}'::text[])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "rental_request_document",
+   "policyname": "rental_request_document_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "rental_request_document",
+   "policyname": "rental_request_document_update",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{rental.create}'::text[])))",
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{rental.create}'::text[])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "rental_request_sequence",
+   "policyname": "rental_request_sequence_tenant",
+   "cmd": "ALL",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "residence_credential",
+   "policyname": "residence_credential_delete",
+   "cmd": "DELETE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{credential.revoke}'::text[])))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "residence_credential",
+   "policyname": "residence_credential_insert",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{credential.issue}'::text[])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "residence_credential",
+   "policyname": "residence_credential_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "residence_credential",
+   "policyname": "residence_credential_update",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{credential.issue,credential.approve,credential.print,credential.revoke,credential.renew}'::text[])))",
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{credential.issue,credential.approve,credential.print,credential.revoke,credential.renew}'::text[])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "resident",
+   "policyname": "resident_delete",
+   "cmd": "DELETE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{resident.delete}'::text[])))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "resident",
+   "policyname": "resident_insert",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{resident.create}'::text[])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "resident",
+   "policyname": "resident_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "resident",
+   "policyname": "resident_update",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{resident.update}'::text[])))",
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{resident.update}'::text[])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "resident_document",
+   "policyname": "resident_document_delete",
+   "cmd": "DELETE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{resident.update}'::text[])))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "resident_document",
+   "policyname": "resident_document_insert",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{resident.update}'::text[])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "resident_document",
+   "policyname": "resident_document_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{resident.read,household.read}'::text[])))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "resident_document",
+   "policyname": "resident_document_update",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{resident.update}'::text[])))",
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{resident.update}'::text[])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "resident_number_sequence",
+   "policyname": "resident_number_sequence_tenant",
+   "cmd": "ALL",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "role_permission",
+   "policyname": "role_permission_insert_tenant_admin",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "((is_super_admin() OR (is_tenant_admin() AND (woreda_id = get_user_woreda_id()))) AND (permission_key <> ALL (ARRAY['credential.approve'::text, 'civil.approve'::text, 'tenant.manage'::text, 'platform.manage'::text, 'tenant.create'::text, 'credential.configure_policy'::text, 'user.manage'::text, 'credential.revoke'::text, 'rental.policy.configure'::text, 'rental.reverse'::text])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "role_permission",
+   "policyname": "role_permission_select_same_woreda",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "role_permission",
+   "policyname": "role_permission_update_tenant_admin",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "((is_super_admin() OR (is_tenant_admin() AND (woreda_id = get_user_woreda_id()))) AND (permission_key <> ALL (ARRAY['credential.approve'::text, 'civil.approve'::text, 'tenant.manage'::text, 'platform.manage'::text, 'tenant.create'::text, 'credential.configure_policy'::text, 'user.manage'::text, 'credential.revoke'::text, 'rental.policy.configure'::text, 'rental.reverse'::text])))",
+   "with_check": "((is_super_admin() OR (is_tenant_admin() AND (woreda_id = get_user_woreda_id()))) AND (permission_key <> ALL (ARRAY['credential.approve'::text, 'civil.approve'::text, 'tenant.manage'::text, 'platform.manage'::text, 'tenant.create'::text, 'credential.configure_policy'::text, 'user.manage'::text, 'credential.revoke'::text, 'rental.policy.configure'::text, 'rental.reverse'::text])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "service_request",
+   "policyname": "service_request_delete",
+   "cmd": "DELETE",
+   "roles": "{authenticated}",
+   "qual": "((woreda_id = get_user_woreda_id()) AND user_has_any_perm(ARRAY['tenant.manage'::text]))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "service_request",
+   "policyname": "service_request_insert",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "((woreda_id = get_user_woreda_id()) AND user_has_any_perm(ARRAY['service.create'::text, 'service.submit'::text, 'complaint.manage'::text, 'tenant.manage'::text]))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "service_request",
+   "policyname": "service_request_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "service_request",
+   "policyname": "service_request_update",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "((woreda_id = get_user_woreda_id()) AND user_has_any_perm(ARRAY['service.create'::text, 'service.verify'::text, 'service.approve'::text, 'service.issue'::text, 'service.submit'::text, 'service.resubmit'::text, 'service.return'::text, 'service.reject'::text, 'service.record_payment'::text, 'service.issue_letter'::text, 'service.complete'::text, 'complaint.manage'::text, 'tenant.manage'::text]))",
+   "with_check": "((woreda_id = get_user_woreda_id()) AND user_has_any_perm(ARRAY['service.create'::text, 'service.verify'::text, 'service.approve'::text, 'service.issue'::text, 'service.submit'::text, 'service.resubmit'::text, 'service.return'::text, 'service.reject'::text, 'service.record_payment'::text, 'service.issue_letter'::text, 'service.complete'::text, 'complaint.manage'::text, 'tenant.manage'::text]))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "service_request_attachment",
+   "policyname": "service_request_attachment_delete",
+   "cmd": "DELETE",
+   "roles": "{authenticated}",
+   "qual": "((woreda_id = get_user_woreda_id()) AND user_has_any_perm(ARRAY['service.create'::text, 'complaint.manage'::text, 'tenant.manage'::text]))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "service_request_attachment",
+   "policyname": "service_request_attachment_insert",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "((woreda_id = get_user_woreda_id()) AND user_has_any_perm(ARRAY['service.create'::text, 'service.verify'::text, 'complaint.manage'::text, 'tenant.manage'::text]))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "service_request_attachment",
+   "policyname": "service_request_attachment_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "service_request_attachment",
+   "policyname": "service_request_attachment_update",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "((woreda_id = get_user_woreda_id()) AND user_has_any_perm(ARRAY['service.create'::text, 'service.verify'::text, 'complaint.manage'::text, 'tenant.manage'::text]))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "service_request_checkpoint",
+   "policyname": "service_request_checkpoint_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{service.read,rental.report}'::text[])))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "service_request_sequence",
+   "policyname": "service_request_sequence_read",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "service_request_status_history",
+   "policyname": "service_request_status_history_insert",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "(EXISTS ( SELECT 1\n   FROM service_request sr\n  WHERE ((sr.service_request_id = service_request_status_history.service_request_id) AND (sr.woreda_id = get_user_woreda_id()))))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "service_request_status_history",
+   "policyname": "service_request_status_history_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(EXISTS ( SELECT 1\n   FROM service_request sr\n  WHERE ((sr.service_request_id = service_request_status_history.service_request_id) AND (is_super_admin() OR (sr.woreda_id = get_user_woreda_id())))))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "service_type",
+   "policyname": "service_type_delete",
+   "cmd": "DELETE",
+   "roles": "{authenticated}",
+   "qual": "((is_super_admin() OR (woreda_id = get_user_woreda_id())) AND (is_super_admin() OR user_has_any_perm(ARRAY['tenant.manage'::text])))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "service_type",
+   "policyname": "service_type_insert",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "((is_super_admin() OR (woreda_id = get_user_woreda_id())) AND (is_super_admin() OR user_has_any_perm(ARRAY['tenant.manage'::text])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "service_type",
+   "policyname": "service_type_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "service_type",
+   "policyname": "service_type_update",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "((is_super_admin() OR (woreda_id = get_user_woreda_id())) AND (is_super_admin() OR user_has_any_perm(ARRAY['tenant.manage'::text])))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "tenant_module_config",
+   "policyname": "tenant_module_config_write_super_admin",
+   "cmd": "ALL",
+   "roles": "{authenticated}",
+   "qual": "is_super_admin()",
+   "with_check": "is_super_admin()"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "tenant_module_config",
+   "policyname": "tenant_module_config_read",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "tenant_role",
+   "policyname": "tenant_role_insert",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "(is_super_admin() OR (is_tenant_admin() AND (woreda_id = get_user_woreda_id())))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "tenant_role",
+   "policyname": "tenant_role_read",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "tenant_role",
+   "policyname": "tenant_role_update",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (is_tenant_admin() AND (woreda_id = get_user_woreda_id())))",
+   "with_check": "(is_super_admin() OR (is_tenant_admin() AND (woreda_id = get_user_woreda_id())))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "tenant_role_permission",
+   "policyname": "tenant_role_permission_insert",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "(EXISTS ( SELECT 1\n   FROM tenant_role tr\n  WHERE ((tr.tenant_role_id = tenant_role_permission.tenant_role_id) AND (is_super_admin() OR (is_tenant_admin() AND (tr.woreda_id = get_user_woreda_id()))))))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "tenant_role_permission",
+   "policyname": "tenant_role_permission_read",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(EXISTS ( SELECT 1\n   FROM tenant_role tr\n  WHERE ((tr.tenant_role_id = tenant_role_permission.tenant_role_id) AND (is_super_admin() OR (tr.woreda_id = get_user_woreda_id())))))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "tenant_role_permission",
+   "policyname": "tenant_role_permission_update",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "(EXISTS ( SELECT 1\n   FROM tenant_role tr\n  WHERE ((tr.tenant_role_id = tenant_role_permission.tenant_role_id) AND (is_super_admin() OR (is_tenant_admin() AND (tr.woreda_id = get_user_woreda_id()))))))",
+   "with_check": "(EXISTS ( SELECT 1\n   FROM tenant_role tr\n  WHERE ((tr.tenant_role_id = tenant_role_permission.tenant_role_id) AND (is_super_admin() OR (is_tenant_admin() AND (tr.woreda_id = get_user_woreda_id()))))))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "user_permission_override",
+   "policyname": "user_permission_override_delete_tenant_admin",
+   "cmd": "DELETE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (is_tenant_admin() AND (woreda_id = get_user_woreda_id()) AND user_permission_override_target_role_ok(user_id)))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "user_permission_override",
+   "policyname": "user_permission_override_write_tenant_admin",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "(is_super_admin() OR (is_tenant_admin() AND (woreda_id = get_user_woreda_id()) AND user_permission_override_target_role_ok(user_id)))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "user_permission_override",
+   "policyname": "user_permission_override_select_same_woreda",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (is_tenant_admin() AND (woreda_id = get_user_woreda_id())) OR (user_id = auth.uid()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "user_permission_override",
+   "policyname": "user_permission_override_update_tenant_admin",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (is_tenant_admin() AND (woreda_id = get_user_woreda_id()) AND user_permission_override_target_role_ok(user_id)))",
+   "with_check": "(is_super_admin() OR (is_tenant_admin() AND (woreda_id = get_user_woreda_id()) AND user_permission_override_target_role_ok(user_id)))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "vital_event",
+   "policyname": "vital_event_delete",
+   "cmd": "DELETE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{civil.approve}'::text[])))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "vital_event",
+   "policyname": "vital_event_insert",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm(ARRAY['civil.register'::text, 'civil.create_event'::text])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "vital_event",
+   "policyname": "vital_event_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "vital_event",
+   "policyname": "vital_event_update",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm(ARRAY['civil.register'::text, 'civil.approve'::text, 'civil.create_event'::text, 'civil.submit'::text, 'civil.resubmit'::text, 'civil.verify'::text, 'civil.return'::text, 'civil.reject'::text, 'civil.record_payment'::text])))",
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm(ARRAY['civil.register'::text, 'civil.approve'::text, 'civil.create_event'::text, 'civil.submit'::text, 'civil.resubmit'::text, 'civil.verify'::text, 'civil.return'::text, 'civil.reject'::text, 'civil.record_payment'::text])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "vital_event_sequence",
+   "policyname": "vital_event_seq_tenant",
+   "cmd": "ALL",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "woreda",
+   "policyname": "woreda_super_admin_write",
+   "cmd": "ALL",
+   "roles": "{authenticated}",
+   "qual": "is_super_admin()",
+   "with_check": "is_super_admin()"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "woreda",
+   "policyname": "woreda_read_all_authenticated",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "true",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "woreda_settings",
+   "policyname": "woreda_settings_delete",
+   "cmd": "DELETE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{tenant.manage}'::text[])))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "woreda_settings",
+   "policyname": "woreda_settings_insert",
+   "cmd": "INSERT",
+   "roles": "{authenticated}",
+   "qual": null,
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{tenant.manage}'::text[])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "woreda_settings",
+   "policyname": "woreda_settings_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "woreda_settings",
+   "policyname": "woreda_settings_update",
+   "cmd": "UPDATE",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{tenant.manage}'::text[])))",
+   "with_check": "(is_super_admin() OR ((woreda_id = get_user_woreda_id()) AND user_has_any_perm('{tenant.manage}'::text[])))"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "workflow_status_history",
+   "policyname": "workflow_status_history_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "(is_super_admin() OR (woreda_id = get_user_woreda_id()))",
+   "with_check": null
+  },
+  {
+   "schemaname": "public",
+   "tablename": "workflow_transition",
+   "policyname": "workflow_transition_super_admin_write",
+   "cmd": "ALL",
+   "roles": "{authenticated}",
+   "qual": "is_super_admin()",
+   "with_check": "is_super_admin()"
+  },
+  {
+   "schemaname": "public",
+   "tablename": "workflow_transition",
+   "policyname": "workflow_transition_select",
+   "cmd": "SELECT",
+   "roles": "{authenticated}",
+   "qual": "true",
+   "with_check": null
+  }
+ ]
+}

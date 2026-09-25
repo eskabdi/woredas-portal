@@ -1,0 +1,30 @@
+{
+ "query": "select woreda_name_en, woreda_name_am from public.woreda order by 1",
+ "http_status": "201",
+ "result": [
+  {
+   "woreda_name_en": "Abadir",
+   "woreda_name_am": "አባዲር"
+  },
+  {
+   "woreda_name_en": "Aboker",
+   "woreda_name_am": "አቦከር"
+  },
+  {
+   "woreda_name_en": "Amir Nur",
+   "woreda_name_am": "አሚር ኑር"
+  },
+  {
+   "woreda_name_en": "Hakim",
+   "woreda_name_am": "ሃኪም"
+  },
+  {
+   "woreda_name_en": "Jineala",
+   "woreda_name_am": "ጂንኤላ"
+  },
+  {
+   "woreda_name_en": "Shenkor",
+   "woreda_name_am": "ሸንኮር"
+  }
+ ]
+}

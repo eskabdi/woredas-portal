@@ -1,0 +1,56 @@
+sha|date|code_files|any_doc|dfd_erd_sfd_api_doc|subject
+abc4a1c|2026-09-22|1|N|N|Rental review round 6: fix re-verification regression from 00088, close requester/approver
+f484a94|2026-09-22|1|N|N|Rental review round 5: fix arrears-payment regression from 00087, harden request maker-che
+7257bc9|2026-09-22|1|N|N|Rental review round 4: NULL-safe tenant check, request field lockdown, live-overdue wideni
+6adb8c3|2026-09-22|5|N|N|Fix third round of findings from final security review of PR #83
+07ca972|2026-09-22|0|Y|N|[non-code] Update CLAUDE.md for drift since last write-up
+94981b8|2026-09-22|1|N|N|Fix second round of findings from full-PR review of PR #83
+ce06e5d|2026-09-22|2|N|N|Fix regressions found by pre-merge security review of full PR #83
+4f2e64d|2026-09-22|0|Y|Y|[non-code] Regenerate docs/permissions-matrix.md for service.checkpoint_override
+8db1eab|2026-09-22|10|N|N|Add Phase 5: cross-module rental checkpoint and reporting
+df1c3be|2026-09-22|8|N|N|Add Phase 4: arrears and repayment plans
+91f35a0|2026-09-21|7|Y|Y|Kebele Rental Houses Phase 3: settlement and payments
+6a94603|2026-09-21|29|N|N|Enforce Amharic-primary labels and Ethiopian-calendar-primary dates across the woreda port
+aa288ba|2026-09-21|9|Y|Y|Kebele Rental Houses Phase 2: financial core (rent_account, rent_rate_history, rent_charge
+450e35f|2026-09-21|1|N|N|Rental occupant intake: rename payment frequency options to monthly/quarterly/yearly
+180bee2|2026-09-21|5|Y|N|Kebele Rental Houses Phase 1: fix review findings from both agents
+14cf8ab|2026-09-21|4|N|N|Kebele Rental Houses Phase 1: integrity hardening (AF-01..AF-11, PD-07/09)
+2237726|2026-09-21|2|Y|Y|Kebele Rental Houses Phase 0: rental_policy table + policy sign-off
+ae62560|2026-09-21|8|Y|N|Fix invite/resend crashes and add missing woreda-portal Resend Invite across invite-tenant
+883e117|2026-09-20|0|N|N|[non-code] Add rental-financial-integrity-review subagent for kebele rental billing
+8af9fb0|2026-09-19|0|N|N|[non-code] Fix stale Edge Function count in doctor workspace check
+82497a7|2026-09-19|0|N|N|[non-code] Fix production 500s from a circular ssr chunk split (router.tsx)
+761f965|2026-09-19|5|N|N|Refine woreda dashboard and sidebar per feedback batch
+07f8605|2026-09-16|35|N|N|Recolor solid blue action buttons to the header's deep navy
+11b4ff9|2026-09-16|3|N|N|Gate dashboard audit activity by P.AUDIT_VIEW; fix loading-flash and dedupe BackLink
+5c181eb|2026-09-16|1|N|N|Fix tablet-width horizontal page overflow on wide-table screens
+f8a8e74|2026-09-16|19|N|N|Add back-to-parent link to child pages missing one
+4b8aafd|2026-09-16|3|N|N|Rebuild woreda dashboard content to match master_design_system.md
+b35d163|2026-09-15|1|N|N|Rebuild woreda AppShell shell to match master_design_system.md 1:1
+2bba6ca|2026-09-15|1|N|N|Add missing verified/approved stages to credential request stepper
+fe796a2|2026-09-15|1|N|N|Fix BarChartCard rendering NaN when angledLabels is unset
+1f3b0e7|2026-09-15|0|N|N|[non-code] Add pre-merge gate to main-logic-authority-review subagent
+93f5d31|2026-09-15|2|N|N|Fix rental request stepper misreporting current stage; drop dead login affordance
+4dcc0d6|2026-09-15|0|Y|N|[non-code] Add main-logic-authority-review subagent
+125205c|2026-09-15|1|N|N|Port main's shell security/reliability features into AppShell
+2125dee|2026-09-15|1|N|N|fix: add missing "printed" stage to credential WorkflowStepper
+f4cf428|2026-09-15|0|Y|N|[non-code] docs: close out the /woreda/* crash incident report
+422633f|2026-09-15|0|Y|N|[non-code] docs: incident report for the /woreda/* infinite-loop crash
+a1db585|2026-09-15|1|N|N|Fix infinite render loop crashing every /woreda/* page (offline queue snapshot)
+699e0ac|2026-09-15|0|Y|N|[non-code] docs: record all five UX restructuring phases as complete
+8b06fe8|2026-09-15|2|N|N|Phase 4: keyboard navigation pass on Stepper and TableToolbar
+e3bd9c4|2026-09-15|3|N|N|Phase 4: fix WCAG 2.1 AA contrast failures found in new palette
+24a6e50|2026-09-15|1|N|N|Phase 3: bump Cluster D micro-labels 9.5px -> 10.5px per typography plan
+17addf1|2026-09-15|1|N|N|Phase 2/3: migrate woreda.reports.index.tsx onto shared charts/ module
+c2761d2|2026-09-15|4|N|N|Phase 2: complete Cluster C rollout (Service, Rental House/Request, Tenant)
+0c407c9|2026-09-15|3|N|N|Phase 2: roll DetailHeader/WorkflowStepper to Household + Civil Event detail
+4fcb59c|2026-09-15|1|N|N|Redesign login page to match reference mockup (split navy/canvas layout)
+d5efff8|2026-09-14|3|N|N|Phase 2: add shared SquircleUpload component (Cluster B)
+eee99bd|2026-09-14|3|N|N|Phase 2: apply Cluster B input styling globally (Input/Select/Textarea)
+e6c2fe1|2026-09-14|0|Y|N|[non-code] docs: record Phase 1 completion (all four component families done)
+971657a|2026-09-14|7|N|N|Phase 1: add shared charts/ module (Cluster E)
+
+Non-merge commits sampled: 50
+Code-touching commits: 39
+  ...with any doc update (docs/**, CLAUDE.md, README): 5 (13%)
+  ...with a DFD/ERD/SFD/API/arch doc update: 3 (8%)

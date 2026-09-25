@@ -1,0 +1,1871 @@
+[
+ {
+  "fn": "activate_arrears_repayment_plan",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000080_rental_phase4_arrears.sql:315",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "advance_vital_event_to_registered",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql:231",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "apply_death_on_approval",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql:82",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "apply_rental_occupancy_on_approval",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000084_rental_review_regression_fixes.sql:61",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "arrears_installment_charge_amount_sync",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000080_rental_phase4_arrears.sql:434",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "arrears_repayment_installment_amount_sync",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000080_rental_phase4_arrears.sql:376",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "arrears_repayment_plan_amount_sync",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000081_rental_phase4_review_fixes.sql:626",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "assert_credential_request_office_woreda",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000050_task11_fix_office_trigger.sql:45",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "assert_office_woreda_consistency",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000049_task11_review_hardening.sql:121",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "assert_rental_occupancy_woreda_consistency",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000085_rental_review_round2_fixes.sql:141",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "assert_rental_request_woreda_consistency",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000073_rental_phase1_review_fixes.sql:102",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "assert_residence_credential_office_woreda",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000050_task11_fix_office_trigger.sql:24",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "assert_vital_event_woreda_consistency",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000032_task2_tenant_scoped_definer_triggers.sql:223",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "assign_arrears_plan_number",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000080_rental_phase4_arrears.sql:232",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "assign_credential_number",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000002_credential.sql:76",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "assign_credential_request_number",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:961",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "assign_letter_verification_token",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:990",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "assign_receipt_number",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:1004",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "assign_receipt_verification_token",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000013_receipt_verification.sql:36",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "assign_rent_account_number",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000076_rental_phase2_financial_core.sql:125",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "assign_rental_request_number",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:1030",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "assign_resident_number",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:1062",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "assign_service_request_number",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:1115",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "assign_vital_event_number",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:1143",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "audit_app_user_role_change",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000041_task13_review_hardening.sql:98",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "audit_resident_created",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000043_task5_resident_creation_audit.sql:30",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "audit_tenant_role_change",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000041_task13_review_hardening.sql:54",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "audit_tenant_role_permission_change",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000041_task13_review_hardening.sql:78",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "check_credential_print_eligibility",
+  "definer": false,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000046_task10_credential_lifecycle.sql:70",
+  "grant_log": [],
+  "returns": "RETURNS void"
+ },
+ {
+  "fn": "clear_custom_role_on_woreda_change",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000042_task13_woreda_pin_and_move_hardening.sql:66",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "clear_overrides_on_role_promotion",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000021_override_security_fixes.sql:94",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "clear_overrides_on_woreda_change",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000019_override_hardening.sql:111",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "create_arrears_repayment_plan",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000087_rental_review_round4_fixes.sql:303",
+  "grant_log": [
+   "supabase/migrations/00000000000080_rental_phase4_arrears.sql:616 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000080_rental_phase4_arrears.sql:617 GRANT ['authenticated', 'service_role']",
+   "supabase/migrations/00000000000081_rental_phase4_review_fixes.sql:317 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000081_rental_phase4_review_fixes.sql:318 GRANT ['authenticated', 'service_role']",
+   "supabase/migrations/00000000000082_rental_phase4_review_fixes_2.sql:339 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000082_rental_phase4_review_fixes_2.sql:340 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS uuid"
+ },
+ {
+  "fn": "current_console_permissions",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000012_enforce_console_rbac.sql:65",
+  "grant_log": [
+   "supabase/migrations/00000000000012_enforce_console_rbac.sql:77 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000012_enforce_console_rbac.sql:78 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS text"
+ },
+ {
+  "fn": "current_permissions",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000039_task13_custom_role_resolution.sql:119",
+  "grant_log": [
+   "supabase/migrations/00000000000016_current_permissions_rpc.sql:37 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000016_current_permissions_rpc.sql:38 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS text"
+ },
+ {
+  "fn": "decrypt_pii_numeric",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000023_pii_encryption.sql:371",
+  "grant_log": [
+   "supabase/migrations/00000000000023_pii_encryption.sql:711 GRANT ['authenticated', 'service_role']",
+   "supabase/migrations/00000000000023_pii_encryption.sql:714 REVOKE ['public', 'anon']"
+  ],
+  "returns": "RETURNS numeric"
+ },
+ {
+  "fn": "decrypt_pii_text",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000023_pii_encryption.sql:324",
+  "grant_log": [
+   "supabase/migrations/00000000000023_pii_encryption.sql:710 GRANT ['authenticated', 'service_role']",
+   "supabase/migrations/00000000000023_pii_encryption.sql:713 REVOKE ['public', 'anon']"
+  ],
+  "returns": "RETURNS text"
+ },
+ {
+  "fn": "default_credential_request_office_id",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000051_task11_office_id_defaults.sql:62",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "default_residence_credential_office_id",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000051_task11_office_id_defaults.sql:43",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "default_role_perms",
+  "definer": false,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:96",
+  "grant_log": [],
+  "returns": "RETURNS text"
+ },
+ {
+  "fn": "derive_woreda_key",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": false,
+  "loc": "supabase/migrations/00000000000023_pii_encryption.sql:177",
+  "grant_log": [
+   "supabase/migrations/00000000000023_pii_encryption.sql:197 REVOKE ['public', 'anon', 'authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS text"
+ },
+ {
+  "fn": "discard_id_card_template_draft",
+  "definer": false,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000010_id_card_template_draft.sql:171",
+  "grant_log": [
+   "supabase/migrations/00000000000010_id_card_template_draft.sql:208 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000010_id_card_template_draft.sql:210 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS void"
+ },
+ {
+  "fn": "encrypt_pii_numeric",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": false,
+  "loc": "supabase/migrations/00000000000023_pii_encryption.sql:278",
+  "grant_log": [
+   "supabase/migrations/00000000000023_pii_encryption.sql:290 REVOKE ['public', 'anon', 'authenticated']",
+   "supabase/migrations/00000000000023_pii_encryption.sql:291 GRANT ['service_role']"
+  ],
+  "returns": "RETURNS bytea"
+ },
+ {
+  "fn": "encrypt_pii_text",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": false,
+  "loc": "supabase/migrations/00000000000023_pii_encryption.sql:252",
+  "grant_log": [
+   "supabase/migrations/00000000000023_pii_encryption.sql:269 REVOKE ['public', 'anon', 'authenticated']",
+   "supabase/migrations/00000000000023_pii_encryption.sql:276 GRANT ['service_role']"
+  ],
+  "returns": "RETURNS bytea"
+ },
+ {
+  "fn": "enforce_rental_checkpoint",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000086_rental_review_round3_fixes.sql:103",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "enforce_rental_request_eligibility",
+  "definer": false,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000031_rental_eligibility.sql:214",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "enforce_rental_request_integrity_guards",
+  "definer": false,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000089_rental_review_round6_fixes.sql:87",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "enforce_service_request_issuance_gate",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000062_task14b_payment_issuance_and_preconditions.sql:63",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "enforce_service_request_payment_gate",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000066_payment_hardening_review_fixes.sql:207",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "enforce_service_request_preconditions",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000066_payment_hardening_review_fixes.sql:339",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "enforce_user_permission_override_woreda",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000017_user_permission_overrides.sql:52",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "enforce_vital_event_payment_gate",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000066_payment_hardening_review_fixes.sql:244",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "enforce_vital_event_preconditions",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000066_payment_hardening_review_fixes.sql:406",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "enforce_workflow_insert",
+  "definer": false,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000029_workflow_insert_guard.sql:81",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "enforce_workflow_transition",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000046_task10_credential_lifecycle.sql:135",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "entity_approve_perm_ok",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000053_task11_review_round2.sql:152",
+  "grant_log": [
+   "supabase/migrations/00000000000053_task11_review_round2.sql:173 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000053_task11_review_round2.sql:174 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS boolean"
+ },
+ {
+  "fn": "entity_attach_perm_ok",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000053_task11_review_round2.sql:132",
+  "grant_log": [
+   "supabase/migrations/00000000000053_task11_review_round2.sql:171 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000053_task11_review_round2.sql:172 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS boolean"
+ },
+ {
+  "fn": "entity_belongs_to_woreda",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000053_task11_review_round2.sql:75",
+  "grant_log": [
+   "supabase/migrations/00000000000049_task11_review_hardening.sql:106 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000049_task11_review_hardening.sql:107 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS boolean"
+ },
+ {
+  "fn": "entity_read_perm_ok",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000053_task11_review_round2.sql:112",
+  "grant_log": [
+   "supabase/migrations/00000000000053_task11_review_round2.sql:169 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000053_task11_review_round2.sql:170 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS boolean"
+ },
+ {
+  "fn": "force_actor_columns",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:1196",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "force_household_location_woreda_id",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000049_task11_review_hardening.sql:44",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "gen_letter_verification_token",
+  "definer": false,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:1223",
+  "grant_log": [],
+  "returns": "RETURNS text"
+ },
+ {
+  "fn": "gen_receipt_verification_token",
+  "definer": false,
+  "anon_exec": true,
+  "public": false,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000013_receipt_verification.sql:16",
+  "grant_log": [
+   "supabase/migrations/00000000000013_receipt_verification.sql:63 REVOKE ['public']"
+  ],
+  "returns": "RETURNS text"
+ },
+ {
+  "fn": "generate_rent_charges",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000076_rental_phase2_financial_core.sql:533",
+  "grant_log": [
+   "supabase/migrations/00000000000076_rental_phase2_financial_core.sql:637 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000076_rental_phase2_financial_core.sql:638 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS jsonb"
+ },
+ {
+  "fn": "generate_rent_reminders",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000080_rental_phase4_arrears.sql:999",
+  "grant_log": [
+   "supabase/migrations/00000000000080_rental_phase4_arrears.sql:1060 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000080_rental_phase4_arrears.sql:1061 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS jsonb"
+ },
+ {
+  "fn": "generate_residence_credential_on_payment",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000070_mint_guard_deceased_check.sql:28",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "generate_resident_on_birth_approval",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql:118",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "get_civil_kpis",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000067_task14c_civil_kpis.sql:13",
+  "grant_log": [
+   "supabase/migrations/00000000000067_task14c_civil_kpis.sql:81 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000067_task14c_civil_kpis.sql:82 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS jsonb"
+ },
+ {
+  "fn": "get_credential_kpis",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000057_task12b_credential_kpis.sql:39",
+  "grant_log": [
+   "supabase/migrations/00000000000057_task12b_credential_kpis.sql:149 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000057_task12b_credential_kpis.sql:150 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS jsonb"
+ },
+ {
+  "fn": "get_credential_live_status",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:1323",
+  "grant_log": [
+   "supabase/migrations/00000000000007_tighten_anon_grants.sql:81 REVOKE ['anon']",
+   "supabase/migrations/00000000000007_tighten_anon_grants.sql:82 REVOKE ['public']",
+   "supabase/migrations/00000000000007_tighten_anon_grants.sql:84 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS text"
+ },
+ {
+  "fn": "get_rent_account_ledger_summary",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000087_rental_review_round4_fixes.sql:457",
+  "grant_log": [
+   "supabase/migrations/00000000000080_rental_phase4_arrears.sql:932 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000080_rental_phase4_arrears.sql:933 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS jsonb"
+ },
+ {
+  "fn": "get_rental_arrears_aging_report",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:581",
+  "grant_log": [
+   "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:643 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:644 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS TABLE(bucket_label text, charge_count bigint, total_amount numeric)"
+ },
+ {
+  "fn": "get_rental_billing_collection_report",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:543",
+  "grant_log": [
+   "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:578 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:579 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS TABLE(period_key text, billed_total numeric, collected_total numeric, outstanding_total numeric)"
+ },
+ {
+  "fn": "get_rental_checkpoint_activity_report",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:688",
+  "grant_log": [
+   "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:721 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:722 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS TABLE(total_resolved bigint, blocked_count bigint, overridden_count bigint, passed_count bigint)"
+ },
+ {
+  "fn": "get_rental_plan_compliance_report",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:646",
+  "grant_log": [
+   "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:685 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:686 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS TABLE( status text, plan_count bigint, installments_scheduled bigint, installments_due bigint, installments_overdue bigint, installments_paid bigint, installments_cancelled bigint )"
+ },
+ {
+  "fn": "get_rental_reconciliation_report",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:724",
+  "grant_log": [
+   "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:766 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:767 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS TABLE( billed_total numeric, settled_total numeric, reversed_total numeric, exception_count bigint, exception_total numeric )"
+ },
+ {
+  "fn": "get_service_kpis",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000062_task14b_payment_issuance_and_preconditions.sql:211",
+  "grant_log": [
+   "supabase/migrations/00000000000062_task14b_payment_issuance_and_preconditions.sql:279 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000062_task14b_payment_issuance_and_preconditions.sql:280 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS jsonb"
+ },
+ {
+  "fn": "get_user_woreda_id",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:1335",
+  "grant_log": [
+   "supabase/migrations/00000000000008_close_definer_helpers.sql:32 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000008_close_definer_helpers.sql:39 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS uuid"
+ },
+ {
+  "fn": "guard_arrears_plan_immutable_fields",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000082_rental_phase4_review_fixes_2.sql:347",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "guard_arrears_plan_maker_checker",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000088_rental_review_round5_fixes.sql:420",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "guard_console_role_assignment",
+  "definer": false,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000012_enforce_console_rbac.sql:94",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "guard_manual_occupancy_status_change",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000072_rental_phase1_integrity_hardening.sql:74",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "guard_rent_charge_immutable_fields",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000076_rental_phase2_financial_core.sql:254",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "guard_rental_payment_insert",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000087_rental_review_round4_fixes.sql:556",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "guard_rental_payment_status_change",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000086_rental_review_round3_fixes.sql:67",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "guard_settlement_amount_matches_charge",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000079_rental_phase3_review_fixes.sql:71",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "household_pii_sync",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000044_task6_household_rent_national_id_pii.sql:138",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "is_active_app_user",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000002_credential.sql:185",
+  "grant_log": [
+   "supabase/migrations/00000000000002_credential.sql:198 GRANT ['anon', 'authenticated']",
+   "supabase/migrations/00000000000008_close_definer_helpers.sql:37 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000008_close_definer_helpers.sql:44 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS BOOLEAN"
+ },
+ {
+  "fn": "is_super_admin",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000011_status_check_admin_helpers.sql:15",
+  "grant_log": [
+   "supabase/migrations/00000000000008_close_definer_helpers.sql:33 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000008_close_definer_helpers.sql:40 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS boolean"
+ },
+ {
+  "fn": "is_tenant_admin",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000011_status_check_admin_helpers.sql:25",
+  "grant_log": [
+   "supabase/migrations/00000000000008_close_definer_helpers.sql:34 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000008_close_definer_helpers.sql:41 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS boolean"
+ },
+ {
+  "fn": "log_workflow_status_history",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000058_task14a_civil_registration_fsm.sql:63",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "log_workflow_transition",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000025_workflow_engine.sql:350",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "luhn_check_digit",
+  "definer": false,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000002_credential.sql:22",
+  "grant_log": [
+   "supabase/migrations/00000000000002_credential.sql:199 GRANT ['authenticated']"
+  ],
+  "returns": "RETURNS INT"
+ },
+ {
+  "fn": "mark_template_draft_dirty",
+  "definer": false,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000010_id_card_template_draft.sql:93",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "mirror_household_gps_to_location",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000053_task11_review_round2.sql:54",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "mirror_location_gps_to_household",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000049_task11_review_hardening.sql:88",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "my_national_id_blind_index",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000044_task6_household_rent_national_id_pii.sql:103",
+  "grant_log": [
+   "supabase/migrations/00000000000044_task6_household_rent_national_id_pii.sql:113 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000044_task6_household_rent_national_id_pii.sql:114 GRANT ['authenticated']"
+  ],
+  "returns": "RETURNS text"
+ },
+ {
+  "fn": "my_phone_blind_index",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000023_pii_encryption.sql:394",
+  "grant_log": [
+   "supabase/migrations/00000000000023_pii_encryption.sql:712 GRANT ['authenticated']",
+   "supabase/migrations/00000000000023_pii_encryption.sql:715 REVOKE ['public', 'anon']"
+  ],
+  "returns": "RETURNS text"
+ },
+ {
+  "fn": "national_id_blind_index",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": false,
+  "loc": "supabase/migrations/00000000000044_task6_household_rent_national_id_pii.sql:78",
+  "grant_log": [
+   "supabase/migrations/00000000000044_task6_household_rent_national_id_pii.sql:97 REVOKE ['public', 'anon', 'authenticated']",
+   "supabase/migrations/00000000000044_task6_household_rent_national_id_pii.sql:98 GRANT ['service_role']"
+  ],
+  "returns": "RETURNS text"
+ },
+ {
+  "fn": "normalize_phone",
+  "definer": false,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": false,
+  "loc": "supabase/migrations/00000000000023_pii_encryption.sql:213",
+  "grant_log": [
+   "supabase/migrations/00000000000023_pii_encryption.sql:240 REVOKE ['public', 'anon', 'authenticated']"
+  ],
+  "returns": "RETURNS text"
+ },
+ {
+  "fn": "payment_amount_sync",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql:42",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "payment_reconciliation_exception_amount_sync",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000078_rental_phase3_settlement.sql:253",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "phone_blind_index",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": false,
+  "loc": "supabase/migrations/00000000000023_pii_encryption.sql:294",
+  "grant_log": [
+   "supabase/migrations/00000000000023_pii_encryption.sql:313 REVOKE ['public', 'anon', 'authenticated']",
+   "supabase/migrations/00000000000023_pii_encryption.sql:314 GRANT ['service_role']"
+  ],
+  "returns": "RETURNS text"
+ },
+ {
+  "fn": "pii_encryption_status",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": false,
+  "loc": "supabase/migrations/00000000000044_task6_household_rent_national_id_pii.sql:192",
+  "grant_log": [
+   "supabase/migrations/00000000000023_pii_encryption.sql:471 REVOKE ['public', 'anon', 'authenticated']",
+   "supabase/migrations/00000000000023_pii_encryption.sql:474 GRANT ['service_role']",
+   "supabase/migrations/00000000000044_task6_household_rent_national_id_pii.sql:229 REVOKE ['public', 'anon', 'authenticated']",
+   "supabase/migrations/00000000000044_task6_household_rent_national_id_pii.sql:230 GRANT ['service_role']"
+  ],
+  "returns": "RETURNS TABLE(key_present boolean, column_label text, rows_with_plaintext bigint, rows_encrypted bigint)"
+ },
+ {
+  "fn": "pii_root_key",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": false,
+  "loc": "supabase/migrations/00000000000023_pii_encryption.sql:148",
+  "grant_log": [
+   "supabase/migrations/00000000000023_pii_encryption.sql:173 REVOKE ['public', 'anon', 'authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS text"
+ },
+ {
+  "fn": "pin_credential_identity_fields",
+  "definer": false,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000046_task10_credential_lifecycle.sql:31",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "pin_receipt_verification_token",
+  "definer": false,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000013_receipt_verification.sql:79",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "pin_tenant_role_woreda_id",
+  "definer": false,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000042_task13_woreda_pin_and_move_hardening.sql:43",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "pin_vital_event_resident",
+  "definer": false,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000033_task2_followup_pin_and_rental_scope.sql:60",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "prevent_last_super_admin_lockout",
+  "definer": false,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000012_enforce_console_rbac.sql:185",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "provision_rent_account",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000087_rental_review_round4_fixes.sql:115",
+  "grant_log": [
+   "supabase/migrations/00000000000076_rental_phase2_financial_core.sql:447 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000076_rental_phase2_financial_core.sql:448 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS uuid"
+ },
+ {
+  "fn": "publish_id_card_template",
+  "definer": false,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000010_id_card_template_draft.sql:120",
+  "grant_log": [
+   "supabase/migrations/00000000000010_id_card_template_draft.sql:207 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000010_id_card_template_draft.sql:209 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS void"
+ },
+ {
+  "fn": "rate_limit_hit",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": false,
+  "loc": "supabase/migrations/00000000000022_rate_limit.sql:46",
+  "grant_log": [
+   "supabase/migrations/00000000000022_rate_limit.sql:82 REVOKE ['public', 'anon', 'authenticated']",
+   "supabase/migrations/00000000000022_rate_limit.sql:83 GRANT ['service_role']"
+  ],
+  "returns": "RETURNS integer"
+ },
+ {
+  "fn": "record_rental_checkpoint",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000085_rental_review_round2_fixes.sql:686",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "refresh_rent_ledger_statuses",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000081_rental_phase4_review_fixes.sql:527",
+  "grant_log": [
+   "supabase/migrations/00000000000080_rental_phase4_arrears.sql:175 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000080_rental_phase4_arrears.sql:176 GRANT ['authenticated', 'service_role']",
+   "supabase/migrations/00000000000081_rental_phase4_review_fixes.sql:573 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000081_rental_phase4_review_fixes.sql:574 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS jsonb"
+ },
+ {
+  "fn": "release_arrears_plan_charges",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000081_rental_phase4_review_fixes.sql:592",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "rent_charge_amount_sync",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000076_rental_phase2_financial_core.sql:317",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "rent_payment_settlement_amount_sync",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000078_rental_phase3_settlement.sql:188",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "rent_rate_history_amount_sync",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000076_rental_phase2_financial_core.sql:300",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "rent_reminder_amount_sync",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000080_rental_phase4_arrears.sql:966",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "rental_eligibility",
+  "definer": true,
+  "anon_exec": true,
+  "public": false,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000031_rental_eligibility.sql:55",
+  "grant_log": [
+   "supabase/migrations/00000000000031_rental_eligibility.sql:196 REVOKE ['public']",
+   "supabase/migrations/00000000000031_rental_eligibility.sql:197 GRANT ['authenticated']",
+   "supabase/migrations/00000000000031_rental_eligibility.sql:198 GRANT ['service_role']"
+  ],
+  "returns": "RETURNS jsonb"
+ },
+ {
+  "fn": "rental_occupancy_amount_sync",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000023_pii_encryption.sql:573",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "rental_occupancy_request_amount_sync",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000023_pii_encryption.sql:593",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "rental_period_month_index",
+  "definer": false,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:532",
+  "grant_log": [
+   "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:540 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:541 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS integer"
+ },
+ {
+  "fn": "resident_pii_sync",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000044_task6_household_rent_national_id_pii.sql:122",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "resolve_civil_fee",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql:386",
+  "grant_log": [
+   "supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql:443 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql:444 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS numeric"
+ },
+ {
+  "fn": "resolve_credential_fee",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000054_task12_fee_catalog_repair.sql:67",
+  "grant_log": [
+   "supabase/migrations/00000000000054_task12_fee_catalog_repair.sql:117 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000054_task12_fee_catalog_repair.sql:118 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS numeric"
+ },
+ {
+  "fn": "resolve_reconciliation_exception",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000086_rental_review_round3_fixes.sql:196",
+  "grant_log": [
+   "supabase/migrations/00000000000078_rental_phase3_settlement.sql:606 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000078_rental_phase3_settlement.sql:607 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS void"
+ },
+ {
+  "fn": "resolve_rental_checkpoint",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:342",
+  "grant_log": [
+   "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:354 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:355 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS jsonb"
+ },
+ {
+  "fn": "resolve_rental_checkpoint_core",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": false,
+  "loc": "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:218",
+  "grant_log": [
+   "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:331 REVOKE ['public', 'anon', 'authenticated']"
+  ],
+  "returns": "RETURNS jsonb"
+ },
+ {
+  "fn": "resolve_service_fee",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000062_task14b_payment_issuance_and_preconditions.sql:162",
+  "grant_log": [
+   "supabase/migrations/00000000000062_task14b_payment_issuance_and_preconditions.sql:199 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000062_task14b_payment_issuance_and_preconditions.sql:200 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS numeric"
+ },
+ {
+  "fn": "reverse_rental_payment",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000089_rental_review_round6_fixes.sql:434",
+  "grant_log": [
+   "supabase/migrations/00000000000078_rental_phase3_settlement.sql:550 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000078_rental_phase3_settlement.sql:551 GRANT ['authenticated', 'service_role']",
+   "supabase/migrations/00000000000082_rental_phase4_review_fixes_2.sql:180 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000082_rental_phase4_review_fixes_2.sql:181 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS jsonb"
+ },
+ {
+  "fn": "seed_office_for_new_woreda",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000048_task11_schema_gaps.sql:88",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "seed_rental_policy_for_new_woreda",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000071_rental_phase0_policy.sql:232",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "seed_role_permission_for_new_woreda",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000035_task4_permission_reconciliation.sql:104",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "service_request_checkpoint_amount_sync",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:165",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "service_request_pii_sync",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000023_pii_encryption.sql:524",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "set_tenant_role_permission_updated_at",
+  "definer": false,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000041_task13_review_hardening.sql:126",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "set_updated_at",
+  "definer": false,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:1365",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "settle_arrears_installments",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000089_rental_review_round6_fixes.sql:233",
+  "grant_log": [
+   "supabase/migrations/00000000000080_rental_phase4_arrears.sql:809 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000080_rental_phase4_arrears.sql:810 GRANT ['authenticated', 'service_role']",
+   "supabase/migrations/00000000000081_rental_phase4_review_fixes.sql:519 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000081_rental_phase4_review_fixes.sql:520 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS jsonb"
+ },
+ {
+  "fn": "settle_rent_payment",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000087_rental_review_round4_fixes.sql:582",
+  "grant_log": [
+   "supabase/migrations/00000000000078_rental_phase3_settlement.sql:460 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000078_rental_phase3_settlement.sql:461 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS jsonb"
+ },
+ {
+  "fn": "storage_path_woreda_id",
+  "definer": false,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:1372",
+  "grant_log": [],
+  "returns": "RETURNS uuid"
+ },
+ {
+  "fn": "user_has_any_perm",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:1381",
+  "grant_log": [
+   "supabase/migrations/00000000000008_close_definer_helpers.sql:36 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000008_close_definer_helpers.sql:43 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS boolean"
+ },
+ {
+  "fn": "user_has_console_perm",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000009_console_roles.sql:60",
+  "grant_log": [
+   "supabase/migrations/00000000000009_console_roles.sql:87 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000009_console_roles.sql:88 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS boolean"
+ },
+ {
+  "fn": "user_has_perm",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000039_task13_custom_role_resolution.sql:83",
+  "grant_log": [
+   "supabase/migrations/00000000000008_close_definer_helpers.sql:35 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000008_close_definer_helpers.sql:42 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS boolean"
+ },
+ {
+  "fn": "user_permission_override_target_role_ok",
+  "definer": true,
+  "anon_exec": false,
+  "public": false,
+  "anon": false,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000019_override_hardening.sql:60",
+  "grant_log": [
+   "supabase/migrations/00000000000021_override_security_fixes.sql:50 REVOKE ['public', 'anon']",
+   "supabase/migrations/00000000000021_override_security_fixes.sql:51 GRANT ['authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS boolean"
+ },
+ {
+  "fn": "validate_app_user_role",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000039_task13_custom_role_resolution.sql:39",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "validate_credential_fee_amount",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000066_payment_hardening_review_fixes.sql:66",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "validate_receipt_amount",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000000_baseline.sql:1430",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "validate_tenant_role_name",
+  "definer": false,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000041_task13_review_hardening.sql:141",
+  "grant_log": [],
+  "returns": "RETURNS trigger"
+ },
+ {
+  "fn": "verify_credential_token",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000034_task3_harden_credential_verification.sql:145",
+  "grant_log": [
+   "supabase/migrations/00000000000002_credential.sql:197 GRANT ['anon', 'authenticated']",
+   "supabase/migrations/00000000000034_task3_harden_credential_verification.sql:305 GRANT ['anon', 'authenticated']"
+  ],
+  "returns": "RETURNS TABLE( credential_number TEXT, status TEXT, issue_date DATE, expiry_date DATE, resident_full_name TEXT, woreda_name_am TEXT, woreda_name_en TEXT, kebele_name_am TEXT, kebele_name_en TEXT, photo_path TEXT, date_of_birth DATE )"
+ },
+ {
+  "fn": "verify_receipt",
+  "definer": true,
+  "anon_exec": true,
+  "public": false,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000013_receipt_verification.sql:134",
+  "grant_log": [
+   "supabase/migrations/00000000000013_receipt_verification.sql:188 REVOKE ['public']",
+   "supabase/migrations/00000000000013_receipt_verification.sql:189 GRANT ['anon', 'authenticated', 'service_role']"
+  ],
+  "returns": "RETURNS TABLE( receipt_number text, receipt_date date, total_amount numeric, payment_type text, channel text, printed_at timestamp with time zone, paid_by_full_name text, paid_by_full_name_am text, woreda_name_am text, woreda_name_en text, kebele_name_am text, kebele_name_en text )"
+ },
+ {
+  "fn": "verify_service_letter",
+  "definer": true,
+  "anon_exec": true,
+  "public": true,
+  "anon": true,
+  "authenticated": true,
+  "loc": "supabase/migrations/00000000000064_task14b_verify_letter_completed_status.sql:22",
+  "grant_log": [],
+  "returns": "?"
+ }
+]

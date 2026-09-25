@@ -1,0 +1,5 @@
+{
+ "query": "select ve.status, 'household_id' as col, count(*) from public.vital_event ve join public.household h on h.household_id = ve.household_id where h.woreda_id <> ve.woreda_id group by 1 union all select ve.status, 'resident_id', count(*) from public.vital_event ve join public.resident r on r.resident_id = ve.resident_id where r.woreda_id <> ve.woreda_id group by 1",
+ "http_status": "201",
+ "result": []
+}

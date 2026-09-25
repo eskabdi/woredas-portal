@@ -1,0 +1,5 @@
+{
+ "query": "select n.nspname, t.typname, e.enumlabel from pg_type t join pg_enum e on e.enumtypid = t.oid join pg_namespace n on n.oid=t.typnamespace where n.nspname not in ('pg_catalog','information_schema','auth','storage','realtime','graphql','supabase_functions','vault','net','pgsodium','extensions','_realtime','supabase_migrations','cron','pgbouncer') order by 1,2, e.enumsortorder",
+ "http_status": "201",
+ "result": []
+}

@@ -1,0 +1,138 @@
+{
+ "generated_by": "audit-api-edge 2026-09-24",
+ "as_is": true,
+ "synthetic_values": "All ids, names, tokens and numbers are synthetic placeholders; no production data.",
+ "endpoint": "POST /functions/v1/resend-platform-invite",
+ "classification": "Private",
+ "auth": "bearer JWT; active super_admin (no console permission)",
+ "responses": {
+  "200": {
+   "emitted": true,
+   "response": {
+    "success": true
+   },
+   "evidence": "supabase/functions/resend-platform-invite/index.ts:114",
+   "request": {
+    "headers": {
+     "Authorization": "Bearer <user access token>",
+     "apikey": "<publishable key>",
+     "Content-Type": "application/json"
+    },
+    "body": {
+     "user_id": "00000000-0000-4000-8000-000000000004"
+    }
+   },
+   "note": "Body is {user_id} only; docs/openapi.yaml documents a required email field that the code ignores."
+  },
+  "400": [
+   {
+    "emitted": true,
+    "response": {
+     "error": "user_id is required"
+    },
+    "evidence": "supabase/functions/resend-platform-invite/index.ts:36-37"
+   },
+   {
+    "emitted": true,
+    "response": {
+     "error": "Target is not a platform admin."
+    },
+    "evidence": "supabase/functions/resend-platform-invite/index.ts:63-65"
+   },
+   {
+    "emitted": true,
+    "response": {
+     "error": "Failed to resend invitation"
+    },
+    "evidence": "supabase/functions/resend-platform-invite/index.ts:76-84"
+   },
+   {
+    "emitted": true,
+    "response": {
+     "error": "User already registered"
+    },
+    "evidence": "supabase/functions/resend-platform-invite/index.ts:90-102"
+   }
+  ],
+  "401": [
+   {
+    "emitted": true,
+    "response": {
+     "error": "Missing authorization header"
+    },
+    "evidence": "supabase/functions/resend-platform-invite/index.ts:14",
+    "request": {
+     "headers": {
+      "apikey": "<publishable key>"
+     },
+     "body": {}
+    },
+    "note": "Reached only if gateway verify_jwt=false; with verify_jwt=true the platform gateway answers first (body shape platform-defined, Needs-live-verification)."
+   },
+   {
+    "emitted": true,
+    "response": {
+     "error": "Unauthorized"
+    },
+    "evidence": "supabase/functions/resend-platform-invite/index.ts:33",
+    "request": {
+     "headers": {
+      "Authorization": "Bearer <expired or revoked token>"
+     }
+    }
+   }
+  ],
+  "403": {
+   "emitted": true,
+   "response": {
+    "error": "Forbidden: only an active super_admin can resend platform invites."
+   },
+   "evidence": "supabase/functions/resend-platform-invite/index.ts:46-50"
+  },
+  "404": {
+   "emitted": false,
+   "reason": "Not emitted; unknown target is 400."
+  },
+  "405": {
+   "emitted": true,
+   "response": {
+    "error": "Method not allowed"
+   },
+   "evidence": "supabase/functions/resend-platform-invite/index.ts:10",
+   "request": {
+    "method": "GET"
+   }
+  },
+  "409": {
+   "emitted": false,
+   "reason": "Not emitted."
+  },
+  "422": {
+   "emitted": false,
+   "reason": "Not emitted."
+  },
+  "429": {
+   "emitted": true,
+   "response": {
+    "error": "Too many requests"
+   },
+   "evidence": "supabase/functions/resend-platform-invite/index.ts:54-55"
+  },
+  "500": [
+   {
+    "emitted": true,
+    "response": {
+     "error": "SITE_URL is not configured"
+    },
+    "evidence": "supabase/functions/resend-platform-invite/index.ts:24-25"
+   },
+   {
+    "emitted": true,
+    "response": {
+     "error": "Internal error"
+    },
+    "evidence": "supabase/functions/resend-platform-invite/index.ts:115-116"
+   }
+  ]
+ }
+}

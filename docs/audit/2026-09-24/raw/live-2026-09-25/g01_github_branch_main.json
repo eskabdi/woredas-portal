@@ -1,0 +1,15 @@
+{
+ "endpoint": "GET /repos/eskabdi/woredas-portal/branches/main (unauthenticated)",
+ "result": {
+  "name": "main",
+  "protected": true,
+  "protection": {
+   "enabled": true,
+   "required_status_checks": {
+    "enforcement_level": "everyone",
+    "contexts": [],
+    "checks": []
+   }
+  }
+ }
+}

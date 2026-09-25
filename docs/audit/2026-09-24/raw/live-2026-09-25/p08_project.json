@@ -1,0 +1,18 @@
+{
+ "endpoint": "https://api.supabase.com/v1/projects/tugzuexfyzbdnghbmrjl",
+ "http_status": "200",
+ "result": {
+  "id": "tugzuexfyzbdnghbmrjl",
+  "name": "woreda-portal-DB",
+  "region": "eu-west-1",
+  "status": "ACTIVE_HEALTHY",
+  "created_at": "2026-08-17T18:25:12.711897Z",
+  "organization_id": "tfirszscnrzzfvfqdhre",
+  "database": {
+   "host": "db.tugzuexfyzbdnghbmrjl.supabase.co",
+   "version": "17.6.1.155",
+   "postgres_engine": "17",
+   "release_channel": "ga"
+  }
+ }
+}

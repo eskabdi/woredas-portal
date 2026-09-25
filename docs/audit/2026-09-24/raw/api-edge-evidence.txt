@@ -1,0 +1,103 @@
+## audit-api-edge raw evidence (HEAD 9950f16), generated 2026-09-24
+
+### supabase/config.toml (full)
+project_id = "woredas-portal"
+
+### verify_jwt mentions (repo-wide, excl. docs/audit)
+./CLAUDE.md:1123:  -F "metadata={\"name\":\"$FN\",\"entrypoint_path\":\"index.ts\",\"verify_jwt\":false};type=application/json" \
+./docs/security-hardening.md:41:  `verify_jwt:false` — the auth is in the function body, where it also enforces
+./.claude/agents/audit-api-edge.md:18:- `supabase/config.toml`: any `verify_jwt = false`? Justified (e.g. public QR verify) and compensated (rate limit, minimal response)?
+
+### deploy command
+40:supabase functions deploy "${FUNCTIONS[@]}" --use-api --project-ref "$REF"
+
+### classification comments in code (@classification|Public/Private/Internal endpoint)
+(none)
+
+### console-permission checks in Edge Functions
+supabase/functions/invite-platform-admin/index.ts:77:    // scoped admin can't grant themselves console.console_users.manage or
+supabase/functions/invite-platform-admin/index.ts:82:    // user_has_console_perm() resolves to the actual caller, not this
+supabase/functions/invite-platform-admin/index.ts:86:        "user_has_console_perm",
+supabase/functions/invite-platform-admin/index.ts:87:        { _perm: "console.console_users.manage" },
+supabase/functions/invite-platform-admin/index.ts:91:          error: "Forbidden: inviting a new super_admin requires console.console_users.manage.",
+supabase/functions/invite-platform-admin/index.ts:144:    // within their existing authority -- the console.console_users.manage
+supabase/functions/sign-credential/index.ts:84:    // user_has_console_perm() check.
+
+### console.users.manage / console.tenants.manage / console.credential_template.manage / console.audit.view - every literal occurrence (fixed-string) in migrations + functions
+supabase/migrations/00000000000009_console_roles.sql:40:    'console.tenants.manage',
+supabase/migrations/00000000000009_console_roles.sql:41:    'console.users.manage',
+supabase/migrations/00000000000009_console_roles.sql:42:    'console.audit.view',
+supabase/migrations/00000000000009_console_roles.sql:43:    'console.credential_template.manage',
+(only the CHECK-constraint list in migration 09 - no RLS policy, trigger, RPC or Edge Function checks these keys)
+
+### role gates per function
+supabase/functions/invite-platform-admin/index.ts:50:    if (role !== "super_admin" && role !== "tenant_admin") {
+supabase/functions/invite-platform-admin/index.ts:53:    if (role === "tenant_admin" && !woredaId) {
+supabase/functions/invite-platform-admin/index.ts:56:    if (role === "super_admin" && woredaId) {
+supabase/functions/invite-platform-admin/index.ts:70:    if (caller.role !== "super_admin" || caller.status !== "active") {
+supabase/functions/invite-platform-admin/index.ts:84:    if (role === "super_admin") {
+supabase/functions/invite-platform-admin/index.ts:104:    if (role === "tenant_admin" && woredaId) {
+supabase/functions/invite-platform-admin/index.ts:131:    const targetWoredaId = role === "super_admin" ? null : woredaId;
+supabase/functions/invite-tenant-user/index.ts:20:const ALLOWED_ROLES = new Set([
+supabase/functions/invite-tenant-user/index.ts:73:    if (role === "tenant_admin" || role === "super_admin") {
+supabase/functions/invite-tenant-user/index.ts:76:    if (!ALLOWED_ROLES.has(role)) {
+supabase/functions/invite-tenant-user/index.ts:91:    const isSuper = caller.role === "super_admin";
+supabase/functions/invite-tenant-user/index.ts:92:    const isTenantAdmin = caller.role === "tenant_admin" && caller.woreda_id === woredaId;
+supabase/functions/resend-platform-invite/index.ts:46:    if (!caller || caller.role !== "super_admin" || caller.status !== "active") {
+supabase/functions/resend-platform-invite/index.ts:63:    if (!target || (target.role !== "super_admin" && target.role !== "tenant_admin")) {
+supabase/functions/resend-tenant-invite/index.ts:21:const ALLOWED_TARGET_ROLES = new Set([
+supabase/functions/resend-tenant-invite/index.ts:69:    const isSuper = caller.role === "super_admin";
+supabase/functions/resend-tenant-invite/index.ts:70:    const isTenantAdmin = caller.role === "tenant_admin";
+supabase/functions/resend-tenant-invite/index.ts:96:    if (!ALLOWED_TARGET_ROLES.has(target.role)) {
+supabase/functions/send-password-reset-link/index.ts:17:const ALLOWED_TARGET_ROLES = new Set([
+supabase/functions/send-password-reset-link/index.ts:65:    const isSuper = caller.role === "super_admin";
+supabase/functions/send-password-reset-link/index.ts:66:    const isTenantAdmin = caller.role === "tenant_admin";
+supabase/functions/send-password-reset-link/index.ts:117:      isSuper && (target.role === "tenant_admin" || target.role === "super_admin");
+supabase/functions/send-password-reset-link/index.ts:118:    if (!ALLOWED_TARGET_ROLES.has(target.role) && !canTargetPlatformAdmin) {
+supabase/functions/sign-credential/index.ts:117:    if (appUser.role !== "super_admin" && appUser.woreda_id !== body.woredaId) {
+supabase/functions/sign-credential/index.ts:120:    if (appUser.role !== "super_admin") {
+
+### body parsing (no schema validation)
+supabase/functions/invite-platform-admin/index.ts:43:    const body = (await req.json()) as Body;
+supabase/functions/invite-tenant-user/index.ts:57:    const body = (await req.json()) as Body;
+supabase/functions/resend-platform-invite/index.ts:36:    const { user_id } = (await req.json()) as { user_id?: string };
+supabase/functions/resend-tenant-invite/index.ts:55:    const { user_id } = (await req.json()) as { user_id?: string };
+supabase/functions/send-password-reset-link/index.ts:51:    const { user_id } = (await req.json()) as Body;
+supabase/functions/sign-credential/index.ts:93:    const body = (await req.json()) as RequestBody;
+
+### rate limits
+supabase/functions/invite-platform-admin/index.ts:99:    const { allowed } = await checkRateLimit(admin, `invite-platform-admin:${callerId}`, 10, 600);
+supabase/functions/invite-tenant-user/index.ts:99:    const { allowed } = await checkRateLimit(admin, `invite-tenant-user:${callerId}`, 20, 600);
+supabase/functions/resend-platform-invite/index.ts:54:    const { allowed } = await checkRateLimit(admin, `resend-platform-invite:${callerId}`, 10, 600);
+supabase/functions/resend-tenant-invite/index.ts:78:    const { allowed } = await checkRateLimit(admin, `resend-tenant-invite:${callerId}`, 10, 600);
+
+### CORS allow-list
+
+### audit_log inserts (result unchecked)
+supabase/functions/activate-invited-user/index.ts:87:    await admin.from("audit_log").insert({
+supabase/functions/invite-platform-admin/index.ts:190:      await admin.from("audit_log").insert({
+supabase/functions/invite-platform-admin/index.ts:223:    await admin.from("audit_log").insert({
+supabase/functions/invite-tenant-user/index.ts:207:      await admin.from("audit_log").insert({
+supabase/functions/invite-tenant-user/index.ts:246:    await admin.from("audit_log").insert({
+supabase/functions/resend-platform-invite/index.ts:105:    await admin.from("audit_log").insert({
+supabase/functions/resend-tenant-invite/index.ts:159:    await admin.from("audit_log").insert({
+supabase/functions/send-password-reset-link/index.ts:180:    await admin.from("audit_log").insert({
+supabase/functions/sign-credential/index.ts:270:    await admin.from("audit_log").insert({
+
+### email in audit payloads
+supabase/functions/invite-platform-admin/index.ts:196:        new_value_json: { email, role, woreda_id: targetWoredaId },
+supabase/functions/invite-platform-admin/index.ts:229:      new_value_json: { email, role, woreda_id: targetWoredaId },
+supabase/functions/invite-tenant-user/index.ts:213:        new_value_json: { email, role, full_name },
+supabase/functions/invite-tenant-user/index.ts:252:      new_value_json: { email, role, full_name },
+supabase/functions/resend-platform-invite/index.ts:110:      new_value_json: { email },
+
+### username UNIQUE
+536:ALTER TABLE public.app_user ADD CONSTRAINT app_user_username_key UNIQUE (username);
+supabase/functions/invite-platform-admin/index.ts:146:    const username = email.split("@")[0]?.slice(0, 32) ?? email;
+supabase/functions/invite-tenant-user/index.ts:134:    const username = email.split("@")[0]?.slice(0, 32) ?? email;
+
+### webhook/SMS/payment integrations
+(none)
+
+### outbound fetch in functions
+(none - only supabase-js)

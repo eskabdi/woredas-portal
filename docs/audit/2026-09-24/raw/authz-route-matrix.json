@@ -1,0 +1,792 @@
+[
+ {
+  "route": "admin.audit.tsx",
+  "gates": [
+   "CP.AUDIT_VIEW"
+  ],
+  "page": [],
+  "module": [],
+  "writes": {}
+ },
+ {
+  "route": "admin.console-roles.tsx",
+  "gates": [
+   "CP.AUDIT_VIEW",
+   "CP.CONSOLE_USERS_MANAGE",
+   "CP.CREDENTIAL_TEMPLATE_MANAGE",
+   "CP.TENANTS_MANAGE",
+   "CP.USERS_MANAGE"
+  ],
+  "page": [],
+  "module": [],
+  "writes": {
+   "console_role_permission.INSERT": "console_perm:console.console_users.manage",
+   "audit_log.INSERT": "woreda",
+   "console_role.UPDATE": "console_perm:console.console_users.manage",
+   "console_role.DELETE": "console_perm:console.console_users.manage",
+   "console_role.INSERT": "console_perm:console.console_users.manage"
+  }
+ },
+ {
+  "route": "admin.credential-template.tsx",
+  "gates": [
+   "CP.CREDENTIAL_TEMPLATE_MANAGE"
+  ],
+  "page": [],
+  "module": [],
+  "writes": {
+   "id_card_template_field_draft.INSERT": "super_admin",
+   "audit_log.INSERT": "woreda",
+   "id_card_template_field_draft.DELETE": "super_admin",
+   "id_card_template.UPDATE": "super_admin",
+   "id_card_template_field_draft.UPDATE": "super_admin",
+   "storage:credential-templates.upload": "woreda path prefix only (WP-DB-002)"
+  }
+ },
+ {
+  "route": "admin.dashboard.tsx",
+  "gates": [],
+  "page": [],
+  "module": [],
+  "writes": {}
+ },
+ {
+  "route": "admin.tenants.$woredaId.index.tsx",
+  "gates": [
+   "CP.TENANTS_MANAGE"
+  ],
+  "page": [],
+  "module": [],
+  "writes": {
+   "tenant_module_config.INSERT": "super_admin",
+   "audit_log.INSERT": "woreda"
+  }
+ },
+ {
+  "route": "admin.tenants.$woredaId.provision.tsx",
+  "gates": [
+   "CP.TENANTS_MANAGE"
+  ],
+  "page": [],
+  "module": [],
+  "writes": {
+   "tenant_module_config.INSERT": "super_admin"
+  }
+ },
+ {
+  "route": "admin.tenants.index.tsx",
+  "gates": [
+   "CP.TENANTS_MANAGE",
+   "CP.USERS_MANAGE"
+  ],
+  "page": [],
+  "module": [],
+  "writes": {}
+ },
+ {
+  "route": "admin.tsx",
+  "gates": [],
+  "page": [],
+  "module": [],
+  "writes": {}
+ },
+ {
+  "route": "woreda.approvals.tsx",
+  "gates": [
+   "P.APPROVAL_QUEUE_VIEW"
+  ],
+  "page": [
+   "P.APPROVAL_QUEUE_VIEW"
+  ],
+  "module": [
+   "approvals"
+  ],
+  "writes": {}
+ },
+ {
+  "route": "woreda.audit.tsx",
+  "gates": [
+   "P.AUDIT_VIEW"
+  ],
+  "page": [
+   "P.AUDIT_VIEW"
+  ],
+  "module": [
+   "audit"
+  ],
+  "writes": {}
+ },
+ {
+  "route": "woreda.civil.$eventId.tsx",
+  "gates": [
+   "P.CIVIL_APPROVE",
+   "P.CIVIL_READ",
+   "P.CIVIL_RECORD_PAYMENT",
+   "P.CIVIL_REJECT",
+   "P.CIVIL_RESUBMIT",
+   "P.CIVIL_RETURN",
+   "P.CIVIL_VERIFY"
+  ],
+  "page": [],
+  "module": [],
+  "writes": {
+   "audit_log.INSERT": "woreda",
+   "vital_event.UPDATE": "woreda:civil.approve,civil.create_event,civil.record_payment,civil.register,civil.reject,civil.resubmit,civil.return,civil.submit,civil.verify",
+   "payment.INSERT": "woreda:payment.collect,revenue.collect",
+   "receipt.INSERT": "woreda:payment.collect,receipt.print,revenue.collect",
+   "rpc resolve_civil_fee": "see DB \u00a77"
+  }
+ },
+ {
+  "route": "woreda.civil.birth.new.tsx",
+  "gates": [
+   "P.CIVIL_REGISTER"
+  ],
+  "page": [],
+  "module": [],
+  "writes": {
+   "vital_event.INSERT": "woreda:civil.create_event,civil.register",
+   "audit_log.INSERT": "woreda"
+  }
+ },
+ {
+  "route": "woreda.civil.death.new.tsx",
+  "gates": [
+   "P.CIVIL_REGISTER"
+  ],
+  "page": [],
+  "module": [],
+  "writes": {
+   "vital_event.INSERT": "woreda:civil.create_event,civil.register",
+   "audit_log.INSERT": "woreda"
+  }
+ },
+ {
+  "route": "woreda.civil.divorce.new.tsx",
+  "gates": [
+   "P.CIVIL_REGISTER"
+  ],
+  "page": [],
+  "module": [],
+  "writes": {
+   "vital_event.INSERT": "woreda:civil.create_event,civil.register",
+   "audit_log.INSERT": "woreda"
+  }
+ },
+ {
+  "route": "woreda.civil.index.tsx",
+  "gates": [
+   "P.CIVIL_READ",
+   "P.CIVIL_REGISTER"
+  ],
+  "page": [],
+  "module": [],
+  "writes": {}
+ },
+ {
+  "route": "woreda.civil.marriage.new.tsx",
+  "gates": [
+   "P.CIVIL_REGISTER"
+  ],
+  "page": [],
+  "module": [],
+  "writes": {
+   "vital_event.INSERT": "woreda:civil.create_event,civil.register",
+   "audit_log.INSERT": "woreda"
+  }
+ },
+ {
+  "route": "woreda.civil.tsx",
+  "gates": [],
+  "page": [],
+  "module": [
+   "civil_registration"
+  ],
+  "writes": {}
+ },
+ {
+  "route": "woreda.complaints.tsx",
+  "gates": [
+   "P.SERVICE_READ"
+  ],
+  "page": [
+   "P.SERVICE_READ"
+  ],
+  "module": [
+   "services"
+  ],
+  "writes": {}
+ },
+ {
+  "route": "woreda.credentials.$requestId.certificate.tsx",
+  "gates": [
+   "P.CREDENTIAL_PREVIEW_PRINT"
+  ],
+  "page": [],
+  "module": [],
+  "writes": {}
+ },
+ {
+  "route": "woreda.credentials.$requestId.index.tsx",
+  "gates": [
+   "P.CREDENTIAL_APPROVE",
+   "P.CREDENTIAL_ISSUE",
+   "P.CREDENTIAL_PRINT",
+   "P.CREDENTIAL_READ",
+   "P.CREDENTIAL_REVOKE",
+   "P.CREDENTIAL_SUSPEND",
+   "P.PAYMENT_COLLECT"
+  ],
+  "page": [],
+  "module": [],
+  "writes": {
+   "credential_request.UPDATE": "woreda:credential.approve,credential.issue,credential.verify,payment.collect,revenue.collect",
+   "credential_request_status_history.INSERT": "woreda:credential.approve,credential.issue,credential.verify,payment.collect,revenue.collect",
+   "audit_log.INSERT": "woreda",
+   "payment.INSERT": "woreda:payment.collect,revenue.collect",
+   "receipt.INSERT": "woreda:payment.collect,receipt.print,revenue.collect",
+   "residence_credential.UPDATE": "woreda:credential.approve,credential.issue,credential.print,credential.renew,credential.revoke",
+   "credential_status_history.INSERT": "woreda:credential.approve,credential.issue,credential.print,credential.renew,credential.revoke"
+  }
+ },
+ {
+  "route": "woreda.credentials.$requestId.print.tsx",
+  "gates": [
+   "P.CREDENTIAL_PRINT"
+  ],
+  "page": [],
+  "module": [],
+  "writes": {
+   "residence_credential.UPDATE": "woreda:credential.approve,credential.issue,credential.print,credential.renew,credential.revoke",
+   "credential_status_history.INSERT": "woreda:credential.approve,credential.issue,credential.print,credential.renew,credential.revoke",
+   "credential_request.UPDATE": "woreda:credential.approve,credential.issue,credential.verify,payment.collect,revenue.collect",
+   "credential_request_status_history.INSERT": "woreda:credential.approve,credential.issue,credential.verify,payment.collect,revenue.collect",
+   "credential_print_log.INSERT": "woreda:credential.authorize_reprint",
+   "audit_log.INSERT": "woreda"
+  }
+ },
+ {
+  "route": "woreda.credentials.index.tsx",
+  "gates": [
+   "P.CREDENTIAL_ISSUE",
+   "P.CREDENTIAL_VERIFY"
+  ],
+  "page": [],
+  "module": [],
+  "writes": {}
+ },
+ {
+  "route": "woreda.credentials.new.tsx",
+  "gates": [
+   "P.CREDENTIAL_ISSUE"
+  ],
+  "page": [],
+  "module": [],
+  "writes": {
+   "credential_request.INSERT": "woreda:credential.issue",
+   "attachment.INSERT": "woreda",
+   "credential_request_status_history.INSERT": "woreda:credential.approve,credential.issue,credential.verify,payment.collect,revenue.collect",
+   "audit_log.INSERT": "woreda",
+   "storage:attachments.upload": "woreda path prefix only (WP-DB-002)"
+  }
+ },
+ {
+  "route": "woreda.credentials.tsx",
+  "gates": [],
+  "page": [],
+  "module": [
+   "credentials"
+  ],
+  "writes": {}
+ },
+ {
+  "route": "woreda.credentials.verify.tsx",
+  "gates": [
+   "P.CREDENTIAL_VERIFY"
+  ],
+  "page": [],
+  "module": [],
+  "writes": {}
+ },
+ {
+  "route": "woreda.dashboard.tsx",
+  "gates": [
+   "P.AUDIT_VIEW"
+  ],
+  "page": [],
+  "module": [],
+  "writes": {}
+ },
+ {
+  "route": "woreda.households.$householdId.edit.tsx",
+  "gates": [
+   "P.HOUSEHOLD_UPDATE"
+  ],
+  "page": [],
+  "module": [],
+  "writes": {
+   "household.UPDATE": "woreda:household.update",
+   "audit_log.INSERT": "woreda",
+   "household_change_log.INSERT": "woreda:household.create,household.update"
+  }
+ },
+ {
+  "route": "woreda.households.$householdId.index.tsx",
+  "gates": [
+   "P.HOUSEHOLD_READ",
+   "P.HOUSEHOLD_UPDATE"
+  ],
+  "page": [
+   "P.HOUSEHOLD_READ"
+  ],
+  "module": [],
+  "writes": {
+   "household.UPDATE": "woreda:household.update",
+   "audit_log.INSERT": "woreda"
+  }
+ },
+ {
+  "route": "woreda.households.$householdId.print.tsx",
+  "gates": [
+   "P.HOUSEHOLD_READ"
+  ],
+  "page": [
+   "P.HOUSEHOLD_READ"
+  ],
+  "module": [],
+  "writes": {}
+ },
+ {
+  "route": "woreda.households.index.tsx",
+  "gates": [
+   "P.HOUSEHOLD_CREATE",
+   "P.HOUSEHOLD_READ",
+   "P.HOUSEHOLD_UPDATE"
+  ],
+  "page": [
+   "P.HOUSEHOLD_READ"
+  ],
+  "module": [],
+  "writes": {
+   "household.UPDATE": "woreda:household.update",
+   "audit_log.INSERT": "woreda",
+   "household_change_log.INSERT": "woreda:household.create,household.update"
+  }
+ },
+ {
+  "route": "woreda.households.new.tsx",
+  "gates": [
+   "P.HOUSEHOLD_CREATE"
+  ],
+  "page": [],
+  "module": [],
+  "writes": {
+   "household.INSERT": "woreda:household.create",
+   "audit_log.INSERT": "woreda",
+   "household_change_log.INSERT": "woreda:household.create,household.update"
+  }
+ },
+ {
+  "route": "woreda.households.tsx",
+  "gates": [],
+  "page": [],
+  "module": [],
+  "writes": {}
+ },
+ {
+  "route": "woreda.rental-accounts.$occupancyId.tsx",
+  "gates": [
+   "P.RENTAL_BILLING",
+   "P.RENTAL_COLLECT",
+   "P.RENTAL_PLAN_APPROVE",
+   "P.RENTAL_PLAN_CREATE",
+   "P.RENTAL_PLAN_MANAGE",
+   "P.RENTAL_REVERSE"
+  ],
+  "page": [],
+  "module": [],
+  "writes": {
+   "arrears_repayment_plan.UPDATE": "woreda:rental.plan.approve,rental.plan.create,rental.plan.manage",
+   "rpc generate_rent_charges": "see DB \u00a77",
+   "rpc settle_rent_payment": "see DB \u00a77",
+   "rpc reverse_rental_payment": "see DB \u00a77",
+   "rpc create_arrears_repayment_plan": "see DB \u00a77",
+   "rpc settle_arrears_installments": "see DB \u00a77"
+  }
+ },
+ {
+  "route": "woreda.rental-houses.$houseId.edit.tsx",
+  "gates": [
+   "P.RENTAL_CREATE"
+  ],
+  "page": [
+   "P.RENTAL_CREATE"
+  ],
+  "module": [],
+  "writes": {
+   "kebele_rental_house.UPDATE": "woreda:rental.approve,rental.create,rental.vacate",
+   "audit_log.INSERT": "woreda"
+  }
+ },
+ {
+  "route": "woreda.rental-houses.$houseId.index.tsx",
+  "gates": [
+   "P.RENTAL_CREATE",
+   "P.RENTAL_VACATE",
+   "P.RENTAL_VIEW"
+  ],
+  "page": [
+   "P.RENTAL_VIEW"
+  ],
+  "module": [],
+  "writes": {
+   "rental_occupancy_request.INSERT": "woreda:rental.create,rental.vacate",
+   "audit_log.INSERT": "woreda"
+  }
+ },
+ {
+  "route": "woreda.rental-houses.$houseId.occupant-print.tsx",
+  "gates": [
+   "P.RENTAL_VIEW"
+  ],
+  "page": [
+   "P.RENTAL_VIEW"
+  ],
+  "module": [],
+  "writes": {}
+ },
+ {
+  "route": "woreda.rental-houses.index.tsx",
+  "gates": [
+   "P.RENTAL_CREATE",
+   "P.RENTAL_VIEW"
+  ],
+  "page": [
+   "P.RENTAL_VIEW"
+  ],
+  "module": [],
+  "writes": {}
+ },
+ {
+  "route": "woreda.rental-houses.new.tsx",
+  "gates": [
+   "P.RENTAL_CREATE"
+  ],
+  "page": [
+   "P.RENTAL_CREATE"
+  ],
+  "module": [],
+  "writes": {
+   "kebele_rental_house.INSERT": "woreda:rental.create",
+   "audit_log.INSERT": "woreda"
+  }
+ },
+ {
+  "route": "woreda.rental-houses.occupants.new.tsx",
+  "gates": [
+   "P.RENTAL_CREATE"
+  ],
+  "page": [
+   "P.RENTAL_CREATE"
+  ],
+  "module": [],
+  "writes": {
+   "rental_occupancy_request.INSERT": "woreda:rental.create,rental.vacate",
+   "rental_request_document.INSERT": "woreda:rental.create",
+   "audit_log.INSERT": "woreda",
+   "rpc rental_eligibility": "see DB \u00a77"
+  }
+ },
+ {
+  "route": "woreda.rental-houses.requests.$requestId.index.tsx",
+  "gates": [
+   "P.RENTAL_APPROVE",
+   "P.RENTAL_CREATE",
+   "P.RENTAL_VIEW"
+  ],
+  "page": [
+   "P.RENTAL_VIEW"
+  ],
+  "module": [],
+  "writes": {
+   "rental_occupancy_request.UPDATE": "woreda:rental.approve,rental.create,rental.vacate",
+   "audit_log.INSERT": "woreda",
+   "rpc provision_rent_account": "see DB \u00a77"
+  }
+ },
+ {
+  "route": "woreda.rental-houses.requests.index.tsx",
+  "gates": [
+   "P.RENTAL_VIEW"
+  ],
+  "page": [
+   "P.RENTAL_VIEW"
+  ],
+  "module": [],
+  "writes": {}
+ },
+ {
+  "route": "woreda.rental-reports.tsx",
+  "gates": [
+   "P.RENTAL_REPORT"
+  ],
+  "page": [
+   "P.RENTAL_REPORT"
+  ],
+  "module": [],
+  "writes": {
+   "rpc get_rental_billing_collection_report": "see DB \u00a77",
+   "rpc get_rental_arrears_aging_report": "see DB \u00a77",
+   "rpc get_rental_plan_compliance_report": "see DB \u00a77",
+   "rpc get_rental_checkpoint_activity_report": "see DB \u00a77",
+   "rpc get_rental_reconciliation_report": "see DB \u00a77"
+  }
+ },
+ {
+  "route": "woreda.reports.$reportType.print.tsx",
+  "gates": [
+   "P.REPORT_EXPORT"
+  ],
+  "page": [],
+  "module": [],
+  "writes": {}
+ },
+ {
+  "route": "woreda.reports.index.tsx",
+  "gates": [
+   "P.REPORT_EXPORT",
+   "P.REPORT_VIEW"
+  ],
+  "page": [
+   "P.REPORT_VIEW"
+  ],
+  "module": [
+   "reports"
+  ],
+  "writes": {}
+ },
+ {
+  "route": "woreda.reports.tsx",
+  "gates": [],
+  "page": [],
+  "module": [],
+  "writes": {}
+ },
+ {
+  "route": "woreda.residents.$residentId.edit.tsx",
+  "gates": [
+   "P.RESIDENT_UPDATE"
+  ],
+  "page": [],
+  "module": [],
+  "writes": {
+   "resident.UPDATE": "woreda:resident.update",
+   "audit_log.INSERT": "woreda"
+  }
+ },
+ {
+  "route": "woreda.residents.$residentId.index.tsx",
+  "gates": [
+   "P.CIVIL_REGISTER",
+   "P.CREDENTIAL_ISSUE",
+   "P.RESIDENT_READ",
+   "P.RESIDENT_UPDATE",
+   "P.SERVICE_CREATE"
+  ],
+  "page": [
+   "P.RESIDENT_READ"
+  ],
+  "module": [],
+  "writes": {}
+ },
+ {
+  "route": "woreda.residents.$residentId.print.tsx",
+  "gates": [
+   "P.RESIDENT_READ"
+  ],
+  "page": [
+   "P.RESIDENT_READ"
+  ],
+  "module": [],
+  "writes": {}
+ },
+ {
+  "route": "woreda.residents.index.tsx",
+  "gates": [
+   "P.RESIDENT_CREATE",
+   "P.RESIDENT_READ",
+   "P.RESIDENT_UPDATE"
+  ],
+  "page": [],
+  "module": [],
+  "writes": {
+   "audit_log.INSERT": "woreda",
+   "resident.UPDATE": "woreda:resident.update",
+   "rpc my_phone_blind_index": "see DB \u00a77",
+   "rpc my_national_id_blind_index": "see DB \u00a77"
+  }
+ },
+ {
+  "route": "woreda.residents.new.tsx",
+  "gates": [],
+  "page": [],
+  "module": [],
+  "writes": {
+   "resident.INSERT": "woreda:resident.create"
+  }
+ },
+ {
+  "route": "woreda.residents.tsx",
+  "gates": [],
+  "page": [],
+  "module": [],
+  "writes": {}
+ },
+ {
+  "route": "woreda.revenue.$paymentId.receipt.tsx",
+  "gates": [
+   "P.REVENUE_RECEIPT_REPRINT"
+  ],
+  "page": [],
+  "module": [],
+  "writes": {}
+ },
+ {
+  "route": "woreda.revenue.index.tsx",
+  "gates": [
+   "P.REVENUE_RECEIPT_REPRINT",
+   "P.REVENUE_VIEW"
+  ],
+  "page": [
+   "P.REVENUE_VIEW"
+  ],
+  "module": [],
+  "writes": {
+   "receipt.UPDATE": "woreda:payment.collect,receipt.print,revenue.receipt_reprint",
+   "audit_log.INSERT": "woreda"
+  }
+ },
+ {
+  "route": "woreda.revenue.tsx",
+  "gates": [],
+  "page": [],
+  "module": [
+   "revenue"
+  ],
+  "writes": {}
+ },
+ {
+  "route": "woreda.services.$requestId.index.tsx",
+  "gates": [
+   "P.PAYMENT_COLLECT",
+   "P.SERVICE_APPROVE",
+   "P.SERVICE_COMPLETE",
+   "P.SERVICE_ISSUE",
+   "P.SERVICE_ISSUE_LETTER",
+   "P.SERVICE_RECORD_PAYMENT",
+   "P.SERVICE_REJECT",
+   "P.SERVICE_RESUBMIT",
+   "P.SERVICE_RETURN",
+   "P.SERVICE_VERIFY"
+  ],
+  "page": [],
+  "module": [],
+  "writes": {
+   "service_request.UPDATE": "woreda:complaint.manage,service.approve,service.complete,service.create,service.issue,service.issue_letter,service.record_payment,service.reject,service.resubmit,service.return,service.submit,service.verify,tenant.manage",
+   "service_request_status_history.INSERT": "woreda",
+   "audit_log.INSERT": "woreda",
+   "payment.INSERT": "woreda:payment.collect,revenue.collect",
+   "receipt.INSERT": "woreda:payment.collect,receipt.print,revenue.collect",
+   "service_request_attachment.INSERT": "woreda:complaint.manage,service.create,service.verify,tenant.manage",
+   "storage:service-request-documents.upload": "woreda path prefix only (WP-DB-002)",
+   "rpc resolve_service_fee": "see DB \u00a77"
+  }
+ },
+ {
+  "route": "woreda.services.$requestId.print.tsx",
+  "gates": [],
+  "page": [],
+  "module": [],
+  "writes": {}
+ },
+ {
+  "route": "woreda.services.index.tsx",
+  "gates": [
+   "P.SERVICE_READ"
+  ],
+  "page": [
+   "P.SERVICE_READ"
+  ],
+  "module": [],
+  "writes": {}
+ },
+ {
+  "route": "woreda.services.new.tsx",
+  "gates": [
+   "P.SERVICE_CHECKPOINT_OVERRIDE",
+   "P.SERVICE_CREATE"
+  ],
+  "page": [
+   "P.SERVICE_CREATE"
+  ],
+  "module": [],
+  "writes": {
+   "service_request.INSERT": "woreda:complaint.manage,service.create,service.submit,tenant.manage",
+   "service_request_attachment.INSERT": "woreda:complaint.manage,service.create,service.verify,tenant.manage",
+   "service_request_status_history.INSERT": "woreda",
+   "audit_log.INSERT": "woreda",
+   "storage:service-request-documents.upload": "woreda path prefix only (WP-DB-002)",
+   "rpc resolve_rental_checkpoint": "see DB \u00a77"
+  }
+ },
+ {
+  "route": "woreda.services.tsx",
+  "gates": [],
+  "page": [],
+  "module": [
+   "services"
+  ],
+  "writes": {}
+ },
+ {
+  "route": "woreda.settings.index.tsx",
+  "gates": [],
+  "page": [],
+  "module": [],
+  "writes": {}
+ },
+ {
+  "route": "woreda.settings.users-permissions.tsx",
+  "gates": [
+   "P.TENANT_MANAGE"
+  ],
+  "page": [],
+  "module": [],
+  "writes": {}
+ },
+ {
+  "route": "woreda.settings.woreda-configuration.tsx",
+  "gates": [
+   "P.TENANT_MANAGE"
+  ],
+  "page": [],
+  "module": [],
+  "writes": {
+   "woreda_settings.INSERT": "woreda:tenant.manage",
+   "audit_log.INSERT": "woreda",
+   "service_type.DELETE": "woreda:tenant.manage",
+   "service_type.UPDATE": "woreda:tenant.manage",
+   "service_type.INSERT": "woreda:tenant.manage",
+   "fee_schedule.UPDATE": "woreda:tenant.manage",
+   "fee_schedule.INSERT": "woreda:tenant.manage",
+   "storage:tenant-assets.upload": "woreda path prefix only (WP-DB-002)"
+  }
+ },
+ {
+  "route": "woreda.tsx",
+  "gates": [],
+  "page": [],
+  "module": [],
+  "writes": {}
+ }
+]

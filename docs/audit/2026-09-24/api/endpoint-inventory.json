@@ -1,0 +1,2262 @@
+{
+ "generated": "2026-09-24",
+ "commit": "9950f16e426eedd586c6fd85f6c328d9923542d1",
+ "method": "Tables/views/functions from migrations replay (raw/audit-database-catalog.json); EXECUTE model from raw/audit-database-fn-acl.json (Supabase stock default ACL assumed; Needs-live-verification); client usage by regex over src/ (excl. types.ts and __tests__); trigger-returning functions excluded (not callable via PostgREST).",
+ "counts": {
+  "tables": 66,
+  "views": 17,
+  "rpc_candidates": 64,
+  "rpc_public": 3,
+  "rpc_private": 25,
+  "rpc_internal_exposed": 26,
+  "rpc_not_exposed": 10,
+  "edge_functions": 8,
+  "tables_without_client_use": 21
+ },
+ "edge_functions": [
+  {
+   "resource": "/functions/v1/sign-credential",
+   "method": "POST",
+   "classification": "Private",
+   "auth": "JWT -> admin.auth.getUser(jwt); app_user active; same woreda (body.woredaId cross-checked); user_has_perm(credential.print) unless super_admin",
+   "rate_limit": "none",
+   "source": "supabase/functions/sign-credential/index.ts:63-285",
+   "client_caller": "src/utils/harariCredentialCrypto.ts:90"
+  },
+  {
+   "resource": "/functions/v1/invite-tenant-user",
+   "method": "POST",
+   "classification": "Private",
+   "auth": "JWT -> userClient.auth.getUser(); active tenant_admin of body.woredaId or active super_admin (no console permission check)",
+   "rate_limit": "20/600s per caller (fail-open)",
+   "source": "supabase/functions/invite-tenant-user/index.ts:29-260",
+   "client_caller": "src/components/settings/UsersRolesTab.tsx:787"
+  },
+  {
+   "resource": "/functions/v1/invite-platform-admin",
+   "method": "POST",
+   "classification": "Private",
+   "auth": "JWT; active super_admin; console.console_users.manage only when role=super_admin",
+   "rate_limit": "10/600s per caller (fail-open)",
+   "source": "supabase/functions/invite-platform-admin/index.ts:15-237",
+   "client_caller": "src/components/admin/PlatformUsersTab.tsx:679; src/routes/admin.tenants.$woredaId.provision.tsx:166"
+  },
+  {
+   "resource": "/functions/v1/resend-platform-invite",
+   "method": "POST",
+   "classification": "Private",
+   "auth": "JWT; active super_admin (no console permission check)",
+   "rate_limit": "10/600s per caller (fail-open)",
+   "source": "supabase/functions/resend-platform-invite/index.ts:8-118",
+   "client_caller": "src/components/admin/PlatformUsersTab.tsx:307"
+  },
+  {
+   "resource": "/functions/v1/resend-tenant-invite",
+   "method": "POST",
+   "classification": "Private",
+   "auth": "JWT; active tenant_admin (target re-derived to caller woreda) or super_admin",
+   "rate_limit": "10/600s per caller (fail-open)",
+   "source": "supabase/functions/resend-tenant-invite/index.ts:30-173",
+   "client_caller": "src/components/settings/UsersRolesTab.tsx:283"
+  },
+  {
+   "resource": "/functions/v1/send-password-reset-link",
+   "method": "POST",
+   "classification": "Private",
+   "auth": "JWT; active tenant_admin (same woreda, staff target) or super_admin (any target)",
+   "rate_limit": "10/600s per caller (fail-open)",
+   "source": "supabase/functions/send-password-reset-link/index.ts:26-194",
+   "client_caller": "src/components/settings/UsersRolesTab.tsx:304; src/components/admin/PlatformUsersTab.tsx:325"
+  },
+  {
+   "resource": "/functions/v1/activate-invited-user",
+   "method": "POST",
+   "classification": "Private (self-scoped)",
+   "auth": "JWT; caller own row only; pending->active",
+   "rate_limit": "none",
+   "source": "supabase/functions/activate-invited-user/index.ts:17-101",
+   "client_caller": "src/routes/set-password.tsx:128"
+  },
+  {
+   "resource": "/functions/v1/record-login",
+   "method": "POST",
+   "classification": "Private (self-scoped)",
+   "auth": "JWT; caller own row only; writes last_login_at",
+   "rate_limit": "none",
+   "source": "supabase/functions/record-login/index.ts:20-61",
+   "client_caller": "src/routes/login.tsx:132,142"
+  }
+ ],
+ "rpcs": [
+  {
+   "resource": "/rest/v1/rpc/check_credential_print_eligibility",
+   "args": "_credential_id uuid",
+   "security_definer": false,
+   "anon_executable_modelled": true,
+   "authenticated_executable_modelled": true,
+   "classification": "Internal (exposed via /rest/v1/rpc but no client caller)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000046_task10_credential_lifecycle.sql:70"
+  },
+  {
+   "resource": "/rest/v1/rpc/create_arrears_repayment_plan",
+   "args": "_rent_account_id uuid, _installment_count integer, _installment_due_dates date[], _reason text",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Private",
+   "client_callers": [
+    "src/routes/woreda.rental-accounts.$occupancyId.tsx"
+   ],
+   "latest_definition": "supabase/migrations/00000000000087_rental_review_round4_fixes.sql:303"
+  },
+  {
+   "resource": "/rest/v1/rpc/current_console_permissions",
+   "args": "",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Private",
+   "client_callers": [
+    "src/hooks/useAuthBootstrap.ts"
+   ],
+   "latest_definition": "supabase/migrations/00000000000012_enforce_console_rbac.sql:65"
+  },
+  {
+   "resource": "/rest/v1/rpc/current_permissions",
+   "args": "",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Private",
+   "client_callers": [
+    "src/hooks/useAuthBootstrap.ts"
+   ],
+   "latest_definition": "supabase/migrations/00000000000039_task13_custom_role_resolution.sql:119"
+  },
+  {
+   "resource": "/rest/v1/rpc/decrypt_pii_numeric",
+   "args": "_cipher bytea, _woreda_id uuid",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Internal (exposed via /rest/v1/rpc but no client caller)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000023_pii_encryption.sql:371"
+  },
+  {
+   "resource": "/rest/v1/rpc/decrypt_pii_text",
+   "args": "_cipher bytea, _woreda_id uuid",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Internal (exposed via /rest/v1/rpc but no client caller)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000023_pii_encryption.sql:324"
+  },
+  {
+   "resource": "/rest/v1/rpc/default_role_perms",
+   "args": "_role text",
+   "security_definer": false,
+   "anon_executable_modelled": true,
+   "authenticated_executable_modelled": true,
+   "classification": "Internal (exposed via /rest/v1/rpc but no client caller)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:96"
+  },
+  {
+   "resource": "/rest/v1/rpc/derive_woreda_key",
+   "args": "_woreda_id uuid",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": false,
+   "classification": "Internal (not exposed: EXECUTE revoked from anon+authenticated)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000023_pii_encryption.sql:177"
+  },
+  {
+   "resource": "/rest/v1/rpc/discard_id_card_template_draft",
+   "args": "",
+   "security_definer": false,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Private",
+   "client_callers": [
+    "src/routes/admin.credential-template.tsx"
+   ],
+   "latest_definition": "supabase/migrations/00000000000010_id_card_template_draft.sql:171"
+  },
+  {
+   "resource": "/rest/v1/rpc/encrypt_pii_numeric",
+   "args": "_value numeric, _woreda_id uuid",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": false,
+   "classification": "Internal (not exposed: EXECUTE revoked from anon+authenticated)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000023_pii_encryption.sql:278"
+  },
+  {
+   "resource": "/rest/v1/rpc/encrypt_pii_text",
+   "args": "_plain text, _woreda_id uuid",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": false,
+   "classification": "Internal (not exposed: EXECUTE revoked from anon+authenticated)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000023_pii_encryption.sql:252"
+  },
+  {
+   "resource": "/rest/v1/rpc/entity_approve_perm_ok",
+   "args": "_entity text",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Internal (exposed via /rest/v1/rpc but no client caller)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000053_task11_review_round2.sql:152"
+  },
+  {
+   "resource": "/rest/v1/rpc/entity_attach_perm_ok",
+   "args": "_entity text",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Internal (exposed via /rest/v1/rpc but no client caller)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000053_task11_review_round2.sql:132"
+  },
+  {
+   "resource": "/rest/v1/rpc/entity_belongs_to_woreda",
+   "args": "_entity text, _entity_id uuid, _woreda_id uuid",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Internal (exposed via /rest/v1/rpc but no client caller)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000053_task11_review_round2.sql:75"
+  },
+  {
+   "resource": "/rest/v1/rpc/entity_read_perm_ok",
+   "args": "_entity text",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Internal (exposed via /rest/v1/rpc but no client caller)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000053_task11_review_round2.sql:112"
+  },
+  {
+   "resource": "/rest/v1/rpc/gen_letter_verification_token",
+   "args": "",
+   "security_definer": false,
+   "anon_executable_modelled": true,
+   "authenticated_executable_modelled": true,
+   "classification": "Internal (exposed via /rest/v1/rpc but no client caller)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000000_baseline.sql:1223"
+  },
+  {
+   "resource": "/rest/v1/rpc/gen_receipt_verification_token",
+   "args": "",
+   "security_definer": false,
+   "anon_executable_modelled": true,
+   "authenticated_executable_modelled": true,
+   "classification": "Internal (exposed via /rest/v1/rpc but no client caller)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000013_receipt_verification.sql:16"
+  },
+  {
+   "resource": "/rest/v1/rpc/generate_rent_charges",
+   "args": "_target_period text, _due_date date",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Private",
+   "client_callers": [
+    "src/routes/woreda.rental-accounts.$occupancyId.tsx"
+   ],
+   "latest_definition": "supabase/migrations/00000000000076_rental_phase2_financial_core.sql:533"
+  },
+  {
+   "resource": "/rest/v1/rpc/generate_rent_reminders",
+   "args": "",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Internal (exposed via /rest/v1/rpc but no client caller)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000080_rental_phase4_arrears.sql:999"
+  },
+  {
+   "resource": "/rest/v1/rpc/get_civil_kpis",
+   "args": "",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Private",
+   "client_callers": [
+    "src/hooks/useCivilKpis.ts"
+   ],
+   "latest_definition": "supabase/migrations/00000000000067_task14c_civil_kpis.sql:13"
+  },
+  {
+   "resource": "/rest/v1/rpc/get_credential_kpis",
+   "args": "",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Private",
+   "client_callers": [
+    "src/hooks/useCredentialRequests.ts"
+   ],
+   "latest_definition": "supabase/migrations/00000000000057_task12b_credential_kpis.sql:39"
+  },
+  {
+   "resource": "/rest/v1/rpc/get_credential_live_status",
+   "args": "_credential_number text",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Internal (exposed via /rest/v1/rpc but no client caller)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000000_baseline.sql:1323"
+  },
+  {
+   "resource": "/rest/v1/rpc/get_rent_account_ledger_summary",
+   "args": "_rent_account_id uuid",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Internal (exposed via /rest/v1/rpc but no client caller)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000087_rental_review_round4_fixes.sql:457"
+  },
+  {
+   "resource": "/rest/v1/rpc/get_rental_arrears_aging_report",
+   "args": "_current_period_key text",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Private",
+   "client_callers": [
+    "src/routes/woreda.rental-reports.tsx"
+   ],
+   "latest_definition": "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:581"
+  },
+  {
+   "resource": "/rest/v1/rpc/get_rental_billing_collection_report",
+   "args": "",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Private",
+   "client_callers": [
+    "src/routes/woreda.rental-reports.tsx"
+   ],
+   "latest_definition": "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:543"
+  },
+  {
+   "resource": "/rest/v1/rpc/get_rental_checkpoint_activity_report",
+   "args": "_start_date date, _end_date date",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Private",
+   "client_callers": [
+    "src/routes/woreda.rental-reports.tsx"
+   ],
+   "latest_definition": "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:688"
+  },
+  {
+   "resource": "/rest/v1/rpc/get_rental_plan_compliance_report",
+   "args": "",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Private",
+   "client_callers": [
+    "src/routes/woreda.rental-reports.tsx"
+   ],
+   "latest_definition": "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:646"
+  },
+  {
+   "resource": "/rest/v1/rpc/get_rental_reconciliation_report",
+   "args": "",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Private",
+   "client_callers": [
+    "src/routes/woreda.rental-reports.tsx"
+   ],
+   "latest_definition": "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:724"
+  },
+  {
+   "resource": "/rest/v1/rpc/get_service_kpis",
+   "args": "",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Private",
+   "client_callers": [
+    "src/hooks/useServiceTypes.ts"
+   ],
+   "latest_definition": "supabase/migrations/00000000000062_task14b_payment_issuance_and_preconditions.sql:211"
+  },
+  {
+   "resource": "/rest/v1/rpc/get_user_woreda_id",
+   "args": "",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Internal (exposed via /rest/v1/rpc but no client caller)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000000_baseline.sql:1335"
+  },
+  {
+   "resource": "/rest/v1/rpc/is_active_app_user",
+   "args": "",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Internal (exposed via /rest/v1/rpc but no client caller)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000002_credential.sql:185"
+  },
+  {
+   "resource": "/rest/v1/rpc/is_super_admin",
+   "args": "",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Internal (exposed via /rest/v1/rpc but no client caller)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000011_status_check_admin_helpers.sql:15"
+  },
+  {
+   "resource": "/rest/v1/rpc/is_tenant_admin",
+   "args": "",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Internal (exposed via /rest/v1/rpc but no client caller)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000011_status_check_admin_helpers.sql:25"
+  },
+  {
+   "resource": "/rest/v1/rpc/luhn_check_digit",
+   "args": "_digits TEXT",
+   "security_definer": false,
+   "anon_executable_modelled": true,
+   "authenticated_executable_modelled": true,
+   "classification": "Internal (exposed via /rest/v1/rpc but no client caller)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000002_credential.sql:22"
+  },
+  {
+   "resource": "/rest/v1/rpc/my_national_id_blind_index",
+   "args": "_id text",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Private",
+   "client_callers": [
+    "src/components/forms/ResidentWizardSteps.tsx",
+    "src/routes/woreda.residents.index.tsx"
+   ],
+   "latest_definition": "supabase/migrations/00000000000044_task6_household_rent_national_id_pii.sql:103"
+  },
+  {
+   "resource": "/rest/v1/rpc/my_phone_blind_index",
+   "args": "_phone text",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Private",
+   "client_callers": [
+    "src/routes/woreda.residents.index.tsx"
+   ],
+   "latest_definition": "supabase/migrations/00000000000023_pii_encryption.sql:394"
+  },
+  {
+   "resource": "/rest/v1/rpc/national_id_blind_index",
+   "args": "_id text, _woreda_id uuid",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": false,
+   "classification": "Internal (not exposed: EXECUTE revoked from anon+authenticated)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000044_task6_household_rent_national_id_pii.sql:78"
+  },
+  {
+   "resource": "/rest/v1/rpc/normalize_phone",
+   "args": "_phone text",
+   "security_definer": false,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": false,
+   "classification": "Internal (not exposed: EXECUTE revoked from anon+authenticated)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000023_pii_encryption.sql:213"
+  },
+  {
+   "resource": "/rest/v1/rpc/phone_blind_index",
+   "args": "_phone text, _woreda_id uuid",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": false,
+   "classification": "Internal (not exposed: EXECUTE revoked from anon+authenticated)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000023_pii_encryption.sql:294"
+  },
+  {
+   "resource": "/rest/v1/rpc/pii_encryption_status",
+   "args": "",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": false,
+   "classification": "Internal (not exposed: EXECUTE revoked from anon+authenticated)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000044_task6_household_rent_national_id_pii.sql:192"
+  },
+  {
+   "resource": "/rest/v1/rpc/pii_root_key",
+   "args": "",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": false,
+   "classification": "Internal (not exposed: EXECUTE revoked from anon+authenticated)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000023_pii_encryption.sql:148"
+  },
+  {
+   "resource": "/rest/v1/rpc/provision_rent_account",
+   "args": "_occupancy_id uuid, _billing_start_period_key text",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Private",
+   "client_callers": [
+    "src/routes/woreda.rental-houses.requests.$requestId.index.tsx"
+   ],
+   "latest_definition": "supabase/migrations/00000000000087_rental_review_round4_fixes.sql:115"
+  },
+  {
+   "resource": "/rest/v1/rpc/publish_id_card_template",
+   "args": "",
+   "security_definer": false,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Private",
+   "client_callers": [
+    "src/routes/admin.credential-template.tsx"
+   ],
+   "latest_definition": "supabase/migrations/00000000000010_id_card_template_draft.sql:120"
+  },
+  {
+   "resource": "/rest/v1/rpc/rate_limit_hit",
+   "args": "_bucket_key text, _window_seconds integer",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": false,
+   "classification": "Internal (not exposed: EXECUTE revoked from anon+authenticated)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000022_rate_limit.sql:46"
+  },
+  {
+   "resource": "/rest/v1/rpc/refresh_rent_ledger_statuses",
+   "args": "",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Internal (exposed via /rest/v1/rpc but no client caller)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000081_rental_phase4_review_fixes.sql:527"
+  },
+  {
+   "resource": "/rest/v1/rpc/rental_eligibility",
+   "args": "_resident_id uuid, _rental_house_id uuid, _request_type text",
+   "security_definer": true,
+   "anon_executable_modelled": true,
+   "authenticated_executable_modelled": true,
+   "classification": "Private",
+   "client_callers": [
+    "src/routes/woreda.rental-houses.occupants.new.tsx"
+   ],
+   "latest_definition": "supabase/migrations/00000000000031_rental_eligibility.sql:55"
+  },
+  {
+   "resource": "/rest/v1/rpc/rental_period_month_index",
+   "args": "_period_key text",
+   "security_definer": false,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Internal (exposed via /rest/v1/rpc but no client caller)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:532"
+  },
+  {
+   "resource": "/rest/v1/rpc/resolve_civil_fee",
+   "args": "_event_type text",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Private",
+   "client_callers": [
+    "src/routes/woreda.civil.$eventId.tsx"
+   ],
+   "latest_definition": "supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql:386"
+  },
+  {
+   "resource": "/rest/v1/rpc/resolve_credential_fee",
+   "args": "_request_type text",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Private",
+   "client_callers": [
+    "src/hooks/useCredentialRequests.ts",
+    "src/lib/offlineSync.ts"
+   ],
+   "latest_definition": "supabase/migrations/00000000000054_task12_fee_catalog_repair.sql:67"
+  },
+  {
+   "resource": "/rest/v1/rpc/resolve_reconciliation_exception",
+   "args": "_exception_id uuid, _status text, _resolution_note text",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Internal (exposed via /rest/v1/rpc but no client caller)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000086_rental_review_round3_fixes.sql:196"
+  },
+  {
+   "resource": "/rest/v1/rpc/resolve_rental_checkpoint",
+   "args": "_resident_id uuid",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Private",
+   "client_callers": [
+    "src/routes/woreda.services.new.tsx"
+   ],
+   "latest_definition": "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:342"
+  },
+  {
+   "resource": "/rest/v1/rpc/resolve_rental_checkpoint_core",
+   "args": "_resident_id uuid",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": false,
+   "classification": "Internal (not exposed: EXECUTE revoked from anon+authenticated)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:218"
+  },
+  {
+   "resource": "/rest/v1/rpc/resolve_service_fee",
+   "args": "_service_type_id uuid",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Private",
+   "client_callers": [
+    "src/routes/woreda.services.$requestId.index.tsx"
+   ],
+   "latest_definition": "supabase/migrations/00000000000062_task14b_payment_issuance_and_preconditions.sql:162"
+  },
+  {
+   "resource": "/rest/v1/rpc/reverse_rental_payment",
+   "args": "_payment_id uuid, _reason text",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Private",
+   "client_callers": [
+    "src/routes/woreda.rental-accounts.$occupancyId.tsx"
+   ],
+   "latest_definition": "supabase/migrations/00000000000089_rental_review_round6_fixes.sql:434"
+  },
+  {
+   "resource": "/rest/v1/rpc/settle_arrears_installments",
+   "args": "_plan_id uuid, _installment_ids uuid[], _payment_amount numeric, _payment_date date, _channel text, _reference_number text, _payer_resident_id uuid, _idempotency_key text",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Private",
+   "client_callers": [
+    "src/routes/woreda.rental-accounts.$occupancyId.tsx"
+   ],
+   "latest_definition": "supabase/migrations/00000000000089_rental_review_round6_fixes.sql:233"
+  },
+  {
+   "resource": "/rest/v1/rpc/settle_rent_payment",
+   "args": "_rent_account_id uuid, _rent_charge_ids uuid[], _payment_amount numeric, _payment_date date, _channel text, _reference_number text, _payer_resident_id uuid, _idempotency_key text",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Private",
+   "client_callers": [
+    "src/routes/woreda.rental-accounts.$occupancyId.tsx"
+   ],
+   "latest_definition": "supabase/migrations/00000000000087_rental_review_round4_fixes.sql:582"
+  },
+  {
+   "resource": "/rest/v1/rpc/storage_path_woreda_id",
+   "args": "object_name text",
+   "security_definer": false,
+   "anon_executable_modelled": true,
+   "authenticated_executable_modelled": true,
+   "classification": "Internal (exposed via /rest/v1/rpc but no client caller)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000000_baseline.sql:1372"
+  },
+  {
+   "resource": "/rest/v1/rpc/user_has_any_perm",
+   "args": "_perms text[]",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Internal (exposed via /rest/v1/rpc but no client caller)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000000_baseline.sql:1381"
+  },
+  {
+   "resource": "/rest/v1/rpc/user_has_console_perm",
+   "args": "_perm text",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Internal (exposed via /rest/v1/rpc but no client caller)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000009_console_roles.sql:60"
+  },
+  {
+   "resource": "/rest/v1/rpc/user_has_perm",
+   "args": "_perm text",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Internal (exposed via /rest/v1/rpc but no client caller)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000039_task13_custom_role_resolution.sql:83"
+  },
+  {
+   "resource": "/rest/v1/rpc/user_permission_override_target_role_ok",
+   "args": "_user_id uuid",
+   "security_definer": true,
+   "anon_executable_modelled": false,
+   "authenticated_executable_modelled": true,
+   "classification": "Internal (exposed via /rest/v1/rpc but no client caller)",
+   "client_callers": [],
+   "latest_definition": "supabase/migrations/00000000000019_override_hardening.sql:60"
+  },
+  {
+   "resource": "/rest/v1/rpc/verify_credential_token",
+   "args": "_token TEXT",
+   "security_definer": true,
+   "anon_executable_modelled": true,
+   "authenticated_executable_modelled": true,
+   "classification": "Public",
+   "client_callers": [
+    "src/components/verification/HararildScanner.tsx",
+    "src/routes/v.$token.tsx"
+   ],
+   "latest_definition": "supabase/migrations/00000000000034_task3_harden_credential_verification.sql:145"
+  },
+  {
+   "resource": "/rest/v1/rpc/verify_receipt",
+   "args": "_token text",
+   "security_definer": true,
+   "anon_executable_modelled": true,
+   "authenticated_executable_modelled": true,
+   "classification": "Public",
+   "client_callers": [
+    "src/routes/verify.receipt.$token.tsx"
+   ],
+   "latest_definition": "supabase/migrations/00000000000013_receipt_verification.sql:134"
+  },
+  {
+   "resource": "/rest/v1/rpc/verify_service_letter",
+   "args": "_token text",
+   "security_definer": true,
+   "anon_executable_modelled": true,
+   "authenticated_executable_modelled": true,
+   "classification": "Public",
+   "client_callers": [
+    "src/routes/verify.letter.$token.tsx"
+   ],
+   "latest_definition": "supabase/migrations/00000000000064_task14b_verify_letter_completed_status.sql:22"
+  }
+ ],
+ "tables": [
+  {
+   "resource": "/rest/v1/app_user",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "ALL:app_user_super_admin_write",
+    "ALL:app_user_tenant_admin_write",
+    "SELECT:app_user_self_read"
+   ],
+   "client_ops": {
+    "select": 15,
+    "update": 7
+   },
+   "client_files": [
+    "src/components/admin/PlatformUsersTab.tsx",
+    "src/components/credentials/CredentialQueueTable.tsx",
+    "src/components/services/ServiceRequestList.tsx",
+    "src/components/settings/UsersRolesTab.tsx",
+    "src/components/workflow/HistoryTimeline.tsx",
+    "src/hooks/useAuthBootstrap.ts"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000000_baseline.sql:24"
+  },
+  {
+   "resource": "/rest/v1/approval",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "INSERT:approval_insert",
+    "SELECT:approval_select"
+   ],
+   "client_ops": {},
+   "client_files": [],
+   "note": "",
+   "created": "supabase/migrations/00000000000048_task11_schema_gaps.sql:260"
+  },
+  {
+   "resource": "/rest/v1/arrears_installment_charge",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "SELECT:arrears_installment_charge_select"
+   ],
+   "client_ops": {
+    "select": 1
+   },
+   "client_files": [
+    "src/routes/woreda.rental-accounts.$occupancyId.tsx"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000080_rental_phase4_arrears.sql:419"
+  },
+  {
+   "resource": "/rest/v1/arrears_plan_sequence",
+   "kind": "table",
+   "classification": "Internal",
+   "rls_enabled": true,
+   "policies": [
+    "SELECT:arrears_plan_sequence_select"
+   ],
+   "client_ops": {},
+   "client_files": [],
+   "note": "Numbering counter; exposed via PostgREST to authenticated under RLS (see WP-DB-006); no client use",
+   "created": "supabase/migrations/00000000000080_rental_phase4_arrears.sql:182"
+  },
+  {
+   "resource": "/rest/v1/arrears_repayment_installment",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "SELECT:arrears_repayment_installment_select"
+   ],
+   "client_ops": {
+    "select": 1
+   },
+   "client_files": [
+    "src/routes/woreda.rental-accounts.$occupancyId.tsx"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000080_rental_phase4_arrears.sql:356"
+  },
+  {
+   "resource": "/rest/v1/arrears_repayment_plan",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "SELECT:arrears_repayment_plan_select",
+    "UPDATE:arrears_repayment_plan_update"
+   ],
+   "client_ops": {
+    "select": 1,
+    "update": 5
+   },
+   "client_files": [
+    "src/routes/woreda.rental-accounts.$occupancyId.tsx"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000080_rental_phase4_arrears.sql:195"
+  },
+  {
+   "resource": "/rest/v1/attachment",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "INSERT:attachment_insert",
+    "SELECT:attachment_select"
+   ],
+   "client_ops": {
+    "select": 1,
+    "insert": 1
+   },
+   "client_files": [
+    "src/routes/woreda.credentials.$requestId.index.tsx",
+    "src/routes/woreda.credentials.new.tsx"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000048_task11_schema_gaps.sql:306"
+  },
+  {
+   "resource": "/rest/v1/audit_log",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "INSERT:audit_log_tenant_insert",
+    "SELECT:audit_log_tenant_read"
+   ],
+   "client_ops": {
+    "insert": 68,
+    "select": 5
+   },
+   "client_files": [
+    "src/components/admin/PlatformUsersTab.tsx",
+    "src/components/residents/ResidentActions.tsx",
+    "src/components/residents/ResidentProfileTabs.tsx",
+    "src/components/settings/RolesPermissionsTab.tsx",
+    "src/components/settings/UsersRolesTab.tsx",
+    "src/lib/offlineSync.ts"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000000_baseline.sql:37"
+  },
+  {
+   "resource": "/rest/v1/console_role",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "ALL:console_role_write_console_admin",
+    "SELECT:console_role_read_super_admin"
+   ],
+   "client_ops": {
+    "select": 2,
+    "update": 2,
+    "delete": 1,
+    "insert": 1
+   },
+   "client_files": [
+    "src/components/admin/PlatformUsersTab.tsx",
+    "src/routes/admin.console-roles.tsx"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000009_console_roles.sql:15"
+  },
+  {
+   "resource": "/rest/v1/console_role_permission",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "ALL:console_role_permission_write_console_admin",
+    "SELECT:console_role_permission_read_super_admin"
+   ],
+   "client_ops": {
+    "select": 1,
+    "upsert": 1,
+    "insert": 1
+   },
+   "client_files": [
+    "src/routes/admin.console-roles.tsx"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000009_console_roles.sql:33"
+  },
+  {
+   "resource": "/rest/v1/credential_number_sequence",
+   "kind": "table",
+   "classification": "Internal",
+   "rls_enabled": true,
+   "policies": [
+    "ALL:credential_seq_tenant"
+   ],
+   "client_ops": {},
+   "client_files": [],
+   "note": "Numbering counter; exposed via PostgREST to authenticated under RLS (see WP-DB-006); no client use",
+   "created": "supabase/migrations/00000000000000_baseline.sql:49"
+  },
+  {
+   "resource": "/rest/v1/credential_policy",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "INSERT:credential_policy_insert",
+    "SELECT:credential_policy_select",
+    "UPDATE:credential_policy_update"
+   ],
+   "client_ops": {
+    "select": 1
+   },
+   "client_files": [
+    "src/hooks/useCredentialRequests.ts"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000048_task11_schema_gaps.sql:375"
+  },
+  {
+   "resource": "/rest/v1/credential_print_log",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "DELETE:credential_print_log_delete",
+    "INSERT:credential_print_log_insert",
+    "SELECT:credential_print_log_select",
+    "UPDATE:credential_print_log_update"
+   ],
+   "client_ops": {
+    "select": 2,
+    "insert": 1
+   },
+   "client_files": [
+    "src/routes/woreda.credentials.$requestId.index.tsx",
+    "src/routes/woreda.credentials.$requestId.print.tsx"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000000_baseline.sql:54"
+  },
+  {
+   "resource": "/rest/v1/credential_request",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "DELETE:credential_request_delete",
+    "INSERT:credential_request_insert",
+    "SELECT:credential_request_select",
+    "UPDATE:credential_request_update"
+   ],
+   "client_ops": {
+    "select": 9,
+    "update": 13,
+    "insert": 1
+   },
+   "client_files": [
+    "src/components/credentials/CredentialQueueTable.tsx",
+    "src/components/residents/ResidentProfileTabs.tsx",
+    "src/lib/offlineSync.ts",
+    "src/routes/woreda.credentials.$requestId.certificate.tsx",
+    "src/routes/woreda.credentials.$requestId.index.tsx",
+    "src/routes/woreda.credentials.$requestId.print.tsx"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000000_baseline.sql:68"
+  },
+  {
+   "resource": "/rest/v1/credential_request_sequence",
+   "kind": "table",
+   "classification": "Internal",
+   "rls_enabled": true,
+   "policies": [
+    "ALL:cred_req_seq_tenant"
+   ],
+   "client_ops": {},
+   "client_files": [],
+   "note": "Numbering counter; exposed via PostgREST to authenticated under RLS (see WP-DB-006); no client use",
+   "created": "supabase/migrations/00000000000000_baseline.sql:99"
+  },
+  {
+   "resource": "/rest/v1/credential_request_status_history",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "INSERT:cred_req_history_insert",
+    "SELECT:cred_req_history_select"
+   ],
+   "client_ops": {
+    "select": 1,
+    "insert": 11
+   },
+   "client_files": [
+    "src/components/workflow/HistoryTimeline.tsx",
+    "src/lib/offlineSync.ts",
+    "src/routes/woreda.credentials.$requestId.index.tsx",
+    "src/routes/woreda.credentials.$requestId.print.tsx",
+    "src/routes/woreda.credentials.new.tsx"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000000_baseline.sql:104"
+  },
+  {
+   "resource": "/rest/v1/credential_status_history",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "INSERT:credential_status_history_insert",
+    "SELECT:credential_status_history_read"
+   ],
+   "client_ops": {
+    "insert": 6
+   },
+   "client_files": [
+    "src/routes/woreda.credentials.$requestId.index.tsx",
+    "src/routes/woreda.credentials.$requestId.print.tsx"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000000_baseline.sql:113"
+  },
+  {
+   "resource": "/rest/v1/credential_verification_log",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "SELECT:credential_verification_log_tenant_read"
+   ],
+   "client_ops": {},
+   "client_files": [],
+   "note": "REVOKE ALL then GRANT SELECT to authenticated (00000000000034:126-127); written only by verify_credential_token()",
+   "created": "supabase/migrations/00000000000034_task3_harden_credential_verification.sql:78"
+  },
+  {
+   "resource": "/rest/v1/fee_schedule",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "DELETE:fee_schedule_delete",
+    "INSERT:fee_schedule_insert",
+    "SELECT:fee_schedule_select",
+    "UPDATE:fee_schedule_update"
+   ],
+   "client_ops": {
+    "select": 1,
+    "update": 1,
+    "insert": 1
+   },
+   "client_files": [
+    "src/routes/woreda.settings.woreda-configuration.tsx"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000000_baseline.sql:122"
+  },
+  {
+   "resource": "/rest/v1/household",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "DELETE:household_delete",
+    "INSERT:household_insert",
+    "SELECT:household_select",
+    "UPDATE:household_update"
+   ],
+   "client_ops": {
+    "select": 16,
+    "insert": 1,
+    "update": 3
+   },
+   "client_files": [
+    "src/components/forms/ResidentWizardSteps.tsx",
+    "src/components/residents/ResidentActions.tsx",
+    "src/components/residents/ResidentProfileTabs.tsx",
+    "src/hooks/useReportsAggregate.ts",
+    "src/routes/woreda.dashboard.tsx",
+    "src/routes/woreda.households.$householdId.edit.tsx"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000000_baseline.sql:132"
+  },
+  {
+   "resource": "/rest/v1/household_change_log",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "DELETE:household_change_log_delete",
+    "INSERT:household_change_log_insert",
+    "SELECT:household_change_log_select",
+    "UPDATE:household_change_log_update"
+   ],
+   "client_ops": {
+    "insert": 3,
+    "select": 1
+   },
+   "client_files": [
+    "src/routes/woreda.households.$householdId.edit.tsx",
+    "src/routes/woreda.households.index.tsx",
+    "src/routes/woreda.households.new.tsx"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000000_baseline.sql:156"
+  },
+  {
+   "resource": "/rest/v1/household_location",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "DELETE:household_location_delete",
+    "INSERT:household_location_insert",
+    "SELECT:household_location_select",
+    "UPDATE:household_location_update"
+   ],
+   "client_ops": {},
+   "client_files": [],
+   "note": "",
+   "created": "supabase/migrations/00000000000048_task11_schema_gaps.sql:139"
+  },
+  {
+   "resource": "/rest/v1/id_card_template",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "ALL:id_card_template_write_super_admin",
+    "SELECT:id_card_template_read_all"
+   ],
+   "client_ops": {
+    "select": 2,
+    "update": 1
+   },
+   "client_files": [
+    "src/routes/admin.credential-template.tsx",
+    "src/routes/woreda.credentials.$requestId.print.tsx"
+   ],
+   "note": "Readable by ANY authenticated user (USING true) - platform reference data",
+   "created": "supabase/migrations/00000000000000_baseline.sql:170"
+  },
+  {
+   "resource": "/rest/v1/id_card_template_field",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "ALL:template_write_super_admin",
+    "SELECT:template_read_all"
+   ],
+   "client_ops": {
+    "select": 1
+   },
+   "client_files": [
+    "src/routes/woreda.credentials.$requestId.print.tsx"
+   ],
+   "note": "Readable by ANY authenticated user (USING true) - platform reference data",
+   "created": "supabase/migrations/00000000000000_baseline.sql:177"
+  },
+  {
+   "resource": "/rest/v1/id_card_template_field_draft",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "ALL:template_draft_write_super_admin",
+    "SELECT:template_draft_read_all"
+   ],
+   "client_ops": {
+    "select": 1,
+    "insert": 1,
+    "delete": 1,
+    "update": 1
+   },
+   "client_files": [
+    "src/routes/admin.credential-template.tsx"
+   ],
+   "note": "Readable by ANY authenticated user (USING true) - platform reference data",
+   "created": "supabase/migrations/00000000000010_id_card_template_draft.sql:30"
+  },
+  {
+   "resource": "/rest/v1/kebele",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "ALL:kebele_tenant_isolation"
+   ],
+   "client_ops": {
+    "select": 10
+   },
+   "client_files": [
+    "src/components/credentials/CredentialQueueTable.tsx",
+    "src/components/forms/HouseholdFormFields.tsx",
+    "src/components/services/ServiceRequestList.tsx",
+    "src/hooks/useKebeleOptions.ts",
+    "src/routes/woreda.civil.index.tsx",
+    "src/routes/woreda.dashboard.tsx"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000000_baseline.sql:199"
+  },
+  {
+   "resource": "/rest/v1/kebele_rental_house",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "DELETE:kebele_rental_house_delete",
+    "INSERT:kebele_rental_house_insert",
+    "SELECT:kebele_rental_house_select",
+    "UPDATE:kebele_rental_house_update"
+   ],
+   "client_ops": {
+    "select": 9,
+    "insert": 1,
+    "update": 1
+   },
+   "client_files": [
+    "src/hooks/useReportsAggregate.ts",
+    "src/routes/woreda.rental-houses.$houseId.edit.tsx",
+    "src/routes/woreda.rental-houses.$houseId.index.tsx",
+    "src/routes/woreda.rental-houses.$houseId.occupant-print.tsx",
+    "src/routes/woreda.rental-houses.index.tsx",
+    "src/routes/woreda.rental-houses.new.tsx"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000000_baseline.sql:208"
+  },
+  {
+   "resource": "/rest/v1/office",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "ALL:office_write_super_admin",
+    "SELECT:office_select"
+   ],
+   "client_ops": {},
+   "client_files": [],
+   "note": "",
+   "created": "supabase/migrations/00000000000048_task11_schema_gaps.sql:57"
+  },
+  {
+   "resource": "/rest/v1/payment",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "DELETE:payment_delete",
+    "INSERT:payment_insert",
+    "SELECT:payment_select",
+    "UPDATE:payment_update"
+   ],
+   "client_ops": {
+    "select": 3,
+    "insert": 5
+   },
+   "client_files": [
+    "src/hooks/useReportsAggregate.ts",
+    "src/lib/offlineSync.ts",
+    "src/routes/woreda.civil.$eventId.tsx",
+    "src/routes/woreda.credentials.$requestId.index.tsx",
+    "src/routes/woreda.revenue.$paymentId.receipt.tsx",
+    "src/routes/woreda.revenue.index.tsx"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000000_baseline.sql:220"
+  },
+  {
+   "resource": "/rest/v1/payment_reconciliation_exception",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "SELECT:payment_reconciliation_exception_select"
+   ],
+   "client_ops": {},
+   "client_files": [],
+   "note": "",
+   "created": "supabase/migrations/00000000000078_rental_phase3_settlement.sql:230"
+  },
+  {
+   "resource": "/rest/v1/rate_limit_bucket",
+   "kind": "table",
+   "classification": "Internal",
+   "rls_enabled": true,
+   "policies": [],
+   "client_ops": {},
+   "client_files": [],
+   "note": "REVOKE ALL from anon/authenticated (00000000000022:40); service_role only",
+   "created": "supabase/migrations/00000000000022_rate_limit.sql:25"
+  },
+  {
+   "resource": "/rest/v1/receipt",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "DELETE:receipt_delete",
+    "INSERT:receipt_insert",
+    "SELECT:receipt_select",
+    "UPDATE:receipt_update"
+   ],
+   "client_ops": {
+    "insert": 5,
+    "select": 1,
+    "update": 1
+   },
+   "client_files": [
+    "src/lib/offlineSync.ts",
+    "src/routes/woreda.civil.$eventId.tsx",
+    "src/routes/woreda.credentials.$requestId.index.tsx",
+    "src/routes/woreda.revenue.index.tsx",
+    "src/routes/woreda.services.$requestId.index.tsx"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000000_baseline.sql:237"
+  },
+  {
+   "resource": "/rest/v1/receipt_sequence",
+   "kind": "table",
+   "classification": "Internal",
+   "rls_enabled": true,
+   "policies": [
+    "ALL:receipt_seq_tenant"
+   ],
+   "client_ops": {},
+   "client_files": [],
+   "note": "Numbering counter; exposed via PostgREST to authenticated under RLS (see WP-DB-006); no client use",
+   "created": "supabase/migrations/00000000000000_baseline.sql:248"
+  },
+  {
+   "resource": "/rest/v1/rent_account",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "SELECT:rent_account_select"
+   ],
+   "client_ops": {
+    "select": 1
+   },
+   "client_files": [
+    "src/routes/woreda.rental-accounts.$occupancyId.tsx"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000076_rental_phase2_financial_core.sql:88"
+  },
+  {
+   "resource": "/rest/v1/rent_account_sequence",
+   "kind": "table",
+   "classification": "Internal",
+   "rls_enabled": true,
+   "policies": [
+    "SELECT:rent_account_sequence_select"
+   ],
+   "client_ops": {},
+   "client_files": [],
+   "note": "Numbering counter; exposed via PostgREST to authenticated under RLS (see WP-DB-006); no client use",
+   "created": "supabase/migrations/00000000000076_rental_phase2_financial_core.sql:75"
+  },
+  {
+   "resource": "/rest/v1/rent_charge",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "SELECT:rent_charge_select"
+   ],
+   "client_ops": {
+    "select": 1
+   },
+   "client_files": [
+    "src/routes/woreda.rental-accounts.$occupancyId.tsx"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000076_rental_phase2_financial_core.sql:210"
+  },
+  {
+   "resource": "/rest/v1/rent_payment_settlement",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "SELECT:rent_payment_settlement_select"
+   ],
+   "client_ops": {},
+   "client_files": [],
+   "note": "",
+   "created": "supabase/migrations/00000000000078_rental_phase3_settlement.sql:168"
+  },
+  {
+   "resource": "/rest/v1/rent_rate_history",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "SELECT:rent_rate_history_select"
+   ],
+   "client_ops": {},
+   "client_files": [],
+   "note": "",
+   "created": "supabase/migrations/00000000000076_rental_phase2_financial_core.sql:171"
+  },
+  {
+   "resource": "/rest/v1/rent_reminder",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "SELECT:rent_reminder_select"
+   ],
+   "client_ops": {},
+   "client_files": [],
+   "note": "",
+   "created": "supabase/migrations/00000000000080_rental_phase4_arrears.sql:946"
+  },
+  {
+   "resource": "/rest/v1/rental_occupancy",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "DELETE:rental_occupancy_delete",
+    "SELECT:rental_occupancy_select"
+   ],
+   "client_ops": {
+    "select": 2
+   },
+   "client_files": [
+    "src/routes/woreda.rental-houses.$houseId.index.tsx",
+    "src/routes/woreda.rental-houses.$houseId.occupant-print.tsx"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000000_baseline.sql:253"
+  },
+  {
+   "resource": "/rest/v1/rental_occupancy_request",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "DELETE:rental_occupancy_request_delete",
+    "INSERT:rental_occupancy_request_insert",
+    "SELECT:rental_occupancy_request_select",
+    "UPDATE:rental_occupancy_request_update"
+   ],
+   "client_ops": {
+    "select": 4,
+    "insert": 3,
+    "update": 5
+   },
+   "client_files": [
+    "src/routes/woreda.rental-houses.$houseId.index.tsx",
+    "src/routes/woreda.rental-houses.occupants.new.tsx",
+    "src/routes/woreda.rental-houses.requests.$requestId.index.tsx",
+    "src/routes/woreda.rental-houses.requests.index.tsx"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000000_baseline.sql:268"
+  },
+  {
+   "resource": "/rest/v1/rental_payment",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "SELECT:rental_payment_select"
+   ],
+   "client_ops": {},
+   "client_files": [],
+   "note": "",
+   "created": "supabase/migrations/00000000000078_rental_phase3_settlement.sql:136"
+  },
+  {
+   "resource": "/rest/v1/rental_policy",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "INSERT:rental_policy_insert",
+    "SELECT:rental_policy_select",
+    "UPDATE:rental_policy_update"
+   ],
+   "client_ops": {
+    "select": 1
+   },
+   "client_files": [
+    "src/routes/woreda.rental-accounts.$occupancyId.tsx"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000071_rental_phase0_policy.sql:138"
+  },
+  {
+   "resource": "/rest/v1/rental_request_document",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "DELETE:rental_request_document_delete",
+    "INSERT:rental_request_document_insert",
+    "SELECT:rental_request_document_select",
+    "UPDATE:rental_request_document_update"
+   ],
+   "client_ops": {
+    "insert": 1
+   },
+   "client_files": [
+    "src/routes/woreda.rental-houses.occupants.new.tsx"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000000_baseline.sql:294"
+  },
+  {
+   "resource": "/rest/v1/rental_request_sequence",
+   "kind": "table",
+   "classification": "Internal",
+   "rls_enabled": true,
+   "policies": [
+    "ALL:rental_request_sequence_tenant"
+   ],
+   "client_ops": {},
+   "client_files": [],
+   "note": "Numbering counter; exposed via PostgREST to authenticated under RLS (see WP-DB-006); no client use",
+   "created": "supabase/migrations/00000000000000_baseline.sql:307"
+  },
+  {
+   "resource": "/rest/v1/residence_credential",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "DELETE:residence_credential_delete",
+    "INSERT:residence_credential_insert",
+    "SELECT:residence_credential_select",
+    "UPDATE:residence_credential_update"
+   ],
+   "client_ops": {
+    "select": 16,
+    "update": 6
+   },
+   "client_files": [
+    "src/components/residents/ResidentProfileTabs.tsx",
+    "src/hooks/useReportsAggregate.ts",
+    "src/routes/admin.dashboard.tsx",
+    "src/routes/woreda.credentials.$requestId.index.tsx",
+    "src/routes/woreda.credentials.$requestId.print.tsx",
+    "src/routes/woreda.credentials.new.tsx"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000000_baseline.sql:312"
+  },
+  {
+   "resource": "/rest/v1/resident",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "DELETE:resident_delete",
+    "INSERT:resident_insert",
+    "SELECT:resident_select",
+    "UPDATE:resident_update"
+   ],
+   "client_ops": {
+    "update": 11,
+    "select": 23,
+    "insert": 1
+   },
+   "client_files": [
+    "src/components/forms/ResidentSearchPicker.tsx",
+    "src/components/forms/ResidentWizardSteps.tsx",
+    "src/components/residents/ResidentActions.tsx",
+    "src/components/residents/ResidentProfileTabs.tsx",
+    "src/hooks/useReportsAggregate.ts",
+    "src/routes/admin.dashboard.tsx"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000000_baseline.sql:339"
+  },
+  {
+   "resource": "/rest/v1/resident_document",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "DELETE:resident_document_delete",
+    "INSERT:resident_document_insert",
+    "SELECT:resident_document_select",
+    "UPDATE:resident_document_update"
+   ],
+   "client_ops": {
+    "select": 2,
+    "insert": 1,
+    "delete": 1
+   },
+   "client_files": [
+    "src/components/residents/ResidentProfileTabs.tsx",
+    "src/routes/woreda.households.$householdId.index.tsx"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000004_resident_documents.sql:19"
+  },
+  {
+   "resource": "/rest/v1/resident_number_sequence",
+   "kind": "table",
+   "classification": "Internal",
+   "rls_enabled": true,
+   "policies": [
+    "ALL:resident_number_sequence_tenant"
+   ],
+   "client_ops": {},
+   "client_files": [],
+   "note": "Numbering counter; exposed via PostgREST to authenticated under RLS (see WP-DB-006); no client use",
+   "created": "supabase/migrations/00000000000000_baseline.sql:370"
+  },
+  {
+   "resource": "/rest/v1/role_permission",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "INSERT:role_permission_insert_tenant_admin",
+    "SELECT:role_permission_select_same_woreda",
+    "UPDATE:role_permission_update_tenant_admin"
+   ],
+   "client_ops": {
+    "select": 3,
+    "update": 1,
+    "upsert": 1
+   },
+   "client_files": [
+    "src/components/settings/CustomRolesTab.tsx",
+    "src/components/settings/RolesPermissionsTab.tsx",
+    "src/components/settings/UsersRolesTab.tsx",
+    "src/lib/rolePermissions.ts",
+    "src/test/examples.test.ts"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000000_baseline.sql:374"
+  },
+  {
+   "resource": "/rest/v1/service_request",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "DELETE:service_request_delete",
+    "INSERT:service_request_insert",
+    "SELECT:service_request_select",
+    "UPDATE:service_request_update"
+   ],
+   "client_ops": {
+    "select": 6,
+    "update": 3,
+    "insert": 1
+   },
+   "client_files": [
+    "src/components/services/ServiceRequestList.tsx",
+    "src/hooks/useReportsAggregate.ts",
+    "src/routes/woreda.dashboard.tsx",
+    "src/routes/woreda.services.$requestId.index.tsx",
+    "src/routes/woreda.services.$requestId.print.tsx",
+    "src/routes/woreda.services.new.tsx"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000000_baseline.sql:382"
+  },
+  {
+   "resource": "/rest/v1/service_request_attachment",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "DELETE:service_request_attachment_delete",
+    "INSERT:service_request_attachment_insert",
+    "SELECT:service_request_attachment_select",
+    "UPDATE:service_request_attachment_update"
+   ],
+   "client_ops": {
+    "select": 1,
+    "insert": 2
+   },
+   "client_files": [
+    "src/routes/woreda.services.$requestId.index.tsx",
+    "src/routes/woreda.services.new.tsx"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000000_baseline.sql:423"
+  },
+  {
+   "resource": "/rest/v1/service_request_checkpoint",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "SELECT:service_request_checkpoint_select"
+   ],
+   "client_ops": {},
+   "client_files": [],
+   "note": "",
+   "created": "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:142"
+  },
+  {
+   "resource": "/rest/v1/service_request_sequence",
+   "kind": "table",
+   "classification": "Internal",
+   "rls_enabled": true,
+   "policies": [
+    "SELECT:service_request_sequence_read"
+   ],
+   "client_ops": {},
+   "client_files": [],
+   "note": "Numbering counter; exposed via PostgREST to authenticated under RLS (see WP-DB-006); no client use",
+   "created": "supabase/migrations/00000000000000_baseline.sql:436"
+  },
+  {
+   "resource": "/rest/v1/service_request_status_history",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "INSERT:service_request_status_history_insert",
+    "SELECT:service_request_status_history_select"
+   ],
+   "client_ops": {
+    "insert": 4
+   },
+   "client_files": [
+    "src/routes/woreda.services.$requestId.index.tsx",
+    "src/routes/woreda.services.new.tsx"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000000_baseline.sql:441"
+  },
+  {
+   "resource": "/rest/v1/service_type",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "DELETE:service_type_delete",
+    "INSERT:service_type_insert",
+    "SELECT:service_type_select",
+    "UPDATE:service_type_update"
+   ],
+   "client_ops": {
+    "select": 3,
+    "update": 2,
+    "delete": 1,
+    "insert": 1
+   },
+   "client_files": [
+    "src/components/settings/LetterTemplatesTab.tsx",
+    "src/hooks/useServiceTypes.ts",
+    "src/routes/woreda.settings.woreda-configuration.tsx"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000000_baseline.sql:450"
+  },
+  {
+   "resource": "/rest/v1/tenant_module_config",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "ALL:tenant_module_config_write_super_admin",
+    "SELECT:tenant_module_config_read"
+   ],
+   "client_ops": {
+    "select": 4,
+    "upsert": 2
+   },
+   "client_files": [
+    "src/hooks/useTenantModules.ts",
+    "src/routes/admin.tenants.$woredaId.index.tsx",
+    "src/routes/admin.tenants.$woredaId.provision.tsx",
+    "src/routes/admin.tenants.index.tsx"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000000_baseline.sql:468"
+  },
+  {
+   "resource": "/rest/v1/tenant_role",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "INSERT:tenant_role_insert",
+    "SELECT:tenant_role_read",
+    "UPDATE:tenant_role_update"
+   ],
+   "client_ops": {
+    "select": 1,
+    "insert": 1,
+    "update": 1
+   },
+   "client_files": [
+    "src/lib/tenantRoles.ts"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000038_task13_tenant_role_schema.sql:24"
+  },
+  {
+   "resource": "/rest/v1/tenant_role_permission",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "INSERT:tenant_role_permission_insert",
+    "SELECT:tenant_role_permission_read",
+    "UPDATE:tenant_role_permission_update"
+   ],
+   "client_ops": {
+    "select": 1,
+    "upsert": 1
+   },
+   "client_files": [
+    "src/lib/tenantRoles.ts"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000038_task13_tenant_role_schema.sql:47"
+  },
+  {
+   "resource": "/rest/v1/user_permission_override",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "DELETE:user_permission_override_delete_tenant_admin",
+    "INSERT:user_permission_override_write_tenant_admin",
+    "SELECT:user_permission_override_select_same_woreda",
+    "UPDATE:user_permission_override_update_tenant_admin"
+   ],
+   "client_ops": {
+    "select": 1,
+    "upsert": 1,
+    "delete": 2
+   },
+   "client_files": [
+    "src/lib/userPermissionOverrides.ts"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000017_user_permission_overrides.sql:26"
+  },
+  {
+   "resource": "/rest/v1/vital_event",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "DELETE:vital_event_delete",
+    "INSERT:vital_event_insert",
+    "SELECT:vital_event_select",
+    "UPDATE:vital_event_update"
+   ],
+   "client_ops": {
+    "select": 5,
+    "insert": 4,
+    "update": 10
+   },
+   "client_files": [
+    "src/components/residents/ResidentProfileTabs.tsx",
+    "src/hooks/useReportsAggregate.ts",
+    "src/routes/woreda.civil.$eventId.tsx",
+    "src/routes/woreda.civil.birth.new.tsx",
+    "src/routes/woreda.civil.death.new.tsx",
+    "src/routes/woreda.civil.divorce.new.tsx"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000000_baseline.sql:475"
+  },
+  {
+   "resource": "/rest/v1/vital_event_sequence",
+   "kind": "table",
+   "classification": "Internal",
+   "rls_enabled": true,
+   "policies": [
+    "ALL:vital_event_seq_tenant"
+   ],
+   "client_ops": {},
+   "client_files": [],
+   "note": "Numbering counter; exposed via PostgREST to authenticated under RLS (see WP-DB-006); no client use",
+   "created": "supabase/migrations/00000000000000_baseline.sql:501"
+  },
+  {
+   "resource": "/rest/v1/woreda",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "ALL:woreda_super_admin_write",
+    "SELECT:woreda_read_all_authenticated"
+   ],
+   "client_ops": {
+    "select": 12
+   },
+   "client_files": [
+    "src/components/admin/PlatformUsersTab.tsx",
+    "src/hooks/useReportBranding.ts",
+    "src/hooks/useWoredaInfo.ts",
+    "src/routes/admin.audit.tsx",
+    "src/routes/admin.dashboard.tsx",
+    "src/routes/admin.tenants.$woredaId.index.tsx"
+   ],
+   "note": "Readable by ANY authenticated user (USING true) - platform reference data",
+   "created": "supabase/migrations/00000000000000_baseline.sql:507"
+  },
+  {
+   "resource": "/rest/v1/woreda_settings",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "DELETE:woreda_settings_delete",
+    "INSERT:woreda_settings_insert",
+    "SELECT:woreda_settings_select",
+    "UPDATE:woreda_settings_update"
+   ],
+   "client_ops": {
+    "select": 6,
+    "upsert": 1
+   },
+   "client_files": [
+    "src/hooks/useReportBranding.ts",
+    "src/hooks/useWoredaInfo.ts",
+    "src/hooks/useWoredaLogo.ts",
+    "src/routes/woreda.credentials.$requestId.print.tsx",
+    "src/routes/woreda.revenue.$paymentId.receipt.tsx",
+    "src/routes/woreda.settings.woreda-configuration.tsx"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000000_baseline.sql:517"
+  },
+  {
+   "resource": "/rest/v1/workflow_status_history",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "SELECT:workflow_status_history_select"
+   ],
+   "client_ops": {
+    "select": 1
+   },
+   "client_files": [
+    "src/components/workflow/HistoryTimeline.tsx"
+   ],
+   "note": "",
+   "created": "supabase/migrations/00000000000058_task14a_civil_registration_fsm.sql:37"
+  },
+  {
+   "resource": "/rest/v1/workflow_transition",
+   "kind": "table",
+   "classification": "Private",
+   "rls_enabled": true,
+   "policies": [
+    "ALL:workflow_transition_super_admin_write",
+    "SELECT:workflow_transition_select"
+   ],
+   "client_ops": {},
+   "client_files": [],
+   "note": "Readable by ANY authenticated user (USING true) - platform reference data",
+   "created": "supabase/migrations/00000000000025_workflow_engine.sql:60"
+  }
+ ],
+ "views": [
+  {
+   "resource": "/rest/v1/approval_queue_v",
+   "kind": "view",
+   "classification": "Private",
+   "security_invoker": true,
+   "client_ops": {
+    "select": 1
+   },
+   "client_files": [
+    "src/routes/woreda.approvals.tsx"
+   ],
+   "loc": "supabase/migrations/00000000000027_workflow_abandon_paths.sql:79"
+  },
+  {
+   "resource": "/rest/v1/arrears_installment_charge_decrypted",
+   "kind": "view",
+   "classification": "Private",
+   "security_invoker": true,
+   "client_ops": {},
+   "client_files": [],
+   "loc": "supabase/migrations/00000000000080_rental_phase4_arrears.sql:452"
+  },
+  {
+   "resource": "/rest/v1/arrears_repayment_installment_decrypted",
+   "kind": "view",
+   "classification": "Private",
+   "security_invoker": true,
+   "client_ops": {},
+   "client_files": [],
+   "loc": "supabase/migrations/00000000000080_rental_phase4_arrears.sql:394"
+  },
+  {
+   "resource": "/rest/v1/arrears_repayment_plan_decrypted",
+   "kind": "view",
+   "classification": "Private",
+   "security_invoker": true,
+   "client_ops": {},
+   "client_files": [],
+   "loc": "supabase/migrations/00000000000081_rental_phase4_review_fixes.sql:650"
+  },
+  {
+   "resource": "/rest/v1/household_decrypted",
+   "kind": "view",
+   "classification": "Private",
+   "security_invoker": true,
+   "client_ops": {
+    "select": 4
+   },
+   "client_files": [
+    "src/components/residents/ResidentProfileTabs.tsx",
+    "src/routes/woreda.households.$householdId.edit.tsx",
+    "src/routes/woreda.households.$householdId.index.tsx",
+    "src/routes/woreda.households.$householdId.print.tsx"
+   ],
+   "loc": "supabase/migrations/00000000000044_task6_household_rent_national_id_pii.sql:175"
+  },
+  {
+   "resource": "/rest/v1/household_member_roster",
+   "kind": "view",
+   "classification": "Private",
+   "security_invoker": true,
+   "client_ops": {},
+   "client_files": [],
+   "loc": "supabase/migrations/00000000000000_baseline.sql:814"
+  },
+  {
+   "resource": "/rest/v1/payment_decrypted",
+   "kind": "view",
+   "classification": "Private",
+   "security_invoker": true,
+   "client_ops": {
+    "select": 5
+   },
+   "client_files": [
+    "src/hooks/useReportsAggregate.ts",
+    "src/routes/woreda.credentials.$requestId.index.tsx",
+    "src/routes/woreda.dashboard.tsx",
+    "src/routes/woreda.revenue.index.tsx"
+   ],
+   "loc": "supabase/migrations/00000000000066_payment_hardening_review_fixes.sql:502"
+  },
+  {
+   "resource": "/rest/v1/payment_reconciliation_exception_decrypted",
+   "kind": "view",
+   "classification": "Private",
+   "security_invoker": true,
+   "client_ops": {},
+   "client_files": [],
+   "loc": "supabase/migrations/00000000000078_rental_phase3_settlement.sql:272"
+  },
+  {
+   "resource": "/rest/v1/rent_charge_decrypted",
+   "kind": "view",
+   "classification": "Private",
+   "security_invoker": true,
+   "client_ops": {},
+   "client_files": [],
+   "loc": "supabase/migrations/00000000000076_rental_phase2_financial_core.sql:344"
+  },
+  {
+   "resource": "/rest/v1/rent_payment_settlement_decrypted",
+   "kind": "view",
+   "classification": "Private",
+   "security_invoker": true,
+   "client_ops": {},
+   "client_files": [],
+   "loc": "supabase/migrations/00000000000078_rental_phase3_settlement.sql:206"
+  },
+  {
+   "resource": "/rest/v1/rent_rate_history_decrypted",
+   "kind": "view",
+   "classification": "Private",
+   "security_invoker": true,
+   "client_ops": {},
+   "client_files": [],
+   "loc": "supabase/migrations/00000000000076_rental_phase2_financial_core.sql:337"
+  },
+  {
+   "resource": "/rest/v1/rent_reminder_decrypted",
+   "kind": "view",
+   "classification": "Private",
+   "security_invoker": true,
+   "client_ops": {},
+   "client_files": [],
+   "loc": "supabase/migrations/00000000000080_rental_phase4_arrears.sql:984"
+  },
+  {
+   "resource": "/rest/v1/rental_occupancy_decrypted",
+   "kind": "view",
+   "classification": "Private",
+   "security_invoker": true,
+   "client_ops": {
+    "select": 3
+   },
+   "client_files": [
+    "src/routes/woreda.rental-houses.$houseId.index.tsx",
+    "src/routes/woreda.rental-houses.$houseId.occupant-print.tsx",
+    "src/routes/woreda.rental-houses.index.tsx"
+   ],
+   "loc": "supabase/migrations/00000000000023_pii_encryption.sql:666"
+  },
+  {
+   "resource": "/rest/v1/rental_occupancy_request_decrypted",
+   "kind": "view",
+   "classification": "Private",
+   "security_invoker": true,
+   "client_ops": {
+    "select": 2
+   },
+   "client_files": [
+    "src/routes/woreda.rental-houses.requests.$requestId.index.tsx",
+    "src/routes/woreda.rental-houses.requests.index.tsx"
+   ],
+   "loc": "supabase/migrations/00000000000024_rental_occupancy_request_decrypted_view.sql:21"
+  },
+  {
+   "resource": "/rest/v1/resident_decrypted",
+   "kind": "view",
+   "classification": "Private",
+   "security_invoker": true,
+   "client_ops": {
+    "select": 7
+   },
+   "client_files": [
+    "src/routes/woreda.credentials.$requestId.print.tsx",
+    "src/routes/woreda.rental-houses.$houseId.occupant-print.tsx",
+    "src/routes/woreda.rental-houses.occupants.new.tsx",
+    "src/routes/woreda.residents.$residentId.edit.tsx",
+    "src/routes/woreda.residents.$residentId.index.tsx",
+    "src/routes/woreda.residents.$residentId.print.tsx"
+   ],
+   "loc": "supabase/migrations/00000000000044_task6_household_rent_national_id_pii.sql:166"
+  },
+  {
+   "resource": "/rest/v1/service_request_checkpoint_decrypted",
+   "kind": "view",
+   "classification": "Private",
+   "security_invoker": true,
+   "client_ops": {},
+   "client_files": [],
+   "loc": "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql:183"
+  },
+  {
+   "resource": "/rest/v1/service_request_decrypted",
+   "kind": "view",
+   "classification": "Private",
+   "security_invoker": true,
+   "client_ops": {
+    "select": 1
+   },
+   "client_files": [
+    "src/routes/woreda.services.$requestId.index.tsx"
+   ],
+   "loc": "supabase/migrations/00000000000023_pii_encryption.sql:652"
+  }
+ ]
+}

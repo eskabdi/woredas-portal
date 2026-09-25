@@ -1,0 +1,100 @@
+# audit-auth-session raw evidence (2026-09-24), HEAD 9950f16. No secrets in this file.
+
+## auth-js version + client defaults (node_modules/@supabase/auth-js)
+  "version": "2.112.3",
+const DEFAULT_OPTIONS = {
+    url: GOTRUE_URL,
+    storageKey: STORAGE_KEY,
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+    headers: DEFAULT_HEADERS,
+    flowType: 'implicit',
+    debug: false,
+    hasCustomAuthorizationHeader: false,
+    throwOnError: false,
+    lockAcquireTimeout: 5000, // 5 seconds. Only used when a custom `lock` is supplied. TODO(v3): remove.
+    skipAutoInitialize: false,
+    experimental: {},
+
+## signOut default scope
+3395:    async signOut(options = { scope: 'global' }) {
+3405:    async _signOut({ scope } = { scope: 'global' }) {
+
+## Supabase client init (src/integrations/supabase/client.ts)
+22:  return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+23:    auth: {
+24:      storage: typeof window !== "undefined" ? localStorage : undefined,
+25:      persistSession: true,
+26:      autoRefreshToken: true,
+27:    },
+28:  });
+
+## All supabase.auth.* call sites in src/
+src/components/common/ChangePasswordDialog.tsx:22: * password can do it directly here via supabase.auth.updateUser() -- no
+src/components/common/ChangePasswordDialog.tsx:56:    const { error: updateErr } = await supabase.auth.updateUser({ password });
+src/components/layout/AppShell.tsx:389:    await supabase.auth.signOut();
+src/components/layout/AppShell.tsx:550:    await supabase.auth.signOut();
+src/hooks/useAuthBootstrap.ts:113:    supabase.auth.getSession().then(async ({ data }) => {
+src/hooks/useAuthBootstrap.ts:125:    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+src/hooks/useAuthBootstrap.ts:147:        // actual supabase.auth.signInWithPassword() call succeeds.
+src/hooks/useIdleTimeout.ts:13:   * existing handleSignOut (supabase.auth.signOut() + navigate to /login). */
+src/integrations/supabase/auth-attacher.ts:9:    const { data } = await supabase.auth.getSession();
+src/integrations/supabase/auth-middleware.ts:56:    const { data, error } = await supabase.auth.getClaims(token);
+src/lib/offlineSync.ts:372:  } = await supabase.auth.getSession();
+src/routes/login.tsx:96:    const { data, error } = await supabase.auth.signInWithPassword({
+src/routes/login.tsx:116:      await supabase.auth.signOut();
+src/routes/login.tsx:136:        await supabase.auth.signOut();
+src/routes/set-password.tsx:119:    const { error } = await supabase.auth.updateUser({ password: values.password });
+src/routes/set-password.tsx:172:                await supabase.auth.signOut();
+src/routes/index.tsx:89:    supabase.auth.verifyOtp({ token_hash: outcome.tokenHash, type: "invite" }).then(({ error }) => {
+
+## MFA / AAL usage (expect empty)
+(no matches)
+
+## captchaToken usage (expect empty)
+(no matches)
+
+## Session revocation on suspension (expect empty)
+(no matches)
+
+## Suspension writes
+src/components/admin/PlatformUsersTab.tsx:265:      .update({ status: "suspended" })
+src/components/admin/PlatformUsersTab.tsx:828:      .update({ status: nextStatus })
+src/components/settings/UsersRolesTab.tsx:257:      .update({ status: "suspended" })
+
+## Custom JWT claims / access token hook (expect empty)
+(no matches)
+
+## Idle-timeout wiring
+src/components/layout/AppShell.tsx:406:  useIdleTimeout({
+src/components/layout/AppShell.tsx:566:  useIdleTimeout({
+7:export const IDLE_WARNING_MS = 20 * 60 * 1000;
+8:export const IDLE_LOGOUT_MS = 25 * 60 * 1000;
+14:export const IDLE_CHECK_INTERVAL_MS = 15 * 1000;
+20:export const IDLE_LAST_ACTIVITY_STORAGE_KEY = "woredas.idle.lastActivityAt";
+
+## Policies USING (true) for role authenticated (latest; none later dropped)
+supabase/migrations/00000000000000_baseline.sql:1588:CREATE POLICY template_read_all ON public.id_card_template_field AS PERMISSIVE FOR SELECT TO authenticated USING (true);
+supabase/migrations/00000000000000_baseline.sql:1590:CREATE POLICY id_card_template_read_all ON public.id_card_template AS PERMISSIVE FOR SELECT TO authenticated USING (true);
+supabase/migrations/00000000000000_baseline.sql:1661:CREATE POLICY woreda_read_all_authenticated ON public.woreda AS PERMISSIVE FOR SELECT TO authenticated USING (true);
+supabase/migrations/00000000000010_id_card_template_draft.sql:72:  AS PERMISSIVE FOR SELECT TO authenticated USING (true);
+supabase/migrations/00000000000025_workflow_engine.sql:103:  AS PERMISSIVE FOR SELECT TO authenticated USING (true);
+supabase/migrations/00000000000001_storage.sql:66:DROP POLICY IF EXISTS credential_templates_read_all ON storage.objects;
+supabase/migrations/00000000000001_storage.sql:67:CREATE POLICY credential_templates_read_all ON storage.objects AS PERMISSIVE FOR SELECT TO authenticated USING ((bucket_id = 'credential-templates'::text));
+
+## Edge Function caller verification
+supabase/functions/activate-invited-user/index.ts:34:    const { data: userData, error: userErr } = await userClient.auth.getUser();
+supabase/functions/invite-platform-admin/index.ts:39:    const { data: userData, error: userErr } = await userClient.auth.getUser();
+supabase/functions/invite-tenant-user/index.ts:53:    const { data: userData, error: userErr } = await userClient.auth.getUser();
+supabase/functions/record-login/index.ts:37:    const { data: userData, error: userErr } = await userClient.auth.getUser();
+supabase/functions/resend-platform-invite/index.ts:32:    const { data: userData, error: userErr } = await userClient.auth.getUser();
+supabase/functions/resend-tenant-invite/index.ts:51:    const { data: userData, error: userErr } = await userClient.auth.getUser();
+supabase/functions/send-password-reset-link/index.ts:47:    const { data: userData, error: userErr } = await userClient.auth.getUser();
+supabase/functions/sign-credential/index.ts:89:    const { data: userData, error: userErr } = await admin.auth.getUser(jwt);
+
+## Deploy script verify_jwt flag (none passed => CLI default verify_jwt=true)
+scripts/deploy-functions.sh:40:supabase functions deploy "${FUNCTIONS[@]}" --use-api --project-ref "$REF"
+
+## supabase/config.toml
+project_id = "woredas-portal"

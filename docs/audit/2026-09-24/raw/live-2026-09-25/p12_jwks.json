@@ -1,0 +1,16 @@
+{
+ "endpoint": "GET https://<ref>.supabase.co/auth/v1/.well-known/jwks.json (public)",
+ "result": {
+  "keys": [
+   {
+    "kty": "EC",
+    "alg": "ES256",
+    "crv": "P-256",
+    "use": "sig",
+    "key_ops": [
+     "verify"
+    ]
+   }
+  ]
+ }
+}

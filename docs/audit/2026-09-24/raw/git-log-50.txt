@@ -1,0 +1,50 @@
+9950f16 Merge pull request #83 from eskabdi/claude/woredas-portal-amharic-manual-0x86rz
+abc4a1c Rental review round 6: fix re-verification regression from 00088, close requester/approver reassignment gaps, plan-completion race, and a self-reversal skimming path
+f484a94 Rental review round 5: fix arrears-payment regression from 00087, harden request maker-checker, close a second plan/reversal collision path
+7257bc9 Rental review round 4: NULL-safe tenant check, request field lockdown, live-overdue widening, payment-insert guard, plan/reversal race fixes
+6adb8c3 Fix third round of findings from final security review of PR #83
+590fe85 Merge pull request #84 from eskabdi/claude/init-claude-md-q5cwhb
+07ca972 Update CLAUDE.md for drift since last write-up
+94981b8 Fix second round of findings from full-PR review of PR #83
+ce06e5d Fix regressions found by pre-merge security review of full PR #83
+4f2e64d Regenerate docs/permissions-matrix.md for service.checkpoint_override
+16a0aee Merge origin/main into claude/woredas-portal-amharic-manual-0x86rz
+8db1eab Add Phase 5: cross-module rental checkpoint and reporting
+df1c3be Add Phase 4: arrears and repayment plans
+91f35a0 Kebele Rental Houses Phase 3: settlement and payments
+6a94603 Enforce Amharic-primary labels and Ethiopian-calendar-primary dates across the woreda portal
+aa288ba Kebele Rental Houses Phase 2: financial core (rent_account, rent_rate_history, rent_charge, billing RPC)
+0fb1050 Merge pull request #82 from eskabdi/fix/rental-payment-frequency-labels
+450e35f Rental occupant intake: rename payment frequency options to monthly/quarterly/yearly
+180bee2 Kebele Rental Houses Phase 1: fix review findings from both agents
+14cf8ab Kebele Rental Houses Phase 1: integrity hardening (AF-01..AF-11, PD-07/09)
+2237726 Kebele Rental Houses Phase 0: rental_policy table + policy sign-off
+ae62560 Fix invite/resend crashes and add missing woreda-portal Resend Invite across invite-tenant-user, invite-platform-admin, resend-platform-invite, resend-tenant-invite (#81)
+883e117 Add rental-financial-integrity-review subagent for kebele rental billing
+d3c1557 Merge pull request #80 from eskabdi/fix/vercel-ssr-circular-chunk
+8af9fb0 Fix stale Edge Function count in doctor workspace check
+82497a7 Fix production 500s from a circular ssr chunk split (router.tsx)
+0bd0c30 Merge pull request #79 from eskabdi/ux-restructure
+761f965 Refine woreda dashboard and sidebar per feedback batch
+07f8605 Recolor solid blue action buttons to the header's deep navy
+11b4ff9 Gate dashboard audit activity by P.AUDIT_VIEW; fix loading-flash and dedupe BackLink
+5c181eb Fix tablet-width horizontal page overflow on wide-table screens
+f8a8e74 Add back-to-parent link to child pages missing one
+4b8aafd Rebuild woreda dashboard content to match master_design_system.md
+b35d163 Rebuild woreda AppShell shell to match master_design_system.md 1:1
+2bba6ca Add missing verified/approved stages to credential request stepper
+fe796a2 Fix BarChartCard rendering NaN when angledLabels is unset
+1f3b0e7 Add pre-merge gate to main-logic-authority-review subagent
+93f5d31 Fix rental request stepper misreporting current stage; drop dead login affordance
+4dcc0d6 Add main-logic-authority-review subagent
+2e72e31 Merge origin/main into ux-restructure
+125205c Port main's shell security/reliability features into AppShell
+2125dee fix: add missing "printed" stage to credential WorkflowStepper
+1e49ab3 Merge pull request #78 from eskabdi/claude/incident-report-close-out
+f4cf428 docs: close out the /woreda/* crash incident report
+a23dfa8 Merge pull request #77 from eskabdi/claude/fix-offline-queue-infinite-loop
+422633f docs: incident report for the /woreda/* infinite-loop crash
+a1db585 Fix infinite render loop crashing every /woreda/* page (offline queue snapshot)
+699e0ac docs: record all five UX restructuring phases as complete
+8b06fe8 Phase 4: keyboard navigation pass on Stepper and TableToolbar
+e3bd9c4 Phase 4: fix WCAG 2.1 AA contrast failures found in new palette

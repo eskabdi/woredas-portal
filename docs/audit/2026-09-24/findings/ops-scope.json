@@ -1,0 +1,947 @@
+{
+  "agent": "ops-scope",
+  "findings": [
+    {
+      "id": "WP-OPS-001",
+      "title": "No staging environment: production is also the development, test and verification environment (real PII, real accounts, committed test writes)",
+      "severity": "High",
+      "cvss_v3_1": "N/A (environment/process control)",
+      "confidence": "Confirmed",
+      "category": "Config",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "OPS-01",
+          "F-03"
+        ],
+        "owasp_top10": [
+          "A05:2021"
+        ],
+        "owasp_api": [
+          "API8:2023"
+        ],
+        "asvs": [
+          "V14.1.1"
+        ],
+        "iso27001": [
+          "A.8.31",
+          "A.8.33"
+        ],
+        "nist_csf": [
+          "PR.DS-7 (CSF 1.1)",
+          "PR.IR-01 (CSF 2.0)"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "docs/staging-runbook.md",
+          "line": 9,
+          "snippet": "**This app has no staging project today.** Local development and every prior deploy in this repo's history ran against the single production Supabase project"
+        },
+        {
+          "path": "docs/go-live-declaration.md",
+          "line": 179,
+          "snippet": "This system has **no staging environment**. The one attempted staging-project creation call failed cleanly at the account's free-tier project cap"
+        },
+        {
+          "path": "supabase/functions/_shared/response.ts",
+          "line": 22,
+          "snippet": "const ALLOWED_ORIGINS = new Set( [Deno.env.get(\"SITE_URL\"), \"http://localhost:5173\"]  // :20-21 'localhost:5173 covers local dev against the real project (this repo has no staging project)'"
+        },
+        {
+          "path": ".claude/skills/verify/SKILL.md",
+          "line": 9,
+          "snippet": "a browser against the real Supabase project — there is no separate staging/sandbox project."
+        },
+        {
+          "path": "docs/remediation-report.md",
+          "line": 21,
+          "snippet": "`SAMPLE-DATA` | Verified via committed-then-cleaned real writes (not a rolled-back transaction)"
+        },
+        {
+          "path": "docs/remediation-report.md",
+          "line": 327,
+          "snippet": "Completed manually with the same data the function would have written ... plus the `USER_INVITED` audit_log row the function would have written on success"
+        },
+        {
+          "path": "scripts/run-live-probes.py",
+          "line": 33,
+          "snippet": "PRODUCTION_REF_DEFAULT = \"tugzuexfyzbdnghbmrjl\"  (:18-20 sequence advances on a rolled-back INSERT ... are reported, not silently corrected)"
+        },
+        {
+          "path": ".claude/skills/acceptance-harness/SKILL.md",
+          "line": 54,
+          "snippet": "URL=\"https://<production-ref>.supabase.co\"  (per-role test users are created against this URL, :129-133 teardown)"
+        }
+      ],
+      "description": "There is exactly one Supabase project and it is production. Every non-production activity documented in the repository runs against it: local development (`verify` skill, the `http://localhost:5173` entry in the production Edge Function CORS allow-list), agent verification sessions, the 66-probe live-probe suite (run by default against the production ref), the acceptance harness (which creates per-role test users on the production URL), and 'SAMPLE-DATA' verification, which commits real writes to production tables (payments, receipts, civil events, service requests) and deletes them afterwards. One recorded verification pass completed a failed invite by hand-inserting an app_user row and an audit_log row directly into production. The staging runbook and seed script exist but have never been executed; the only provisioning attempt failed on the account's free-tier project cap.",
+      "attack_scenario": "A defect in a probe, a mis-scoped cleanup DELETE, or an agent session holding the account-level SUPABASE_ACCESS_TOKEN acts directly on real residents' PII, financial records and the audit trail. Test data, gaps in official number sequences (non-transactional nextval) and hand-written audit rows are indistinguishable from genuine operations for a later investigator.",
+      "impact": "INSA Phase 6 (F-03) and OPS-01 cannot be satisfied: there is nowhere to seed test credentials except production, and a penetration test cannot be run without either testing production or waiting for an environment that does not exist. Integrity of the production audit trail and numbering is weakened by test activity.",
+      "recommendation": "Provision the staging Supabase + Vercel projects described in docs/staging-runbook.md before any external security test or go-live sign-off. Point previews, local development and all probes/harnesses at staging only; remove the production ref as a default from scripts/run-live-probes.py and the acceptance-harness skill; remove http://localhost:5173 from the production ALLOWED_ORIGINS (set it only on staging via an env var). Prohibit committed test writes and manual audit_log inserts in production by written policy.",
+      "secure_fix_example": "// supabase/functions/_shared/response.ts\nconst extra = (Deno.env.get(\"EXTRA_CORS_ORIGINS\") ?? \"\").split(\",\").filter(Boolean); // set only on staging\nconst ALLOWED_ORIGINS = new Set([Deno.env.get(\"SITE_URL\"), ...extra].filter((o): o is string => !!o));\n\n# scripts/run-live-probes.py\nparser.add_argument(\"--project-ref\", required=True)  # no production default",
+      "effort": "M",
+      "status": "Open"
+    },
+    {
+      "id": "WP-OPS-002",
+      "title": "Backups, point-in-time recovery and disaster recovery are unevidenced; indications are that production sits in a free-tier organisation, and Storage objects (scanned legal documents, photos, signatures) have no backup at all",
+      "severity": "High",
+      "cvss_v3_1": "N/A (availability/resilience control)",
+      "confidence": "Needs-live-verification",
+      "category": "Config",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "OPS-01"
+        ],
+        "owasp_top10": [
+          "A05:2021"
+        ],
+        "owasp_api": [],
+        "asvs": [],
+        "iso27001": [
+          "A.8.13",
+          "A.5.30",
+          "A.8.14"
+        ],
+        "nist_csf": [
+          "PR.DS-11 (CSF 2.0)",
+          "RC.RP-03 (CSF 2.0)",
+          "PR.IP-4 (CSF 1.1)"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "docs/go-live-declaration.md",
+          "line": 180,
+          "snippet": "staging-project creation call failed cleanly at the account's free-tier project cap"
+        },
+        {
+          "path": "docs/go-live-declaration.md",
+          "line": 263,
+          "snippet": "### Rollback path  (:265-289 covers frontend redeploy, additive migrations and Edge Function redeploy only; no data restore)"
+        },
+        {
+          "path": "docs/system-review-2026-09.md",
+          "line": 435,
+          "snippet": "**Backup/restore evidence** | ... no restore drill is recorded. | Perform and document one point-in-time restore."
+        },
+        {
+          "path": "scripts/dump-storage.sql",
+          "line": 12,
+          "snippet": "It does NOT copy the stored files themselves. Objects already uploaded -- resident photos, credential templates, woreda logos -- have to be moved separately"
+        },
+        {
+          "path": "scripts/dump-data.sql",
+          "line": 8,
+          "snippet": "It is limited to configuration and lookup data, not operational records like residents, credentials or payments."
+        },
+        {
+          "path": "(repository-wide)",
+          "line": 0,
+          "snippet": "grep -i 'PITR|point-in-time|RPO|RTO|disaster' over docs/, scripts/, CLAUDE.md, .claude/ returns no backup tier, RPO, RTO or DR plan"
+        }
+      ],
+      "description": "No document states the Supabase plan, the backup mechanism, the retention period, whether point-in-time recovery (PITR) is enabled, a recovery point objective (RPO) or recovery time objective (RTO), or any restore test. The go-live 'Rollback path' covers code artifacts only. Two separate documents record that a project-creation call failed on the account's free-tier project cap, which suggests (but does not prove) that the production project is in a free-tier organisation. On Supabase, PITR is a paid add-on; daily backups with short retention are a paid-plan feature; free projects can be paused for inactivity; and database backups do not contain Storage object bytes in any plan. The repository's dump scripts export reference data and bucket/policy DDL only, explicitly not operational records or stored files.",
+      "attack_scenario": "Accidental mass DELETE (hard-DELETE policies exist, see WP-DB-011), a destructive migration applied through the Management API, a compromised account-level PAT, or project deletion leaves no restorable copy of residents, civil events, payments or the scanned documents in the 10 private buckets.",
+      "impact": "Potential permanent loss of the civil registry, credential records and legal document scans for all six woredas; no defined RPO/RTO means no one has committed to how much data loss or downtime is acceptable.",
+      "recommendation": "Owner to confirm (screenshot of Billing and Database > Backups) the plan and backup settings. Minimum for a government registry: Pro plan or higher with the PITR add-on (RPO in minutes), a documented RPO/RTO, a scheduled off-platform copy of all 10 Storage buckets (the scripts/migrate-storage.mjs pattern pointed at a separate account or object store), a logical pg_dump to separate storage under a separate credential, and a restore drill into the staging project at least quarterly with the result recorded.",
+      "secure_fix_example": "# Nightly off-platform copy (GitHub Actions, scoped secrets, staging-tested)\npg_dump \"$PROD_DB_URL_READONLY\" --format=custom --no-owner -f woreda-$(date +%F).dump\n# + storage objects: node scripts/migrate-storage.mjs with DST pointed at the backup project/bucket\n# docs/dr-plan.md: RPO <= 15 min (PITR), RTO <= 4 h, quarterly restore drill log",
+      "effort": "M",
+      "status": "Open"
+    },
+    {
+      "id": "WP-OPS-003",
+      "title": "No documented custody, escrow or recovery for the two root keys (ES256 credential-signing key and the Vault pii_root_key)",
+      "severity": "Medium",
+      "cvss_v3_1": "N/A (key management process)",
+      "confidence": "Confirmed",
+      "category": "Crypto",
+      "module": "QR",
+      "refs": {
+        "insa": [
+          "CRY-01",
+          "OPS-01"
+        ],
+        "owasp_top10": [
+          "A02:2021"
+        ],
+        "owasp_api": [],
+        "asvs": [
+          "V6.4.1",
+          "V6.4.2"
+        ],
+        "iso27001": [
+          "A.8.24",
+          "A.8.13"
+        ],
+        "nist_csf": [
+          "PR.DS-01 (CSF 2.0)"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000023_pii_encryption.sql",
+          "line": 100,
+          "snippet": "LOSING THE KEY MEANS LOSING THE CIPHERTEXT. It is not recoverable from a backup of this database. Back it up wherever HARARI_EC_PRIVATE_KEY is kept."
+        },
+        {
+          "path": "scripts/phase-c-create-vault-key.sh",
+          "line": 21,
+          "snippet": "LOSING THIS KEY MEANS LOSING EVERY ROW OF CIPHERTEXT IT EVER ENCRYPTED. It is not recoverable from a database backup ... there is no \"restore from backup\" path if the project itself is ever deleted"
+        },
+        {
+          "path": "scripts/phase-c-create-vault-key.sh",
+          "line": 9,
+          "snippet": "THE KEY VALUE IS GENERATED INSIDE THIS SQL STATEMENT, BY POSTGRES ITSELF ... AND NEVER LEAVES THE DATABASE."
+        },
+        {
+          "path": "scripts/deploy-functions.sh",
+          "line": 47,
+          "snippet": "It is not in this repository -- it lives in the SOURCE project's Edge Function secrets ... supabase secrets set HARARI_EC_PRIVATE_KEY='<value from the old project>'"
+        },
+        {
+          "path": "docs/system-review-2026-09.md",
+          "line": 436,
+          "snippet": "**Key-rotation runbook** | ... no standalone procedure exists for `HARARI_EC_PRIVATE_KEY`."
+        }
+      ],
+      "description": "The PII root key is generated inside Postgres and by design never leaves the database, yet the migration tells the operator to 'back it up wherever HARARI_EC_PRIVATE_KEY is kept', and no document says where that is. The signing key lives only in Edge Function secrets and is carried forward from an 'old project'. There is no key-custody record (who holds it, where escrowed, dual control), no recovery procedure and no rotation runbook. Keeping keys out of the repository is correct (SEC-01 passes); the gap is recovery.",
+      "attack_scenario": "Project deletion, a Vault reset or loss of the operator's only copy.",
+      "impact": "Losing the Vault key makes every *_enc column permanently unreadable; the impact grows to total PII loss once stage 4 drops the plaintext columns. Losing the signing key stops verifiable credential issuance and forces a re-key, which the project's own review notes invalidates every card in circulation.",
+      "recommendation": "Write a key-management procedure covering: generation, escrow of the ES256 private key in an offline HSM or sealed dual-control store held by the owning bureau, a Vault key export/escrow approach (or a documented decision to accept non-recoverability, with plaintext retained until an escrow exists), a rotation runbook with `kid` versioning, and annual recovery testing in staging.",
+      "secure_fix_example": "",
+      "effort": "M",
+      "status": "Open"
+    },
+    {
+      "id": "WP-OPS-004",
+      "title": "CI is not a required status check on main, and Vercel promotes every push to main to production independently of the CI result",
+      "severity": "Medium",
+      "cvss_v3_1": "N/A (SDLC control)",
+      "confidence": "Likely",
+      "category": "Config",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "G-01",
+          "QA-01"
+        ],
+        "owasp_top10": [
+          "A08:2021"
+        ],
+        "owasp_api": [],
+        "asvs": [
+          "V14.1.1"
+        ],
+        "iso27001": [
+          "A.8.25",
+          "A.8.32"
+        ],
+        "nist_csf": [
+          "PR.PS-06 (CSF 2.0)"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "docs/audit/2026-09-24/raw/ops-scope-github-api.txt",
+          "line": 13,
+          "snippet": "\"protected\": true, \"required_status_checks\": { \"enforcement_level\": \"everyone\", \"contexts\": [], \"checks\": [] }"
+        },
+        {
+          "path": "docs/audit/2026-09-24/raw/ops-scope-github-api.txt",
+          "line": 25,
+          "snippet": "CI push success 9950f16e main 2026-09-22T23:41:15Z  (and :129 Production 9950f16e 2026-09-22T23:41:51Z vercel[bot])"
+        },
+        {
+          "path": "CLAUDE.md",
+          "line": 113,
+          "snippet": "every PR and push to `main` — all required to pass before a PR is mergeable;"
+        },
+        {
+          "path": "docs/architecture.md",
+          "line": 497,
+          "snippet": "all required to pass before a PR is even mergeable, independent of the review requirement above."
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "line": 3,
+          "snippet": "on: pull_request / push: branches: [main]  (single job 'test'; no deploy job, no environment protection)"
+        }
+      ],
+      "description": "The public GitHub API shows main is protected, but its required-status-check list is empty (no contexts, no checks). That means the CI workflow runs but is not configured as a merge gate, which contradicts CLAUDE.md and docs/architecture.md. Separately, the Vercel GitHub integration (vercel[bot], active since 2026-09-20) creates the Production deployment for a main commit within about 40 seconds of the push, in parallel with CI rather than after it. Review-requirement sub-rules are not visible without an admin token. Confidence is 'Likely' because the unauthenticated branch summary is authoritative for required checks but not for every protection sub-rule.",
+      "attack_scenario": "A PR with failing lint, typecheck, tests, the role-permission drift check or the fee catalogue check (two failed PR runs appear in the recent history) can be merged by anyone with write access who satisfies the review rule, and it reaches production immediately.",
+      "impact": "The documented quality gates (QA-01, the RBAC drift guard, the fee-catalogue guards that protect fail-closed resolvers) are advisory, not enforced. Production can run code that CI rejected.",
+      "recommendation": "In GitHub Settings > Branches > main, add the 'test' job (workflow 'CI') as a required status check, require branches to be up to date, and enable 'Do not allow bypassing'. Either configure Vercel to deploy production only after checks pass, or move production promotion into a GitHub Actions job with `needs: test` and a protected `production` environment with required reviewers. Share a screenshot or `gh api .../branches/main/protection` output as evidence.",
+      "secure_fix_example": "# .github/workflows/deploy.yml (sketch)\njobs:\n  deploy:\n    needs: test\n    environment: production   # required reviewers configured in repo settings\n    if: github.ref == 'refs/heads/main'",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-OPS-005",
+      "title": "Non-production code is trusted by production: per-PR Vercel preview deployments can only reach the production Supabase project, and production Edge Functions allow the http://localhost:5173 origin",
+      "severity": "Medium",
+      "cvss_v3_1": "N/A (environment segregation)",
+      "confidence": "Needs-live-verification",
+      "category": "Config",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "OPS-01",
+          "A-06"
+        ],
+        "owasp_top10": [
+          "A05:2021"
+        ],
+        "owasp_api": [
+          "API8:2023"
+        ],
+        "asvs": [
+          "V14.1.1"
+        ],
+        "iso27001": [
+          "A.8.31"
+        ],
+        "nist_csf": [
+          "PR.DS-7 (CSF 1.1)"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "docs/audit/2026-09-24/raw/ops-scope-github-api.txt",
+          "line": 142,
+          "snippet": "30 deployments listed: 26 Preview, 4 Production (Preview -> https://woredas-portal-<hash>-woreda.vercel.app)"
+        },
+        {
+          "path": "supabase/functions/_shared/response.ts",
+          "line": 23,
+          "snippet": "[Deno.env.get(\"SITE_URL\"), \"http://localhost:5173\"]"
+        },
+        {
+          "path": "docs/security-hardening.md",
+          "line": 55,
+          "snippet": "**Deployment Protection** — leave production public, but set preview deployments to require Vercel authentication  (listed as a to-do dashboard action)"
+        },
+        {
+          "path": "src/routes/woreda.services.$requestId.print.tsx",
+          "line": 102,
+          "snippet": "? `${typeof window !== \"undefined\" ? window.location.origin : \"\"}/verify/letter/${data.verification_token}`"
+        }
+      ],
+      "description": "Vercel builds a publicly addressable preview for each PR branch. Because no staging Supabase project exists, a working preview can only use the production URL and anon key (or be non-functional); which of the two applies depends on Vercel environment-variable scoping that is not visible from the repository. Deployment Protection for previews is recorded as a to-do. The production Edge Function CORS allow-list is hard-coded to include http://localhost:5173, so any code a developer runs locally, including unreviewed branches, can call production privileged functions from a browser with a real session. Service letters print a verification URL built from window.location.origin, so a letter printed from a preview or localhost carries a non-production verification link.",
+      "attack_scenario": "A staff member follows a preview link from a PR comment and signs in. Unreviewed branch code then runs with that person's real production session against real PII. Alternatively, a malicious or compromised dependency in an unmerged branch exfiltrates the session token.",
+      "impact": "Unreviewed code gains the same data access as production code for any staff member who uses it. Printed letters can carry URLs that later stop resolving.",
+      "recommendation": "Enable Vercel Deployment Protection (Vercel Authentication) on previews now, and scope the production VITE_SUPABASE_* variables to the Production environment only. Once staging exists, point Preview-scoped variables at staging. Remove localhost from the production CORS set (see WP-OPS-001). Build letter verification URLs from VITE_PUBLIC_SITE_URL as credentials and receipts already do.",
+      "secure_fix_example": "// woreda.services.$requestId.print.tsx\nimport { LETTER_VERIFY_ORIGIN } from \"@/config/letterVerify\"; // VITE_PUBLIC_SITE_URL, fail build if unset\nconst url = `${LETTER_VERIFY_ORIGIN}/verify/letter/${data.verification_token}`;",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-OPS-006",
+      "title": "No operational monitoring or alerting: no error tracking, uptime checks, log retention or alerts for Edge Function failures, auth anomalies or the fail-open rate limiter",
+      "severity": "Medium",
+      "cvss_v3_1": "N/A (detection control)",
+      "confidence": "Confirmed",
+      "category": "Logging",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "OPS-01",
+          "D-05",
+          "B-05"
+        ],
+        "owasp_top10": [
+          "A09:2021"
+        ],
+        "owasp_api": [],
+        "asvs": [
+          "V7.1.1",
+          "V7.2.1"
+        ],
+        "iso27001": [
+          "A.8.16",
+          "A.8.15"
+        ],
+        "nist_csf": [
+          "DE.CM-01 (CSF 2.0)",
+          "DE.AE-02 (CSF 2.0)"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "src/server.ts",
+          "line": 48,
+          "snippet": "console.error(error);   (:34 console.error(consumeLastCapturedError() ...) — the only server-side error sink)"
+        },
+        {
+          "path": "supabase/functions/_shared/response.ts",
+          "line": 79,
+          "snippet": "console.error(logLabel, err);   // safeError(): real error goes only to Supabase function logs"
+        },
+        {
+          "path": "docs/testing-scope.md",
+          "line": 66,
+          "snippet": "The limiter fails open on any RPC error ... makes an inert limiter indistinguishable from a working one without this check."
+        },
+        {
+          "path": "package.json",
+          "line": 1,
+          "snippet": "no @sentry/*, @vercel/analytics, OpenTelemetry or other monitoring dependency (grep sentry|datadog|logflare|posthog|opentelemetry|log drain over repo: no matches)"
+        }
+      ],
+      "description": "Errors are written to console.error only: the SSR wrapper writes to Vercel runtime logs and safeError() in Edge Functions writes to Supabase function logs. Both have short platform retention and nobody watches them. There is no client-side error tracking, no uptime or synthetic check on the login and public verification routes, no log drain, and no alert on Edge Function 5xx responses, on repeated 401/403 responses, on spikes in GoTrue sign-in failures, or on the 'rate_limit_hit failed (failing open)' condition that the project's own documentation says cannot otherwise be detected. This overlaps WP-INV-003 (no SIEM/IDS); this finding covers operational availability and error detection.",
+      "attack_scenario": "A credential-signing outage, a broken migration that makes every query return empty, or a credential-stuffing run against /auth/v1/token goes unnoticed until a woreda office reports it.",
+      "impact": "Incidents are detected late or not at all. Evidence of an attack can age out of platform log retention before anyone looks.",
+      "recommendation": "Add error tracking (for example Sentry) to the client and the SSR entry with PII scrubbing, an external uptime check on /, /login and /v/<known-test-token>, a Supabase and Vercel log drain to retained storage, and alert rules for Edge Function 5xx, auth failure rate, rate-limiter fail-open log lines and audit_log anomalies. Record owners and on-call in an operations runbook.",
+      "secure_fix_example": "",
+      "effort": "M",
+      "status": "Open"
+    },
+    {
+      "id": "WP-OPS-007",
+      "title": "Data-plane change management is manual, agent-driven and has no migration ledger; account-level tokens are used from sandboxes and production has been hand-edited",
+      "severity": "Medium",
+      "cvss_v3_1": "N/A (change management)",
+      "confidence": "Confirmed",
+      "category": "Config",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "OPS-01",
+          "G-01"
+        ],
+        "owasp_top10": [
+          "A08:2021"
+        ],
+        "owasp_api": [],
+        "asvs": [
+          "V14.1.1"
+        ],
+        "iso27001": [
+          "A.8.32",
+          "A.8.9",
+          "A.5.15"
+        ],
+        "nist_csf": [
+          "PR.PS-01 (CSF 2.0)"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "docs/architecture.md",
+          "line": 402,
+          "snippet": "`supabase db push`/`db diff` are non-functional in this project ... the live database has no `supabase_migrations.schema_migrations` table"
+        },
+        {
+          "path": "docs/architecture.md",
+          "line": 411,
+          "snippet": "The mechanism of record instead is the **Management API over HTTPS**, three phases: ... dry-run ... then **apply**"
+        },
+        {
+          "path": ".claude/skills/deploy/SKILL.md",
+          "line": 24,
+          "snippet": "`SUPABASE_ACCESS_TOKEN` — Personal Access Token, account-level. Needed for migrations via the Management API and for Edge Functions."
+        },
+        {
+          "path": "docs/remediation-report.md",
+          "line": 327,
+          "snippet": "Completed manually with the same data the function would have written (`username='eska…[REDACTED]_rc'` ...), plus the `USER_INVITED` audit_log row"
+        },
+        {
+          "path": "scripts/deploy-functions.sh",
+          "line": 40,
+          "snippet": "supabase functions deploy \"${FUNCTIONS[@]}\" --use-api --project-ref \"$REF\"  (run from an operator/agent shell; no CI deploy job)"
+        }
+      ],
+      "description": "Schema migrations and Edge Functions reach production when an operator or AI agent session posts SQL to the Supabase Management API, or runs the CLI, using a Personal Access Token that controls every project on the account. Nothing records which of the 90 migration files are applied: there is no schema_migrations ledger, and drift is checked by ad-hoc catalog queries. There is no pipeline, no approval step and no environment protection. At least once, rows (including an audit_log entry) were inserted into production by hand to complete a failed function call. The frontend, by contrast, now deploys automatically through the Vercel Git integration (see WP-OPS-004), so the four deploy artifacts follow two unrelated processes.",
+      "attack_scenario": "A migration applied out of order, applied twice or skipped cannot be detected from a ledger. A leaked PAT in an agent sandbox (see WP-SUP-006) gives control-plane access to every project. Manual audit_log inserts make it impossible to tell trigger-written evidence from operator-written evidence.",
+      "impact": "Uncontrolled and non-reproducible production state, weak separation of duties, and weakened audit-trail evidentiary value.",
+      "recommendation": "Baseline a migration ledger (create supabase_migrations.schema_migrations and back-fill applied versions after a catalog diff). Run migrations and function deploys from a GitHub Actions job gated on CI with a protected 'production' environment and required reviewer. Keep the PAT as an environment secret there, not in agent sessions. Forbid manual writes to audit_log and app_user in production outside an incident procedure that is itself logged.",
+      "secure_fix_example": "",
+      "effort": "L",
+      "status": "Open"
+    },
+    {
+      "id": "WP-OPS-008",
+      "title": "Printed credentials and receipts encode a vendor shared subdomain (woredas-portal.vercel.app) as the public verification origin; there is no government-controlled domain",
+      "severity": "Medium",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:N/I:H/A:N (5.3)",
+      "confidence": "Likely",
+      "category": "Config",
+      "module": "QR",
+      "refs": {
+        "insa": [
+          "A-04",
+          "A-06",
+          "CRY-03"
+        ],
+        "owasp_top10": [
+          "A05:2021"
+        ],
+        "owasp_api": [],
+        "asvs": [
+          "V14.1.1"
+        ],
+        "iso27001": [
+          "A.8.20",
+          "A.8.26"
+        ],
+        "nist_csf": [
+          "PR.AA (CSF 2.0)",
+          "ID.AM-03 (CSF 2.0)"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "src/config/credentialCryptoConfig.ts",
+          "line": 40,
+          "snippet": "import.meta.env.VITE_PUBLIC_SITE_URL || \"https://woredas-portal.vercel.app\""
+        },
+        {
+          "path": "src/config/receiptVerify.ts",
+          "line": 10,
+          "snippet": "import.meta.env.VITE_PUBLIC_SITE_URL || \"https://woredas-portal.vercel.app\""
+        },
+        {
+          "path": "docs/security-hardening.md",
+          "line": 89,
+          "snippet": "Until a custom domain exists, none of the Cloudflare products can be attached to `*.vercel.app`."
+        },
+        {
+          "path": "docs/remediation-report.md",
+          "line": 52,
+          "snippet": "aliased to `https://woredas-portal.vercel.app`, HTTP 200"
+        }
+      ],
+      "description": "The public verification surface, where citizens and third parties scan a printed ID card or receipt QR, is hosted on a name inside Vercel's shared vercel.app namespace. That name is also the compiled-in fallback whenever VITE_PUBLIC_SITE_URL is unset. Physical cards cannot be recalled, so the QR target is effectively permanent, but the government does not control the name: it depends on the Vercel project continuing to exist under the same account. The shared namespace also makes look-alike phishing hosts (woredas-portal-<anything>.vercel.app) trivial to create, and it rules out HSTS preload and a Cloudflare/WAF front, as the project's own documentation acknowledges.",
+      "attack_scenario": "The Vercel project is renamed, deleted, or lost with the account. Another party claims the freed project name and serves a clone of /v/$token that shows 'VALID' for any token. Forged cards then 'verify' when scanned with a phone camera, because the verifier page itself is attacker-controlled.",
+      "impact": "Integrity of public credential verification for every card already printed. The same pattern also applies to receipts.",
+      "recommendation": "Before mass printing, register a government-controlled domain (for example a *.gov.et subdomain), attach it to Vercel, set VITE_PUBLIC_SITE_URL and SITE_URL to it, and remove the vendor fallback so a build without the variable fails instead of silently encoding the vendor host. Consider an HSTS preload and CAA records on that domain.",
+      "secure_fix_example": "export const CREDENTIAL_VERIFY_ORIGIN = (() => {\n  const v = import.meta.env.VITE_PUBLIC_SITE_URL;\n  if (!v) throw new Error(\"VITE_PUBLIC_SITE_URL must be set (government domain)\");\n  return v.replace(/\\/+$/, \"\");\n})();",
+      "effort": "M",
+      "status": "Open"
+    },
+    {
+      "id": "WP-OPS-009",
+      "title": "Staging seed design cannot exercise tenant isolation or most roles: one woreda, 4 of 9 roles, one shared password, no teardown",
+      "severity": "Low",
+      "cvss_v3_1": "N/A",
+      "confidence": "Confirmed",
+      "category": "Config",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "F-02",
+          "F-03"
+        ],
+        "owasp_top10": [],
+        "owasp_api": [],
+        "asvs": [],
+        "iso27001": [
+          "A.8.33"
+        ],
+        "nist_csf": []
+      },
+      "evidence": [
+        {
+          "path": "scripts/seed-staging-users.ts",
+          "line": 49,
+          "snippet": "const STAGING_TEST_WOREDA_ID = \"81ac2ad6-a320-4069-b8dc-0c43e358371b\";  (single woreda for every account)"
+        },
+        {
+          "path": "scripts/seed-staging-users.ts",
+          "line": 97,
+          "snippet": "role: \"super_admin\" | \"tenant_admin\" | \"registry_clerk\" | \"viewer\";"
+        },
+        {
+          "path": "scripts/seed-staging-users.ts",
+          "line": 87,
+          "snippet": "const TEST_PASSWORD = randomBytes(12).toString(\"base64url\");  (:218 'All four accounts share this one password')"
+        },
+        {
+          "path": "scripts/seed-staging-users.ts",
+          "line": 61,
+          "snippet": "if (projectRef === PRODUCTION_PROJECT_REF) {  (the only production guard is a single hard-coded ref string)"
+        },
+        {
+          "path": ".claude/skills/acceptance-harness/SKILL.md",
+          "line": 133,
+          "snippet": "bun run scripts/seed-staging-users.ts --teardown   # extend the script if this flag is absent"
+        }
+      ],
+      "description": "The planned staging accounts put every user in the Aboker woreda, so no cross-tenant test is possible. They cover super_admin, tenant_admin, registry_clerk and viewer only: civil_registrar, finance_clerk, supervisor, auditor, print_officer, custom roles, restricted console roles and the pending, suspended and inactive status variants are missing, and several open High database findings (WP-DB-001, WP-DB-004) depend on exactly those. All accounts, including super_admin, share one password. The teardown flag that the acceptance harness relies on does not exist. Credential handling is otherwise sound: generated at run time, never written to disk, and a production-ref refusal is present.",
+      "attack_scenario": "",
+      "impact": "The Phase 6 test campaign would miss the highest-risk defects (status bypass, read-permission gaps, cross-woreda access).",
+      "recommendation": "Extend the seeder to the matrix in docs/audit/2026-09-24/findings/ops-scope-testing-scope.md: two woredas, every built-in role, a custom role, a restricted console role, pending/suspended/inactive variants, a second approver for maker≠checker, a unique password per account, and a --teardown mode. Also refuse to run if the target project contains more than N residents, as a second production guard.",
+      "secure_fix_example": "",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-OPS-010",
+      "title": "Real individuals' e-mail addresses and account records are committed to a public repository as production seed data and in verification reports",
+      "severity": "Low",
+      "cvss_v3_1": "N/A",
+      "confidence": "Confirmed",
+      "category": "Privacy",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "F-03",
+          "PRV-01"
+        ],
+        "owasp_top10": [
+          "A01:2021"
+        ],
+        "owasp_api": [],
+        "asvs": [],
+        "iso27001": [
+          "A.5.34",
+          "A.8.11"
+        ],
+        "nist_csf": [
+          "PR.DS-01 (CSF 2.0)"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "supabase/seed-app-users.sql",
+          "line": 25,
+          "snippet": "FROM auth.users u WHERE u.email = 'eska…[REDACTED]@gmail.com'   (super_admin, active)"
+        },
+        {
+          "path": "supabase/seed-app-users.sql",
+          "line": 41,
+          "snippet": "FROM auth.users u WHERE u.email = 'sayb…[REDACTED]@gmail.com'   (supervisor, pending)"
+        },
+        {
+          "path": "docs/remediation-report.md",
+          "line": 316,
+          "snippet": "`eska…[REDACTED]@gmail.com` was invited as `registry_clerk` in Aboker woreda"
+        },
+        {
+          "path": "docs/audit/2026-09-24/raw/ops-scope-github-api.txt",
+          "line": 5,
+          "snippet": "\"private\": false, \"visibility\": \"public\""
+        }
+      ],
+      "description": "seed-app-users.sql binds production roles (including the platform super_admin) to named people's personal webmail addresses. Verification reports name the real accounts used for committed production test writes. The repository is public, so this maps privileged accounts to targetable identities. Personal webmail accounts for a government super_admin are a separate account-security concern. No passwords are present, and no auth.users inserts exist in any migration.",
+      "attack_scenario": "Targeted phishing or password-reset abuse against the identified super_admin mailbox.",
+      "impact": "Account-takeover targeting information; disclosure of personal data.",
+      "recommendation": "Remove seed-app-users.sql from the tracked tree (keep an operator-held copy or a template with placeholders), move privileged accounts to organisational mailboxes with MFA, and scrub named accounts from docs. History rewrite is optional because these are not secrets, but treat the addresses as disclosed.",
+      "secure_fix_example": "",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-OPS-011",
+      "title": "Hosting location and cross-border transfer of Ethiopian residents' PII are undocumented (Supabase region recorded as eu-west-1; Vercel functions region unspecified)",
+      "severity": "Low",
+      "cvss_v3_1": "N/A",
+      "confidence": "Needs-live-verification",
+      "category": "Privacy",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "A-04",
+          "PRV-01"
+        ],
+        "owasp_top10": [],
+        "owasp_api": [],
+        "asvs": [],
+        "iso27001": [
+          "A.5.31",
+          "A.5.34"
+        ],
+        "nist_csf": [
+          "GV.OC-03 (CSF 2.0)"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "docs/fix-task-v3-execution-notes.md",
+          "line": 18,
+          "snippet": "(woreda-portal-DB, eu-west-1, ACTIVE_HEALTHY) via the Management API"
+        },
+        {
+          "path": "docs/architecture.md",
+          "line": 9,
+          "snippet": "## Deployment topology  (diagram names Vercel and Supabase; no region, jurisdiction or data-residency statement)"
+        }
+      ],
+      "description": "The only record of where the data lives is a passing mention in an execution note: eu-west-1 (Ireland). No deployment document states the hosting jurisdiction, the Vercel function region, the SMTP relay location, or a legal basis for holding a national civil registry outside Ethiopia. Whether Ethiopia's Personal Data Protection Proclamation (No. 1321/2024) or INSA hosting guidance permits this is a legal determination for the owner, not something this audit decides.",
+      "attack_scenario": "",
+      "impact": "Possible regulatory non-compliance; the A-04 deployment architecture is incomplete.",
+      "recommendation": "Record the region of every data-holding service (Supabase, Vercel, SMTP relay, the future backup store) in the deployment diagram, and obtain and file the owner's or INSA's determination on data residency.",
+      "secure_fix_example": "",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-OPS-012",
+      "title": "The repository's INSA Phase 6 testing-scope artifact is stale and incomplete",
+      "severity": "Low",
+      "cvss_v3_1": "N/A",
+      "confidence": "Confirmed",
+      "category": "Docs",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "F-01",
+          "F-02",
+          "G-01"
+        ],
+        "owasp_top10": [],
+        "owasp_api": [],
+        "asvs": [],
+        "iso27001": [
+          "A.5.37"
+        ],
+        "nist_csf": []
+      },
+      "evidence": [
+        {
+          "path": "docs/testing-scope.md",
+          "line": 15,
+          "snippet": "| Edge Functions (6) | `sign-credential`, `invite-tenant-user`, `invite-platform-admin`, `resend-platform-invite`, `activate-invited-user`, `record-login`"
+        },
+        {
+          "path": "docs/testing-scope.md",
+          "line": 17,
+          "snippet": "| PostgREST data API | Auto-generated REST over all 42 RLS-protected tables"
+        },
+        {
+          "path": "docs/testing-scope.md",
+          "line": 40,
+          "snippet": "| Role | Email (staging only) | Covers |  (4 roles, one woreda)"
+        },
+        {
+          "path": "docs/testing-scope.md",
+          "line": 83,
+          "snippet": "**Dependency-vulnerability scanning has been run**: `bun audit` ... reports no vulnerabilities as of this pass."
+        }
+      ],
+      "description": "docs/testing-scope.md lists 6 Edge Functions (actual 8: resend-tenant-invite and send-password-reset-link are missing) and 42 tables (actual 66 tables and 17 views). It omits Storage (10 buckets), the public receipt verification route and verify_receipt RPC, the rental module and the service worker/offline queue. Its test-account table covers 4 roles in one woreda, and its dependency-scan statement is contradicted by WP-SUP-002. The auditor's replacement draft is docs/audit/2026-09-24/findings/ops-scope-testing-scope.md.",
+      "attack_scenario": "",
+      "impact": "A penetration-test team scoped from this document would miss about a third of the attack surface.",
+      "recommendation": "Replace docs/testing-scope.md with the auditor draft once reviewed, and add a CI or doc check that counts supabase/functions/* and the migration table set against the document.",
+      "secure_fix_example": "",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-OPS-013",
+      "title": "Live TLS version and HSTS delivery could not be verified from the audit environment; code sets HSTS (2 years, includeSubDomains, no preload)",
+      "severity": "Info",
+      "cvss_v3_1": "N/A",
+      "confidence": "Needs-live-verification",
+      "category": "Config",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "D-04",
+          "A-06"
+        ],
+        "owasp_top10": [
+          "A02:2021"
+        ],
+        "owasp_api": [],
+        "asvs": [
+          "V9.1.1",
+          "V9.1.3"
+        ],
+        "iso27001": [
+          "A.8.24"
+        ],
+        "nist_csf": [
+          "PR.DS-02 (CSF 2.0)"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "src/lib/security-headers.ts",
+          "line": 77,
+          "snippet": "headers.set(\"Strict-Transport-Security\", \"max-age=63072000; includeSubDomains\");"
+        },
+        {
+          "path": "src/server.ts",
+          "line": 46,
+          "snippet": "return withSecurityHeaders(await normalizeCatastrophicSsrResponse(response));"
+        },
+        {
+          "path": "docs/audit/2026-09-24/raw/ops-scope-tls-probe.txt",
+          "line": 3,
+          "snippet": "curl: (56) CONNECT tunnel failed, response 403  (egress policy denies woredas-portal.vercel.app and the Supabase host)"
+        }
+      ],
+      "description": "The code applies HSTS and a CSP to every SSR response, and no http:// URL exists under src/. The audit sandbox's egress policy refused CONNECT to both production hosts, so the negotiated TLS versions, the certificate chain and header survival on the live edge are unverified. Even if a probe had succeeded, the sandbox proxy re-terminates TLS, so an openssl result would have described the proxy rather than Vercel. Vercel and Supabase both terminate TLS at 1.2+ by platform default (inherited control).",
+      "attack_scenario": "",
+      "impact": "Evidence gap only.",
+      "recommendation": "The owner should attach an SSL Labs (or testssl.sh) report for the production host and for <ref>.supabase.co, plus `curl -sSI https://<prod-host>/` output showing the security headers.",
+      "secure_fix_example": "",
+      "effort": "S",
+      "status": "Open"
+    }
+  ],
+  "checklist": [
+    {
+      "id": "A-04",
+      "status": "PARTIAL",
+      "evidence": "docs/architecture.md:9-43; docs/fix-task-v3-execution-notes.md:18; raw/ops-scope-github-api.txt",
+      "note": "A deployment diagram exists but is stale (6 functions, 43 tables, 9 buckets vs 8/66/10). It omits region and jurisdiction, the Vercel Git integration and preview environment, the SMTP relay, the DNS/domain, backups, and the fact that no staging exists. As-is diagram in findings/ops-scope.md §3. See WP-OPS-011, WP-OPS-008."
+    },
+    {
+      "id": "A-05",
+      "status": "PARTIAL",
+      "evidence": "docs/architecture.md:26-31; supabase/functions/*; src/lib/security-headers.ts:39-47",
+      "note": "Inputs only; architecture agent owns the verdict. The component diagram lists '6 Edge Functions' (actual 8) and no RPC groups. External integrations missing from the diagram: Google Fonts, OSM tiles, esm.sh (Edge imports), GoTrue SMTP relay, Vercel Git integration. Component inventory in findings/ops-scope.md §3."
+    },
+    {
+      "id": "A-06",
+      "status": "PARTIAL",
+      "evidence": "docs/security-hardening.md:50-89; docs/architecture.md:77-89; src/lib/security-headers.ts:71-103",
+      "note": "Inputs only. Layers are labelled in the docs, but the WAF is 'dashboard opt-in' with no enablement evidence and IDS/IPS/SIEM are absent. Owned/Inherited/Absent table in findings/ops-scope.md §4 (consistent with WP-INV-003)."
+    },
+    {
+      "id": "D-04",
+      "status": "UNVERIFIED",
+      "evidence": "src/lib/security-headers.ts:77; src/server.ts:46-53; rg 'http://' src -> 0 matches; raw/ops-scope-tls-probe.txt",
+      "note": "Code-side criteria are met (HSTS on every SSR response, no mixed-content URLs). A live TLS/HSTS probe was blocked by the audit sandbox egress policy (and a proxied result would describe the proxy anyway). Owner to supply an SSL Labs report. WP-OPS-013."
+    },
+    {
+      "id": "F-01",
+      "status": "PARTIAL",
+      "evidence": "docs/testing-scope.md:7-17; findings/ops-scope-testing-scope.md",
+      "note": "The repo's asset table is stale (6 functions / 42 tables; missing Storage, receipt verify, rental). The auditor produced a complete replacement asset table. WP-OPS-012."
+    },
+    {
+      "id": "F-02",
+      "status": "PARTIAL",
+      "evidence": "docs/testing-scope.md:40-45; scripts/seed-staging-users.ts:49,97; findings/ops-scope-testing-scope.md §4",
+      "note": "The existing placeholder matrix covers 4 roles in one woreda, so isolation cannot be tested. The auditor provides a full role × 2-woreda placeholder matrix incl. status variants. WP-OPS-009."
+    },
+    {
+      "id": "F-03",
+      "status": "PARTIAL",
+      "evidence": "rg 'insert into auth.|auth.users' supabase/migrations -> FK reference only (baseline:631); supabase/seed-app-users.sql:20-42; docs/staging-runbook.md:9",
+      "note": "No test users or passwords in migrations or the repo (criterion met). But there is no staging to seed into, all testing happens on production with real accounts and committed test writes, and real users' seed rows are tracked in a public repo. WP-OPS-001, WP-OPS-010."
+    },
+    {
+      "id": "OPS-01",
+      "status": "FAIL",
+      "evidence": "docs/staging-runbook.md:9; docs/go-live-declaration.md:179-181,263-289; src/server.ts:48; package.json (no monitoring deps)",
+      "note": "No separate staging; backups/PITR/RPO/RTO unevidenced (likely free tier); no monitoring or alerting. WP-OPS-001, -002, -006."
+    }
+  ],
+  "drift": [
+    {
+      "claim": "ci.yml checks are 'all required to pass before a PR is mergeable'",
+      "source": "CLAUDE.md:113; docs/architecture.md:497",
+      "verdict": "CONTRADICTED",
+      "evidence": "GitHub API branches/main: required_status_checks.contexts = [] and checks = [] (raw/ops-scope-github-api.txt:13-21)"
+    },
+    {
+      "claim": "A required-approving-review rule is live on main",
+      "source": "docs/architecture.md:483-490",
+      "verdict": "NOT FOUND",
+      "evidence": "Not visible to an unauthenticated API call; needs owner-provided protection export"
+    },
+    {
+      "claim": "Public repo is 'secrets-enforced-out-by-CI'",
+      "source": "docs/go-live-declaration.md:308",
+      "verdict": "CONTRADICTED",
+      "evidence": ".github/workflows/ci.yml:30-41 has no secret-scan step; secret-sweep is a manually invoked agent (see WP-SUP-001)"
+    },
+    {
+      "claim": "This app has no staging project",
+      "source": "docs/staging-runbook.md:9; CLAUDE.md; supabase/functions/_shared/response.ts:20-21",
+      "verdict": "CONFIRMED",
+      "evidence": "Single project_id in supabase/config.toml:1; only one project ref in scripts (scripts/seed-staging-users.ts:45 et al.); no staging URL anywhere"
+    },
+    {
+      "claim": "seed-staging-users.ts refuses to run against the production ref",
+      "source": "docs/staging-runbook.md:19-21",
+      "verdict": "CONFIRMED",
+      "evidence": "scripts/seed-staging-users.ts:61-67"
+    },
+    {
+      "claim": "seed-app-users.sql seeds three real people's accounts",
+      "source": "docs/testing-scope.md:25-28",
+      "verdict": "CONFIRMED",
+      "evidence": "supabase/seed-app-users.sql:20-42"
+    },
+    {
+      "claim": "seed-staging-users.ts supports --teardown",
+      "source": ".claude/skills/acceptance-harness/SKILL.md:133",
+      "verdict": "NOT FOUND",
+      "evidence": "scripts/seed-staging-users.ts has no argument handling beyond argv[2] project ref (:56-60)"
+    },
+    {
+      "claim": "Edge Functions (6) in testing scope",
+      "source": "docs/testing-scope.md:15",
+      "verdict": "CONTRADICTED",
+      "evidence": "8 function directories under supabase/functions/ (scripts/deploy-functions.sh:28-37)"
+    },
+    {
+      "claim": "PostgREST over 42 RLS-protected tables",
+      "source": "docs/testing-scope.md:17",
+      "verdict": "CONTRADICTED",
+      "evidence": "66 tables + 17 views (shared-context.md; findings/database.md)"
+    },
+    {
+      "claim": "bun audit reports no vulnerabilities",
+      "source": "docs/testing-scope.md:83-86",
+      "verdict": "CONTRADICTED",
+      "evidence": "raw/supplychain-bun-audit.txt: 1 high (js-yaml GHSA-2883-xcg3-v3hh), WP-SUP-002"
+    },
+    {
+      "claim": "Deployment topology: 6 Edge Functions, 43 tables, 9 buckets",
+      "source": "docs/architecture.md:29-31",
+      "verdict": "CONTRADICTED",
+      "evidence": "8 functions; 66 tables; 10 INSERT INTO storage.buckets (migrations 01:24-48, 04:113, 14:23, 48:345)"
+    },
+    {
+      "claim": "All 7 storage buckets private; all 4 Edge Functions authenticate internally",
+      "source": "docs/security-hardening.md:38-39",
+      "verdict": "CONTRADICTED",
+      "evidence": "10 buckets and 8 functions exist (counts stale; the privacy/auth properties are for other agents)"
+    },
+    {
+      "claim": "Edge Functions deploy with verify_jwt:false",
+      "source": "docs/security-hardening.md:41; CLAUDE.md (Management API fallback)",
+      "verdict": "NOT FOUND",
+      "evidence": "supabase/config.toml has no [functions.*] block and scripts/deploy-functions.sh:40 passes no --no-verify-jwt; the gateway setting on the live functions is indeterminate"
+    },
+    {
+      "claim": "Frontend deploy is 'vercel deploy --prod --archive=tgz' and archive deploys aren't git-linked",
+      "source": "CLAUDE.md (Vercel section); docs/remediation-report.md:52; .claude/skills/deploy/SKILL.md",
+      "verdict": "CONTRADICTED",
+      "evidence": "GitHub deployments API: vercel[bot] Production deployments per main SHA (e.g. 9950f16e) and 26 Preview deployments since 2026-09-20 (raw/ops-scope-github-api.txt:129-142)"
+    },
+    {
+      "claim": "HSTS 2 years, includeSubDomains, on every response",
+      "source": "docs/security-hardening.md:22; docs/security-functionality.md:100-103",
+      "verdict": "CONFIRMED",
+      "evidence": "src/lib/security-headers.ts:77 applied in src/server.ts:46,49 (code level; live not verified)"
+    },
+    {
+      "claim": "TLS 1.2+ enforced end to end",
+      "source": "docs/security-functionality.md:100; docs/security-hardening.md:82",
+      "verdict": "NOT FOUND",
+      "evidence": "No evidence in repo; live probe blocked (raw/ops-scope-tls-probe.txt)"
+    },
+    {
+      "claim": "DDoS 'already on' at Vercel and Supabase; WAF 'covered once enabled'",
+      "source": "docs/security-hardening.md:80-81",
+      "verdict": "NOT FOUND",
+      "evidence": "Inherited platform claim; no enablement evidence for the Vercel Firewall managed ruleset"
+    }
+  ],
+  "artifacts": [
+    "docs/audit/2026-09-24/findings/ops-scope.md",
+    "docs/audit/2026-09-24/findings/ops-scope.json",
+    "docs/audit/2026-09-24/findings/ops-scope-testing-scope.md",
+    "docs/audit/2026-09-24/raw/ops-scope-github-api.txt",
+    "docs/audit/2026-09-24/raw/ops-scope-tls-probe.txt"
+  ]
+}

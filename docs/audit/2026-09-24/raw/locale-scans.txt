@@ -1,0 +1,133 @@
+# audit-locale scans @ HEAD 9950f16
+
+## ET-02 Ge'ez numerals U+1369..U+137C (rg, whole repo excl. node_modules/.git, --hidden)
+matches: 0 files (0 = clean)
+Intl ethiopic numbering / am locale formatting:
+none
+
+## ET-01/ET-05 Gregorian or Western-clock renderings in woreda/public surfaces
+src/routes/verify.receipt.$token.tsx:127:                  ).toLocaleDateString("en-GB")})`}
+src/routes/woreda.dashboard.tsx:612:        ).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false })}`,
+src/routes/woreda.audit.tsx:529:                          {at.toLocaleString("en-GB", { hour12: false })}
+src/routes/woreda.audit.tsx:602:                  ).toLocaleTimeString("en-GB", { hour12: false })}`}
+src/routes/woreda.credentials.$requestId.certificate.tsx:115:      dateGreg={now.toLocaleDateString("en-GB")}
+src/routes/woreda.credentials.$requestId.certificate.tsx:121:            printedOn={`${formatEthiopianDate(now)} / ${now.toLocaleDateString("en-GB")}`}
+src/routes/woreda.credentials.$requestId.certificate.tsx:148:                ? `${formatEthiopianDateOnly(cred.issue_date)} (${new Date(cred.issue_date).toLocaleDateString("en-GB")})`
+src/routes/woreda.credentials.$requestId.certificate.tsx:157:                ? `${formatEthiopianDateOnly(cred.expiry_date)} (${new Date(cred.expiry_date).toLocaleDateString("en-GB")})`
+src/routes/woreda.reports.$reportType.print.tsx:271:      dateGreg={now.toLocaleDateString("en-GB")}
+src/routes/woreda.reports.$reportType.print.tsx:278:            printedOn={now.toLocaleDateString("en-GB")}
+src/routes/woreda.services.$requestId.index.tsx:283:        DATE_GC: now.toLocaleDateString("en-GB"),
+src/routes/woreda.services.$requestId.index.tsx:566:                  value={new Date(req.submitted_at).toLocaleString("en-GB", { hour12: false })}
+src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:210:      dateGreg={now.toLocaleDateString("en-GB")}
+src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:216:            printedOn={now.toLocaleDateString("en-GB")}
+src/routes/woreda.households.$householdId.index.tsx:553:  return `${formatEthiopianDate(d)} · ${d.toLocaleDateString()}`;
+src/routes/woreda.revenue.$paymentId.receipt.tsx:482:  const dateGreg = receiptDateObj.toLocaleDateString("en-CA");
+src/routes/woreda.revenue.$paymentId.receipt.tsx:484:    ? `${formatEthiopianDate(new Date(printedAt))} (${new Date(printedAt).toLocaleDateString("en-CA")}) ${new Date(printedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`
+src/routes/woreda.residents.$residentId.print.tsx:197:      dateGreg={now.toLocaleDateString("en-GB")}
+src/routes/woreda.residents.$residentId.print.tsx:203:            printedOn={now.toLocaleDateString("en-GB")}
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:61:  const hh = String(d.getHours()).padStart(2, "0");
+src/routes/woreda.services.$requestId.print.tsx:90:    DATE_GC: issuedDate.toLocaleDateString("en-GB"),
+src/routes/woreda.services.$requestId.print.tsx:133:      dateGreg={issuedDate.toLocaleDateString("en-GB")}
+src/routes/woreda.households.$householdId.print.tsx:162:      dateGreg={now.toLocaleDateString("en-GB")}
+src/routes/woreda.households.$householdId.print.tsx:168:            printedOn={now.toLocaleDateString("en-GB")}
+src/routes/woreda.approvals.tsx:216:                          {r.created_at ? new Date(r.created_at).toLocaleDateString("en-GB") : "—"}
+src/utils/tableExport.ts:56:  preamble.push(`"Exported: ${new Date().toLocaleString("en-GB", { hour12: false })}"`);
+src/utils/tableExport.ts:138:  const generated = new Date().toLocaleString("en-GB", { hour12: false });
+src/utils/ethiopianCalendar.ts:97:  return `${formatEthiopianDate(date)} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+src/routes/verify.letter.$token.tsx:115:                        ).toLocaleDateString("en-GB")})`
+src/utils/reportExport.ts:145:  ctx.fillText(`Generated ${new Date().toLocaleString("en-GB", { hour12: false })}`, W - M, y + 14);
+src/components/layout/AppShell.tsx:483:                .toLocaleDateString("en-US", { month: "short", day: "numeric" })
+src/components/common/EthiopianDateInput.tsx:78:    return d.toLocaleDateString("en-GB");
+src/components/residents/ResidentProfileTabs.tsx:202:  return `${formatEthiopianDate(d)} · ${d.toLocaleDateString()}`;
+src/components/settings/LetterTemplatesTab.tsx:115:      DATE_GC: now.toLocaleDateString("en-GB"),
+src/components/services/ServiceRequestList.tsx:265:        value: (r) => new Date(r.submitted_at).toLocaleDateString("en-GB"),
+src/components/services/ServiceRequestList.tsx:385:          {new Date(r.submitted_at).toLocaleDateString("en-GB")}
+
+## Native (Gregorian) date pickers
+src/routes/admin.audit.tsx:406:                type="date"
+src/routes/admin.audit.tsx:417:                type="date"
+src/routes/woreda.revenue.index.tsx:344:              <Input type="date" value={start} onChange={(e) => setStart(e.target.value)} />
+src/routes/woreda.revenue.index.tsx:348:              <Input type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
+src/routes/woreda.services.new.tsx:574:                  type="date"
+
+## UTC date derivation via toISOString().slice(0, 10)
+src/routes/woreda.rental-reports.tsx:46:  const [activityEnd, setActivityEnd] = useState(new Date().toISOString().slice(0, 10));
+src/routes/woreda.rental-reports.tsx:380:  return d.toISOString().slice(0, 10);
+src/routes/woreda.services.$requestId.index.tsx:322:      const today = new Date().toISOString().slice(0, 10);
+src/routes/woreda.services.$requestId.index.tsx:1155:      const today = new Date().toISOString().slice(0, 10);
+src/routes/woreda.dashboard.tsx:279:        .gte("payment_date", new Date().toISOString().slice(0, 10));
+src/routes/woreda.dashboard.tsx:337:        const key = weekStart.toISOString().slice(0, 10);
+src/routes/woreda.dashboard.tsx:348:        const b = buckets.get(weekStart.toISOString().slice(0, 10));
+src/routes/woreda.dashboard.tsx:409:        .gte("payment_date", since.toISOString().slice(0, 10));
+src/routes/woreda.dashboard.tsx:415:        const k = d.toISOString().slice(0, 10);
+src/routes/woreda.rental-houses.$houseId.index.tsx:519:  const [rentStart, setRentStart] = useState(() => new Date().toISOString().slice(0, 10));
+src/routes/woreda.civil.divorce.new.tsx:24:const todayIso = () => new Date().toISOString().slice(0, 10);
+src/routes/woreda.civil.$eventId.tsx:1244:      const today = new Date().toISOString().slice(0, 10);
+src/routes/woreda.rental-accounts.$occupancyId.tsx:56:  return ethiopianToGregorian({ year, month, day: startEth.day }).toISOString().slice(0, 10);
+src/routes/woreda.rental-accounts.$occupancyId.tsx:263:      const dueDateIso = dueDate.toISOString().slice(0, 10);
+src/routes/woreda.rental-accounts.$occupancyId.tsx:303:        _payment_date: new Date().toISOString().slice(0, 10),
+src/routes/woreda.rental-accounts.$occupancyId.tsx:526:        _payment_date: new Date().toISOString().slice(0, 10),
+src/routes/woreda.civil.death.new.tsx:24:const todayIso = () => new Date().toISOString().slice(0, 10);
+src/routes/woreda.credentials.$requestId.index.tsx:1663:      const today = new Date().toISOString().slice(0, 10);
+src/routes/woreda.civil.marriage.new.tsx:24:const todayIso = () => new Date().toISOString().slice(0, 10);
+src/routes/woreda.reports.index.tsx:64:  return d.toISOString().slice(0, 10);
+src/routes/woreda.reports.index.tsx:66:const TODAY = new Date().toISOString().slice(0, 10);
+src/routes/woreda.civil.birth.new.tsx:35:const todayIso = () => new Date().toISOString().slice(0, 10);
+src/lib/residentSchema.ts:5:const todayIso = () => new Date().toISOString().slice(0, 10);
+src/lib/offlineSync.ts:241:  const today = new Date().toISOString().slice(0, 10);
+src/lib/__tests__/residentSchema.test.ts:4:const todayIso = () => new Date().toISOString().slice(0, 10);
+src/lib/__tests__/residentSchema.test.ts:56:    const future = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+
+## Fonts
+font-am-heading uses: 75
+font-am-body uses: 980
+src/styles.css:12: * Amharic text at volume. Both fall back to Noto Sans Ethiopic, which
+src/styles.css:44:  --font-noto-ethiopic: "Noto Sans Ethiopic", sans-serif;
+src/styles.css:45:  --font-am-heading: "Tayitu", "Noto Sans Ethiopic", sans-serif;
+src/styles.css:46:  --font-am-body: "Jiret", "Noto Sans Ethiopic", sans-serif;
+src/styles.css:196:  .font-noto-ethiopic {
+src/styles.css:197:    font-family: "Noto Sans Ethiopic", sans-serif;
+src/styles.css:203:   * labels/hints, toasts, print body text) uses Jiret. .font-noto-ethiopic
+src/routes/woreda.credentials.$requestId.print.tsx:1418:        fontFamily: "'Noto Sans Ethiopic','Inter',system-ui,sans-serif",
+src/routes/woreda.credentials.$requestId.print.tsx:1550:        fontFamily: "'Noto Sans Ethiopic','Inter',system-ui,sans-serif",
+src/routes/woreda.credentials.$requestId.print.tsx:1746:        fontFamily: "'Noto Sans Ethiopic','Inter',system-ui,sans-serif",
+src/routes/admin.credential-template.tsx:107:  "Noto Sans Ethiopic",
+src/routes/admin.credential-template.tsx:108:  "Noto Serif Ethiopic",
+src/routes/woreda.revenue.$paymentId.receipt.tsx:538:        fontFamily: "'Noto Sans Ethiopic',sans-serif",
+src/routes/woreda.revenue.$paymentId.receipt.tsx:623:                fontFamily: "'Noto Serif Ethiopic',serif",
+src/routes/woreda.revenue.$paymentId.receipt.tsx:636:                fontFamily: "'Noto Sans Ethiopic',sans-serif",
+src/routes/woreda.revenue.$paymentId.receipt.tsx:675:                  fontFamily: "'Noto Sans Ethiopic',sans-serif",
+src/routes/woreda.revenue.$paymentId.receipt.tsx:706:            fontFamily: "'Noto Serif Ethiopic',serif",
+src/routes/woreda.revenue.$paymentId.receipt.tsx:745:            style={{ fontFamily: "'Noto Sans Ethiopic',sans-serif", fontSize: 16, fontWeight: 600 }}
+src/routes/woreda.revenue.$paymentId.receipt.tsx:825:              <div style={{ fontFamily: "'Noto Sans Ethiopic',sans-serif" }}>{descriptionAm}</div>
+src/routes/woreda.revenue.$paymentId.receipt.tsx:846:                fontFamily: "'Noto Sans Ethiopic',sans-serif",
+src/routes/woreda.revenue.$paymentId.receipt.tsx:880:            fontFamily: "'Noto Serif Ethiopic',serif",
+src/routes/woreda.revenue.$paymentId.receipt.tsx:910:              fontFamily: "'Noto Sans Ethiopic',sans-serif",
+src/routes/woreda.revenue.$paymentId.receipt.tsx:952:        <div style={{ fontFamily: "'Noto Sans Ethiopic',sans-serif" }}>
+src/routes/woreda.revenue.$paymentId.receipt.tsx:980:      <div style={{ color: "#6b7280", fontFamily: "'Noto Sans Ethiopic',sans-serif" }}>
+src/routes/woreda.revenue.$paymentId.receipt.tsx:1041:        fontFamily: mono ? "'IBM Plex Mono',monospace" : "'Noto Sans Ethiopic',sans-serif",
+src/utils/tableExport.ts:67:const AM_FONT = `"Noto Sans Ethiopic", "Abyssinica SIL", system-ui, sans-serif`;
+src/utils/reportExport.ts:64:const AM_FONT = `"Noto Sans Ethiopic", "Abyssinica SIL", system-ui, sans-serif`;
+src/lib/security-headers.ts:40: * - fonts.googleapis.com / fonts.gstatic.com — Noto Sans Ethiopic + Inter
+
+## Amharic spelling variants (count in src)
+ኃይማኖት	4
+ሃይማኖት	2
+ፆታ	8
+ጾታ	14
+ንኡስ	1
+ንዑስ	2
+
+## DB-side phone / national ID format constraints
+none found
+
+## Document-number year source
+supabase/migrations/00000000000000_baseline.sql:938:  v_year := EXTRACT(YEAR FROM NOW())::SMALLINT % 100;
+supabase/migrations/00000000000000_baseline.sql:977:  v_year := EXTRACT(YEAR FROM NOW())::SMALLINT % 100;
+supabase/migrations/00000000000000_baseline.sql:1019:  v_year := EXTRACT(YEAR FROM NOW())::SMALLINT % 100;
+supabase/migrations/00000000000000_baseline.sql:1046:  v_year := EXTRACT(YEAR FROM NOW())::SMALLINT % 100;
+supabase/migrations/00000000000000_baseline.sql:1131:  v_year := EXTRACT(YEAR FROM NOW())::SMALLINT % 100;
+supabase/migrations/00000000000000_baseline.sql:1160:  v_year := EXTRACT(YEAR FROM NOW())::SMALLINT % 100;
+supabase/migrations/00000000000080_rental_phase4_arrears.sql:247:  v_year := EXTRACT(YEAR FROM NOW())::SMALLINT % 100;
+supabase/migrations/00000000000002_credential.sql:96:  v_year := EXTRACT(YEAR FROM NOW())::SMALLINT % 100;
+supabase/migrations/00000000000076_rental_phase2_financial_core.sql:140:  v_year := EXTRACT(YEAR FROM NOW())::SMALLINT % 100;

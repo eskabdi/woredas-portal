@@ -1,0 +1,10 @@
+{
+ "endpoint": "https://api.supabase.com/v1/projects/tugzuexfyzbdnghbmrjl/postgrest",
+ "http_status": "200",
+ "result": {
+  "db_schema": "public,graphql_public",
+  "max_rows": 1000,
+  "db_extra_search_path": "public, extensions",
+  "db_pool": null
+ }
+}

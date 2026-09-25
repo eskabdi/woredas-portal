@@ -1,0 +1,22 @@
+# PostgREST filter-string construction (.or/.ilike/.like/.textSearch)
+src/routes/woreda.rental-houses.index.tsx:218:      if (qTerm) query = query.ilike("house_number", `%${qTerm}%`);
+src/routes/woreda.rental-houses.index.tsx:267:      if (qTerm) query = query.ilike("house_number", `%${qTerm}%`);
+src/routes/woreda.residents.index.tsx:191:      q = q.or(clauses.join(","));
+src/routes/woreda.residents.index.tsx:979:        q = q.ilike("house_number", `%${escaped}%`);
+src/routes/admin.audit.tsx:225:      query = query.or(
+src/routes/woreda.audit.tsx:285:      query = query.or(
+src/routes/woreda.audit.tsx:298:      query = query.or(
+src/routes/woreda.civil.index.tsx:191:      q = q.ilike("event_number", `%${escaped}%`);
+src/routes/woreda.rental-houses.occupants.new.tsx:290:        .or(
+src/routes/woreda.credentials.index.tsx:120:      q = q.or(`request_number.ilike.%${escaped}%`);
+src/routes/woreda.households.index.tsx:127:      q = q.or([`house_number.ilike.%${escaped}%`, `address_line.ilike.%${escaped}%`].join(","));
+src/components/forms/ResidentWizardSteps.tsx:87:        .ilike("house_number", `%${term}%`)
+src/components/forms/ResidentWizardSteps.tsx:161:      // .or() takes a raw filter string, sidestepping the typed-column check
+src/components/forms/ResidentWizardSteps.tsx:167:        .or(`national_id_no_blind_index.eq.${blindIndex}`)
+src/components/forms/ResidentSearchPicker.tsx:84:        .or(
+src/components/services/ServiceRequestList.tsx:195:      q = q.or(
+src/components/residents/ResidentActions.tsx:445:        q = q.ilike("house_number", `%${escaped}%`);
+src/components/credentials/CredentialQueueTable.tsx:180:      q = q.or(`request_number.ilike.%${escaped}%`);
+
+# dynamic SQL in migrations (EXECUTE other than trigger/grant syntax)
+(none)

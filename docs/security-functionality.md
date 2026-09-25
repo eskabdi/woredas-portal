@@ -334,6 +334,33 @@ caller-supplied parameter — see `docs/rbac-security-forensic-review.md` and
 the individual task mapping memos (`docs/task12-mapping-memo.md`,
 `docs/task14a/b/c-mapping-memo.md`) for the per-function review record.
 
+**Correction (security audit 2026-09-24, WP-VER-001).** That review record
+was not complete: three `SECURITY DEFINER` functions looked up a row by a
+caller-controlled key with no woreda predicate —
+`generate_resident_on_birth_approval()` (copied a mother's ethnicity,
+religion and household from any woreda into a new child resident),
+`rental_eligibility()` (answered for any woreda's resident, and was still
+executable by `anon`) and `get_credential_live_status()` (a cross-tenant
+credential-status oracle for every authenticated user). Migration
+`00000000000090_p0_2_definer_woreda_scope.sql` pins every such lookup to the
+event's or caller's woreda, extends `enforce_vital_event_preconditions()` to
+reject an out-of-woreda `household_id` or `resident_id` column value and any
+out-of-woreda top-level `*_resident_id` or `spouse1`/`spouse2.resident_id`
+reference in `event_details`, on every civil event type (a deeper nested
+reference, such as an `informant.resident_id`, is not checked; no form writes
+one today), revokes `rental_eligibility()` from `anon`, and retires
+`get_credential_live_status()` (no client grant at all). To make a fourth
+case harder to land unnoticed, `bun run check:definer-tenant-predicate`
+(`scripts/check-definer-tenant-predicate.ts`, run in CI) statically flags
+any `SECURITY DEFINER` statement that reads or updates a tenant table
+without a tenant anchor -- `get_user_woreda_id()`, `NEW`/`OLD.woreda_id`,
+`is_super_admin()`, `auth.uid()`, or a variable derived from one of them
+(a bare `woreda_id`, such as a parameter or a display join, does not
+count). It is a text heuristic and a ratchet, not a proof: an anchored
+statement can still be wrong, so it complements review rather than
+replacing it. The pre-existing tolerated cases are listed with their reason
+in the script's `REVIEWED_BASELINE`, and the list can only shrink.
+
 ## Related documents
 
 - [`docs/rbac-security-forensic-review.md`](./rbac-security-forensic-review.md) — full access-control history and closed escalation paths.

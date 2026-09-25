@@ -1,0 +1,118 @@
+{
+ "generated_by": "audit-api-edge 2026-09-24",
+ "as_is": true,
+ "synthetic_values": "All ids, names, tokens and numbers are synthetic placeholders; no production data.",
+ "endpoint": "POST /functions/v1/activate-invited-user",
+ "classification": "Private (self-scoped)",
+ "auth": "bearer JWT; caller own row only",
+ "responses": {
+  "200": [
+   {
+    "emitted": true,
+    "response": {
+     "success": true,
+     "status": "active"
+    },
+    "evidence": "supabase/functions/activate-invited-user/index.ts:97",
+    "request": {
+     "headers": {
+      "Authorization": "Bearer <user access token>",
+      "apikey": "<publishable key>",
+      "Content-Type": "application/json"
+     },
+     "body": {}
+    }
+   },
+   {
+    "emitted": true,
+    "response": {
+     "success": true,
+     "status": "suspended"
+    },
+    "evidence": "supabase/functions/activate-invited-user/index.ts:53-57",
+    "request": "No-op for a non-pending caller; true status reported."
+   }
+  ],
+  "400": {
+   "emitted": false,
+   "reason": "Not emitted; body is ignored."
+  },
+  "401": [
+   {
+    "emitted": true,
+    "response": {
+     "error": "Missing authorization header"
+    },
+    "evidence": "supabase/functions/activate-invited-user/index.ts:23",
+    "request": {
+     "headers": {
+      "apikey": "<publishable key>"
+     },
+     "body": {}
+    },
+    "note": "Reached only if gateway verify_jwt=false; with verify_jwt=true the platform gateway answers first (body shape platform-defined, Needs-live-verification)."
+   },
+   {
+    "emitted": true,
+    "response": {
+     "error": "Unauthorized"
+    },
+    "evidence": "supabase/functions/activate-invited-user/index.ts:35",
+    "request": {
+     "headers": {
+      "Authorization": "Bearer <expired or revoked token>"
+     }
+    }
+   }
+  ],
+  "403": {
+   "emitted": false,
+   "reason": "Not emitted."
+  },
+  "404": {
+   "emitted": true,
+   "response": {
+    "error": "No app_user profile found"
+   },
+   "evidence": "supabase/functions/activate-invited-user/index.ts:51"
+  },
+  "405": {
+   "emitted": true,
+   "response": {
+    "error": "Method not allowed"
+   },
+   "evidence": "supabase/functions/activate-invited-user/index.ts:19",
+   "request": {
+    "method": "GET"
+   }
+  },
+  "409": {
+   "emitted": false,
+   "reason": "Not emitted; concurrent double-activation returns 200 (:85)."
+  },
+  "422": {
+   "emitted": false,
+   "reason": "Not emitted."
+  },
+  "429": {
+   "emitted": false,
+   "reason": "No limiter."
+  },
+  "500": [
+   {
+    "emitted": true,
+    "response": {
+     "error": "Failed to activate account"
+    },
+    "evidence": "supabase/functions/activate-invited-user/index.ts:77-84"
+   },
+   {
+    "emitted": true,
+    "response": {
+     "error": "Internal error"
+    },
+    "evidence": "supabase/functions/activate-invited-user/index.ts:98-99"
+   }
+  ]
+ }
+}

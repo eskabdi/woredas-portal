@@ -1,0 +1,11 @@
+{
+ "endpoint": "https://api.supabase.com/v1/projects/tugzuexfyzbdnghbmrjl/database/backups",
+ "http_status": "200",
+ "result": {
+  "region": "eu-west-1",
+  "walg_enabled": true,
+  "pitr_enabled": false,
+  "backups": [],
+  "physical_backup_data": {}
+ }
+}

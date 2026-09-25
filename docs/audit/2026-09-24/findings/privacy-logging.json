@@ -1,0 +1,766 @@
+{
+  "agent": "audit-privacy-logging",
+  "findings": [
+    {
+      "refs": {
+        "insa": [
+          "D-05",
+          "LOG-01",
+          "MC-03"
+        ],
+        "owasp_top10": [
+          "A09:2021"
+        ],
+        "owasp_api": [
+          "API8:2023"
+        ],
+        "asvs": [
+          "V7.1.3",
+          "V7.3.1",
+          "V7.3.3"
+        ],
+        "iso27001": [
+          "A.8.15"
+        ],
+        "nist_csf": [
+          "DE.CM-3",
+          "PR.PT-1"
+        ]
+      },
+      "status": "Open",
+      "id": "WP-PRV-001",
+      "title": "Changes to identity records and privileges are audited by the browser, not the database: direct API calls leave no trace and audit timestamps come from the client clock",
+      "severity": "Medium",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N (4.3)",
+      "confidence": "Confirmed",
+      "category": "Logging",
+      "module": "Platform",
+      "evidence": [
+        {
+          "path": "src/routes/woreda.residents.$residentId.edit.tsx",
+          "line": 217,
+          "snippet": ".from(\"resident\").update(core).eq(\"resident_id\", residentId).eq(\"woreda_id\", woredaId);  -- no .select(): a 0-row update still falls through to the audit insert"
+        },
+        {
+          "path": "src/routes/woreda.residents.$residentId.edit.tsx",
+          "line": 241,
+          "snippet": "await supabase.from(\"audit_log\").insert({ ... action_type: \"RESIDENT_UPDATED\", old_value_json: oldChanged, new_value_json: newChanged, action_at: new Date().toISOString() })"
+        },
+        {
+          "path": "supabase/migrations/00000000000043_task5_resident_creation_audit.sql",
+          "line": 47,
+          "snippet": "CREATE TRIGGER resident_audit_created AFTER INSERT ON public.resident  -- the only resident audit trigger; no UPDATE/DELETE trigger exists"
+        },
+        {
+          "path": "src/components/residents/ResidentProfileTabs.tsx",
+          "line": 863,
+          "snippet": ".from(\"resident_document\").delete().eq(\"document_id\", doc.document_id); ... storage.from(\"resident-documents\").remove([doc.storage_path])  -- no audit row at all"
+        },
+        {
+          "path": "src/components/settings/RolesPermissionsTab.tsx",
+          "line": 173,
+          "snippet": "await supabase.from(\"audit_log\").insert({ ... action_type: \"ROLE_PERMISSION_UPDATED\" ... })  -- role_permission / user_permission_override / woreda_settings / fee_schedule / tenant_module_config have no audit trigger"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 46,
+          "snippet": "action_at timestamp with time zone DEFAULT now() NOT NULL,  -- default only; 20 client call sites send action_at: new Date().toISOString() and nothing pins it"
+        },
+        {
+          "path": "supabase/migrations/00000000000040_task13_role_audit_logging.sql",
+          "line": 94,
+          "snippet": "CREATE TRIGGER app_user_role_audit AFTER INSERT OR UPDATE OF role, custom_role_id ON public.app_user  -- positive: role changes ARE trigger-audited (actor fixed in migration 41)"
+        }
+      ],
+      "description": "The audit trail has two kinds of writer. A minority of events are written by SECURITY DEFINER triggers: resident creation (migration 43), workflow status changes on credential_request/residence_credential (migration 25), app_user role and custom-role changes and tenant_role/tenant_role_permission changes (migrations 40/41), automatic death revocations (59) and the rental financial RPCs (76-89). Most security-relevant events are written by the browser as a second PostgREST call after the business write. That covers resident and household edits, deactivations, user suspension/reactivation, per-user permission overrides, role_permission matrix edits, woreda settings (signature/stamp/logo), fee schedule and service-type edits, and module toggles. Resident-document deletion writes no audit row at all. Because the table write and the audit insert are separate requests, anyone who calls PostgREST directly (DevTools, curl with their own JWT) can change a resident's FAN, date of birth, religion or residency status (including 'deceased') and leave no audit record. The client also supplies action_at, so audit rows can be back-dated or forward-dated. Client-written rows carry no source_ip. The resident edit path writes its audit row without checking that the update matched a row, which breaks the house rule in CLAUDE.md. Forgery of audit rows (NULL actor, any content) is already covered by WP-DB-008 and is not repeated here.",
+      "attack_scenario": "A registry clerk with resident.update opens DevTools and sends PATCH /rest/v1/resident?resident_id=eq.<id> {\"national_id_no\":\"<other FAN>\",\"date_of_birth\":\"1990-01-01\"}. RLS allows it. No trigger fires an audit row, so /woreda/audit shows nothing. A supervisor later investigating a fraudulent credential cannot tell who changed the identity data or when.",
+      "impact": "Non-repudiation for the core civil-registry records is lost. Insider tampering with identity data (FAN, DOB, deceased flag), privileges (overrides, matrix) and official assets (signature/stamp) cannot be reliably attributed. The INSA D-05/LOG-01 'trigger-written, append-only, before/after' criterion is not met.",
+      "recommendation": "Move audit writing into the database. Add one generic AFTER INSERT/UPDATE/DELETE trigger (SECURITY DEFINER, pinned search_path) on resident, household, household_location, vital_event, payment, receipt, resident_document, attachment, app_user (status, woreda_id), role_permission, user_permission_override, woreda_settings, fee_schedule, service_type and tenant_module_config. It should record auth.uid(), woreda_id, TG_OP, and the changed-column diff with Restricted fields masked (see WP-PRV-002). Pin action_at := now() and actor_user_id := auth.uid() in a BEFORE INSERT trigger on audit_log. Then revoke INSERT on audit_log from authenticated so only triggers and the service role can write. Keep the client-side 'context' rows (reprint reason, waiver reason) as a separate, non-authoritative entity or column.",
+      "secure_fix_example": "CREATE OR REPLACE FUNCTION public.audit_row_change() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$\nDECLARE o jsonb := CASE WHEN TG_OP<>'INSERT' THEN to_jsonb(OLD) END; n jsonb := CASE WHEN TG_OP<>'DELETE' THEN to_jsonb(NEW) END;\nBEGIN\n  o := o - ARRAY['national_id_no','phone_number','email','religion','ethnicity']; n := n - ARRAY['national_id_no','phone_number','email','religion','ethnicity'];\n  INSERT INTO audit_log(woreda_id, actor_user_id, entity_name, entity_id, action_type, old_value_json, new_value_json, action_at)\n  VALUES (COALESCE(n->>'woreda_id', o->>'woreda_id')::uuid, auth.uid(), TG_TABLE_NAME, COALESCE(n,o)->>TG_ARGV[0], 'ROW_'||TG_OP, o, n, now());\n  RETURN NULL; END $$;\nCREATE TRIGGER zz_audit AFTER INSERT OR UPDATE OR DELETE ON public.resident FOR EACH ROW EXECUTE FUNCTION audit_row_change('resident_id');\nREVOKE INSERT, UPDATE, DELETE ON public.audit_log FROM authenticated, anon;",
+      "effort": "M"
+    },
+    {
+      "refs": {
+        "insa": [
+          "D-05",
+          "A-08",
+          "PRV-01",
+          "CLS-01"
+        ],
+        "owasp_top10": [
+          "A09:2021",
+          "A02:2021"
+        ],
+        "owasp_api": [
+          "API3:2023"
+        ],
+        "asvs": [
+          "V7.1.1",
+          "V7.1.2",
+          "V8.3.4"
+        ],
+        "iso27001": [
+          "A.8.11",
+          "A.8.15"
+        ],
+        "nist_csf": [
+          "PR.DS-1",
+          "PR.DS-5"
+        ]
+      },
+      "status": "Open",
+      "id": "WP-PRV-002",
+      "title": "Restricted PII (FAN, phone, email, religion, ethnicity) is copied in plaintext into audit_log, which every tenant member can read and nothing ever purges; this defeats the column encryption",
+      "severity": "Medium",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:L/I:N/A:N (4.3)",
+      "confidence": "Confirmed",
+      "category": "Privacy",
+      "module": "Residents",
+      "evidence": [
+        {
+          "path": "src/lib/residentSchema.ts",
+          "line": 251,
+          "snippet": "return { first_name, full_name, ... ethnicity: values.ethnicity, religion: values.religion, national_id_no: values.national_id_no || null, phone_number, ... }"
+        },
+        {
+          "path": "src/routes/woreda.residents.$residentId.edit.tsx",
+          "line": 229,
+          "snippet": "for (const [k, v] of Object.entries(core)) { ... if (!eq) { oldChanged[k] = prev ?? null; newChanged[k] = v; } }"
+        },
+        {
+          "path": "src/routes/woreda.residents.$residentId.edit.tsx",
+          "line": 247,
+          "snippet": "old_value_json: oldChanged as never, new_value_json: newChanged as never,"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1553,
+          "snippet": "CREATE POLICY audit_log_tenant_read ON public.audit_log ... USING ((is_super_admin() OR (woreda_id = get_user_woreda_id())))"
+        },
+        {
+          "path": "supabase/migrations/00000000000044_task6_household_rent_national_id_pii.sql",
+          "line": 60,
+          "snippet": "ADD COLUMN IF NOT EXISTS national_id_no_enc bytea,  -- the FAN is encrypted in resident, but not in the audit copy"
+        },
+        {
+          "path": "docs/security-functionality.md",
+          "line": 267,
+          "snippet": "Full PII payloads -- audit_log.new_value_json/old_value_json carry narrow, action-specific fields ... not a full resident/household record dump."
+        }
+      ],
+      "description": "When a resident is edited, the client diffs the whole payload and writes the old and new values of every changed field into audit_log.old_value_json/new_value_json. The payload includes national_id_no (FAN), phone_number, ethnicity, religion, DOB, names, birth place and work info. So a FAN or phone correction leaves both the old and new values in plaintext jsonb. The audit_log SELECT policy checks only the tenant (WP-DB-004): print officers, viewers and zero-grant custom roles can read it through PostgREST even though /woreda/audit is hidden from them in the UI. audit_log has no retention, and PII inside jsonb is out of scope for the Phase C encryption. The FAN, which migration 44 encrypted, therefore persists in cleartext in a second table and in every backup, for good. The documentation claims audit payloads carry only narrow fields; that is true of the Edge Functions (sign-credential logs only credential_number) but not of the resident edit path.",
+      "attack_scenario": "A print_officer (no resident.read, no audit.view) calls GET /rest/v1/audit_log?entity_name=eq.resident&action_type=eq.RESIDENT_UPDATED&select=old_value_json,new_value_json and harvests previous and current FANs, phone numbers and religion for every resident whose record was ever corrected.",
+      "impact": "Restricted identifiers and special-category data leak to roles that should not see them, survive the planned stage-4 plaintext drop, and cannot be erased on request.",
+      "recommendation": "Never store Restricted values in audit payloads. Record the field name and a change marker, or a keyed hash (e.g. national_id_blind_index) instead of the value. Apply this in the DB trigger recommended in WP-PRV-001, and in the meantime strip Restricted keys client-side. Back-fill: UPDATE audit_log SET old_value_json = old_value_json - ARRAY[...], new_value_json = new_value_json - ARRAY[...] WHERE entity_name='resident' (do this in a controlled change with a written justification, since it rewrites audit history). Gate audit_log SELECT on user_has_perm('audit.view') (WP-DB-004).",
+      "secure_fix_example": "const RESTRICTED = new Set(['national_id_no','phone_number','email','religion','ethnicity']);\nfor (const [k, v] of Object.entries(core)) { if (!eq) { oldChanged[k] = RESTRICTED.has(k) ? '[changed]' : prev ?? null; newChanged[k] = RESTRICTED.has(k) ? '[changed]' : v; } }",
+      "effort": "S"
+    },
+    {
+      "refs": {
+        "insa": [
+          "C-04",
+          "D-05",
+          "A-03",
+          "PRV-01"
+        ],
+        "owasp_top10": [
+          "A04:2021"
+        ],
+        "owasp_api": [],
+        "asvs": [
+          "V8.2.2",
+          "V8.2.3"
+        ],
+        "iso27001": [
+          "A.8.10",
+          "A.8.12"
+        ],
+        "nist_csf": [
+          "PR.DS-1"
+        ]
+      },
+      "status": "Open",
+      "id": "WP-PRV-003",
+      "title": "Plaintext PII persists in browser localStorage with no expiry (resident wizard drafts, offline civil and service submissions) and is only cleared by an in-app sign-out",
+      "severity": "Medium",
+      "cvss_v3_1": "CVSS:3.1/AV:P/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:N (5.2)",
+      "confidence": "Confirmed",
+      "category": "Privacy",
+      "module": "Platform",
+      "evidence": [
+        {
+          "path": "src/hooks/useFormDraft.ts",
+          "line": 84,
+          "snippet": "timerRef.current = setTimeout(() => { writeDraft(key, getValues()); }, WRITE_DEBOUNCE_MS);"
+        },
+        {
+          "path": "src/routes/woreda.residents.new.tsx",
+          "line": 58,
+          "snippet": "useFormDraft({ storageKey: `resident-new:${woredaId ?? \"\"}`, watch, reset, getValues, ... })  -- whole wizard incl. national_id_no, ethnicity, religion, phone_digits, latitude/longitude"
+        },
+        {
+          "path": "src/lib/offlineQueue.ts",
+          "line": 63,
+          "snippet": "localStorage.setItem(keyFor(woredaId), JSON.stringify(items));  -- payload = full insert body"
+        },
+        {
+          "path": "src/routes/woreda.civil.death.new.tsx",
+          "line": 63,
+          "snippet": "cause_of_death: v.cause_of_death || null,  -- inside event_details queued offline at :180"
+        },
+        {
+          "path": "src/routes/woreda.services.new.tsx",
+          "line": 236,
+          "snippet": "applicant_name: ..., applicant_phone: phoneDigitsToE164(applicantPhone), ... details: details.trim(), respondent_name: ..., incident_place: ..."
+        },
+        {
+          "path": "src/hooks/useAuthBootstrap.ts",
+          "line": 126,
+          "snippet": "if (event === \"SIGNED_OUT\") { clearAuth(); return; }  -- drafts/queue/query cache are NOT cleared on session expiry or remote revocation"
+        },
+        {
+          "path": "src/components/layout/AppShell.tsx",
+          "line": 387,
+          "snippet": "const handleSignOut = async () => { await supabase.auth.signOut(); queryClient.clear(); clearAllWizardDrafts(); clearOfflineQueue(); ... }  -- only path that clears"
+        },
+        {
+          "path": "src/hooks/useIdleTimeout.ts",
+          "line": 79,
+          "snippet": "let lastActivity = Date.now(); ... writeStoredActivity(lastActivity);  -- reopening the browser resets the idle clock, so a closed-tab session never idles out"
+        },
+        {
+          "path": "src/lib/offlineSync.ts",
+          "line": 374,
+          "snippet": "const actorUserId = session.user.id;  -- queued items are replayed as whoever is signed in; the enqueuing user is not checked"
+        }
+      ],
+      "description": "Two client features write PII to localStorage in plaintext. The resident intake wizard autosaves every field, including the 16-digit FAN, DOB, ethnicity, religion, phone, GPS and parents' names, to 'wizard-draft:resident-new:<woreda>'. The offline queue stores the complete insert body of birth/death/marriage/divorce registrations (event_details with cause of death, divorce grounds, witnesses, informant phone, ethnicity/religion), service requests and complaints (applicant name/phone, complaint details, respondent) and payment drafts, under 'offline-queue:<woreda>'. Neither has a TTL, neither is encrypted, and both are cleared only by the shells' handleSignOut (the user menu or the 25-minute idle timeout while the page is open). They survive a closed browser, a crash, an expired refresh token, and an admin-revoked session: the SIGNED_OUT listener clears only the zustand store. Because the idle timer restarts at mount, a user who closes the tab without signing out never triggers the clean-up. On a shared kiosk, the next operator (or anyone with OS access or a malicious extension) can read the data. If the next operator is in the same woreda, the queue auto-syncs and submits the previous user's registrations under the new user's identity: force_actor_columns() overwrites requested_by_user_id with auth.uid(). The service worker, by contrast, caches only '/' and '/favicon.png' and never API responses (public/sw.js:36-49), so it is not a PII store.",
+      "attack_scenario": "Clerk A starts a resident intake on a shared woreda PC, is interrupted and closes the browser. Days later, anyone using the PC opens DevTools > Application > Local Storage and reads the resident's FAN, religion, ethnicity and home GPS. Or: A queues a death registration offline and walks away; Clerk B signs in, the bar auto-syncs, and the audit log attributes A's registration to B.",
+      "impact": "Restricted and special-category data is exposed at rest on endpoints outside RLS, and records are attributed to the wrong person (an accountability gap).",
+      "recommendation": "(1) Exclude Restricted fields (national_id_no, phone, ethnicity, religion, GPS) from the wizard draft, or drop the draft to sessionStorage. (2) Add a TTL (e.g. 8 h) and a user_id stamp to every draft and queue item. On load, discard items older than the TTL or from a different user_id, and make runSync refuse items whose enqueuing user differs from session.user.id. (3) Call clearAllWizardDrafts()/clearOfflineQueue()/queryClient.clear() from the SIGNED_OUT branch of useAuthBootstrap and on login before setAuth. (4) If offline capture must survive restarts, encrypt at rest with a non-extractable WebCrypto AES-GCM key held in IndexedDB and bound to the user, and document the residual risk in the DFD.",
+      "secure_fix_example": "// useAuthBootstrap.ts\nif (event === 'SIGNED_OUT') { clearAuth(); queryClient.clear(); clearAllWizardDrafts(); clearOfflineQueue(); return; }\n// offlineQueue.ts enqueue(): item.userId = session.user.id; item.expiresAt = Date.now() + 8*3600e3;\n// offlineSync.ts runSync(): if (item.userId !== session.user.id || Date.now() > item.expiresAt) { dequeue(...); continue; }",
+      "effort": "M"
+    },
+    {
+      "refs": {
+        "insa": [
+          "D-05",
+          "LOG-01",
+          "PRV-01"
+        ],
+        "owasp_top10": [
+          "A09:2021",
+          "A01:2021"
+        ],
+        "owasp_api": [
+          "API4:2023",
+          "API6:2023"
+        ],
+        "asvs": [
+          "V7.1.3",
+          "V8.1.2"
+        ],
+        "iso27001": [
+          "A.5.12",
+          "A.5.13",
+          "A.8.15"
+        ],
+        "nist_csf": [
+          "PR.DS-5",
+          "DE.CM-3"
+        ]
+      },
+      "status": "Open",
+      "id": "WP-PRV-004",
+      "title": "Bulk exports and printed profiles are not audited, carry no exporter identity or confidentiality marking, and have no server-side volume control",
+      "severity": "Medium",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:L/I:N/A:N (4.3)",
+      "confidence": "Confirmed",
+      "category": "Privacy",
+      "module": "Platform",
+      "evidence": [
+        {
+          "path": "src/routes/woreda.residents.index.tsx",
+          "line": 308,
+          "snippet": "const q = buildResidentsQuery(phoneBlindIndex, nationalIdBlindIndex).range(0, 4999);  -- same 5,000-row pull on households, civil, credentials, rental houses, rental requests and woreda audit"
+        },
+        {
+          "path": "src/utils/tableExport.ts",
+          "line": 56,
+          "snippet": "preamble.push(`\"Exported: ${new Date().toLocaleString(\"en-GB\", { hour12: false })}\"`);  -- timestamp only; no exporter name/user id"
+        },
+        {
+          "path": "src/utils/tableExport.ts",
+          "line": 283,
+          "snippet": "ctx.fillText(\"Woreda Administration ERP -- official internal export\", M, PAGE_H - 28);  -- no CONFIDENTIAL / personal-data marking, no watermark"
+        },
+        {
+          "path": "src/routes/woreda.residents.$residentId.print.tsx",
+          "line": 237,
+          "snippet": "<DocField labelAm=\"ብሔር\" labelEn=\"Ethnicity\" ... /> <DocField labelAm=\"ሃይማኖት\" labelEn=\"Religion\" ... />  -- plus decrypted phone/email and photo; no audit_log write in this file"
+        },
+        {
+          "path": "src/components/print/PrintDocumentShell.tsx",
+          "line": 480,
+          "snippet": "<div>የታተመው ቀን / Printed: {printedOn}</div>  -- printed date, but not printed-by"
+        }
+      ],
+      "description": "List pages for residents, households, civil events, credentials, services/complaints, rental houses, revenue and both audit views offer CSV/PDF export. Each pulls up to 5,000 rows in one PostgREST call and builds the file in the browser (src/utils/tableExport.ts). Exports are gated only by the page's read permission, not by P.REPORT_EXPORT (which gates only /woreda/reports). No audit row is written, the file does not record who exported it, and nothing marks it as containing personal data. The printable Resident Profile, Household Profile and Rental Occupant Profile include name, DOB, decrypted phone/email, photo and, for residents, ethnicity and religion. They carry issuer, record reference and print date, but not the printing user, and are not logged. Only ID-card prints (credential_print_log) and receipt prints (RECEIPT_PRINTED) leave a trail. Because the data is fetched with the user's own JWT, the 5,000 cap is a UI convention: the same data can be paged out of PostgREST without limit. Positive observations: export columns are minimised (no FAN, phone, GPS, religion or ethnicity in any CSV/PDF export), and CSV cells are protected against formula injection (tableExport.ts:33-38).",
+      "attack_scenario": "A departing clerk exports all residents and households (names, DOB, sex, kebele, residency status) and prints profiles for a target list. /woreda/audit shows nothing, and a leaked PDF cannot be traced to its exporter.",
+      "impact": "Mass extraction of the population register cannot be detected or attributed, and leaked documents carry no provenance. This fails the D-05/LOG-01 expectation that exports are logged events.",
+      "recommendation": "Write an audit row for every export and profile print: entity, filter summary, row count, format, and for prints the subject id. Server-side is best: an RPC `log_export(entity, filter, row_count)` that also enforces a per-user daily budget via rate_limit_hit(). Gate list exports on P.REPORT_EXPORT, or a new P.DATA_EXPORT, in both UI and RPC. Stamp exporter name, user id and a 'Contains personal data -- handle per Proclamation 1321/2024' notice in the CSV preamble and the PDF footer/watermark. Add 'Printed by' to DocRecordFooter.",
+      "secure_fix_example": "preamble.push(`\"Exported by: ${appUser.full_name} (${appUser.user_id})\"`, '\"CONFIDENTIAL - contains personal data\"');\nawait supabase.rpc('log_export', { _entity: 'resident', _filter: filterLabel, _row_count: rows.length, _format: 'csv' });",
+      "effort": "M"
+    },
+    {
+      "refs": {
+        "insa": [
+          "A-08",
+          "PRV-01",
+          "CLS-01"
+        ],
+        "owasp_top10": [
+          "A04:2021"
+        ],
+        "owasp_api": [
+          "API3:2023"
+        ],
+        "asvs": [
+          "V8.3.4"
+        ],
+        "iso27001": [
+          "A.5.34"
+        ],
+        "nist_csf": [
+          "ID.GV-3"
+        ]
+      },
+      "status": "Open",
+      "id": "WP-PRV-005",
+      "title": "Special-category data (ethnicity, religion, cause of death, divorce grounds) is collected as mandatory with no documented lawful basis and receives no protection beyond ordinary PII",
+      "severity": "Medium",
+      "cvss_v3_1": "N/A (compliance finding)",
+      "confidence": "Confirmed",
+      "category": "Privacy",
+      "module": "Residents",
+      "evidence": [
+        {
+          "path": "src/lib/residentSchema.ts",
+          "line": 34,
+          "snippet": "ethnicity: z.string().min(1, \"ብሔር ይምረጡ / Select ethnicity\"), religion: z.string().min(1, \"ኃይማኖት ይምረጡ / Select religion\"),"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 339,
+          "snippet": "CREATE TABLE IF NOT EXISTS public.resident ( ... ethnicity text, religion text, ... )  -- plaintext, no _enc copy, no column grant"
+        },
+        {
+          "path": "src/routes/woreda.civil.death.new.tsx",
+          "line": 36,
+          "snippet": "cause_of_death: z.string().trim().max(500).optional().default(\"\"),  -- stored in vital_event.event_details jsonb"
+        },
+        {
+          "path": "src/routes/woreda.civil.birth.new.tsx",
+          "line": 76,
+          "snippet": "ethnicity: v.ethnicity || null, religion: v.religion || null,  -- copied into event_details"
+        },
+        {
+          "path": "src/routes/woreda.reports.$reportType.print.tsx",
+          "line": 87,
+          "snippet": "\"Residents by ethnicity\": \"bar\", \"Residents by religion\": \"bar\",  -- aggregate reporting, no small-cell suppression"
+        }
+      ],
+      "description": "Resident intake cannot be completed without selecting an ethnicity and a religion. Civil registration records ethnicity/religion (birth), cause of death (death) and grounds (divorce) in vital_event.event_details. Under the Personal Data Protection Proclamation these are sensitive personal data, as they are in every comparable regime. Nothing in the repository states why a residency ID or civil registration needs them, which roles need them, or how long they are kept. They get the same treatment as a street address: plaintext (outside the Phase C encryption scope; WP-DB-005), readable by every tenant member (WP-DB-004), printed on the resident profile, autosaved to localStorage (WP-PRV-003), and aggregated in population reports with no small-count suppression, so a kebele with one member of a minority religion identifies that person.",
+      "attack_scenario": "Any tenant account, including a print officer, lists residents by religion or ethnicity through PostgREST, or re-identifies individuals from a kebele-level report where the count is 1-2.",
+      "impact": "Discrimination and profiling risk for residents. This is a likely non-compliance with the Proclamation's sensitive-data conditions and with data minimisation.",
+      "recommendation": "Get a written decision from the system owner and legal counsel on the legal mandate for each special-category field. If there is no mandate, make the field optional with 'prefer not to say', or remove it. If it is mandated, restrict it: exclude it from default selects, add column-level REVOKE SELECT (ethnicity, religion) with access through a permission-gated RPC or view, encrypt it with the Phase C mechanism, exclude it from drafts and prints unless required, and suppress report cells below a threshold (e.g. <5). Record the lawful basis and purpose in a Record of Processing.",
+      "secure_fix_example": "REVOKE SELECT (ethnicity, religion) ON public.resident FROM authenticated;\nCREATE VIEW public.resident_sensitive WITH (security_invoker=on) AS SELECT resident_id, woreda_id, ethnicity, religion FROM public.resident WHERE public.user_has_perm('resident.sensitive.read');",
+      "effort": "M"
+    },
+    {
+      "refs": {
+        "insa": [
+          "PRV-01",
+          "D-05",
+          "A-03",
+          "OPS-01"
+        ],
+        "owasp_top10": [],
+        "owasp_api": [],
+        "asvs": [
+          "V8.3.1",
+          "V8.3.2",
+          "V8.3.8"
+        ],
+        "iso27001": [
+          "A.5.33",
+          "A.5.34",
+          "A.8.10",
+          "A.5.24"
+        ],
+        "nist_csf": [
+          "ID.GV-3",
+          "RS.CO-2"
+        ]
+      },
+      "status": "Open",
+      "id": "WP-PRV-006",
+      "title": "No privacy governance layer: no retention schedule or purge, no privacy notice or lawful-basis record, no data-subject-request or breach procedure, and an undocumented hosting region",
+      "severity": "Medium",
+      "cvss_v3_1": "N/A (compliance finding)",
+      "confidence": "Confirmed",
+      "category": "Privacy",
+      "module": "Platform",
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000022_rate_limit.sql",
+          "line": 19,
+          "snippet": "-- No pg_cron: this repo has none ... rate_limit_hit() deletes expired rows opportunistically  -- the only table with any expiry"
+        },
+        {
+          "path": "supabase/migrations/00000000000034_task3_harden_credential_verification.sql",
+          "line": 91,
+          "snippet": "attempted_value text NOT NULL CHECK (length(attempted_value) <= 512), ... source_ip text,  -- full signed token + IP of every public scan, kept forever"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 37,
+          "snippet": "CREATE TABLE IF NOT EXISTS public.audit_log ( ... source_ip text );  -- no partitioning, no purge"
+        },
+        {
+          "path": "docs/audit/2026-09-24/raw/privacy-logging-evidence.txt",
+          "line": 0,
+          "snippet": "## 9/10: zero matches for retention|purge|pg_cron|anonymi in migrations and for consent|privacy notice|data subject|personal data protection in src/supabase/docs"
+        }
+      ],
+      "description": "Nothing in the repository defines retention for any personal data. That covers audit_log (PII diffs and staff IPs), credential_verification_log (every public QR scan, with the full signed token containing name and DOB, plus the scanner's IP), deactivated residents, rejected or withdrawn requests, storage objects (photos, scanned IDs and legal documents; a deleted document's object is removed, but a deactivated resident's are not), Supabase Auth logs and Edge Function logs. Only rate_limit_bucket cleans itself up. Civil-registration records legitimately need long or permanent retention, but that should be a documented decision per record class. There is no privacy notice for residents, no Record of Processing or lawful-basis statement, no procedure for access, rectification or erasure/objection requests, no breach-notification runbook, and no DPIA. The Supabase project region and the Vercel function region are not documented anywhere in docs/ (A-04 overlap), so cross-border transfer of the whole civil register cannot be assessed. The OSM tile flow (WP-PRV-008) is a second undeclared transfer.",
+      "attack_scenario": "Not an exploit. A regulator or data subject asks how long a resident's data and verification-scan history are kept and who has accessed them, and the operator cannot answer from any artefact.",
+      "impact": "Likely non-compliance with the Proclamation's storage-limitation, transparency, accountability, data-subject-rights and cross-border-transfer provisions. The breach blast radius grows every year because nothing is deleted.",
+      "recommendation": "Produce, with the system owner and counsel: (1) a Record of Processing per data class (purpose, lawful basis, recipients, retention, transfer); (2) a retention schedule, implemented with a scheduled job (pg_cron or a scheduled Edge Function) that purges or pseudonymises credential_verification_log.source_ip/attempted_value after e.g. 90 days and audit_log.source_ip after e.g. 1 year, and archives closed requests; (3) a resident-facing privacy notice (Amharic-first) at intake; (4) a DSAR/rectification runbook using the existing edit flows plus an export-my-record print; (5) a breach-response runbook with the regulator notification step; (6) documented Supabase/Vercel regions and the legal basis for any transfer outside Ethiopia.",
+      "secure_fix_example": "SELECT cron.schedule('purge-verification-log', '15 2 * * *', $$UPDATE public.credential_verification_log SET source_ip = NULL, attempted_value = left(attempted_value, 8) || '…' WHERE created_at < now() - interval '90 days' AND source_ip IS NOT NULL$$);",
+      "effort": "L"
+    },
+    {
+      "refs": {
+        "insa": [
+          "D-05",
+          "LOG-01"
+        ],
+        "owasp_top10": [
+          "A09:2021"
+        ],
+        "owasp_api": [],
+        "asvs": [
+          "V7.2.1",
+          "V7.2.2"
+        ],
+        "iso27001": [
+          "A.8.15",
+          "A.8.16"
+        ],
+        "nist_csf": [
+          "DE.CM-1",
+          "DE.CM-3"
+        ]
+      },
+      "status": "Open",
+      "id": "WP-PRV-007",
+      "title": "Sign-ins, sign-outs and failed authentication are not in the application audit trail",
+      "severity": "Low",
+      "cvss_v3_1": "N/A (detective-control gap)",
+      "confidence": "Confirmed",
+      "category": "Logging",
+      "module": "Platform",
+      "evidence": [
+        {
+          "path": "supabase/functions/record-login/index.ts",
+          "line": 17,
+          "snippet": "// No audit_log entry: a row per login would be pure noise against the admin-action-focused audit trail"
+        },
+        {
+          "path": "supabase/functions/record-login/index.ts",
+          "line": 43,
+          "snippet": ".update({ last_login_at: new Date().toISOString() })  -- overwritten each login; no history"
+        },
+        {
+          "path": "src/routes/login.tsx",
+          "line": 100,
+          "snippet": "if (error || !data.user) { setSubmitError(error?.message ?? \"Sign-in failed\"); ... return; }  -- nothing recorded app-side"
+        }
+      ],
+      "description": "Successful logins overwrite a single app_user.last_login_at value. Logouts, idle-timeouts, failed password attempts, sign-ins by suspended or unprovisioned accounts (login.tsx:114-137) and password changes (ChangePasswordDialog) produce no audit_log row. GoTrue records these events in its own platform logs (auth.audit_log_entries and the Auth log explorer), but their retention depends on the Supabase plan, tenant admins cannot see them, and they cannot be correlated with audit_log in /woreda/audit. Password-reset-link sends and invites are logged (Edge Functions, with source_ip), which is good. Whether GoTrue auth logging is enabled and how long it is retained needs live verification.",
+      "attack_scenario": "Someone password-sprays a clerk's account or signs in with stolen credentials outside working hours. Tenant admins have no in-app way to see failed attempts or the session history of an account under investigation.",
+      "impact": "Account compromise is detected late, and incident forensics depend on an external log with unknown retention.",
+      "recommendation": "Write LOGIN_SUCCEEDED from record-login, since it already has the verified caller, IP and user-agent. Write LOGIN_FAILED/LOGIN_BLOCKED from a small Edge Function or GoTrue auth hook (hashed email only, never the password), LOGOUT/IDLE_TIMEOUT from handleSignOut, and PASSWORD_CHANGED from ChangePasswordDialog. Show them in /woreda/audit under a separate 'Sessions' filter so they don't add noise to the admin view. Document the Auth log retention and export it to a SIEM or bucket if the plan's retention is short.",
+      "secure_fix_example": "// record-login/index.ts after the update succeeds\nawait admin.from('audit_log').insert({ woreda_id: updated.woreda_id, actor_user_id: callerId, entity_name: 'session', entity_id: callerId, action_type: 'LOGIN_SUCCEEDED', new_value_json: { ua: req.headers.get('user-agent')?.slice(0,200) }, source_ip: getClientIp(req) });",
+      "effort": "S"
+    },
+    {
+      "refs": {
+        "insa": [
+          "A-03",
+          "B-03"
+        ],
+        "owasp_top10": [],
+        "owasp_api": [
+          "API10:2023"
+        ],
+        "asvs": [
+          "V8.3.4"
+        ],
+        "iso27001": [
+          "A.5.14",
+          "A.5.19"
+        ],
+        "nist_csf": [
+          "ID.SC-2"
+        ]
+      },
+      "status": "Open",
+      "id": "WP-PRV-008",
+      "title": "Household GPS maps load tiles from tile.openstreetmap.org, sending the location being viewed and the staff IP to a foreign third party",
+      "severity": "Low",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:L/I:N/A:N (3.1)",
+      "confidence": "Confirmed",
+      "category": "Privacy",
+      "module": "Households",
+      "evidence": [
+        {
+          "path": "src/components/gis/LocationDisplayMap.tsx",
+          "line": 4,
+          "snippet": "const OSM_URL = \"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png\";"
+        },
+        {
+          "path": "src/components/gis/LocationPickerMap.tsx",
+          "line": 8,
+          "snippet": "const OSM_URL = \"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png\";"
+        }
+      ],
+      "description": "When staff view or capture a household location, the browser fetches map tiles centred on the household's coordinates at high zoom from the OpenStreetMap Foundation's public tile servers. The tile x/y/z values and the request timing reveal the approximate location of the household being looked at, together with the woreda office's IP and User-Agent. The data flow is not recorded in docs/dfd.md, there is no processing agreement, and OSM's tile usage policy discourages production use of its public servers. The GPS coordinates themselves are not sent. The risk is limited to location inference by the tile operator.",
+      "attack_scenario": "The tile provider (or anyone on the path who can see SNI and timing) builds a list of zoom-18 tiles fetched from a government IP range, which approximates the homes being registered or inspected.",
+      "impact": "A minor, undeclared cross-border disclosure of household location metadata, and an availability dependency on a free service with usage limits.",
+      "recommendation": "Declare the flow in the DFD and privacy notice, or use a self-hosted or contracted tile service (e.g. a tile proxy under the platform's own domain, or a commercial provider with a DPA) and cap interactive zoom for display maps. Update the CSP img-src to match.",
+      "secure_fix_example": "const TILE_URL = import.meta.env.VITE_TILE_URL ?? '/tiles/{z}/{x}/{y}.png'; // served by a caching proxy the platform controls",
+      "effort": "S"
+    },
+    {
+      "refs": {
+        "insa": [
+          "CRY-02",
+          "A-03",
+          "PRV-01"
+        ],
+        "owasp_top10": [
+          "A04:2021"
+        ],
+        "owasp_api": [
+          "API3:2023"
+        ],
+        "asvs": [
+          "V8.3.1"
+        ],
+        "iso27001": [
+          "A.8.11"
+        ],
+        "nist_csf": [
+          "PR.DS-5"
+        ]
+      },
+      "status": "Open",
+      "id": "WP-PRV-009",
+      "title": "The QR token embeds DOB, sex, kebele and house number in readable base64 and travels in a URL path; the public verifier hides DOB but the payload discloses it",
+      "severity": "Low",
+      "cvss_v3_1": "CVSS:3.1/AV:P/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N (2.4)",
+      "confidence": "Confirmed",
+      "category": "Privacy",
+      "module": "QR",
+      "evidence": [
+        {
+          "path": "supabase/functions/sign-credential/index.ts",
+          "line": 206,
+          "snippet": "const payload: CompactPayload = { c: ..., i: resident.resident_number, n: resident.full_name, g: ..., b: compactDate(resident.date_of_birth), w: ..., k: ..., h: houseNumber, ... }"
+        },
+        {
+          "path": "src/utils/harariCredentialCrypto.ts",
+          "line": 119,
+          "snippet": "function expandPayload(c) { return { ..., fullNameEnglish: c.n, gender: ..., dobGregorian: expandDate(c.b), kebele: c.k, houseNumber: c.h, ... } }"
+        },
+        {
+          "path": "supabase/migrations/00000000000034_task3_harden_credential_verification.sql",
+          "line": 300,
+          "snippet": "CASE WHEN v_is_staff THEN v_row.photo_url END, CASE WHEN v_is_staff THEN v_row.date_of_birth END;  -- DOB withheld from anon here..."
+        },
+        {
+          "path": "docs/dfd.md",
+          "line": 73,
+          "snippet": "Verifier -. \"token only, no PII in request\" .-> CredentialsDB"
+        }
+      ],
+      "description": "The signed QR token is a base64url JSON payload, signed but not encrypted, containing full English name, sex, date of birth, woreda, kebele and house number. The QR encodes `${VITE_PUBLIC_SITE_URL}/v/<token>`. Anyone who scans the card can decode DOB and house number, and the full token then appears in the scanner's browser history, in hosting access logs as a URL path, and in credential_verification_log.attempted_value, which is kept forever (WP-PRV-006). verify_credential_token() deliberately returns DOB and photo only to staff callers. The payload makes that minimisation ineffective, and docs/dfd.md describes the request as carrying no PII. Most of these fields are also printed on the card, so the extra exposure is mainly the house number and the logging of the URL. Crypto-agent scope (CRY-02) owns the payload format; this finding records only the privacy aspect.",
+      "attack_scenario": "A shop or checkpoint that scans residents' cards keeps the decoded tokens and builds a DOB plus house-number list. Or: hosting request logs, retained by the provider, contain every scanned token.",
+      "impact": "Low-grade over-disclosure of quasi-identifiers beyond what the verifier UI intends, and PII is replicated into URL-bearing logs.",
+      "recommendation": "Drop the house number (h) from the payload and consider replacing DOB (b) with birth year or omitting it, since the online check already returns DOB to staff. Alternatively, put the token in the URL fragment (/v#<token>) so it is not sent to the server or kept in access logs, and have the page POST it to the RPC. Store a hash of attempted_value rather than the full token in credential_verification_log.",
+      "secure_fix_example": "// credentialVerifyUrl(): `${site}/v#${token}` and in v.$token.tsx read location.hash; DB: attempted_value := encode(digest(_token,'sha256'),'hex')",
+      "effort": "M"
+    },
+    {
+      "refs": {
+        "insa": [
+          "C-07",
+          "D-05"
+        ],
+        "owasp_top10": [
+          "A09:2021"
+        ],
+        "owasp_api": [],
+        "asvs": [
+          "V7.1.1"
+        ],
+        "iso27001": [
+          "A.8.15"
+        ],
+        "nist_csf": [
+          "PR.DS-5"
+        ]
+      },
+      "status": "Open",
+      "id": "WP-PRV-010",
+      "title": "Server-side error logging passes raw driver errors to Supabase function logs, where Postgres 'detail' can echo the offending value",
+      "severity": "Info",
+      "cvss_v3_1": "N/A",
+      "confidence": "Likely",
+      "category": "Logging",
+      "module": "Platform",
+      "evidence": [
+        {
+          "path": "supabase/functions/_shared/response.ts",
+          "line": 79,
+          "snippet": "console.error(logLabel, err);"
+        },
+        {
+          "path": "src/routes/__root.tsx",
+          "line": 38,
+          "snippet": "console.error(error);  -- client error boundary; message only, no payload"
+        }
+      ],
+      "description": "console.* usage is minimal and appropriate. Client code logs only configuration and SSR/error-boundary errors (7 call sites), and none of them logs a password, token or form payload. Edge Functions log through safeError() and the rate-limit fail-open path only. safeError() logs the whole error object, though. A PostgREST/Postgres unique-violation or check-violation carries a 'detail' such as 'Key (username)=(someone@example.org) already exists', so staff emails or other values can end up in Supabase function logs, whose retention and access are managed outside this repo. This is a low-risk observation, recorded so that the logging exclusion list stays accurate.",
+      "attack_scenario": "Not directly exploitable. Anyone with dashboard log access (the account owner's team) can see incidental PII fragments.",
+      "impact": "Small amounts of PII in platform logs with undocumented retention.",
+      "recommendation": "Log err.code, err.message and a request id, and omit err.details/err.hint, or redact them with a regex for emails and 9-16-digit numbers before console.error.",
+      "secure_fix_example": "const e = err as {code?: string; message?: string}; console.error(logLabel, { code: e?.code, message: e?.message?.replace(/[\\w.+-]+@[\\w-]+\\.[\\w.]+/g,'<email>').replace(/\\d{9,16}/g,'<num>') });",
+      "effort": "S"
+    }
+  ],
+  "checklist": [
+    {
+      "id": "D-05",
+      "status": "FAIL",
+      "evidence": "supabase/migrations/00000000000000_baseline.sql:1552-1553 (audit_log INSERT/SELECT policies only); src/routes/woreda.residents.$residentId.edit.tsx:241-249; supabase/functions/record-login/index.ts:17; src/utils/tableExport.ts:56; docs/security-functionality.md:243-285",
+      "note": "A 'what is logged / never logged' section exists (docs/security-functionality.md §Logging), and console.* usage is clean (no tokens, passwords or form payloads). But: (a) the logged-event set is incomplete, with no login/logout/failed-auth (WP-PRV-007), exports/profile prints (WP-PRV-004) or resident-document deletion (WP-PRV-001); (b) the exclusion 'no PII payloads' is violated, because FAN/phone/religion go into audit diffs (WP-PRV-002); (c) audit_log is not tamper-resistant: most rows are client-written with a client clock (WP-PRV-001) and forgeable (WP-DB-008)."
+    },
+    {
+      "id": "LOG-01",
+      "status": "FAIL",
+      "evidence": "supabase/migrations/00000000000043_task5_resident_creation_audit.sql:47; supabase/migrations/00000000000025_workflow_engine.sql:350-373; supabase/migrations/00000000000040_task13_role_audit_logging.sql:94 (+041 actor fix); supabase/migrations/00000000000000_baseline.sql:46,1206-1211,1552; 20 client sites with action_at: new Date()",
+      "note": "Append-only: PARTIAL. No UPDATE/DELETE RLS policy, so anon/authenticated cannot modify rows, but UPDATE/DELETE grants remain and service_role/owner can rewrite; there is no hash chain. Trigger-written: only resident INSERT, workflow status changes (2 tables + workflow_status_history for 3), role/tenant-role changes, death revocations and rental RPCs. Resident/household UPDATE/DELETE, payments deletion, overrides, role_permission, settings and module toggles are client-written only. Captures actor (forgeable NULL, WP-DB-008), woreda (NULL on death-revocation rows, WP-DB-008), action, before/after (only where the client chooses), time (client-supplied), IP (Edge Functions only). Fails 'trigger-written' and 'append-only'."
+    },
+    {
+      "id": "PRV-01",
+      "status": "PARTIAL",
+      "evidence": "docs/audit/2026-09-24/findings/privacy-logging.md §PII inventory; docs/audit/2026-09-24/privacy/pii-inventory.csv; docs/audit/2026-09-24/architecture/erd.md (53 sensitive columns marked)",
+      "note": "This audit produced a complete inventory (24 data elements, with classification, DB readers, encryption, export/print exposure and retention). The project itself has no owner-approved inventory or classification scheme. Retention is 'undefined' for every element (WP-PRV-006). Access and encryption columns show material gaps (WP-DB-004, WP-DB-005, WP-PRV-002/005). This passes only as an audit artefact; the controls it describes do not pass."
+    },
+    {
+      "id": "A-03",
+      "status": "PARTIAL",
+      "evidence": "docs/dfd.md:3,20,43-47,73-74,79-90; public/sw.js:36-49; src/lib/offlineQueue.ts:63; src/components/gis/LocationDisplayMap.tsx:4",
+      "note": "PII-flow part only (architecture owns the DFD verdict). docs/dfd.md marks 4 flows with the lock symbol and maps them to RLS/TLS. It omits PII stores and flows outside the DB: localStorage drafts and offline queue (WP-PRV-003), client-generated CSV/PDF exports and profile prints (WP-PRV-004), PII copies in audit_log (WP-PRV-002), OSM tile requests (WP-PRV-008), the QR token as PII in a URL (WP-PRV-009), and the GoTrue invite/reset e-mail flow to an external mail provider. Its encryption statement at docs/dfd.md:86 is stale. The service worker is correctly excluded as a PII store (shell-only cache)."
+    }
+  ],
+  "drift": [
+    {
+      "claim": "audit_log is insert-only by convention but not DB-enforced",
+      "source": "CLAUDE.md:423",
+      "verdict": "CONTRADICTED",
+      "evidence": "supabase/migrations/00000000000000_baseline.sql:1552-1553 define only INSERT and SELECT policies, so RLS does block UPDATE/DELETE for anon/authenticated. It is not enforced for service_role/owner (grants at :1714-1727 remain) and inserts are forgeable (WP-DB-008)."
+    },
+    {
+      "claim": "5 of the 6 Edge Functions populate source_ip",
+      "source": "CLAUDE.md:426; docs/security-functionality.md:252,282",
+      "verdict": "CONTRADICTED",
+      "evidence": "There are 8 functions. 7 write source_ip via getClientIp(): activate-invited-user:94, invite-platform-admin:197/230, invite-tenant-user:214/253, resend-platform-invite:111, resend-tenant-invite:166, send-password-reset-link:187, sign-credential:278. record-login writes no audit row."
+    },
+    {
+      "claim": "audit_log new_value_json/old_value_json carry narrow, action-specific fields, not full PII payloads",
+      "source": "docs/security-functionality.md:267",
+      "verdict": "CONTRADICTED",
+      "evidence": "src/routes/woreda.residents.$residentId.edit.tsx:229-249 diffs the full resident payload (src/lib/residentSchema.ts:251-262 incl. national_id_no, phone_number, ethnicity, religion) into old/new_value_json. True for Edge Functions (e.g. sign-credential:276 logs only credential_number)."
+    },
+    {
+      "claim": "Generic console.error logging only in a small fixed set of files, none logging credentials, tokens or form payloads",
+      "source": "docs/security-functionality.md:245-250",
+      "verdict": "CONFIRMED",
+      "evidence": "raw/privacy-logging-evidence.txt §6: 7 client/SSR call sites + supabase/functions/_shared/response.ts:79 and rateLimit.ts:31/36; none prints tokens or payloads (see WP-PRV-010 for the err.detail caveat)."
+    },
+    {
+      "claim": "Stage 3: every application read call site now uses the decrypted view",
+      "source": "docs/security-functionality.md:195",
+      "verdict": "CONTRADICTED",
+      "evidence": "src/routes/woreda.credentials.$requestId.index.tsx:193 and src/routes/woreda.credentials.$requestId.print.tsx:218 still select plaintext resident.national_id_no (print.tsx:455 comment admits it). Financial reads fall back to plaintext by documented design."
+    },
+    {
+      "claim": "Stage 4 (drop plaintext columns) not started; plaintext stays authoritative",
+      "source": "docs/security-functionality.md:196; supabase/migrations/00000000000023_pii_encryption.sql:5-8",
+      "verdict": "CONFIRMED",
+      "evidence": "No migration 00-89 drops resident.national_id_no/phone_number/email or any other plaintext counterpart; the *_pii_sync triggers still derive _enc from plaintext (044:122-133)."
+    },
+    {
+      "claim": "national_id_no, phone_number and email are protected by RLS tenant-scoping, not column-level encryption",
+      "source": "docs/dfd.md:85-88",
+      "verdict": "CONTRADICTED",
+      "evidence": "Stale: _enc copies exist since supabase/migrations/00000000000023_pii_encryption.sql:408-411 and 00000000000044_task6_household_rent_national_id_pii.sql:60 (plaintext still present alongside)."
+    },
+    {
+      "claim": "Public verifier sends token only, no PII in request; QR encodes only the token",
+      "source": "docs/dfd.md:73-74,98",
+      "verdict": "CONTRADICTED",
+      "evidence": "supabase/functions/sign-credential/index.ts:206-218: the token payload is readable base64 carrying name, sex, DOB, woreda, kebele, house number (WP-PRV-009)."
+    },
+    {
+      "claim": "Service worker never intercepts Supabase REST/Auth/Storage/Functions calls; caches app shell only",
+      "source": "public/sw.js:1-14,36-40",
+      "verdict": "CONFIRMED",
+      "evidence": "public/sw.js:14 APP_SHELL_URLS = ['/', '/favicon.png']; :42-43 returns early for non-GET and non-navigate requests; no runtime caching."
+    },
+    {
+      "claim": "Offline queue and wizard drafts are cleared from both portal shells' sign-out handlers so queued items cannot sync under the next person's identity",
+      "source": "src/lib/offlineQueue.ts:114-118; src/hooks/useFormDraft.ts:105-108",
+      "verdict": "CONFIRMED",
+      "evidence": "src/components/layout/AppShell.tsx:387-401 and :549-561 call clearAllWizardDrafts()/clearOfflineQueue(). Note: the guarantee does not cover SIGNED_OUT from session expiry/revocation (src/hooks/useAuthBootstrap.ts:126-128) or a closed browser (WP-PRV-003)."
+    },
+    {
+      "claim": "record-login writes no audit_log row per login",
+      "source": "supabase/functions/record-login/index.ts:17-19; docs/security-functionality.md:256-259",
+      "verdict": "CONFIRMED",
+      "evidence": "supabase/functions/record-login/index.ts:41-46 only updates app_user.last_login_at."
+    },
+    {
+      "claim": "role_permission writes only land an audit row once the write is confirmed",
+      "source": "CLAUDE.md:427-431",
+      "verdict": "CONFIRMED",
+      "evidence": "src/components/settings/RolesPermissionsTab.tsx:166-180 inserts ROLE_PERMISSION_UPDATED only when the upsert returned a row (client-side; no old value captured)."
+    },
+    {
+      "claim": "Ethiopia Personal Data Protection Proclamation No. 1321/2024 is referenced/complied with",
+      "source": "audit brief",
+      "verdict": "NOT FOUND",
+      "evidence": "No reference in src/, supabase/ or docs/ (raw/privacy-logging-evidence.txt §10). Citation matches the auditor's recollection (Proclamation 1321/2024, 2024, supervisory authority Ethiopian Communications Authority) but could NOT be verified against the Federal Negarit Gazette offline."
+    }
+  ],
+  "artifacts": [
+    "docs/audit/2026-09-24/findings/privacy-logging.md",
+    "docs/audit/2026-09-24/findings/privacy-logging.json",
+    "docs/audit/2026-09-24/privacy/pii-inventory.csv",
+    "docs/audit/2026-09-24/raw/privacy-logging-evidence.txt"
+  ]
+}

@@ -1,0 +1,840 @@
+{
+ "query": "select c.relname as event_object_table, t.tgname as trigger_name, pg_get_triggerdef(t.oid) as definition, t.tgenabled from pg_trigger t join pg_class c on c.oid=t.tgrelid join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and not t.tgisinternal order by 1,2",
+ "http_status": "201",
+ "result": [
+  {
+   "event_object_table": "app_user",
+   "trigger_name": "app_user_clear_custom_role_on_woreda_change",
+   "definition": "CREATE TRIGGER app_user_clear_custom_role_on_woreda_change BEFORE UPDATE OF woreda_id ON public.app_user FOR EACH ROW WHEN ((old.woreda_id IS DISTINCT FROM new.woreda_id)) EXECUTE FUNCTION clear_custom_role_on_woreda_change()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "app_user",
+   "trigger_name": "app_user_clear_overrides_on_role_promotion",
+   "definition": "CREATE TRIGGER app_user_clear_overrides_on_role_promotion AFTER UPDATE OF role ON public.app_user FOR EACH ROW WHEN ((old.role IS DISTINCT FROM new.role)) EXECUTE FUNCTION clear_overrides_on_role_promotion()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "app_user",
+   "trigger_name": "app_user_clear_overrides_on_woreda_change",
+   "definition": "CREATE TRIGGER app_user_clear_overrides_on_woreda_change AFTER UPDATE OF woreda_id ON public.app_user FOR EACH ROW WHEN ((old.woreda_id IS DISTINCT FROM new.woreda_id)) EXECUTE FUNCTION clear_overrides_on_woreda_change()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "app_user",
+   "trigger_name": "app_user_role_audit",
+   "definition": "CREATE TRIGGER app_user_role_audit AFTER INSERT OR UPDATE OF role, custom_role_id ON public.app_user FOR EACH ROW EXECUTE FUNCTION audit_app_user_role_change()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "app_user",
+   "trigger_name": "app_user_validate_role",
+   "definition": "CREATE TRIGGER app_user_validate_role BEFORE INSERT OR UPDATE OF role, custom_role_id, woreda_id ON public.app_user FOR EACH ROW EXECUTE FUNCTION validate_app_user_role()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "app_user",
+   "trigger_name": "trg_guard_console_role_assignment",
+   "definition": "CREATE TRIGGER trg_guard_console_role_assignment BEFORE INSERT OR UPDATE ON public.app_user FOR EACH ROW EXECUTE FUNCTION guard_console_role_assignment()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "app_user",
+   "trigger_name": "trg_prevent_last_super_admin_lockout",
+   "definition": "CREATE TRIGGER trg_prevent_last_super_admin_lockout BEFORE DELETE OR UPDATE ON public.app_user FOR EACH ROW EXECUTE FUNCTION prevent_last_super_admin_lockout()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "approval",
+   "trigger_name": "trg_force_actor",
+   "definition": "CREATE TRIGGER trg_force_actor BEFORE INSERT ON public.approval FOR EACH ROW EXECUTE FUNCTION force_actor_columns('approver_user_id')",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "arrears_installment_charge",
+   "trigger_name": "arrears_installment_charge_amount_sync_trg",
+   "definition": "CREATE TRIGGER arrears_installment_charge_amount_sync_trg BEFORE INSERT OR UPDATE ON public.arrears_installment_charge FOR EACH ROW EXECUTE FUNCTION arrears_installment_charge_amount_sync()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "arrears_repayment_installment",
+   "trigger_name": "arrears_repayment_installment_amount_sync_trg",
+   "definition": "CREATE TRIGGER arrears_repayment_installment_amount_sync_trg BEFORE INSERT OR UPDATE ON public.arrears_repayment_installment FOR EACH ROW EXECUTE FUNCTION arrears_repayment_installment_amount_sync()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "arrears_repayment_plan",
+   "trigger_name": "arrears_repayment_plan_amount_sync_trg",
+   "definition": "CREATE TRIGGER arrears_repayment_plan_amount_sync_trg BEFORE INSERT OR UPDATE ON public.arrears_repayment_plan FOR EACH ROW EXECUTE FUNCTION arrears_repayment_plan_amount_sync()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "arrears_repayment_plan",
+   "trigger_name": "arrears_repayment_plan_set_updated_at",
+   "definition": "CREATE TRIGGER arrears_repayment_plan_set_updated_at BEFORE UPDATE ON public.arrears_repayment_plan FOR EACH ROW EXECUTE FUNCTION set_updated_at()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "arrears_repayment_plan",
+   "trigger_name": "trg_force_actor",
+   "definition": "CREATE TRIGGER trg_force_actor BEFORE INSERT OR UPDATE ON public.arrears_repayment_plan FOR EACH ROW EXECUTE FUNCTION force_actor_columns('requested_by_user_id', 'approved_by_user_id')",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "arrears_repayment_plan",
+   "trigger_name": "uu_guard_arrears_plan_immutable_fields",
+   "definition": "CREATE TRIGGER uu_guard_arrears_plan_immutable_fields BEFORE UPDATE ON public.arrears_repayment_plan FOR EACH ROW EXECUTE FUNCTION guard_arrears_plan_immutable_fields()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "arrears_repayment_plan",
+   "trigger_name": "yy_guard_arrears_plan_maker_checker",
+   "definition": "CREATE TRIGGER yy_guard_arrears_plan_maker_checker BEFORE UPDATE ON public.arrears_repayment_plan FOR EACH ROW EXECUTE FUNCTION guard_arrears_plan_maker_checker()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "arrears_repayment_plan",
+   "trigger_name": "zz_assign_arrears_plan_number",
+   "definition": "CREATE TRIGGER zz_assign_arrears_plan_number BEFORE INSERT ON public.arrears_repayment_plan FOR EACH ROW EXECUTE FUNCTION assign_arrears_plan_number()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "arrears_repayment_plan",
+   "trigger_name": "zz_enforce_workflow_transition",
+   "definition": "CREATE TRIGGER zz_enforce_workflow_transition BEFORE UPDATE ON public.arrears_repayment_plan FOR EACH ROW EXECUTE FUNCTION enforce_workflow_transition()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "arrears_repayment_plan",
+   "trigger_name": "zz_log_workflow_transition",
+   "definition": "CREATE TRIGGER zz_log_workflow_transition AFTER UPDATE ON public.arrears_repayment_plan FOR EACH ROW EXECUTE FUNCTION log_workflow_transition('plan_id')",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "arrears_repayment_plan",
+   "trigger_name": "zzz_activate_arrears_repayment_plan",
+   "definition": "CREATE TRIGGER zzz_activate_arrears_repayment_plan AFTER UPDATE ON public.arrears_repayment_plan FOR EACH ROW EXECUTE FUNCTION activate_arrears_repayment_plan()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "arrears_repayment_plan",
+   "trigger_name": "zzzz_release_arrears_plan_charges",
+   "definition": "CREATE TRIGGER zzzz_release_arrears_plan_charges AFTER UPDATE ON public.arrears_repayment_plan FOR EACH ROW EXECUTE FUNCTION release_arrears_plan_charges()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "attachment",
+   "trigger_name": "trg_force_actor",
+   "definition": "CREATE TRIGGER trg_force_actor BEFORE INSERT ON public.attachment FOR EACH ROW EXECUTE FUNCTION force_actor_columns('uploaded_by')",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "audit_log",
+   "trigger_name": "trg_force_actor",
+   "definition": "CREATE TRIGGER trg_force_actor BEFORE INSERT ON public.audit_log FOR EACH ROW EXECUTE FUNCTION force_actor_columns('actor_user_id')",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "console_role",
+   "trigger_name": "set_console_role_updated_at",
+   "definition": "CREATE TRIGGER set_console_role_updated_at BEFORE UPDATE ON public.console_role FOR EACH ROW EXECUTE FUNCTION set_updated_at()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "console_role_permission",
+   "trigger_name": "set_console_role_permission_updated_at",
+   "definition": "CREATE TRIGGER set_console_role_permission_updated_at BEFORE UPDATE ON public.console_role_permission FOR EACH ROW EXECUTE FUNCTION set_updated_at()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "credential_policy",
+   "trigger_name": "set_credential_policy_updated_at",
+   "definition": "CREATE TRIGGER set_credential_policy_updated_at BEFORE UPDATE ON public.credential_policy FOR EACH ROW EXECUTE FUNCTION set_updated_at()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "credential_policy",
+   "trigger_name": "trg_force_actor",
+   "definition": "CREATE TRIGGER trg_force_actor BEFORE INSERT OR UPDATE ON public.credential_policy FOR EACH ROW EXECUTE FUNCTION force_actor_columns('updated_by')",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "credential_print_log",
+   "trigger_name": "trg_force_actor",
+   "definition": "CREATE TRIGGER trg_force_actor BEFORE INSERT ON public.credential_print_log FOR EACH ROW EXECUTE FUNCTION force_actor_columns('printed_by_user_id')",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "credential_request",
+   "trigger_name": "default_credential_request_office_id",
+   "definition": "CREATE TRIGGER default_credential_request_office_id BEFORE INSERT ON public.credential_request FOR EACH ROW EXECUTE FUNCTION default_credential_request_office_id()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "credential_request",
+   "trigger_name": "trg_assign_credential_request_number",
+   "definition": "CREATE TRIGGER trg_assign_credential_request_number BEFORE INSERT ON public.credential_request FOR EACH ROW EXECUTE FUNCTION assign_credential_request_number()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "credential_request",
+   "trigger_name": "trg_force_actor",
+   "definition": "CREATE TRIGGER trg_force_actor BEFORE INSERT OR UPDATE ON public.credential_request FOR EACH ROW EXECUTE FUNCTION force_actor_columns('requested_by_user_id', 'verified_by_user_id', 'approved_by_user_id')",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "credential_request",
+   "trigger_name": "trg_generate_credential_on_payment",
+   "definition": "CREATE TRIGGER trg_generate_credential_on_payment BEFORE UPDATE ON public.credential_request FOR EACH ROW EXECUTE FUNCTION generate_residence_credential_on_payment()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "credential_request",
+   "trigger_name": "zz_assert_credential_request_office_woreda",
+   "definition": "CREATE TRIGGER zz_assert_credential_request_office_woreda BEFORE INSERT OR UPDATE OF office_id, woreda_id ON public.credential_request FOR EACH ROW EXECUTE FUNCTION assert_credential_request_office_woreda()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "credential_request",
+   "trigger_name": "zz_enforce_workflow_insert",
+   "definition": "CREATE TRIGGER zz_enforce_workflow_insert BEFORE INSERT ON public.credential_request FOR EACH ROW EXECUTE FUNCTION enforce_workflow_insert()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "credential_request",
+   "trigger_name": "zz_enforce_workflow_transition",
+   "definition": "CREATE TRIGGER zz_enforce_workflow_transition BEFORE UPDATE ON public.credential_request FOR EACH ROW WHEN (((old.status IS DISTINCT FROM new.status) OR (old.verified_by_user_id IS DISTINCT FROM new.verified_by_user_id) OR (old.approved_by_user_id IS DISTINCT FROM new.approved_by_user_id))) EXECUTE FUNCTION enforce_workflow_transition()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "credential_request",
+   "trigger_name": "zz_log_workflow_transition",
+   "definition": "CREATE TRIGGER zz_log_workflow_transition AFTER UPDATE ON public.credential_request FOR EACH ROW EXECUTE FUNCTION log_workflow_transition('credential_request_id')",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "credential_request_status_history",
+   "trigger_name": "trg_force_actor",
+   "definition": "CREATE TRIGGER trg_force_actor BEFORE INSERT ON public.credential_request_status_history FOR EACH ROW EXECUTE FUNCTION force_actor_columns('changed_by_user_id')",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "credential_status_history",
+   "trigger_name": "trg_force_actor",
+   "definition": "CREATE TRIGGER trg_force_actor BEFORE INSERT ON public.credential_status_history FOR EACH ROW EXECUTE FUNCTION force_actor_columns('changed_by_user_id')",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "household",
+   "trigger_name": "household_pii_sync_trg",
+   "definition": "CREATE TRIGGER household_pii_sync_trg BEFORE INSERT OR UPDATE ON public.household FOR EACH ROW EXECUTE FUNCTION household_pii_sync()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "household",
+   "trigger_name": "mirror_household_gps_after_write",
+   "definition": "CREATE TRIGGER mirror_household_gps_after_write AFTER INSERT OR UPDATE OF gps_lat, gps_lng, woreda_id ON public.household FOR EACH ROW EXECUTE FUNCTION mirror_household_gps_to_location()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "household_change_log",
+   "trigger_name": "trg_force_actor",
+   "definition": "CREATE TRIGGER trg_force_actor BEFORE INSERT ON public.household_change_log FOR EACH ROW EXECUTE FUNCTION force_actor_columns('registered_by_user_id')",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "household_location",
+   "trigger_name": "force_household_location_woreda_id",
+   "definition": "CREATE TRIGGER force_household_location_woreda_id BEFORE INSERT OR UPDATE ON public.household_location FOR EACH ROW EXECUTE FUNCTION force_household_location_woreda_id()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "household_location",
+   "trigger_name": "mirror_location_gps_after_write",
+   "definition": "CREATE TRIGGER mirror_location_gps_after_write AFTER INSERT OR UPDATE OF gps_lat, gps_lng ON public.household_location FOR EACH ROW EXECUTE FUNCTION mirror_location_gps_to_household()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "household_location",
+   "trigger_name": "trg_force_actor",
+   "definition": "CREATE TRIGGER trg_force_actor BEFORE INSERT OR UPDATE ON public.household_location FOR EACH ROW EXECUTE FUNCTION force_actor_columns('captured_by')",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "id_card_template_field_draft",
+   "trigger_name": "trg_mark_template_draft_dirty",
+   "definition": "CREATE TRIGGER trg_mark_template_draft_dirty AFTER INSERT OR DELETE OR UPDATE ON public.id_card_template_field_draft FOR EACH ROW EXECUTE FUNCTION mark_template_draft_dirty()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "kebele_rental_house",
+   "trigger_name": "kebele_rental_house_set_updated_at",
+   "definition": "CREATE TRIGGER kebele_rental_house_set_updated_at BEFORE UPDATE ON public.kebele_rental_house FOR EACH ROW EXECUTE FUNCTION set_updated_at()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "kebele_rental_house",
+   "trigger_name": "zz_guard_manual_occupancy_status",
+   "definition": "CREATE TRIGGER zz_guard_manual_occupancy_status BEFORE UPDATE ON public.kebele_rental_house FOR EACH ROW EXECUTE FUNCTION guard_manual_occupancy_status_change()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "office",
+   "trigger_name": "set_office_updated_at",
+   "definition": "CREATE TRIGGER set_office_updated_at BEFORE UPDATE ON public.office FOR EACH ROW EXECUTE FUNCTION set_updated_at()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "payment",
+   "trigger_name": "payment_amount_sync_trg",
+   "definition": "CREATE TRIGGER payment_amount_sync_trg BEFORE INSERT OR UPDATE ON public.payment FOR EACH ROW EXECUTE FUNCTION payment_amount_sync()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "payment",
+   "trigger_name": "trg_force_actor",
+   "definition": "CREATE TRIGGER trg_force_actor BEFORE INSERT OR UPDATE ON public.payment FOR EACH ROW EXECUTE FUNCTION force_actor_columns('posted_by_user_id')",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "payment",
+   "trigger_name": "trg_validate_credential_fee",
+   "definition": "CREATE TRIGGER trg_validate_credential_fee BEFORE INSERT OR UPDATE OF amount, payment_type, waived, waiver_reason, service_request_id, vital_event_id, credential_request_id, woreda_id ON public.payment FOR EACH ROW EXECUTE FUNCTION validate_credential_fee_amount()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "payment",
+   "trigger_name": "yy_guard_rental_payment_insert",
+   "definition": "CREATE TRIGGER yy_guard_rental_payment_insert BEFORE INSERT ON public.payment FOR EACH ROW EXECUTE FUNCTION guard_rental_payment_insert()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "payment",
+   "trigger_name": "yy_guard_rental_payment_status_change",
+   "definition": "CREATE TRIGGER yy_guard_rental_payment_status_change BEFORE UPDATE OF status, payment_type, amount, payment_date, resident_id, woreda_id ON public.payment FOR EACH ROW EXECUTE FUNCTION guard_rental_payment_status_change()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "payment_reconciliation_exception",
+   "trigger_name": "payment_reconciliation_exception_amount_sync_trg",
+   "definition": "CREATE TRIGGER payment_reconciliation_exception_amount_sync_trg BEFORE INSERT OR UPDATE ON public.payment_reconciliation_exception FOR EACH ROW EXECUTE FUNCTION payment_reconciliation_exception_amount_sync()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "receipt",
+   "trigger_name": "trg_assign_receipt_number",
+   "definition": "CREATE TRIGGER trg_assign_receipt_number BEFORE INSERT ON public.receipt FOR EACH ROW EXECUTE FUNCTION assign_receipt_number()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "receipt",
+   "trigger_name": "trg_assign_receipt_verification_token",
+   "definition": "CREATE TRIGGER trg_assign_receipt_verification_token BEFORE INSERT ON public.receipt FOR EACH ROW EXECUTE FUNCTION assign_receipt_verification_token()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "receipt",
+   "trigger_name": "trg_pin_receipt_verification_token",
+   "definition": "CREATE TRIGGER trg_pin_receipt_verification_token BEFORE UPDATE ON public.receipt FOR EACH ROW EXECUTE FUNCTION pin_receipt_verification_token()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "receipt",
+   "trigger_name": "trg_validate_receipt_amount",
+   "definition": "CREATE TRIGGER trg_validate_receipt_amount BEFORE INSERT OR UPDATE OF total_amount, payment_id ON public.receipt FOR EACH ROW EXECUTE FUNCTION validate_receipt_amount()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "rent_account",
+   "trigger_name": "rent_account_set_updated_at",
+   "definition": "CREATE TRIGGER rent_account_set_updated_at BEFORE UPDATE ON public.rent_account FOR EACH ROW EXECUTE FUNCTION set_updated_at()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "rent_account",
+   "trigger_name": "zz_assign_rent_account_number",
+   "definition": "CREATE TRIGGER zz_assign_rent_account_number BEFORE INSERT ON public.rent_account FOR EACH ROW EXECUTE FUNCTION assign_rent_account_number()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "rent_charge",
+   "trigger_name": "rent_charge_amount_sync_trg",
+   "definition": "CREATE TRIGGER rent_charge_amount_sync_trg BEFORE INSERT OR UPDATE ON public.rent_charge FOR EACH ROW EXECUTE FUNCTION rent_charge_amount_sync()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "rent_charge",
+   "trigger_name": "rent_charge_set_updated_at",
+   "definition": "CREATE TRIGGER rent_charge_set_updated_at BEFORE UPDATE ON public.rent_charge FOR EACH ROW EXECUTE FUNCTION set_updated_at()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "rent_charge",
+   "trigger_name": "zz_guard_rent_charge_immutable",
+   "definition": "CREATE TRIGGER zz_guard_rent_charge_immutable BEFORE UPDATE ON public.rent_charge FOR EACH ROW EXECUTE FUNCTION guard_rent_charge_immutable_fields()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "rent_payment_settlement",
+   "trigger_name": "rent_payment_settlement_amount_sync_trg",
+   "definition": "CREATE TRIGGER rent_payment_settlement_amount_sync_trg BEFORE INSERT OR UPDATE ON public.rent_payment_settlement FOR EACH ROW EXECUTE FUNCTION rent_payment_settlement_amount_sync()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "rent_payment_settlement",
+   "trigger_name": "zz_guard_settlement_amount",
+   "definition": "CREATE TRIGGER zz_guard_settlement_amount BEFORE INSERT OR UPDATE ON public.rent_payment_settlement FOR EACH ROW EXECUTE FUNCTION guard_settlement_amount_matches_charge()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "rent_rate_history",
+   "trigger_name": "rent_rate_history_amount_sync_trg",
+   "definition": "CREATE TRIGGER rent_rate_history_amount_sync_trg BEFORE INSERT OR UPDATE ON public.rent_rate_history FOR EACH ROW EXECUTE FUNCTION rent_rate_history_amount_sync()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "rent_reminder",
+   "trigger_name": "rent_reminder_amount_sync_trg",
+   "definition": "CREATE TRIGGER rent_reminder_amount_sync_trg BEFORE INSERT OR UPDATE ON public.rent_reminder FOR EACH ROW EXECUTE FUNCTION rent_reminder_amount_sync()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "rental_occupancy",
+   "trigger_name": "rental_occupancy_amount_sync_trg",
+   "definition": "CREATE TRIGGER rental_occupancy_amount_sync_trg BEFORE INSERT OR UPDATE ON public.rental_occupancy FOR EACH ROW EXECUTE FUNCTION rental_occupancy_amount_sync()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "rental_occupancy",
+   "trigger_name": "rental_occupancy_set_updated_at",
+   "definition": "CREATE TRIGGER rental_occupancy_set_updated_at BEFORE UPDATE ON public.rental_occupancy FOR EACH ROW EXECUTE FUNCTION set_updated_at()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "rental_occupancy",
+   "trigger_name": "trg_assert_rental_occupancy_woreda_consistency",
+   "definition": "CREATE TRIGGER trg_assert_rental_occupancy_woreda_consistency BEFORE INSERT OR UPDATE ON public.rental_occupancy FOR EACH ROW EXECUTE FUNCTION assert_rental_occupancy_woreda_consistency()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "rental_occupancy_request",
+   "trigger_name": "rental_occupancy_request_amount_sync_trg",
+   "definition": "CREATE TRIGGER rental_occupancy_request_amount_sync_trg BEFORE INSERT OR UPDATE ON public.rental_occupancy_request FOR EACH ROW EXECUTE FUNCTION rental_occupancy_request_amount_sync()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "rental_occupancy_request",
+   "trigger_name": "trg_apply_rental_occupancy_on_approval",
+   "definition": "CREATE TRIGGER trg_apply_rental_occupancy_on_approval BEFORE UPDATE ON public.rental_occupancy_request FOR EACH ROW EXECUTE FUNCTION apply_rental_occupancy_on_approval()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "rental_occupancy_request",
+   "trigger_name": "trg_assert_rental_request_woreda_consistency",
+   "definition": "CREATE TRIGGER trg_assert_rental_request_woreda_consistency BEFORE INSERT OR UPDATE ON public.rental_occupancy_request FOR EACH ROW EXECUTE FUNCTION assert_rental_request_woreda_consistency()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "rental_occupancy_request",
+   "trigger_name": "trg_assign_rental_request_number",
+   "definition": "CREATE TRIGGER trg_assign_rental_request_number BEFORE INSERT ON public.rental_occupancy_request FOR EACH ROW EXECUTE FUNCTION assign_rental_request_number()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "rental_occupancy_request",
+   "trigger_name": "trg_force_actor",
+   "definition": "CREATE TRIGGER trg_force_actor BEFORE INSERT OR UPDATE ON public.rental_occupancy_request FOR EACH ROW EXECUTE FUNCTION force_actor_columns('requested_by_user_id', 'verified_by_user_id', 'approved_by_user_id')",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "rental_occupancy_request",
+   "trigger_name": "zz_enforce_rental_eligibility",
+   "definition": "CREATE TRIGGER zz_enforce_rental_eligibility BEFORE INSERT OR UPDATE ON public.rental_occupancy_request FOR EACH ROW EXECUTE FUNCTION enforce_rental_request_eligibility()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "rental_occupancy_request",
+   "trigger_name": "zz_enforce_rental_request_integrity",
+   "definition": "CREATE TRIGGER zz_enforce_rental_request_integrity BEFORE INSERT OR UPDATE ON public.rental_occupancy_request FOR EACH ROW EXECUTE FUNCTION enforce_rental_request_integrity_guards()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "rental_occupancy_request",
+   "trigger_name": "zz_enforce_workflow_transition",
+   "definition": "CREATE TRIGGER zz_enforce_workflow_transition BEFORE UPDATE ON public.rental_occupancy_request FOR EACH ROW EXECUTE FUNCTION enforce_workflow_transition()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "rental_occupancy_request",
+   "trigger_name": "zz_log_workflow_status_history",
+   "definition": "CREATE TRIGGER zz_log_workflow_status_history AFTER UPDATE ON public.rental_occupancy_request FOR EACH ROW EXECUTE FUNCTION log_workflow_status_history('rental_request_id')",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "rental_policy",
+   "trigger_name": "rental_policy_set_updated_at",
+   "definition": "CREATE TRIGGER rental_policy_set_updated_at BEFORE UPDATE ON public.rental_policy FOR EACH ROW EXECUTE FUNCTION set_updated_at()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "rental_request_document",
+   "trigger_name": "set_rental_request_document_updated_at",
+   "definition": "CREATE TRIGGER set_rental_request_document_updated_at BEFORE UPDATE ON public.rental_request_document FOR EACH ROW EXECUTE FUNCTION set_updated_at()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "rental_request_document",
+   "trigger_name": "trg_force_actor",
+   "definition": "CREATE TRIGGER trg_force_actor BEFORE INSERT ON public.rental_request_document FOR EACH ROW EXECUTE FUNCTION force_actor_columns('uploaded_by_user_id')",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "residence_credential",
+   "trigger_name": "default_residence_credential_office_id",
+   "definition": "CREATE TRIGGER default_residence_credential_office_id BEFORE INSERT ON public.residence_credential FOR EACH ROW EXECUTE FUNCTION default_residence_credential_office_id()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "residence_credential",
+   "trigger_name": "residence_credential_pin_identity",
+   "definition": "CREATE TRIGGER residence_credential_pin_identity BEFORE UPDATE ON public.residence_credential FOR EACH ROW EXECUTE FUNCTION pin_credential_identity_fields()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "residence_credential",
+   "trigger_name": "trg_assign_credential_number",
+   "definition": "CREATE TRIGGER trg_assign_credential_number BEFORE INSERT ON public.residence_credential FOR EACH ROW EXECUTE FUNCTION assign_credential_number()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "residence_credential",
+   "trigger_name": "trg_force_actor",
+   "definition": "CREATE TRIGGER trg_force_actor BEFORE INSERT OR UPDATE ON public.residence_credential FOR EACH ROW EXECUTE FUNCTION force_actor_columns('revoked_by_user_id')",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "residence_credential",
+   "trigger_name": "zz_assert_residence_credential_office_woreda",
+   "definition": "CREATE TRIGGER zz_assert_residence_credential_office_woreda BEFORE INSERT OR UPDATE OF issuing_office_id, woreda_id ON public.residence_credential FOR EACH ROW EXECUTE FUNCTION assert_residence_credential_office_woreda()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "residence_credential",
+   "trigger_name": "zz_enforce_workflow_insert",
+   "definition": "CREATE TRIGGER zz_enforce_workflow_insert BEFORE INSERT ON public.residence_credential FOR EACH ROW EXECUTE FUNCTION enforce_workflow_insert()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "residence_credential",
+   "trigger_name": "zz_enforce_workflow_transition",
+   "definition": "CREATE TRIGGER zz_enforce_workflow_transition BEFORE UPDATE ON public.residence_credential FOR EACH ROW WHEN (((old.status IS DISTINCT FROM new.status) OR (old.revoked_by_user_id IS DISTINCT FROM new.revoked_by_user_id))) EXECUTE FUNCTION enforce_workflow_transition()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "residence_credential",
+   "trigger_name": "zz_log_workflow_transition",
+   "definition": "CREATE TRIGGER zz_log_workflow_transition AFTER UPDATE ON public.residence_credential FOR EACH ROW EXECUTE FUNCTION log_workflow_transition('credential_id')",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "resident",
+   "trigger_name": "resident_audit_created",
+   "definition": "CREATE TRIGGER resident_audit_created AFTER INSERT ON public.resident FOR EACH ROW EXECUTE FUNCTION audit_resident_created()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "resident",
+   "trigger_name": "resident_pii_sync_trg",
+   "definition": "CREATE TRIGGER resident_pii_sync_trg BEFORE INSERT OR UPDATE ON public.resident FOR EACH ROW EXECUTE FUNCTION resident_pii_sync()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "resident",
+   "trigger_name": "trg_assign_resident_number",
+   "definition": "CREATE TRIGGER trg_assign_resident_number BEFORE INSERT ON public.resident FOR EACH ROW EXECUTE FUNCTION assign_resident_number()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "resident_document",
+   "trigger_name": "set_resident_document_updated_at",
+   "definition": "CREATE TRIGGER set_resident_document_updated_at BEFORE UPDATE ON public.resident_document FOR EACH ROW EXECUTE FUNCTION set_updated_at()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "resident_document",
+   "trigger_name": "trg_force_actor",
+   "definition": "CREATE TRIGGER trg_force_actor BEFORE INSERT ON public.resident_document FOR EACH ROW EXECUTE FUNCTION force_actor_columns('uploaded_by_user_id')",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "role_permission",
+   "trigger_name": "role_permission_set_updated_at",
+   "definition": "CREATE TRIGGER role_permission_set_updated_at BEFORE UPDATE ON public.role_permission FOR EACH ROW EXECUTE FUNCTION set_updated_at()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "role_permission",
+   "trigger_name": "trg_force_actor",
+   "definition": "CREATE TRIGGER trg_force_actor BEFORE INSERT OR UPDATE ON public.role_permission FOR EACH ROW EXECUTE FUNCTION force_actor_columns('updated_by')",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "service_request",
+   "trigger_name": "service_request_pii_sync_trg",
+   "definition": "CREATE TRIGGER service_request_pii_sync_trg BEFORE INSERT OR UPDATE ON public.service_request FOR EACH ROW EXECUTE FUNCTION service_request_pii_sync()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "service_request",
+   "trigger_name": "service_request_set_updated_at",
+   "definition": "CREATE TRIGGER service_request_set_updated_at BEFORE UPDATE ON public.service_request FOR EACH ROW EXECUTE FUNCTION set_updated_at()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "service_request",
+   "trigger_name": "trg_assign_letter_verification_token",
+   "definition": "CREATE TRIGGER trg_assign_letter_verification_token BEFORE INSERT ON public.service_request FOR EACH ROW EXECUTE FUNCTION assign_letter_verification_token()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "service_request",
+   "trigger_name": "trg_assign_service_request_number",
+   "definition": "CREATE TRIGGER trg_assign_service_request_number BEFORE INSERT ON public.service_request FOR EACH ROW EXECUTE FUNCTION assign_service_request_number()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "service_request",
+   "trigger_name": "trg_enforce_service_request_preconditions",
+   "definition": "CREATE TRIGGER trg_enforce_service_request_preconditions BEFORE INSERT OR UPDATE ON public.service_request FOR EACH ROW EXECUTE FUNCTION enforce_service_request_preconditions()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "service_request",
+   "trigger_name": "trg_force_actor",
+   "definition": "CREATE TRIGGER trg_force_actor BEFORE INSERT OR UPDATE ON public.service_request FOR EACH ROW EXECUTE FUNCTION force_actor_columns('requested_by_user_id', 'verified_by_user_id', 'approved_by_user_id', 'issued_by_user_id')",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "service_request",
+   "trigger_name": "trg_zzenforce_rental_checkpoint",
+   "definition": "CREATE TRIGGER trg_zzenforce_rental_checkpoint BEFORE INSERT OR UPDATE ON public.service_request FOR EACH ROW EXECUTE FUNCTION enforce_rental_checkpoint()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "service_request",
+   "trigger_name": "zz_enforce_workflow_transition",
+   "definition": "CREATE TRIGGER zz_enforce_workflow_transition BEFORE UPDATE ON public.service_request FOR EACH ROW EXECUTE FUNCTION enforce_workflow_transition()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "service_request",
+   "trigger_name": "zz_log_workflow_status_history",
+   "definition": "CREATE TRIGGER zz_log_workflow_status_history AFTER UPDATE ON public.service_request FOR EACH ROW EXECUTE FUNCTION log_workflow_status_history('service_request_id')",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "service_request",
+   "trigger_name": "zz_record_rental_checkpoint",
+   "definition": "CREATE TRIGGER zz_record_rental_checkpoint AFTER INSERT OR UPDATE OF service_type_id, resident_id, checkpoint_override, checkpoint_override_reason ON public.service_request FOR EACH ROW EXECUTE FUNCTION record_rental_checkpoint()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "service_request",
+   "trigger_name": "zzz_enforce_service_request_issuance_gate",
+   "definition": "CREATE TRIGGER zzz_enforce_service_request_issuance_gate BEFORE UPDATE ON public.service_request FOR EACH ROW EXECUTE FUNCTION enforce_service_request_issuance_gate()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "service_request",
+   "trigger_name": "zzz_enforce_service_request_payment_gate",
+   "definition": "CREATE TRIGGER zzz_enforce_service_request_payment_gate BEFORE UPDATE ON public.service_request FOR EACH ROW EXECUTE FUNCTION enforce_service_request_payment_gate()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "service_request_attachment",
+   "trigger_name": "service_request_attachment_set_updated_at",
+   "definition": "CREATE TRIGGER service_request_attachment_set_updated_at BEFORE UPDATE ON public.service_request_attachment FOR EACH ROW EXECUTE FUNCTION set_updated_at()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "service_request_attachment",
+   "trigger_name": "trg_force_actor",
+   "definition": "CREATE TRIGGER trg_force_actor BEFORE INSERT ON public.service_request_attachment FOR EACH ROW EXECUTE FUNCTION force_actor_columns('uploaded_by_user_id')",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "service_request_checkpoint",
+   "trigger_name": "service_request_checkpoint_amount_sync_trg",
+   "definition": "CREATE TRIGGER service_request_checkpoint_amount_sync_trg BEFORE INSERT OR UPDATE ON public.service_request_checkpoint FOR EACH ROW EXECUTE FUNCTION service_request_checkpoint_amount_sync()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "service_request_status_history",
+   "trigger_name": "trg_force_actor",
+   "definition": "CREATE TRIGGER trg_force_actor BEFORE INSERT ON public.service_request_status_history FOR EACH ROW EXECUTE FUNCTION force_actor_columns('changed_by_user_id')",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "service_type",
+   "trigger_name": "service_type_set_updated_at",
+   "definition": "CREATE TRIGGER service_type_set_updated_at BEFORE UPDATE ON public.service_type FOR EACH ROW EXECUTE FUNCTION set_updated_at()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "tenant_role",
+   "trigger_name": "set_tenant_role_updated_at",
+   "definition": "CREATE TRIGGER set_tenant_role_updated_at BEFORE UPDATE ON public.tenant_role FOR EACH ROW EXECUTE FUNCTION set_updated_at()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "tenant_role",
+   "trigger_name": "tenant_role_audit_insert",
+   "definition": "CREATE TRIGGER tenant_role_audit_insert AFTER INSERT ON public.tenant_role FOR EACH ROW EXECUTE FUNCTION audit_tenant_role_change()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "tenant_role",
+   "trigger_name": "tenant_role_audit_update",
+   "definition": "CREATE TRIGGER tenant_role_audit_update AFTER UPDATE OF name, description, is_active ON public.tenant_role FOR EACH ROW EXECUTE FUNCTION audit_tenant_role_change()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "tenant_role",
+   "trigger_name": "tenant_role_force_actor",
+   "definition": "CREATE TRIGGER tenant_role_force_actor BEFORE INSERT OR UPDATE ON public.tenant_role FOR EACH ROW EXECUTE FUNCTION force_actor_columns('created_by', 'updated_by')",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "tenant_role",
+   "trigger_name": "tenant_role_pin_woreda_id",
+   "definition": "CREATE TRIGGER tenant_role_pin_woreda_id BEFORE UPDATE OF woreda_id ON public.tenant_role FOR EACH ROW EXECUTE FUNCTION pin_tenant_role_woreda_id()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "tenant_role",
+   "trigger_name": "tenant_role_validate_name",
+   "definition": "CREATE TRIGGER tenant_role_validate_name BEFORE INSERT OR UPDATE OF name ON public.tenant_role FOR EACH ROW EXECUTE FUNCTION validate_tenant_role_name()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "tenant_role_permission",
+   "trigger_name": "set_tenant_role_permission_updated_at",
+   "definition": "CREATE TRIGGER set_tenant_role_permission_updated_at BEFORE UPDATE ON public.tenant_role_permission FOR EACH ROW EXECUTE FUNCTION set_tenant_role_permission_updated_at()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "tenant_role_permission",
+   "trigger_name": "tenant_role_permission_audit",
+   "definition": "CREATE TRIGGER tenant_role_permission_audit AFTER INSERT OR UPDATE OF is_granted ON public.tenant_role_permission FOR EACH ROW EXECUTE FUNCTION audit_tenant_role_permission_change()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "tenant_role_permission",
+   "trigger_name": "tenant_role_permission_force_actor",
+   "definition": "CREATE TRIGGER tenant_role_permission_force_actor BEFORE INSERT OR UPDATE ON public.tenant_role_permission FOR EACH ROW EXECUTE FUNCTION force_actor_columns('updated_by')",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "user_permission_override",
+   "trigger_name": "trg_force_actor",
+   "definition": "CREATE TRIGGER trg_force_actor BEFORE INSERT OR UPDATE ON public.user_permission_override FOR EACH ROW EXECUTE FUNCTION force_actor_columns('updated_by')",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "user_permission_override",
+   "trigger_name": "user_permission_override_set_updated_at",
+   "definition": "CREATE TRIGGER user_permission_override_set_updated_at BEFORE UPDATE ON public.user_permission_override FOR EACH ROW EXECUTE FUNCTION set_updated_at()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "user_permission_override",
+   "trigger_name": "user_permission_override_set_woreda",
+   "definition": "CREATE TRIGGER user_permission_override_set_woreda BEFORE INSERT OR UPDATE ON public.user_permission_override FOR EACH ROW EXECUTE FUNCTION enforce_user_permission_override_woreda()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "vital_event",
+   "trigger_name": "trg_apply_death_on_approval",
+   "definition": "CREATE TRIGGER trg_apply_death_on_approval BEFORE UPDATE ON public.vital_event FOR EACH ROW EXECUTE FUNCTION apply_death_on_approval()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "vital_event",
+   "trigger_name": "trg_assert_vital_event_woreda_consistency",
+   "definition": "CREATE TRIGGER trg_assert_vital_event_woreda_consistency BEFORE INSERT OR UPDATE ON public.vital_event FOR EACH ROW EXECUTE FUNCTION assert_vital_event_woreda_consistency()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "vital_event",
+   "trigger_name": "trg_assign_vital_event_number",
+   "definition": "CREATE TRIGGER trg_assign_vital_event_number BEFORE INSERT ON public.vital_event FOR EACH ROW EXECUTE FUNCTION assign_vital_event_number()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "vital_event",
+   "trigger_name": "trg_enforce_vital_event_preconditions",
+   "definition": "CREATE TRIGGER trg_enforce_vital_event_preconditions BEFORE INSERT OR UPDATE ON public.vital_event FOR EACH ROW EXECUTE FUNCTION enforce_vital_event_preconditions()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "vital_event",
+   "trigger_name": "trg_force_actor",
+   "definition": "CREATE TRIGGER trg_force_actor BEFORE INSERT OR UPDATE ON public.vital_event FOR EACH ROW EXECUTE FUNCTION force_actor_columns('requested_by_user_id', 'verified_by_user_id', 'approved_by_user_id', 'issued_by_user_id')",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "vital_event",
+   "trigger_name": "trg_generate_resident_on_birth_approval",
+   "definition": "CREATE TRIGGER trg_generate_resident_on_birth_approval BEFORE UPDATE ON public.vital_event FOR EACH ROW EXECUTE FUNCTION generate_resident_on_birth_approval()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "vital_event",
+   "trigger_name": "trg_pin_vital_event_resident",
+   "definition": "CREATE TRIGGER trg_pin_vital_event_resident BEFORE UPDATE ON public.vital_event FOR EACH ROW EXECUTE FUNCTION pin_vital_event_resident()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "vital_event",
+   "trigger_name": "zz_enforce_workflow_transition",
+   "definition": "CREATE TRIGGER zz_enforce_workflow_transition BEFORE UPDATE ON public.vital_event FOR EACH ROW EXECUTE FUNCTION enforce_workflow_transition()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "vital_event",
+   "trigger_name": "zz_log_workflow_status_history",
+   "definition": "CREATE TRIGGER zz_log_workflow_status_history AFTER UPDATE ON public.vital_event FOR EACH ROW EXECUTE FUNCTION log_workflow_status_history('vital_event_id')",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "vital_event",
+   "trigger_name": "zzz_advance_vital_event_to_registered",
+   "definition": "CREATE TRIGGER zzz_advance_vital_event_to_registered AFTER UPDATE ON public.vital_event FOR EACH ROW EXECUTE FUNCTION advance_vital_event_to_registered()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "vital_event",
+   "trigger_name": "zzz_enforce_vital_event_payment_gate",
+   "definition": "CREATE TRIGGER zzz_enforce_vital_event_payment_gate BEFORE UPDATE ON public.vital_event FOR EACH ROW EXECUTE FUNCTION enforce_vital_event_payment_gate()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "woreda",
+   "trigger_name": "seed_office_after_woreda_insert",
+   "definition": "CREATE TRIGGER seed_office_after_woreda_insert AFTER INSERT ON public.woreda FOR EACH ROW EXECUTE FUNCTION seed_office_for_new_woreda()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "woreda",
+   "trigger_name": "seed_rental_policy_after_woreda_insert",
+   "definition": "CREATE TRIGGER seed_rental_policy_after_woreda_insert AFTER INSERT ON public.woreda FOR EACH ROW EXECUTE FUNCTION seed_rental_policy_for_new_woreda()",
+   "tgenabled": "O"
+  },
+  {
+   "event_object_table": "woreda",
+   "trigger_name": "seed_role_permission_after_woreda_insert",
+   "definition": "CREATE TRIGGER seed_role_permission_after_woreda_insert AFTER INSERT ON public.woreda FOR EACH ROW EXECUTE FUNCTION seed_role_permission_for_new_woreda()",
+   "tgenabled": "O"
+  }
+ ]
+}

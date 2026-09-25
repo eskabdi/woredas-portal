@@ -15,6 +15,7 @@
     "check:role-perms-drift": "bun run scripts/check-role-perms-drift.ts",
     "check:fee-catalog": "bun run scripts/check-fee-catalog.ts",
     "check:service-type-catalog": "bun run scripts/check-service-type-catalog.ts",
+    "check:definer-tenant-predicate": "bun run scripts/check-definer-tenant-predicate.ts",
     "generate:permissions-doc": "bun run scripts/generate-permissions-doc.ts --write"
   },
   "dependencies": {

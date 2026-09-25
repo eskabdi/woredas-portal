@@ -1,0 +1,796 @@
+{
+  "agent": "audit-authz",
+  "findings": [
+    {
+      "id": "WP-AZ-001",
+      "title": "Console permissions (CP) are enforced only in the browser: a console-scoped super_admin keeps unrestricted platform power at the database and Edge Function layer",
+      "severity": "High",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:L (6.7)",
+      "confidence": "Confirmed",
+      "category": "AuthZ",
+      "module": "Super Admin",
+      "refs": {
+        "owasp_top10": [
+          "A01:2021"
+        ],
+        "owasp_api": [
+          "API5:2023"
+        ],
+        "asvs": [
+          "V4.1.1",
+          "V4.1.3",
+          "V4.2.1"
+        ],
+        "iso27001": [
+          "A.5.15",
+          "A.8.2",
+          "A.8.3"
+        ],
+        "nist_csf": [
+          "PR.AA-05"
+        ],
+        "insa": [
+          "D-01",
+          "E-06",
+          "B-04",
+          "RBAC-01"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000012_enforce_console_rbac.sql",
+          "line": 39,
+          "snippet": "USING (public.user_has_console_perm('console.console_users.manage'))  -- the only RLS use of user_has_console_perm()"
+        },
+        {
+          "path": "supabase/migrations/00000000000012_enforce_console_rbac.sql",
+          "line": 150,
+          "snippet": "IF NOT public.user_has_console_perm('console.console_users.manage') THEN  -- trigger, console_role_id column only"
+        },
+        {
+          "path": "supabase/migrations/00000000000010_id_card_template_draft.sql",
+          "line": 125,
+          "snippet": "IF NOT public.is_super_admin() THEN RAISE EXCEPTION 'Only super_admin may publish the ID card template';"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1589,
+          "snippet": "CREATE POLICY template_write_super_admin ON public.id_card_template_field ... USING (is_super_admin())"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1651,
+          "snippet": "CREATE POLICY tenant_module_config_write_super_admin ... USING (is_super_admin()) WITH CHECK (is_super_admin())"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1550,
+          "snippet": "app_user_super_admin_write ... FOR ALL ... USING (is_super_admin())"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1553,
+          "snippet": "audit_log_tenant_read ... USING ((is_super_admin() OR (woreda_id = get_user_woreda_id())))"
+        },
+        {
+          "path": "src/routes/admin.credential-template.tsx",
+          "line": 173,
+          "snippet": "useAuthStore((s) => s.role === \"super_admin\") && hasConsolePerm(CP.CREDENTIAL_TEMPLATE_MANAGE)  -- client-only gate"
+        },
+        {
+          "path": "src/routes/admin.tenants.$woredaId.index.tsx",
+          "line": 25,
+          "snippet": "<ConsolePermissionGate ... CP.TENANTS_MANAGE>  -- page writes tenant_module_config at :116 with no server CP check"
+        },
+        {
+          "path": "supabase/functions/invite-platform-admin/index.ts",
+          "line": 84,
+          "snippet": "if (role === \"super_admin\") { ... user_has_console_perm ... }  -- no CP check when minting a tenant_admin"
+        },
+        {
+          "path": "supabase/functions/invite-tenant-user/index.ts",
+          "line": 91,
+          "snippet": "const isSuper = caller.role === \"super_admin\";  -- no console.users.manage check"
+        }
+      ],
+      "description": "The console-role feature (migration 09) presents named console roles such as a template editor or tenant manager as an access boundary inside /admin. Only one of the five CP keys, console.console_users.manage, is checked on the server, and only for the console_role* tables and the app_user.console_role_id column. The other four (console.tenants.manage, console.users.manage, console.audit.view, console.credential_template.manage) exist only as <ConsolePermissionGate>/hasConsolePermission() checks in React. Every table and RPC they are meant to protect tests is_super_admin(), which is true for any active super_admin whatever their console_role_id. The service-role Edge Functions invite-platform-admin (tenant_admin path), resend-platform-invite, invite-tenant-user and sign-credential also accept any super_admin without a console-scope check.",
+      "attack_scenario": "A super_admin scoped to a 'Template Editor' console role (console.credential_template.manage only) calls PostgREST directly with their own JWT: PATCH /rest/v1/app_user?user_id=eq.<victim> to suspend or re-role any user in any woreda, PATCH tenant_module_config to disable a woreda's modules, GET /rest/v1/audit_log and /resident_decrypted for every woreda, or POST /functions/v1/invite-platform-admin {role:'tenant_admin', woredaId:X} to mint a tenant admin for any woreda.",
+      "impact": "Console roles do not restrict anything a scoped super_admin can do with a direct API call. That includes cross-tenant reads of all PII, tenant configuration, user administration and minting tenant admins. Operators who rely on console roles for separation of duties at platform level are not getting it. Live exposure depends on whether any console_role is currently assigned (Needs-live-verification: SELECT count(*) FROM app_user WHERE console_role_id IS NOT NULL).",
+      "recommendation": "Enforce each CP key where the power is exercised. For tenant_module_config, woreda, id_card_template*, credential-templates storage and publish/discard RPCs, replace is_super_admin() with user_has_console_perm('<key>'). For app_user writes by super_admin, require console.users.manage. For platform-wide SELECTs on audit_log, require console.audit.view. Add the matching check to invite-platform-admin, resend-platform-invite and invite-tenant-user (super_admin branch). Add a CI drift check that every CP key is referenced by at least one policy or function.",
+      "secure_fix_example": "DROP POLICY tenant_module_config_write_super_admin ON public.tenant_module_config;\nCREATE POLICY tenant_module_config_write_console ON public.tenant_module_config FOR ALL TO authenticated\n  USING (public.user_has_console_perm('console.tenants.manage'))\n  WITH CHECK (public.user_has_console_perm('console.tenants.manage'));",
+      "effort": "M",
+      "status": "Open"
+    },
+    {
+      "id": "WP-AZ-002",
+      "title": "Coarse UPDATE policies with no field or state guards let unrelated roles rewrite approved workflow records (identity substitution on credential requests; resident death status without civil approval)",
+      "severity": "High",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:N (6.5)",
+      "confidence": "Likely",
+      "category": "Business Logic",
+      "module": "Credentials",
+      "refs": {
+        "insa": [
+          "E-06",
+          "MC-01",
+          "MC-02",
+          "RBAC-01"
+        ],
+        "owasp_top10": [
+          "A01:2021",
+          "A04:2021"
+        ],
+        "owasp_api": [
+          "API3:2023",
+          "API5:2023"
+        ],
+        "asvs": [
+          "V4.1.3",
+          "V4.2.1",
+          "V11.1.2"
+        ],
+        "iso27001": [
+          "A.5.15",
+          "A.8.3"
+        ],
+        "nist_csf": [
+          "PR.AA-05"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1569,
+          "snippet": "credential_request_update ... user_has_any_perm('{credential.issue,credential.approve,credential.verify,payment.collect,revenue.collect}')"
+        },
+        {
+          "path": "supabase/migrations/00000000000046_task10_credential_lifecycle.sql",
+          "line": 166,
+          "snippet": "IF NEW.status IS NOT DISTINCT FROM OLD.status THEN RETURN NEW;  -- enforce_workflow_transition ignores non-status edits"
+        },
+        {
+          "path": "supabase/migrations/00000000000070_mint_guard_deceased_check.sql",
+          "line": 77,
+          "snippet": "WHERE resident_id = NEW.resident_id  -- credential minted for whatever resident_id the row holds at payment"
+        },
+        {
+          "path": "src/config/permissions.ts",
+          "line": 401,
+          "snippet": "finance_clerk: [ P.PAYMENT_COLLECT, ...  -- satisfies credential_request_update"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1627,
+          "snippet": "resident_update ... user_has_any_perm('{resident.update}')  -- no trigger guards residency_status"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 600,
+          "snippet": "resident_residency_status_check CHECK (residency_status = ANY (ARRAY['active','suspended','deceased']))"
+        },
+        {
+          "path": "supabase/migrations/00000000000059_task14a_civil_payment_and_preconditions.sql",
+          "line": 95,
+          "snippet": "SET residency_status = 'deceased'  -- the only intended writer is the death-registration trigger (civil.approve)"
+        }
+      ],
+      "description": "The workflow engine (enforce_workflow_transition) checks the required permission only when status changes, and returns early otherwise. Content fields of an in-flight or approved record are therefore guarded only by the table's coarse UPDATE policy. That policy admits any role holding one of several loosely related keys. On credential_request those keys include payment.collect and revenue.collect (finance_clerk) and credential.verify (viewer/auditor/finance_clerk by compiled default, see WP-AZ-003). No trigger pins resident_id, request_type, household_id or verification_checklist after verification or approval. The mint trigger issues the card for NEW.resident_id at the awaiting_payment -> paid step. Separately, resident.residency_status, which the death-registration trigger sets to 'deceased' after civil.approve, can be set or cleared by any resident.update holder (registry_clerk, civil_registrar). No guard trigger exists.",
+      "attack_scenario": "(1) A finance_clerk opens an approved credential request in awaiting_payment and runs PATCH /rest/v1/credential_request?credential_request_id=eq.X {resident_id: <resident B in same woreda>}. They then record the fee (the finance_clerk's normal duty). The paid transition mints a residence credential for resident B, who was never verified or approved. Maker-checker is bypassed. (2) A registry_clerk runs PATCH /rest/v1/resident?resident_id=eq.Y {residency_status:'active'} on a resident whose death was registered. The mint guard (migration 70) then accepts a new credential request for a deceased person. The reverse (marking a living resident 'deceased') needs no civil event.",
+      "impact": "In-tenant privilege escalation and workflow bypass on legally significant records: ID cards issued to unverified identities, and death status altered without the civil-registration approval chain. The audit trail shows only a generic update. Exploitability needs the live mint-trigger chain (Likely, not live-tested).",
+      "recommendation": "Add BEFORE UPDATE guard triggers that pin identity and substance columns once a record leaves draft/returned. For credential_request that means resident_id, household_id, issuing_kebele_id, request_type, credential_type, prior_credential_id and verification_checklist. For vital_event, event_details after verified. Require resident.residency_status changes to come only from the system context (app.system_transition) or a dedicated permission. Narrow credential_request_update to the verbs that actually edit the row, and drop payment.collect/revenue.collect/credential.verify from it. Payment linkage should be written by a DEFINER RPC.",
+      "secure_fix_example": "CREATE FUNCTION public.pin_credential_request_identity() RETURNS trigger LANGUAGE plpgsql AS $$\nBEGIN\n  IF OLD.status NOT IN ('draft','returned') AND (NEW.resident_id, NEW.request_type, NEW.household_id, NEW.issuing_kebele_id)\n     IS DISTINCT FROM (OLD.resident_id, OLD.request_type, OLD.household_id, OLD.issuing_kebele_id) THEN\n    RAISE EXCEPTION 'credential_request identity fields are immutable after submission';\n  END IF; RETURN NEW; END $$;\nCREATE TRIGGER aa_pin_credential_request_identity BEFORE UPDATE ON public.credential_request FOR EACH ROW EXECUTE FUNCTION public.pin_credential_request_identity();",
+      "effort": "M",
+      "status": "Open"
+    },
+    {
+      "id": "WP-AZ-003",
+      "title": "credential.verify has two meanings: the ID-lookup key also grants credential_request UPDATE and status-history INSERT, so viewer/auditor are not read-only at the database; seed and default still disagree (F-05)",
+      "severity": "Medium",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N (4.3)",
+      "confidence": "Confirmed",
+      "category": "AuthZ",
+      "module": "Credentials",
+      "refs": {
+        "owasp_top10": [
+          "A01:2021"
+        ],
+        "owasp_api": [
+          "API5:2023"
+        ],
+        "asvs": [
+          "V4.1.1",
+          "V4.1.3",
+          "V4.2.1"
+        ],
+        "iso27001": [
+          "A.5.15",
+          "A.8.2",
+          "A.8.3"
+        ],
+        "nist_csf": [
+          "PR.AA-05"
+        ],
+        "insa": [
+          "RBAC-01",
+          "B-04",
+          "E-06"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1569,
+          "snippet": "credential_request_update ... '{credential.issue,credential.approve,credential.verify,payment.collect,revenue.collect}'"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1560,
+          "snippet": "cred_req_history_insert ... user_has_any_perm(ARRAY['credential.issue','credential.approve','credential.verify',...])"
+        },
+        {
+          "path": "src/config/permissions.ts",
+          "line": 443,
+          "snippet": "viewer: [ ... P.CREDENTIAL_VERIFY ...  (auditor :427, finance_clerk :407)"
+        },
+        {
+          "path": "supabase/seed.sql",
+          "line": 252,
+          "snippet": "('...', 'viewer', 'credential.verify', 'false', ...)  -- 18 rows seed false for auditor/finance_clerk/viewer"
+        },
+        {
+          "path": "supabase/migrations/00000000000035_task4_permission_reconciliation.sql",
+          "line": 104,
+          "snippet": "seed_role_permission_for_new_woreda() ... p.permission_key = ANY (public.default_role_perms(r.role_name))  -- new woredas get credential.verify = true"
+        },
+        {
+          "path": "src/components/credentials/CredentialQueueTable.tsx",
+          "line": 64,
+          "snippet": "permission: P.CREDENTIAL_VERIFY,  -- 'Verify' quick action; FSM requires credential.review"
+        },
+        {
+          "path": ".claude/agents/rbac-escalation-review.md",
+          "line": 106,
+          "snippet": "Reusing the name without migrating the grants hands request-verification to two read-only roles."
+        }
+      ],
+      "description": "In permissions.ts and the fix-task notes (D-3), credential.verify means 'may use the public ID-lookup screen', and it is deliberately held by viewer and auditor. The baseline RLS was never migrated off that key. credential_request UPDATE and credential_request_status_history INSERT both still accept it. So in any woreda where credential.verify is granted, viewer/auditor/finance_clerk can edit non-status columns of every credential request (WP-AZ-002) and insert forged status-history rows. Today the 6 seeded woredas carry an explicit false for those three roles (seed.sql), which stops the write but also denies them the lookup screen the compiled default promises. Any woreda provisioned later is back-filled from default_role_perms() by the migration-15/35 trigger and receives true. The same happens if a tenant_admin turns the lookup on in the matrix. The client also labels the workflow 'Verify' quick action with P.CREDENTIAL_VERIFY, while the FSM requires credential.review.",
+      "attack_scenario": "In a newly provisioned woreda, or after a tenant_admin enables ID lookup for viewers, a viewer runs PATCH /rest/v1/credential_request?credential_request_id=eq.X {verification_checklist:{...}, notes:'...'} and POST /rest/v1/credential_request_status_history {credential_request_id:X, old_status:'submitted', new_status:'verified'} to fabricate history.",
+      "impact": "Read-only roles are not read-only at the DB level. Also the matrix-driven UI (lookup screen) and the compiled default disagree in production.",
+      "recommendation": "Remove credential.verify from credential_request_update and cred_req_history_insert, and move status-history writes to a trigger. Resolve F-05 by deciding the intended value, aligning seed.sql with default_role_perms(), and extending check-role-perms-drift.ts to compare seed.sql with an explicit allow-list. Change the CredentialQueueTable quick action to P.CREDENTIAL_REVIEW.",
+      "secure_fix_example": "DROP POLICY credential_request_update ON public.credential_request;\nCREATE POLICY credential_request_update ON public.credential_request FOR UPDATE TO authenticated\n  USING (is_super_admin() OR (woreda_id = get_user_woreda_id() AND user_has_any_perm('{credential.issue,credential.review,credential.approve,credential.return,credential.reject,credential.record_payment,credential.confirm_print,credential.activate}')))\n  WITH CHECK (same);",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-AZ-004",
+      "title": "Module toggles are enforced only in the browser; a disabled module stays fully readable and writable through PostgREST, RPCs and Edge Functions",
+      "severity": "Medium",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N (4.3)",
+      "confidence": "Confirmed",
+      "category": "AuthZ",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "RBAC-03",
+          "E-06"
+        ],
+        "owasp_top10": [
+          "A01:2021"
+        ],
+        "owasp_api": [
+          "API5:2023"
+        ],
+        "asvs": [
+          "V4.1.1",
+          "V4.1.3"
+        ],
+        "iso27001": [
+          "A.8.3"
+        ],
+        "nist_csf": [
+          "PR.AA-05"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000066_payment_hardening_review_fixes.sql",
+          "line": 391,
+          "snippet": "IF EXISTS (SELECT 1 FROM public.tenant_module_config tmc WHERE ... module_key = 'services' AND tmc.is_enabled = false)  -- the only server-side module check"
+        },
+        {
+          "path": "supabase/migrations/00000000000066_payment_hardening_review_fixes.sql",
+          "line": 346,
+          "snippet": "IF NEW.category <> 'letter' THEN RETURN NEW;  -- complaints skip even that check"
+        },
+        {
+          "path": "src/components/common/ModuleGate.tsx",
+          "line": 23,
+          "snippet": "const disabled = !isLoading && ... role !== \"super_admin\" && ... !enabledModules.has(moduleKey);  -- redirect only"
+        },
+        {
+          "path": "src/hooks/useTenantModules.ts",
+          "line": 6,
+          "snippet": "const ALL_MODULES: ModuleKey[] = [ ... ]  -- omits 'rental_houses' although the DB CHECK allows it"
+        },
+        {
+          "path": "src/routes/woreda.reports.tsx",
+          "line": 3,
+          "snippet": "createFileRoute(\"/woreda/reports\")({ ssr: false, component: () => <Outlet /> })  -- no ModuleGate; $reportType.print is reachable when reports is disabled"
+        },
+        {
+          "path": "src/routes/woreda.dashboard.tsx",
+          "line": 276,
+          "snippet": ".from(\"payment_decrypted\")  -- revenue KPI rendered regardless of revenue module/permission"
+        },
+        {
+          "path": "supabase/functions/sign-credential/index.ts",
+          "line": 117,
+          "snippet": "if (appUser.role !== \"super_admin\" && appUser.woreda_id !== body.woredaId)  -- no tenant_module_config check"
+        }
+      ],
+      "description": "tenant_module_config has 8 module keys. Only one server-side reader exists: enforce_service_request_preconditions() rejects letter-category service_request writes when services is disabled. Nothing on the server consults the credentials, civil_registration, revenue, reports, audit, approvals or rental_houses keys. That covers table RLS, the workflow triggers, get_*_kpis, the rental RPCs and sign-credential. Client-side, ModuleGate only redirects. rental_houses is never gated (WP-INV-005). The reports print route sits outside any ModuleGate. The dashboard and approval queue display data from disabled modules.",
+      "attack_scenario": "A super_admin disables 'credentials' for woreda X (for example, while a card-stock audit is under way). A registry_clerk in X keeps issuing via PostgREST: POST /rest/v1/credential_request, the PATCH transitions, and POST /functions/v1/sign-credential all succeed.",
+      "impact": "The platform owner's module switch is advisory, so a legally suspended service can still be delivered and recorded. RBAC-03 fails.",
+      "recommendation": "Add a STABLE helper module_enabled(_woreda uuid, _key text) (missing row = enabled, to match the client) and AND it into the INSERT/UPDATE policies of each module's tables, the workflow triggers, the module RPCs and sign-credential. Add rental_houses to useTenantModules and the admin toggle UI, and wrap woreda.reports.tsx in ModuleGate.",
+      "secure_fix_example": "CREATE FUNCTION public.module_enabled(_w uuid, _k text) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path='public' AS $$\n  SELECT COALESCE((SELECT is_enabled FROM tenant_module_config WHERE woreda_id=_w AND module_key=_k), true) $$;\n-- then e.g. credential_request_insert WITH CHECK (... AND public.module_enabled(woreda_id,'credentials'))",
+      "effort": "M",
+      "status": "Open"
+    },
+    {
+      "id": "WP-AZ-005",
+      "title": "Eleven permission keys have no server-side enforcement; read, report, audit and revenue boundaries in the RBAC matrix exist only in React",
+      "severity": "Medium",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:L/I:N/A:N (4.3)",
+      "confidence": "Confirmed",
+      "category": "AuthZ",
+      "module": "Platform",
+      "refs": {
+        "owasp_top10": [
+          "A01:2021"
+        ],
+        "owasp_api": [
+          "API5:2023"
+        ],
+        "asvs": [
+          "V4.1.1",
+          "V4.1.3",
+          "V4.2.1"
+        ],
+        "iso27001": [
+          "A.5.15",
+          "A.8.2",
+          "A.8.3"
+        ],
+        "nist_csf": [
+          "PR.AA-05"
+        ],
+        "insa": [
+          "RBAC-01",
+          "D-01",
+          "B-04"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "docs/audit/2026-09-24/authz/permission-matrix.md",
+          "line": 1,
+          "snippet": "payment.read, revenue.view, audit.view, report.view, report.export, credential.view, civil.view, credential.create_request, user.manage, platform.manage, tenant.create: server enforcement = none"
+        },
+        {
+          "path": "src/routes/woreda.audit.tsx",
+          "line": 394,
+          "snippet": "if (!hasPermission(P.AUDIT_VIEW)) return <Navigate to=\"/woreda/dashboard\" />;  -- audit_log SELECT is woreda-only (baseline.sql:1553)"
+        },
+        {
+          "path": "src/routes/woreda.revenue.index.tsx",
+          "line": 300,
+          "snippet": "if (!hasPermission(P.REVENUE_VIEW)) return <Navigate ... />;  -- payment SELECT is woreda-only (baseline.sql:1599)"
+        },
+        {
+          "path": "src/routes/woreda.dashboard.tsx",
+          "line": 269,
+          "snippet": "enabled: !!woredaId,  -- revenueToday reads payment_decrypted for every role"
+        },
+        {
+          "path": "supabase/migrations/00000000000057_task12b_credential_kpis.sql",
+          "line": 64,
+          "snippet": "IF NOT (is_super_admin() OR user_has_any_perm(ARRAY['credential.read'])) THEN  -- aggregate is gated, raw rows are not"
+        },
+        {
+          "path": "docs/security-functionality.md",
+          "line": 19,
+          "snippet": "`user_has_perm(_perm)` gates what a query can actually return -- this is the real enforcement point"
+        }
+      ],
+      "description": "The generated matrix (authz/permission-matrix.md) maps all 80 P keys to their latest server enforcement point. 53 are enforced. 10 workflow verbs are enforced by the FSM but also need a coarse RLS key (WP-AZ-006). 3 are decorative (user.manage, platform.manage, tenant.create name powers that are actually gated by is_tenant_admin()/is_super_admin()). 14 are mismatches. Six read keys (resident/household/credential/civil/service.read, rental excepted) gate only KPI RPCs and resident_document, not the base tables. That is the root cause already reported as WP-DB-004 and is not re-scored here. This finding covers the rest: payment.read, revenue.view, audit.view, report.view, report.export, credential.view, civil.view and credential.create_request are never evaluated on the server at all, and the app itself ignores them in places. The dashboard shows today's revenue from payment_decrypted to every role. A tenant_admin who removes audit.view from supervisor in the matrix has changed only what the UI renders.",
+      "attack_scenario": "A print_officer, or a custom role with zero grants, runs GET /rest/v1/audit_log?select=* and GET /rest/v1/payment_decrypted?select=* and receives the full tenant audit trail (including source_ip and old/new values) and every payment.",
+      "impact": "The matrix UI promises boundaries that do not exist, and per-tenant or per-user denies of these keys have no effect. This compounds WP-DB-004.",
+      "recommendation": "Fix together with WP-DB-004: add user_has_any_perm() to the SELECT policies of payment/receipt (payment.read, revenue.view), audit_log (audit.view) and history tables, and to the *_decrypted view sources. Either wire report.view/report.export into the report RPCs or remove the keys. Delete or implement credential.view, civil.view and credential.create_request. Document user.manage/platform.manage/tenant.create as labels for role-based powers, or bind the policies to them. Add a CI check that fails when a P key has no server reference.",
+      "secure_fix_example": "DROP POLICY audit_log_tenant_read ON public.audit_log;\nCREATE POLICY audit_log_tenant_read ON public.audit_log FOR SELECT TO authenticated\n  USING (is_super_admin() OR (woreda_id = get_user_woreda_id() AND user_has_any_perm('{audit.view}')));",
+      "effort": "M",
+      "status": "Open"
+    },
+    {
+      "id": "WP-AZ-006",
+      "title": "print_officer is a built-in role that cannot be assigned and cannot perform its own duties; granular FSM verbs are insufficient without coarse RLS keys, which pushes tenants toward over-privileged roles",
+      "severity": "Medium",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:L/I:L/A:N (3.8)",
+      "confidence": "Confirmed",
+      "category": "AuthZ",
+      "module": "Credentials",
+      "refs": {
+        "insa": [
+          "RBAC-01",
+          "B-04"
+        ],
+        "owasp_top10": [
+          "A04:2021"
+        ],
+        "owasp_api": [],
+        "asvs": [
+          "V4.1.3"
+        ],
+        "iso27001": [
+          "A.5.15",
+          "A.8.2"
+        ],
+        "nist_csf": [
+          "PR.AA-05"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "src/config/permissions.ts",
+          "line": 455,
+          "snippet": "print_officer: [ CREDENTIAL_READ, CREDENTIAL_VIEW, CREDENTIAL_PREVIEW_PRINT, CREDENTIAL_CONFIRM_PRINT, CREDENTIAL_AUTHORIZE_REPRINT, CREDENTIAL_ACTIVATE, APPROVAL_QUEUE_VIEW ]"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1622,
+          "snippet": "residence_credential_update ... '{credential.issue,credential.approve,credential.print,credential.revoke,credential.renew}'  -- print_officer holds none"
+        },
+        {
+          "path": "supabase/migrations/00000000000025_workflow_engine.sql",
+          "line": 528,
+          "snippet": "('residence_credential','ready_to_print','printing','credential.preview_print',...)"
+        },
+        {
+          "path": "supabase/functions/sign-credential/index.ts",
+          "line": 122,
+          "snippet": "_perm: \"credential.print\",  -- print_officer cannot sign"
+        },
+        {
+          "path": "src/routes/woreda.credentials.$requestId.print.tsx",
+          "line": 59,
+          "snippet": "permission={P.CREDENTIAL_PRINT}"
+        },
+        {
+          "path": "src/components/settings/UsersRolesTab.tsx",
+          "line": 69,
+          "snippet": "const EDITABLE_ROLES = [ registry_clerk, civil_registrar, finance_clerk, supervisor, auditor, viewer ]  -- no print_officer"
+        },
+        {
+          "path": "supabase/functions/invite-tenant-user/index.ts",
+          "line": 20,
+          "snippet": "const ALLOWED_ROLES = new Set([ ...six roles... ])  -- print_officer not invitable"
+        }
+      ],
+      "description": "print_officer exists in the Role type, default_role_perms(), the app_user role whitelist and the new-woreda backfill trigger. It is absent from every assignment surface: the tenant user editor, the role-permission matrix and invite-tenant-user's allow-list. Even if assigned by direct SQL, its grants are all granular FSM verbs. Moving a card through printing/printed/active needs both the FSM key and the coarse UPDATE policy key (credential.issue/approve/print/...), and the page and signing function require credential.print. A custom role built from the same granular verbs fails the same way. credential.record_payment alone likewise cannot update credential_request without payment.collect.",
+      "attack_scenario": "Not an attack. A tenant that needs dedicated print staff has to give them registry_clerk or civil_registrar. Those roles also carry resident.create/update, credential.issue, household writes and service-request powers, which is the opposite of least privilege.",
+      "impact": "Least privilege cannot be implemented for the print/handover stage. B-04 boundaries in the documentation do not match what the database lets each role do.",
+      "recommendation": "Add the granular verbs to the coarse UPDATE policies, or better, replace coarse UPDATE with per-transition DEFINER RPCs. Accept credential.preview_print/confirm_print in sign-credential and the print route. Add print_officer to EDITABLE_ROLES, the matrix and ALLOWED_ROLES, or remove the role.",
+      "secure_fix_example": "-- residence_credential_update USING/WITH CHECK: user_has_any_perm('{credential.issue,credential.approve,credential.print,credential.preview_print,credential.confirm_print,credential.activate,credential.suspend,credential.revoke,credential.renew}')",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-AZ-007",
+      "title": "Role-to-tenant scope invariant is not enforced in the database: a super_admin row may carry a woreda_id, and that woreda's tenant_admin can then edit or delete it",
+      "severity": "Low",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:H/PR:H/UI:N/S:U/C:N/I:L/A:L (3.3)",
+      "confidence": "Likely",
+      "category": "AuthZ",
+      "module": "Super Admin",
+      "refs": {
+        "insa": [
+          "RBAC-02",
+          "TEN-02"
+        ],
+        "owasp_top10": [
+          "A01:2021"
+        ],
+        "owasp_api": [
+          "API5:2023"
+        ],
+        "asvs": [
+          "V4.1.3"
+        ],
+        "iso27001": [
+          "A.5.15"
+        ],
+        "nist_csf": [
+          "PR.AA-05"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1551,
+          "snippet": "app_user_tenant_admin_write ... USING (is_tenant_admin() AND (woreda_id = get_user_woreda_id()) AND (role <> 'tenant_admin'))  -- 'super_admin' rows are not excluded"
+        },
+        {
+          "path": "src/components/admin/PlatformUsersTab.tsx",
+          "line": 856,
+          "snippet": "const nextWoredaId = role === \"tenant_admin\" ? woredaId : null;  -- invariant kept only by the UI"
+        },
+        {
+          "path": "supabase/functions/invite-platform-admin/index.ts",
+          "line": 56,
+          "snippet": "if (role === \"super_admin\" && woredaId) { return json(req, 400, ...)  -- invite path only"
+        },
+        {
+          "path": "supabase/migrations/00000000000009_console_roles.sql",
+          "line": 57,
+          "snippet": "CHECK (console_role_id IS NULL OR role = 'super_admin')  -- no equivalent CHECK for woreda_id"
+        }
+      ],
+      "description": "Nothing in the schema requires super_admin rows to have woreda_id IS NULL, or tenant roles to have woreda_id NOT NULL. The UI and invite function keep the invariant, but a direct super_admin PATCH, a SQL-console fix, or a future code path can break it. If a super_admin row ever carries woreda X, X's tenant_admin satisfies app_user_tenant_admin_write for that row, because the policy only excludes role = 'tenant_admin'. The tenant_admin could then suspend, rename or delete the platform admin, or demote them to a staff role. guard_console_role_assignment allows the demotion because console_role_id stays NULL and prevent_last_super_admin_lockout only protects the last one.",
+      "attack_scenario": "A super_admin is created by promoting an existing tenant user through a raw PATCH that leaves woreda_id set. That woreda's tenant_admin then runs PATCH /rest/v1/app_user?user_id=eq.<super> {role:'viewer'}.",
+      "impact": "Low likelihood. It would let a tenant admin demote a platform admin, which is an inversion of authority.",
+      "recommendation": "Add CHECK ((role = 'super_admin') = (woreda_id IS NULL)) (NOT VALID, then VALIDATE after cleanup), and extend app_user_tenant_admin_write to role NOT IN ('tenant_admin','super_admin').",
+      "secure_fix_example": "ALTER TABLE public.app_user ADD CONSTRAINT app_user_role_scope_check CHECK ((role = 'super_admin') = (woreda_id IS NULL)) NOT VALID;",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-AZ-008",
+      "title": "Client authorization fails open to compiled defaults and the woreda portal ignores account status",
+      "severity": "Low",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:L/I:N/A:N (3.1)",
+      "confidence": "Confirmed",
+      "category": "AuthZ",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "D-01"
+        ],
+        "owasp_top10": [
+          "A01:2021"
+        ],
+        "owasp_api": [],
+        "asvs": [
+          "V4.1.5"
+        ],
+        "iso27001": [
+          "A.8.2"
+        ],
+        "nist_csf": [
+          "PR.AA-05"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "src/hooks/useAuthBootstrap.ts",
+          "line": 85,
+          "snippet": "if (error || !data) return ROLE_PERMISSIONS[role] ?? [];"
+        },
+        {
+          "path": "src/stores/authStore.ts",
+          "line": 83,
+          "snippet": "permissions: permissions ?? (appUser ? (ROLE_PERMISSIONS[appUser.role] ?? []) : []),"
+        },
+        {
+          "path": "src/routes/woreda.tsx",
+          "line": 21,
+          "snippet": "if (!role) return <Navigate to=\"/login\" />;  -- no status check"
+        },
+        {
+          "path": "src/routes/admin.tsx",
+          "line": 31,
+          "snippet": "if (status !== \"active\") return <Navigate to=\"/login\" />;  -- admin portal does check"
+        }
+      ],
+      "description": "If current_permissions() errors, the store falls back to the compiled default. A user whose tenant or per-user override denies a key then sees the controls again. The server still refuses writes, but the UI misrepresents authority, and reads succeed for most keys because of WP-DB-004/WP-AZ-005. The woreda layout does not check appUser.status, unlike /admin. A suspended user with a live session keeps the shell, and every dashboard query with no permission gate still returns data because get_user_woreda_id() ignores status (root cause WP-DB-001).",
+      "attack_scenario": "A staff member is suspended mid-shift. Their open tab keeps rendering /woreda/dashboard with live KPIs and lists until the token expires.",
+      "impact": "Defence in depth only. The server-side gaps are tracked in WP-DB-001/WP-DB-004.",
+      "recommendation": "Fail closed: on RPC error, set permissions to [] and show a retry banner. In woreda.tsx, redirect when appUser.status !== 'active', matching admin.tsx.",
+      "secure_fix_example": "if (error || !data) return [];  // useAuthBootstrap.fetchTenantPermissions\nif (status !== \"active\") return <Navigate to=\"/login\" />;  // woreda.tsx",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-AZ-009",
+      "title": "The Security Functionality Document has no route/RPC/Edge-Function-to-guard-to-policy matrix, and its central access-control claim is contradicted",
+      "severity": "Info",
+      "cvss_v3_1": "",
+      "confidence": "Confirmed",
+      "category": "Docs",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "D-01",
+          "G-01"
+        ],
+        "owasp_top10": [],
+        "owasp_api": [
+          "API9:2023"
+        ],
+        "asvs": [
+          "V1.4.1"
+        ],
+        "iso27001": [
+          "A.5.37"
+        ],
+        "nist_csf": [
+          "GV.PO-01"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "docs/security-functionality.md",
+          "line": 7,
+          "snippet": "## Access control (RBAC/ABAC) -- delegates to the forensic review; no per-route matrix"
+        },
+        {
+          "path": "docs/security-functionality.md",
+          "line": 19,
+          "snippet": "`user_has_perm(_perm)` gates what a query can actually return"
+        }
+      ],
+      "description": "D-01 requires an SFD that states which guard or policy enforces each endpoint. The SFD links to other reviews and summarises the two-gate model, but it contains no route, RPC or Edge Function matrix. Its claim that user_has_perm() is 'the real enforcement point' for what a query returns is false for SELECT on 30+ tenant tables (WP-DB-004). This audit produced the missing matrices at authz/route-guard-matrix.md and authz/permission-matrix.md.",
+      "attack_scenario": "n/a",
+      "impact": "Reviewers and the INSA assessor cannot verify access control from the documentation.",
+      "recommendation": "Adopt the generated matrices into docs/security-functionality.md, regenerate them in CI (like generate:permissions-doc), and correct the enforcement claim.",
+      "secure_fix_example": "",
+      "effort": "S",
+      "status": "Open"
+    }
+  ],
+  "checklist": [
+    {
+      "id": "D-01",
+      "status": "FAIL",
+      "evidence": "docs/security-functionality.md:7-32; authz/route-guard-matrix.md",
+      "note": "The SFD exists but has no per-route/RPC/Edge matrix, and its enforcement claim is contradicted (WP-AZ-009). The matrix built here shows client guards on most portal routes (exceptions listed in authz.md §7), but 14 permission keys with no server enforcement (WP-AZ-005), CP keys UI-only (WP-AZ-001), and SELECT not permission-gated (WP-DB-004)."
+    },
+    {
+      "id": "E-06",
+      "status": "FAIL",
+      "evidence": "supabase/functions/*/index.ts; baseline.sql:1552,1569,1596,1636; raw/audit-database-rls-inventory.txt",
+      "note": "All 8 Edge Functions verify caller, status and woreda before side effects, and the rental/fee DEFINER RPCs check permission and tenant. Failures: permissionless PostgREST writes (audit_log, kebele, 6 sequences, service_request_status_history, 9 storage buckets: WP-DB-002/006/007/008); coarse UPDATE policies admitting unrelated roles with no field guards (WP-AZ-002/003); console scope ignored by invite-platform-admin/invite-tenant-user/resend-platform-invite/sign-credential (WP-AZ-001)."
+    },
+    {
+      "id": "B-04",
+      "status": "FAIL",
+      "evidence": "src/config/permissions.ts:198-466; authz/permission-matrix.md",
+      "note": "Enforcement part: 9 built-in roles + custom (not 8). Documented boundaries do not match DB enforcement. Read-only roles (viewer/auditor) can write (credential.verify path WP-AZ-003; permissionless tables WP-DB-006/007/008; storage WP-DB-002). Read boundaries are not enforced (WP-DB-004/WP-AZ-005). print_officer is non-functional (WP-AZ-006)."
+    },
+    {
+      "id": "TEN-02",
+      "status": "PARTIAL",
+      "evidence": "baseline.sql:1335; 00000000000017_user_permission_overrides.sql:52-66; supabase/functions/sign-credential/index.ts:117,146; invite-tenant-user/index.ts:92",
+      "note": "Agrees with the database agent. Every policy derives the tenant from get_user_woreda_id(). Client-sent woreda_id values are validated by WITH CHECK, by triggers (overrides, tenant_role pin) or by explicit Edge Function comparisons. The helper ignores status (WP-DB-001). No composite FKs (WP-DB-012). super_admin woreda_id invariant not enforced (WP-AZ-007)."
+    },
+    {
+      "id": "RBAC-01",
+      "status": "FAIL",
+      "evidence": "authz/permission-matrix.md; raw/authz-permission-matrix.json",
+      "note": "P (80 keys) = ROLE_PERMISSIONS = default_role_perms(): 0 differences. seed.sql vs default: 3 cells x 6 woredas (credential.verify false for AUD/FC/VW, F-05 still open). Against RLS: 53 OK, 10 FSM-only verbs that also need coarse keys, 3 decorative, 14 mismatches (WP-AZ-003/005/006, WP-DB-004)."
+    },
+    {
+      "id": "RBAC-02",
+      "status": "PASS",
+      "evidence": "baseline.sql:1551; 00000000000012_enforce_console_rbac.sql:121-152; 00000000000078_rental_phase3_settlement.sql:79-128; 00000000000035_task4_permission_reconciliation.sql:65-70; 00000000000019_override_hardening.sql:60-99; supabase/functions/invite-tenant-user/index.ts:73-75",
+      "note": "A tenant_admin cannot edit their own row (USING excludes role='tenant_admin'). They cannot mint or promote a super_admin (guard_console_role_assignment, including the NULL->NULL promotion path) or a second tenant_admin (WITH CHECK + invite function). They cannot touch reserved keys or tenant_admin/super_admin grants through role_permission, user_permission_override or tenant_role_permission. They can edit role_permission only for the 7 non-admin roles and non-reserved keys, by design. Residual hardening in WP-AZ-007."
+    },
+    {
+      "id": "RBAC-03",
+      "status": "FAIL",
+      "evidence": "00000000000066_payment_hardening_review_fixes.sql:346,391-400; src/components/common/ModuleGate.tsx:23-29",
+      "note": "Only services (letter category) is checked server-side. The credentials, civil_registration, revenue, reports, audit, approvals and rental_houses toggles are UI-only (WP-AZ-004)."
+    }
+  ],
+  "drift": [
+    {
+      "claim": "user_has_perm() gates what a query can actually return; it is the real enforcement point",
+      "source": "docs/security-functionality.md:19-21; CLAUDE.md 'Two independent gates'",
+      "verdict": "CONTRADICTED",
+      "evidence": "SELECT policies on resident/household/vital_event/payment/receipt/credential_request/audit_log are woreda-only (baseline.sql:1553,1568,1586,1599,1604,1626,1655)"
+    },
+    {
+      "claim": "CP console roles scope what an individual super_admin can do inside /admin",
+      "source": "CLAUDE.md 'Console permissions'; docs/security-functionality.md:30-32",
+      "verdict": "CONTRADICTED",
+      "evidence": "Only console.console_users.manage is checked server-side (00000000000012:39-44,150); other CP keys are UI-only (WP-AZ-001)"
+    },
+    {
+      "claim": "A7: tenant_admin/super_admin are not editable through role_permission",
+      "source": "CLAUDE.md 'Custom roles'",
+      "verdict": "CONFIRMED",
+      "evidence": "role_permission_role_name_check lists only 7 non-admin roles (00000000000035:65-70), never redefined later"
+    },
+    {
+      "claim": "Reserved keys enforced server-side by role_permission policies, user_permission_override CHECK and tenant_role_permission CHECK",
+      "source": "src/config/permissions.ts:173-185",
+      "verdict": "CONFIRMED",
+      "evidence": "Identical 10-key list in 00000000000078:79-128 matches RESERVED_PERMISSION_KEYS (permissions.ts:186-197)"
+    },
+    {
+      "claim": "check:role-perms-drift keeps ROLE_PERMISSIONS and default_role_perms() identical",
+      "source": "CLAUDE.md 'Commands'",
+      "verdict": "CONFIRMED",
+      "evidence": "Independent comparison: 0 differences across 10 role values (raw/authz-permission-matrix.json)"
+    },
+    {
+      "claim": "F-05 (seed credential.verify=false vs default true) left for a follow-up that extends the drift check to seed.sql",
+      "source": "00000000000035_task4_permission_reconciliation.sql:14-19; .claude/agents/rbac-escalation-review.md",
+      "verdict": "CONFIRMED",
+      "evidence": "Still open: seed.sql:171/225/252 (18 rows false); scripts/check-role-perms-drift.ts does not parse seed.sql"
+    },
+    {
+      "claim": "role_permission seed is 1512 rows (6 woredas x 42 keys x 6 roles)",
+      "source": "supabase/seed.sql:17,106",
+      "verdict": "CONTRADICTED",
+      "evidence": "1,560 role_permission INSERTs over 44 distinct keys parsed from seed.sql"
+    },
+    {
+      "claim": "Custom roles fail closed (no defaults)",
+      "source": "CLAUDE.md; permissions.ts:14-19",
+      "verdict": "CONFIRMED",
+      "evidence": "user_has_perm() custom branch COALESCE(..., false) (00000000000039:97-106). Note: reads are still open to a zero-grant custom role (WP-DB-004)"
+    },
+    {
+      "claim": "user_permission_override.woreda_id is re-derived from the target user's app_user row by trigger",
+      "source": "CLAUDE.md 'Authorization'",
+      "verdict": "CONFIRMED",
+      "evidence": "enforce_user_permission_override_woreda() BEFORE INSERT/UPDATE (00000000000017:52-66)"
+    },
+    {
+      "claim": "A missing tenant_module_config row means enabled; super admins see every module",
+      "source": "CLAUDE.md 'Module gating'",
+      "verdict": "CONFIRMED",
+      "evidence": "src/hooks/useTenantModules.ts:31-33,47-48; ModuleGate.tsx:27"
+    },
+    {
+      "claim": "Module keys are credentials, civil_registration, revenue, reports, audit, services, approvals",
+      "source": "CLAUDE.md 'Module gating'",
+      "verdict": "CONTRADICTED",
+      "evidence": "DB CHECK also allows rental_houses (baseline.sql:615); it is never read by the client or server (WP-INV-005, WP-AZ-004)"
+    },
+    {
+      "claim": "Only the services module has any server-side module check",
+      "source": "shared-context.md (Wave 1 notes)",
+      "verdict": "CONFIRMED",
+      "evidence": "00000000000066:391-400, and only for category='letter' (:346)"
+    },
+    {
+      "claim": "credential.verify is held by viewer and auditor on purpose for the lookup screen, distinct from credential.review",
+      "source": "src/config/permissions.ts:42-45",
+      "verdict": "CONTRADICTED",
+      "evidence": "The same key still grants credential_request UPDATE and status-history INSERT (baseline.sql:1560,1569); the client uses it for the workflow 'Verify' quick action (CredentialQueueTable.tsx:64)"
+    },
+    {
+      "claim": "print_officer is a built-in role adjustable per tenant via the matrix (A3)",
+      "source": "src/config/permissions.ts:450-454",
+      "verdict": "CONTRADICTED",
+      "evidence": "Not in RolesPermissionsTab/UsersRolesTab EDITABLE_ROLES or invite-tenant-user ALLOWED_ROLES (WP-AZ-006)"
+    },
+    {
+      "claim": "A scoped super_admin cannot mint an unrestricted super_admin",
+      "source": "00000000000012_enforce_console_rbac.sql; invite-platform-admin/index.ts:75-94",
+      "verdict": "CONFIRMED",
+      "evidence": "guard_console_role_assignment covers INSERT, promotion (NULL->NULL) and self-unscope; the invite function checks console.console_users.manage"
+    }
+  ],
+  "artifacts": [
+    "docs/audit/2026-09-24/authz/permission-matrix.md",
+    "docs/audit/2026-09-24/authz/route-guard-matrix.md",
+    "docs/audit/2026-09-24/raw/authz-permission-matrix.json",
+    "docs/audit/2026-09-24/raw/authz-enforcement.json",
+    "docs/audit/2026-09-24/raw/authz-route-matrix.json",
+    "docs/audit/2026-09-24/raw/authz-client-write-callsites.txt",
+    "docs/audit/2026-09-24/raw/authz-matrix.py",
+    "docs/audit/2026-09-24/raw/authz-enforcement.py",
+    "docs/audit/2026-09-24/raw/authz-routes.py"
+  ]
+}

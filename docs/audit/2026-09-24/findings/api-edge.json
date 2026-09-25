@@ -1,0 +1,1105 @@
+{
+ "agent": "audit-api-edge",
+ "commit": "9950f16e426eedd586c6fd85f6c328d9923542d1",
+ "date": "2026-09-24",
+ "findings": [
+  {
+   "id": "WP-API-001",
+   "title": "Console-permission axis (CP.*) is not enforced by any Edge Function or RPC except for minting a super_admin",
+   "severity": "High",
+   "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:N (6.5)",
+   "confidence": "Confirmed",
+   "category": "AuthZ",
+   "module": "Super Admin",
+   "refs": {
+    "insa": [
+     "E-06",
+     "D-01",
+     "RBAC-02"
+    ],
+    "owasp_top10": [
+     "A01:2021"
+    ],
+    "owasp_api": [
+     "API5:2023"
+    ],
+    "asvs": [
+     "V4.1.3",
+     "V4.2.1"
+    ],
+    "iso27001": [
+     "A.5.15",
+     "A.8.2"
+    ],
+    "nist_csf": [
+     "PR.AA-05"
+    ]
+   },
+   "evidence": [
+    {
+     "path": "supabase/functions/invite-platform-admin/index.ts",
+     "line": 70,
+     "snippet": "if (caller.role !== \"super_admin\" || caller.status !== \"active\") {"
+    },
+    {
+     "path": "supabase/functions/invite-platform-admin/index.ts",
+     "line": 84,
+     "snippet": "if (role === \"super_admin\") { ... user_has_console_perm ... { _perm: \"console.console_users.manage\" }"
+    },
+    {
+     "path": "supabase/functions/resend-platform-invite/index.ts",
+     "line": 46,
+     "snippet": "if (!caller || caller.role !== \"super_admin\" || caller.status !== \"active\") {"
+    },
+    {
+     "path": "supabase/functions/send-password-reset-link/index.ts",
+     "line": 116,
+     "snippet": "const canTargetPlatformAdmin =\n      isSuper && (target.role === \"tenant_admin\" || target.role === \"super_admin\");"
+    },
+    {
+     "path": "supabase/functions/invite-tenant-user/index.ts",
+     "line": 91,
+     "snippet": "const isSuper = caller.role === \"super_admin\";"
+    },
+    {
+     "path": "supabase/functions/sign-credential/index.ts",
+     "line": 120,
+     "snippet": "if (appUser.role !== \"super_admin\") { ... user_has_perm ... }"
+    },
+    {
+     "path": "supabase/migrations/00000000000010_id_card_template_draft.sql",
+     "line": 125,
+     "snippet": "IF NOT public.is_super_admin() THEN"
+    },
+    {
+     "path": "supabase/migrations/00000000000009_console_roles.sql",
+     "line": 40,
+     "snippet": "'console.tenants.manage', 'console.users.manage', 'console.audit.view', 'console.credential_template.manage' -- only occurrence of these keys server-side (CHECK list)"
+    },
+    {
+     "path": "src/config/permissions.ts",
+     "line": 164,
+     "snippet": "TENANTS_MANAGE: \"console.tenants.manage\", USERS_MANAGE: \"console.users.manage\", ..."
+    }
+   ],
+   "description": "The super-admin console has a second RBAC axis (console_role / user_has_console_perm, NULL console_role_id = unrestricted). Server-side, only console.console_users.manage is ever checked (migration 12 RLS + trigger, and invite-platform-admin when the new role is super_admin). console.users.manage, console.tenants.manage, console.credential_template.manage and console.audit.view appear nowhere in any RLS policy, trigger, RPC or Edge Function (raw/api-edge-evidence.txt). Every privileged Edge Function accepts ANY active super_admin: invite-platform-admin (tenant_admin path), resend-platform-invite, send-password-reset-link (including against other super_admins), invite-tenant-user and resend-tenant-invite (any woreda), sign-credential (any woreda, no credential.print check), and the publish_id_card_template RPC.",
+   "attack_scenario": "A super_admin deliberately scoped to a console role holding only console.audit.view calls POST /functions/v1/invite-platform-admin {role:\"tenant_admin\", woredaId:<any>, email:<mailbox they control>}. The call succeeds (only the super_admin-mint path checks a console permission). They redeem the invite and now hold a separate tenant_admin identity in that woreda, which also lets them act as both maker and checker in its workflows. The same scoped admin can publish the platform ID-card template, sign any woreda's credentials and trigger password-reset mails to unrestricted super_admins.",
+   "impact": "Console roles are presented in the UI as an access boundary but are UI-only for four of five permissions; segregation of duties among platform administrators is not enforced. Population is small (super_admins), hence High rather than Critical.",
+   "recommendation": "Add a user_has_console_perm() check (via the caller-JWT userClient, as invite-platform-admin already does) to every super_admin branch: console.users.manage for invite-platform-admin (tenant_admin), resend-platform-invite, send-password-reset-link, invite-tenant-user, resend-tenant-invite; console.tenants.manage where woreda provisioning is involved; console.credential_template.manage inside publish_id_card_template/discard_id_card_template_draft; decide whether sign-credential should require a tenant role at all for super_admin. Mirror the same keys in RLS (app_user_super_admin_write, id_card_template*, audit_log SELECT for console.audit.view) - coordinate with the authz auditor.",
+   "secure_fix_example": "if (isSuper) {\n  const { data: ok } = await userClient.rpc(\"user_has_console_perm\", { _perm: \"console.users.manage\" });\n  if (!ok) return json(req, 403, { error: \"Forbidden\" });\n}",
+   "effort": "M",
+   "status": "Open"
+  },
+  {
+   "id": "WP-API-002",
+   "title": "Edge Functions perform no schema validation of request bodies (types, formats, lengths, storage paths); malformed JSON returns 500",
+   "severity": "Medium",
+   "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:N/I:L/A:N (2.7)",
+   "confidence": "Confirmed",
+   "category": "Injection",
+   "module": "Platform",
+   "refs": {
+    "insa": [
+     "C-06",
+     "E-06"
+    ],
+    "owasp_top10": [
+     "A03:2021",
+     "A04:2021"
+    ],
+    "owasp_api": [
+     "API3:2023",
+     "API8:2023"
+    ],
+    "asvs": [
+     "V5.1.1",
+     "V5.1.3",
+     "V13.2.2"
+    ],
+    "iso27001": [
+     "A.8.28"
+    ],
+    "nist_csf": [
+     "PR.DS-10"
+    ]
+   },
+   "evidence": [
+    {
+     "path": "supabase/functions/invite-tenant-user/index.ts",
+     "line": 57,
+     "snippet": "const body = (await req.json()) as Body;"
+    },
+    {
+     "path": "supabase/functions/invite-tenant-user/index.ts",
+     "line": 69,
+     "snippet": "if (!email || !full_name || !role || !woredaId) {"
+    },
+    {
+     "path": "supabase/functions/invite-tenant-user/index.ts",
+     "line": 187,
+     "snippet": "signature_path: signature_path || null,\n          photo_path: photo_path || null,"
+    },
+    {
+     "path": "supabase/functions/sign-credential/index.ts",
+     "line": 93,
+     "snippet": "const body = (await req.json()) as RequestBody;"
+    },
+    {
+     "path": "supabase/functions/sign-credential/index.ts",
+     "line": 283,
+     "snippet": "return safeError(req, \"sign-credential: unhandled\", e, \"Credential signing failed\", 500);"
+    },
+    {
+     "path": "supabase/migrations/00000000000014_app_user_staff_fields.sql",
+     "line": 8,
+     "snippet": "ADD COLUMN IF NOT EXISTS department text, job_title text, reports_to_user_id uuid, signature_path text, photo_path text (no CHECK)"
+    }
+   ],
+   "description": "All eight functions cast req.json() to a TypeScript interface and check only truthiness of required fields. There is no runtime type check (a non-string email or an object full_name reaches GoTrue/Postgres), no e-mail format check, no UUID format check (Postgres rejects -> generic 500/404), no length bounds on full_name/department/job_title (no DB CHECK either), and signature_path/photo_path are stored verbatim with no bucket or `${woredaId}/` prefix check. A malformed JSON body throws inside the try and is reported as 500 rather than 400. The Edge Functions are the only server-side code for these writes, so the client-side zod schemas are the sole validation.",
+   "attack_scenario": "A tenant_admin (or anyone replaying their token) sets a staff member's signature_path to another object path (e.g. a different woreda's prefix or a different bucket's object name) or submits multi-kilobyte names that later render on printed letters; malformed input produces 500s that pollute error monitoring.",
+   "impact": "Data-quality and defence-in-depth gap; referenced storage objects are still protected by storage RLS at read time, so no direct cross-tenant read was demonstrated.",
+   "recommendation": "Validate every body with a zod (or valibot) schema in each function: uuid(), email(), enum(), max lengths, and a regex requiring signature_path/photo_path to start with `${woredaId}/`. Return 400 on JSON parse failure. Add DB CHECK length limits on app_user text columns.",
+   "secure_fix_example": "const Body = z.object({ email: z.string().email().max(254), full_name: z.string().min(2).max(200), role: z.enum([...]), woredaId: z.string().uuid(), signature_path: z.string().regex(new RegExp(`^${woredaId}/[\\w.-]+$`)).nullish() });\nconst parsed = Body.safeParse(await req.json().catch(() => null));\nif (!parsed.success) return json(req, 400, { error: \"Invalid request\" });",
+   "effort": "M",
+   "status": "Open"
+  },
+  {
+   "id": "WP-API-003",
+   "title": "Public self-registration is not disabled in any repo-controlled config; if enabled, anyone obtains an authenticated JWT that reaches tenant-unchecked RPCs",
+   "severity": "Medium",
+   "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N (5.3)",
+   "confidence": "Needs-live-verification",
+   "category": "AuthN",
+   "module": "Platform",
+   "refs": {
+    "insa": [
+     "E-03",
+     "TEN-05"
+    ],
+    "owasp_top10": [
+     "A07:2021"
+    ],
+    "owasp_api": [
+     "API2:2023",
+     "API1:2023"
+    ],
+    "asvs": [
+     "V2.1.1",
+     "V4.1.1"
+    ],
+    "iso27001": [
+     "A.5.16"
+    ],
+    "nist_csf": [
+     "PR.AA-01"
+    ]
+   },
+   "evidence": [
+    {
+     "path": "supabase/config.toml",
+     "line": 1,
+     "snippet": "project_id = \"woredas-portal\"   (entire file - no [auth] enable_signup setting)"
+    },
+    {
+     "path": "supabase/migrations/00000000000000_baseline.sql",
+     "line": 1323,
+     "snippet": "CREATE OR REPLACE FUNCTION public.get_credential_live_status(_credential_number text) ... SECURITY DEFINER ... WHERE credential_number = _credential_number"
+    },
+    {
+     "path": "supabase/migrations/00000000000031_rental_eligibility.sql",
+     "line": 197,
+     "snippet": "GRANT EXECUTE ON FUNCTION public.rental_eligibility(uuid, uuid, text) TO authenticated;"
+    },
+    {
+     "path": "supabase/migrations/00000000000000_baseline.sql",
+     "line": 1661,
+     "snippet": "CREATE POLICY woreda_read_all_authenticated ON public.woreda ... TO authenticated USING (true);"
+    }
+   ],
+   "description": "The app is invite-only (no signUp() call in src/), but whether GoTrue accepts POST /auth/v1/signup is a dashboard setting that nothing in the repository pins. Several endpoints are gated only on the `authenticated` role, not on having an active app_user row: get_credential_live_status (no woreda filter, 13-digit sequential credential numbers - WP-DB-010), rental_eligibility (no caller check - WP-DB-009), the woreda/id_card_template/workflow_transition tables (USING true), and the credential-templates bucket.",
+   "attack_scenario": "Attacker calls /auth/v1/signup with the public publishable key, confirms a throw-away mailbox, and then enumerates /rest/v1/rpc/get_credential_live_status with guessed credential numbers to learn which cards exist and whether they are revoked, across all woredas.",
+   "impact": "Cross-tenant metadata disclosure to unauthenticated internet users, conditional on the live signup setting.",
+   "recommendation": "Confirm Authentication > Sign In / Providers > \"Allow new users to sign up\" is OFF on the production project and record it (or manage it via config.toml [auth] enable_signup = false plus a CI check). Independently, require is_active_app_user() (or a woreda match) inside every authenticated-granted DEFINER RPC and REVOKE get_credential_live_status from authenticated.",
+   "secure_fix_example": "-- supabase/config.toml\n[auth]\nenable_signup = false\n\n-- SQL\nREVOKE EXECUTE ON FUNCTION public.get_credential_live_status(text) FROM authenticated;",
+   "effort": "S",
+   "status": "Open"
+  },
+  {
+   "id": "WP-API-004",
+   "title": "Gateway JWT verification (verify_jwt) is undetermined: docs say false, repo deploy path yields true, fallback path forces false",
+   "severity": "Low",
+   "cvss_v3_1": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N (3.7)",
+   "confidence": "Needs-live-verification",
+   "category": "Config",
+   "module": "Platform",
+   "refs": {
+    "insa": [
+     "E-03",
+     "E-02"
+    ],
+    "owasp_top10": [
+     "A05:2021"
+    ],
+    "owasp_api": [
+     "API8:2023",
+     "API2:2023"
+    ],
+    "asvs": [
+     "V14.1.1"
+    ],
+    "iso27001": [
+     "A.8.9"
+    ],
+    "nist_csf": [
+     "PR.PS-01"
+    ]
+   },
+   "evidence": [
+    {
+     "path": "supabase/config.toml",
+     "line": 1,
+     "snippet": "project_id = \"woredas-portal\"  (no [functions.<name>] verify_jwt entries)"
+    },
+    {
+     "path": "scripts/deploy-functions.sh",
+     "line": 40,
+     "snippet": "supabase functions deploy \"${FUNCTIONS[@]}\" --use-api --project-ref \"$REF\"   (no --no-verify-jwt)"
+    },
+    {
+     "path": "CLAUDE.md",
+     "line": 1123,
+     "snippet": "-F \"metadata={\\\"name\\\":\\\"$FN\\\",\\\"entrypoint_path\\\":\\\"index.ts\\\",\\\"verify_jwt\\\":false};type=application/json\""
+    },
+    {
+     "path": "docs/security-hardening.md",
+     "line": 41,
+     "snippet": "`verify_jwt:false` — the auth is in the function body"
+    },
+    {
+     "path": "supabase/functions/sign-credential/index.ts",
+     "line": 72,
+     "snippet": "if (!PRIVATE_KEY_PEM) return json(req, 500, { error: \"Signing key not configured\" });   // before any auth check"
+    }
+   ],
+   "description": "No repository artefact pins verify_jwt. The CLI path in scripts/deploy-functions.sh deploys with the CLI default (true); the documented Management-API fallback in CLAUDE.md deploys with false; docs/security-hardening.md asserts all functions run with false. The live value may therefore differ per function depending on who deployed last and how. Authentication is still enforced in every function body via GoTrue getUser() (all 8 verified), so this is not an auth bypass. With verify_jwt=false, unauthenticated traffic reaches function code: sign-credential answers 500 \"Signing key not configured\" before checking any credential, and every request costs an isolate plus (for tokens that look valid) a GoTrue round-trip, with no pre-auth throttling.",
+   "attack_scenario": "An unauthenticated scanner probes /functions/v1/sign-credential and learns whether HARARI_EC_PRIVATE_KEY is set; a flood of junk-token requests is absorbed by function isolates and GoTrue rather than the gateway.",
+   "impact": "Configuration drift and minor information disclosure; slightly larger unauthenticated attack surface.",
+   "recommendation": "Pin the intended value in supabase/config.toml ([functions.<name>] verify_jwt = true for all eight, unless the project has moved to asymmetric JWT signing keys, in which case document why false). Move the signing-key presence check after authentication. Record the live per-function value (GET /v1/projects/{ref}/functions) in the deploy verification step.",
+   "secure_fix_example": "[functions.sign-credential]\nverify_jwt = true\n# ...repeat for the other seven",
+   "effort": "S",
+   "status": "Open"
+  },
+  {
+   "id": "WP-API-005",
+   "title": "Production CORS allow-list for all Edge Functions hard-codes http://localhost:5173",
+   "severity": "Low",
+   "cvss_v3_1": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:L/I:N/A:N (3.1)",
+   "confidence": "Confirmed",
+   "category": "Config",
+   "module": "Platform",
+   "refs": {
+    "insa": [
+     "E-06",
+     "D-04"
+    ],
+    "owasp_top10": [
+     "A05:2021"
+    ],
+    "owasp_api": [
+     "API8:2023"
+    ],
+    "asvs": [
+     "V14.5.3"
+    ],
+    "iso27001": [
+     "A.8.9"
+    ],
+    "nist_csf": [
+     "PR.PS-01"
+    ]
+   },
+   "evidence": [
+    {
+     "path": "supabase/functions/_shared/response.ts",
+     "line": 23,
+     "snippet": "[Deno.env.get(\"SITE_URL\"), \"http://localhost:5173\"]"
+    },
+    {
+     "path": "supabase/functions/_shared/response.ts",
+     "line": 31,
+     "snippet": "\"Access-Control-Allow-Origin\": ALLOWED_ORIGINS.has(origin) ? origin : \"\","
+    }
+   ],
+   "description": "The allow-list is an explicit echo (never \"*\", no Allow-Credentials) which is good, but the same deployed code admits http://localhost:5173 in production because the repo has no staging project. Any page served on that origin on a staff workstation (another dev server, a malicious local tool) can call the functions cross-origin and read responses, provided it also holds a bearer token.",
+   "attack_scenario": "Low: requires the attacker-controlled local page to already possess a valid staff JWT, which bearer-token auth does not leak cross-origin.",
+   "impact": "Hardening gap; the bearer-token model limits real exposure.",
+   "recommendation": "Read extra dev origins from an env var (e.g. EXTRA_CORS_ORIGINS) that is unset in production, or gate localhost on a DEV flag.",
+   "secure_fix_example": "const extra = (Deno.env.get(\"EXTRA_CORS_ORIGINS\") ?? \"\").split(\",\").filter(Boolean);\nconst ALLOWED_ORIGINS = new Set([Deno.env.get(\"SITE_URL\"), ...extra].filter(Boolean));",
+   "effort": "S",
+   "status": "Open"
+  },
+  {
+   "id": "WP-API-006",
+   "title": "Rate-limiting gaps: letter/receipt verification unlimited and unlogged; sign-credential, activate-invited-user and record-login unlimited; all limiters fail open",
+   "severity": "Low",
+   "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L (5.3)",
+   "confidence": "Confirmed",
+   "category": "Config",
+   "module": "QR",
+   "refs": {
+    "insa": [
+     "E-06",
+     "CRY-03"
+    ],
+    "owasp_top10": [
+     "A04:2021"
+    ],
+    "owasp_api": [
+     "API4:2023",
+     "API6:2023"
+    ],
+    "asvs": [
+     "V11.1.4",
+     "V2.2.1"
+    ],
+    "iso27001": [
+     "A.8.6"
+    ],
+    "nist_csf": [
+     "PR.IR-04"
+    ]
+   },
+   "evidence": [
+    {
+     "path": "supabase/migrations/00000000000022_rate_limit.sql",
+     "line": 11,
+     "snippet": "-- Deliberately NOT covered: the two public verification RPCs"
+    },
+    {
+     "path": "supabase/migrations/00000000000064_task14b_verify_letter_completed_status.sql",
+     "line": 22,
+     "snippet": "CREATE OR REPLACE FUNCTION public.verify_service_letter(_token text) ... LANGUAGE sql STABLE SECURITY DEFINER"
+    },
+    {
+     "path": "supabase/migrations/00000000000013_receipt_verification.sql",
+     "line": 134,
+     "snippet": "CREATE OR REPLACE FUNCTION public.verify_receipt(_token text)"
+    },
+    {
+     "path": "supabase/migrations/00000000000000_baseline.sql",
+     "line": 1236,
+     "snippet": "v_token := v_token || substr(v_alphabet, 1 + floor(random() * length(v_alphabet))::INT, 1);"
+    },
+    {
+     "path": "supabase/functions/_shared/rateLimit.ts",
+     "line": 31,
+     "snippet": "console.error(\"rate_limit_hit failed (failing open):\", error);\n      return { allowed: true };"
+    },
+    {
+     "path": "supabase/migrations/00000000000034_task3_harden_credential_verification.sql",
+     "line": 222,
+     "snippet": "RAISE EXCEPTION 'Too many requests' USING ERRCODE = 'insufficient_resources';   -- surfaces as HTTP 503"
+    }
+   ],
+   "description": "verify_service_letter and verify_receipt are anonymous DEFINER functions with no throttling and no attempt log (unlike verify_credential_token since migration 34). Their 12-character tokens (~60 bits) make blind enumeration impractical, but the tokens come from Postgres random(), not a CSPRNG (crypto auditor to assess). sign-credential, activate-invited-user and record-login have no limiter. Every limiter fails open by design, and the credential limiter keys on an IP that falls back to the client-controlled X-Forwarded-For first hop and reports HTTP 503 rather than 429.",
+   "attack_scenario": "A scripted client hammers /rpc/verify_receipt or /rpc/verify_service_letter with random tokens, consuming database connections with nothing recorded; during a limiter outage the invite functions accept unlimited calls from a compromised admin session.",
+   "impact": "Resource consumption and absence of forensic signal on two public endpoints.",
+   "recommendation": "Move the three public RPCs behind one plpgsql wrapper pattern (limit + log) as done for verify_credential_token; add per-user limits to sign-credential; switch token generation to gen_random_bytes(); emit a PGRST-mapped 429 (RAISE ... USING ERRCODE = 'PGRST', with a {\"code\":\"429\"} message) instead of 53000/503.",
+   "secure_fix_example": "v_token := v_token || substr(v_alphabet, 1 + (get_byte(extensions.gen_random_bytes(1),0) % 32), 1);",
+   "effort": "M",
+   "status": "Open"
+  },
+  {
+   "id": "WP-API-007",
+   "title": "Invite flow sends the e-mail before creating the profile; app_user.username (e-mail local part) is globally UNIQUE, leaving orphaned invited accounts and a cross-tenant username oracle",
+   "severity": "Low",
+   "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:L/I:N/A:N (2.7)",
+   "confidence": "Confirmed",
+   "category": "Business Logic",
+   "module": "Settings",
+   "refs": {
+    "insa": [
+     "E-06",
+     "C-07"
+    ],
+    "owasp_top10": [
+     "A04:2021"
+    ],
+    "owasp_api": [
+     "API6:2023"
+    ],
+    "asvs": [
+     "V1.11.2"
+    ],
+    "iso27001": [
+     "A.8.28"
+    ],
+    "nist_csf": [
+     "PR.PS-06"
+    ]
+   },
+   "evidence": [
+    {
+     "path": "supabase/migrations/00000000000000_baseline.sql",
+     "line": 536,
+     "snippet": "ALTER TABLE public.app_user ADD CONSTRAINT app_user_username_key UNIQUE (username);"
+    },
+    {
+     "path": "supabase/functions/invite-tenant-user/index.ts",
+     "line": 113,
+     "snippet": "await admin.auth.admin.inviteUserByEmail(email, { redirectTo: `${SITE_URL}/set-password` });"
+    },
+    {
+     "path": "supabase/functions/invite-tenant-user/index.ts",
+     "line": 134,
+     "snippet": "const username = email.split(\"@\")[0]?.slice(0, 32) ?? email;"
+    },
+    {
+     "path": "supabase/functions/invite-tenant-user/index.ts",
+     "line": 236,
+     "snippet": "if (insertErr) { return safeError(..., \"Invite sent but profile setup failed\", 400); }"
+    }
+   ],
+   "description": "username is derived from the e-mail local part and must be unique platform-wide. Inviting abebe@moe.gov.et in woreda A after abebe@gmail.com exists anywhere fails the app_user insert AFTER GoTrue has created the auth user and mailed a live invite link. The recipient can redeem the link into a session with no app_user row (RLS denies data, but the auth identity persists). The distinct \"Invite sent but profile setup failed\" message also tells a tenant_admin that the local part is taken somewhere on the platform.",
+   "attack_scenario": "A tenant admin probes common local parts to learn which usernames exist in other woredas; ordinary onboarding silently creates dangling auth.users rows.",
+   "impact": "Orphan identities, failed onboarding, minor cross-tenant information leak.",
+   "recommendation": "Create the app_user row (or reserve the username) before calling inviteUserByEmail, or delete the auth user on insert failure; derive username from the full e-mail or a UUID; map the collision to the generic duplicate message.",
+   "secure_fix_example": "if (insertErr) { await admin.auth.admin.deleteUser(newUserId); return safeError(req, \"...\", insertErr, \"Failed to send invitation\", 400); }",
+   "effort": "S",
+   "status": "Open"
+  },
+  {
+   "id": "WP-API-008",
+   "title": "User-lifecycle functions exclude print_officer and custom-role staff (cannot be invited, re-invited or sent a reset link)",
+   "severity": "Low",
+   "cvss_v3_1": "",
+   "confidence": "Confirmed",
+   "category": "Business Logic",
+   "module": "Settings",
+   "refs": {
+    "insa": [
+     "B-04",
+     "RBAC-01"
+    ],
+    "owasp_top10": [],
+    "owasp_api": [
+     "API9:2023"
+    ],
+    "asvs": [
+     "V1.4.4"
+    ],
+    "iso27001": [
+     "A.5.18"
+    ],
+    "nist_csf": [
+     "PR.AA-05"
+    ]
+   },
+   "evidence": [
+    {
+     "path": "supabase/functions/invite-tenant-user/index.ts",
+     "line": 20,
+     "snippet": "const ALLOWED_ROLES = new Set([\"registry_clerk\",\"civil_registrar\",\"finance_clerk\",\"supervisor\",\"auditor\",\"viewer\"]);"
+    },
+    {
+     "path": "supabase/functions/resend-tenant-invite/index.ts",
+     "line": 21,
+     "snippet": "const ALLOWED_TARGET_ROLES = new Set([ ...same six... ]);"
+    },
+    {
+     "path": "supabase/functions/send-password-reset-link/index.ts",
+     "line": 17,
+     "snippet": "const ALLOWED_TARGET_ROLES = new Set([ ...same six... ]);"
+    },
+    {
+     "path": "src/components/settings/UsersRolesTab.tsx",
+     "line": 69,
+     "snippet": "const EDITABLE_ROLES = [ registry_clerk, civil_registrar, finance_clerk, supervisor, auditor, viewer ]"
+    }
+   ],
+   "description": "print_officer (built-in since migration 35) and role=custom (Task 13) are valid app_user roles, but all three tenant-side lifecycle functions use the pre-Task-13 six-role allow-list. Such users must be invited under another role and re-assigned, and a locked-out print_officer or custom-role user gets \"Cannot send a reset link for this role.\" Operators are pushed toward dashboard/SQL workarounds that bypass the audited path.",
+   "attack_scenario": "n/a (functional gap that encourages out-of-band administration).",
+   "impact": "Incomplete admin API; out-of-band account handling without audit rows.",
+   "recommendation": "Derive the allow-list from a shared constant including print_officer and custom (with custom_role_id validated to the same woreda by the existing validate_app_user_role trigger).",
+   "secure_fix_example": "const STAFF_ROLES = new Set([...six, \"print_officer\", \"custom\"]);",
+   "effort": "S",
+   "status": "Open"
+  },
+  {
+   "id": "WP-API-009",
+   "title": "Edge Function audit writes are fire-and-forget and some carry the invitee e-mail (PII) or no woreda_id",
+   "severity": "Low",
+   "cvss_v3_1": "",
+   "confidence": "Confirmed",
+   "category": "Logging",
+   "module": "Platform",
+   "refs": {
+    "insa": [
+     "D-05",
+     "LOG-01",
+     "PRV-01"
+    ],
+    "owasp_top10": [
+     "A09:2021"
+    ],
+    "owasp_api": [],
+    "asvs": [
+     "V7.1.1",
+     "V7.2.1"
+    ],
+    "iso27001": [
+     "A.8.15"
+    ],
+    "nist_csf": [
+     "DE.CM-03"
+    ]
+   },
+   "evidence": [
+    {
+     "path": "supabase/functions/sign-credential/index.ts",
+     "line": 270,
+     "snippet": "await admin.from(\"audit_log\").insert({ ... action_type: \"QR_SIGNED\" ... });   // result ignored"
+    },
+    {
+     "path": "supabase/functions/invite-tenant-user/index.ts",
+     "line": 252,
+     "snippet": "new_value_json: { email, role, full_name },"
+    },
+    {
+     "path": "supabase/functions/resend-platform-invite/index.ts",
+     "line": 105,
+     "snippet": "await admin.from(\"audit_log\").insert({ actor_user_id: callerId, entity_name: \"app_user\", entity_id: user_id, action_type: \"PLATFORM_ADMIN_INVITE_RESENT\", new_value_json: { email }, ... });   // no woreda_id"
+    },
+    {
+     "path": "supabase/functions/send-password-reset-link/index.ts",
+     "line": 178,
+     "snippet": "// Never write the email address itself into the audit row"
+    }
+   ],
+   "description": "All nine audit_log inserts across seven functions ignore the returned error, so a privileged action (credential signed, admin invited) can succeed with no audit row. invite-tenant-user, invite-platform-admin and resend-platform-invite store the e-mail address in new_value_json, contradicting the rule send-password-reset-link documents for itself; resend-platform-invite omits woreda_id so the row is invisible to tenant-scoped audit views.",
+   "attack_scenario": "Transient DB error during the audit insert leaves a signed credential with no QR_SIGNED record.",
+   "impact": "Incomplete audit trail; unnecessary PII in logs.",
+   "recommendation": "Check the insert error and log/alert (or wrap action + audit in one RPC transaction); drop e-mail from audit payloads (user_id already identifies the account); include target woreda_id.",
+   "secure_fix_example": "const { error: auditErr } = await admin.from(\"audit_log\").insert(row);\nif (auditErr) console.error(\"audit write failed\", auditErr.code);",
+   "effort": "S",
+   "status": "Open"
+  },
+  {
+   "id": "WP-API-010",
+   "title": "Internal helper functions are exposed as /rest/v1/rpc endpoints (26 authenticated-callable without a client caller; 6 more anon-callable helpers)",
+   "severity": "Low",
+   "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:L/I:N/A:N (4.3)",
+   "confidence": "Likely",
+   "category": "Config",
+   "module": "Platform",
+   "refs": {
+    "insa": [
+     "E-04",
+     "TEN-04",
+     "TEN-05"
+    ],
+    "owasp_top10": [
+     "A05:2021"
+    ],
+    "owasp_api": [
+     "API9:2023",
+     "API8:2023"
+    ],
+    "asvs": [
+     "V1.4.1",
+     "V4.1.3"
+    ],
+    "iso27001": [
+     "A.8.9"
+    ],
+    "nist_csf": [
+     "ID.AM-02"
+    ]
+   },
+   "evidence": [
+    {
+     "path": "supabase/migrations/00000000000023_pii_encryption.sql",
+     "line": 324,
+     "snippet": "CREATE OR REPLACE FUNCTION public.decrypt_pii_text(_cipher bytea, _woreda_id uuid) ... SECURITY DEFINER   (GRANT authenticated)"
+    },
+    {
+     "path": "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql",
+     "line": 96,
+     "snippet": "CREATE OR REPLACE FUNCTION public.default_role_perms(_role text) RETURNS text[]   (no GRANT/REVOKE in any migration)"
+    },
+    {
+     "path": "supabase/migrations/00000000000019_override_hardening.sql",
+     "line": 60,
+     "snippet": "CREATE OR REPLACE FUNCTION public.user_permission_override_target_role_ok(_user_id uuid) ... au.role IN ('tenant_admin', 'super_admin')"
+    },
+    {
+     "path": "supabase/migrations/00000000000031_rental_eligibility.sql",
+     "line": 196,
+     "snippet": "REVOKE ALL ON FUNCTION public.rental_eligibility(uuid, uuid, text) FROM PUBLIC;   (anon not revoked)"
+    },
+    {
+     "path": "docs/audit/2026-09-24/api/endpoint-inventory.json",
+     "line": 1,
+     "snippet": "\"rpc_internal_exposed\": 26"
+    }
+   ],
+   "description": "Because helper functions live in the PostgREST-exposed public schema, every function EXECUTE-able by authenticated is also an RPC endpoint. 26 have no client caller, including decrypt_pii_text (any staff member of a woreda, even with zero read permissions, can decrypt that woreda's ciphertext directly), user_permission_override_target_role_ok (tells any caller whether a UUID is an admin), entity_belongs_to_woreda, generate_rent_reminders, refresh_rent_ledger_statuses, resolve_reconciliation_exception and get_credential_live_status. Under Supabase's default ACL (modelled by the database auditor), default_role_perms, gen_letter_verification_token, gen_receipt_verification_token, luhn_check_digit, storage_path_woreda_id and check_credential_print_eligibility are also anon-executable; default_role_perms discloses the full compiled role/permission matrix to unauthenticated callers, and rental_eligibility (client-called) is anon-executable too.",
+   "attack_scenario": "An unauthenticated caller POSTs /rest/v1/rpc/default_role_perms {\"_role\":\"finance_clerk\"} to map the permission model; a viewer-role account calls decrypt_pii_text on national-ID ciphertext it can already SELECT.",
+   "impact": "Enlarged, undocumented API surface; information disclosure; bypass of any future column-level restriction.",
+   "recommendation": "Move RLS helper and internal functions into a non-exposed schema (e.g. `private`, not listed in API exposed schemas), keeping EXECUTE for authenticated where policies need it; REVOKE EXECUTE ... FROM anon explicitly (not just PUBLIC) on every non-public function; add a CI check that lists anon-executable functions.",
+   "secure_fix_example": "CREATE SCHEMA IF NOT EXISTS private;\nALTER FUNCTION public.default_role_perms(text) SET SCHEMA private;\nREVOKE EXECUTE ON FUNCTION public.rental_eligibility(uuid,uuid,text) FROM anon;",
+   "effort": "M",
+   "status": "Open"
+  },
+  {
+   "id": "WP-API-011",
+   "title": "API documentation is invalid, incomplete and inaccurate; no endpoint carries a classification in code",
+   "severity": "Low",
+   "cvss_v3_1": "",
+   "confidence": "Confirmed",
+   "category": "Docs",
+   "module": "Platform",
+   "refs": {
+    "insa": [
+     "E-01",
+     "E-02",
+     "E-04",
+     "G-01"
+    ],
+    "owasp_top10": [],
+    "owasp_api": [
+     "API9:2023"
+    ],
+    "asvs": [
+     "V1.1.2"
+    ],
+    "iso27001": [
+     "A.5.9",
+     "A.5.37"
+    ],
+    "nist_csf": [
+     "ID.AM-03"
+    ]
+   },
+   "evidence": [
+    {
+     "path": "docs/openapi.yaml",
+     "line": 325,
+     "snippet": "requestBody:\n        required: false      (no content -> schema error; also :360, and 200 without description at :363)"
+    },
+    {
+     "path": "docs/openapi.yaml",
+     "line": 13,
+     "snippet": "This spec covers the six hand-written Edge Functions"
+    },
+    {
+     "path": "docs/openapi.yaml",
+     "line": 282,
+     "snippet": "required: [email]   (resend-platform-invite reads only user_id)"
+    },
+    {
+     "path": "docs/api-security.md",
+     "line": 6,
+     "snippet": "What _is_ hand-written is six Edge Functions and a handful of RPCs ... Every one of them is categorized below."
+    },
+    {
+     "path": "docs/audit/2026-09-24/raw/api-edge-docs-openapi-validation.txt",
+     "line": 2,
+     "snippet": "3 (validation errors)"
+    }
+   ],
+   "description": "docs/openapi.yaml (3.0.3) fails schema validation (3 errors), documents 6 of 8 Edge Functions (resend-tenant-invite and send-password-reset-link missing), documents a wrong body for resend-platform-invite, applies bearer security to the anonymous RPCs, omits the apikey header, states the wrong status set for verify_service_letter and the wrong HTTP status (500 vs 503) for the verify_credential_token limiter, and covers 3 of ~64 RPCs and no PostgREST resources. No request/response sample files exist in the repository. docs/api-security.md classifies 11 endpoints; no function, RPC or route carries a Public/Private/Internal classification comment (INSA E-04 requires it in code).",
+   "attack_scenario": "n/a (compliance and inventory).",
+   "impact": "INSA E-01/E-02/E-04 not met; reviewers and testers work from an outdated inventory (OWASP API9).",
+   "recommendation": "Adopt docs/audit/2026-09-24/api/openapi.yaml (3.1, validated) and api/samples/ as the baseline; add a `// @classification: Private` header to each supabase/functions/*/index.ts and a `COMMENT ON FUNCTION ... IS '@classification Public|Private|Internal'` per RPC; validate the spec in CI.",
+   "secure_fix_example": "COMMENT ON FUNCTION public.verify_receipt(text) IS '@classification Public - anonymous receipt verification';",
+   "effort": "M",
+   "status": "Open"
+  },
+  {
+   "id": "WP-API-012",
+   "title": "sign-credential reads resident, household and kebele by foreign key without re-pinning them to the credential's woreda",
+   "severity": "Low",
+   "cvss_v3_1": "",
+   "confidence": "Likely",
+   "category": "Tenant Isolation",
+   "module": "Credentials",
+   "refs": {
+    "insa": [
+     "TEN-02",
+     "CRY-02"
+    ],
+    "owasp_top10": [
+     "A01:2021"
+    ],
+    "owasp_api": [
+     "API1:2023"
+    ],
+    "asvs": [
+     "V4.2.1"
+    ],
+    "iso27001": [
+     "A.8.3"
+    ],
+    "nist_csf": [
+     "PR.DS-01"
+    ]
+   },
+   "evidence": [
+    {
+     "path": "supabase/functions/sign-credential/index.ts",
+     "line": 159,
+     "snippet": ".from(\"resident\").select(\"resident_number, full_name, sex, date_of_birth, current_household_id\").eq(\"resident_id\", cred.resident_id)"
+    },
+    {
+     "path": "supabase/functions/sign-credential/index.ts",
+     "line": 174,
+     "snippet": ".from(\"kebele\").select(\"kebele_name_en\").eq(\"kebele_id\", cred.issuing_kebele_id)"
+    },
+    {
+     "path": "supabase/migrations/00000000000013_receipt_verification.sql",
+     "line": 128,
+     "snippet": "-- Every joined table is re-pinned to r.woreda_id explicitly (not just left to follow the FK chain)"
+    }
+   ],
+   "description": "The function runs as service_role and trusts the FK chain. With single-column FKs (WP-DB-012), a residence_credential whose resident_id or issuing_kebele_id points into another woreda would have that woreda's resident name, DOB and house number signed into a QR payload and printed. verify_receipt already applies the stricter pattern.",
+   "attack_scenario": "Depends on a cross-tenant reference being creatable upstream (see WP-DB-012); not demonstrated end-to-end.",
+   "impact": "Defence-in-depth gap on the most legally significant output of the system.",
+   "recommendation": "Add .eq(\"woreda_id\", cred.woreda_id) to the resident, household and kebele lookups and return 409 on mismatch.",
+   "secure_fix_example": ".from(\"resident\").select(...).eq(\"resident_id\", cred.resident_id).eq(\"woreda_id\", cred.woreda_id)",
+   "effort": "S",
+   "status": "Open"
+  },
+  {
+   "id": "WP-API-013",
+   "title": "PostgREST schema introspection and GraphQL exposure to anon are not controlled by the repository",
+   "severity": "Info",
+   "cvss_v3_1": "",
+   "confidence": "Needs-live-verification",
+   "category": "Config",
+   "module": "Platform",
+   "refs": {
+    "insa": [
+     "E-02",
+     "TEN-05"
+    ],
+    "owasp_top10": [
+     "A05:2021"
+    ],
+    "owasp_api": [
+     "API9:2023",
+     "API8:2023"
+    ],
+    "asvs": [
+     "V14.3.2"
+    ],
+    "iso27001": [
+     "A.8.9"
+    ],
+    "nist_csf": [
+     "PR.PS-01"
+    ]
+   },
+   "evidence": [
+    {
+     "path": "supabase/migrations/00000000000007_tighten_anon_grants.sql",
+     "line": 32,
+     "snippet": "REVOKE TRUNCATE, TRIGGER, REFERENCES ON ALL TABLES IN SCHEMA public FROM anon, authenticated;   (SELECT/INSERT/UPDATE/DELETE kept)"
+    },
+    {
+     "path": "supabase/config.toml",
+     "line": 1,
+     "snippet": "project_id = \"woredas-portal\"   (no [api] schemas / max_rows settings)"
+    }
+   ],
+   "description": "anon keeps table-level DML grants on 64 of 66 tables (RLS denies rows). PostgREST's root OpenAPI document and pg_graphql introspection (if enabled on the project) enumerate objects by privilege, so the full table/column list, including *_enc and national-ID columns, may be discoverable with only the publishable key. max_rows and exposed schemas are dashboard-only.",
+   "attack_scenario": "GET /rest/v1/ with the publishable key returns the schema map used to target further requests.",
+   "impact": "Reconnaissance aid only; no data returned.",
+   "recommendation": "Verify live behaviour of GET /rest/v1/ and /graphql/v1 with the anon key; REVOKE table privileges from anon on all non-public tables; disable pg_graphql if unused; set max_rows.",
+   "secure_fix_example": "REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon;",
+   "effort": "S",
+   "status": "Open"
+  },
+  {
+   "id": "WP-API-014",
+   "title": "Self-scoped functions accept any status: record-login updates suspended accounts; activate-invited-user does not confirm a password was set",
+   "severity": "Info",
+   "cvss_v3_1": "",
+   "confidence": "Confirmed",
+   "category": "AuthN",
+   "module": "Platform",
+   "refs": {
+    "insa": [
+     "E-06",
+     "C-05"
+    ],
+    "owasp_top10": [
+     "A07:2021"
+    ],
+    "owasp_api": [
+     "API2:2023"
+    ],
+    "asvs": [
+     "V2.1.1"
+    ],
+    "iso27001": [
+     "A.5.17"
+    ],
+    "nist_csf": [
+     "PR.AA-01"
+    ]
+   },
+   "evidence": [
+    {
+     "path": "supabase/functions/record-login/index.ts",
+     "line": 43,
+     "snippet": ".from(\"app_user\").update({ last_login_at: new Date().toISOString() }).eq(\"user_id\", callerId)"
+    },
+    {
+     "path": "supabase/functions/activate-invited-user/index.ts",
+     "line": 72,
+     "snippet": ".update({ status: \"active\" }).eq(\"user_id\", callerId).eq(\"status\", \"pending\")"
+    }
+   ],
+   "description": "Both functions are correctly self-scoped (identity only from the JWT). record-login writes last_login_at for suspended/inactive accounts, so \"last login\" can show activity for an account an administrator believes is locked. activate-invited-user trusts the client flow order; an invitee holding only the invite-link session can activate without ever setting a password (they can still set one later via updateUser).",
+   "attack_scenario": "n/a (integrity of administrative signals).",
+   "impact": "Misleading administrative data.",
+   "recommendation": "In record-login, skip or flag non-active accounts; in activate-invited-user, check auth user metadata (e.g. that the user has a recent password update) before flipping status.",
+   "secure_fix_example": ".eq(\"status\", \"active\")   // record-login",
+   "effort": "S",
+   "status": "Open"
+  }
+ ],
+ "checklist": [
+  {
+   "id": "E-01",
+   "status": "FAIL",
+   "evidence": "No sample files in repository (search docs/**, api/** found none); docs/openapi.yaml carries inline examples for 6 functions + 3 RPCs only.",
+   "note": "Auditor produced as-is samples for 13 critical endpoints at docs/audit/2026-09-24/api/samples/ (200/400/401/403/404/405/409/422/429/500 each marked emitted or not-emitted with file:line). Not yet adopted by the project."
+  },
+  {
+   "id": "E-02",
+   "status": "FAIL",
+   "evidence": "docs/openapi.yaml fails OpenAPI 3.0 validation (3 errors, raw/api-edge-docs-openapi-validation.txt); covers 6/8 functions, 3/64 RPCs, 0 tables; 7 content inaccuracies (drift[]).",
+   "note": "As-is OpenAPI 3.1 spec produced at docs/audit/2026-09-24/api/openapi.yaml: 43 paths, 52 operations, 0 validation errors (raw/api-edge-openapi-validation.txt). WP-API-011."
+  },
+  {
+   "id": "E-03",
+   "status": "PARTIAL",
+   "evidence": "All 8 functions validate the bearer token server-side with GoTrue getUser() before any side effect (e.g. sign-credential/index.ts:89, invite-tenant-user/index.ts:53, record-login/index.ts:37). No function trusts body user_id/role for caller identity. supabase/config.toml has no [auth] or [functions] settings.",
+   "note": "Edge part PASS. JWT signing algorithm (HS256 legacy secret vs asymmetric keys), access-token lifetime and refresh-token rotation are dashboard settings - UNVERIFIED. verify_jwt state undetermined (WP-API-004). QR token uses ES256 with alg pinned (crypto auditor owns CRY-*)."
+  },
+  {
+   "id": "E-04",
+   "status": "FAIL",
+   "evidence": "rg \"@classification|x-classification\" over supabase/ and src/ returns nothing (raw/api-edge-evidence.txt). docs/api-security.md:9-23 classifies 11 of ~75 client-reachable endpoints.",
+   "note": "Auditor classification: 3 Public RPCs, 8 Private Edge Functions (2 self-scoped), 25 Private RPCs, 26 Internal-but-exposed RPCs, 10 Internal not exposed; 66 tables + 17 views Private (sequence tables and rate_limit_bucket Internal). See api/endpoint-inventory.json. WP-API-010, WP-API-011."
+  },
+  {
+   "id": "E-05",
+   "status": "PASS",
+   "evidence": "Every secret is read with Deno.env.get (SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY, SITE_URL, HARARI_EC_PRIVATE_KEY; e.g. sign-credential/index.ts:68-71). No key literals in supabase/functions or docs/openapi.yaml examples (truncated placeholders only). No inbound webhooks, payment or SMS integrations exist (raw/api-edge-evidence.txt), so signature/replay validation is N/A.",
+   "note": "Secret-in-history scan owned by supplychain (SEC-01 PASS). Unpinned esm.sh import is WP-INV-001."
+  },
+  {
+   "id": "E-06",
+   "status": "PARTIAL",
+   "evidence": "Tenant axis: every Edge write path checks active status + role/permission + woreda before side effects (sign-credential:105-127, invite-tenant-user:83-93, resend-tenant-invite:61-91, send-password-reset-link:57-108); client-called rental RPCs check woreda + permission first (settle_rent_payment 00000000000087:609-618). Console axis: only console.console_users.manage is ever checked (invite-platform-admin:84-94).",
+   "note": "FAIL component: WP-API-001 (console RBAC not enforced), WP-API-002 (no input schema validation). DB-side read-permission gaps are WP-DB-004."
+  }
+ ],
+ "drift": [
+  {
+   "claim": "\"This spec covers the six hand-written Edge Functions\"",
+   "source": "docs/openapi.yaml:13",
+   "verdict": "CONTRADICTED",
+   "evidence": "8 functions in supabase/functions/*; resend-tenant-invite and send-password-reset-link absent from the spec."
+  },
+  {
+   "claim": "PostgREST exposes \"42 tables' worth of schema\"",
+   "source": "docs/openapi.yaml:10",
+   "verdict": "CONTRADICTED",
+   "evidence": "66 tables + 17 views (raw/audit-database-catalog.json; api/endpoint-inventory.json)."
+  },
+  {
+   "claim": "resend-platform-invite requires body `email` (user_id optional)",
+   "source": "docs/openapi.yaml:272-289",
+   "verdict": "CONTRADICTED",
+   "evidence": "supabase/functions/resend-platform-invite/index.ts:36-37 reads only user_id and returns 400 \"user_id is required\"; e-mail resolved server-side (:73-86)."
+  },
+  {
+   "claim": "verify_service_letter matches status IN ('issued','resolved','closed'); migration 64 widened it to resolved/closed",
+   "source": "docs/openapi.yaml:519-526",
+   "verdict": "CONTRADICTED",
+   "evidence": "00000000000064_task14b_verify_letter_completed_status.sql:47 status IN ('issued','resolved','closed','completed') - migration 64 added 'completed'."
+  },
+  {
+   "claim": "verify_credential_token rate-limit rejection surfaces as HTTP 500",
+   "source": "docs/openapi.yaml:492-497",
+   "verdict": "CONTRADICTED",
+   "evidence": "00000000000034:222 RAISE ... USING ERRCODE = 'insufficient_resources' (SQLSTATE 53000), which PostgREST maps to 503."
+  },
+  {
+   "claim": "docs/openapi.yaml is a usable OpenAPI spec (INSA Phase 5.8)",
+   "source": "docs/openapi.yaml:1-6",
+   "verdict": "CONTRADICTED",
+   "evidence": "3 schema-validation errors (raw/api-edge-docs-openapi-validation.txt); public RPCs inherit global bearerAuth; apikey header undocumented."
+  },
+  {
+   "claim": "\"The three invite endpoints also enforce a per-caller rate limit\" / rate limiting applied to three endpoints",
+   "source": "docs/openapi.yaml:32-33; docs/api-security.md:45-47",
+   "verdict": "CONTRADICTED",
+   "evidence": "Five functions call checkRateLimit: invite-tenant-user:99, invite-platform-admin:99, resend-platform-invite:54, resend-tenant-invite:78, send-password-reset-link:78."
+  },
+  {
+   "claim": "\"six Edge Functions and a handful of RPCs ... Every one of them is categorized below\"",
+   "source": "docs/api-security.md:6-7",
+   "verdict": "CONTRADICTED",
+   "evidence": "Table lists 6 functions + 5 RPCs; missing resend-tenant-invite, send-password-reset-link, verify_receipt and 22+ client-called RPCs."
+  },
+  {
+   "claim": "\"Webhooks: None\"",
+   "source": "docs/api-security.md:38-41",
+   "verdict": "CONFIRMED",
+   "evidence": "No webhook/payment/SMS handler or outbound fetch in supabase/functions or src (raw/api-edge-evidence.txt)."
+  },
+  {
+   "claim": "Every Private Edge Function derives caller identity from the JWT via getUser, never a body user_id",
+   "source": "docs/api-security.md:27-33; CLAUDE.md \"Two Edge Functions are the deliberate exceptions\"",
+   "verdict": "CONFIRMED",
+   "evidence": "getUser in all 8: sign-credential:89, invite-tenant-user:53, invite-platform-admin:39, resend-platform-invite:32, resend-tenant-invite:51, send-password-reset-link:47, activate-invited-user:34, record-login:37."
+  },
+  {
+   "claim": "The two public verification RPCs rely on project-wide limits / are deliberately not rate-limited",
+   "source": "docs/api-security.md:54-55; CLAUDE.md:627-629; 00000000000022_rate_limit.sql:11-17",
+   "verdict": "CONTRADICTED",
+   "evidence": "verify_credential_token is rate limited since 00000000000034:196-224; there are three public RPCs (verify_receipt, 00000000000013:189)."
+  },
+  {
+   "claim": "\"All 4 Edge Functions authenticate internally ... even though they deploy with verify_jwt:false\"",
+   "source": "docs/security-hardening.md:39-42",
+   "verdict": "CONTRADICTED",
+   "evidence": "8 functions; scripts/deploy-functions.sh:40 deploys via CLI with no --no-verify-jwt and config.toml has no [functions] block, so the repo deploy path yields verify_jwt=true. Live value Needs-live-verification. Internal authentication in all 8 is CONFIRMED."
+  },
+  {
+   "claim": "CORS: corsHeaders() echoes ACAO only for ALLOWED_ORIGINS (SITE_URL + localhost:5173), never \"*\"",
+   "source": "CLAUDE.md \"Edge Function CORS is an explicit allow-list\"",
+   "verdict": "CONFIRMED",
+   "evidence": "supabase/functions/_shared/response.ts:22-36."
+  },
+  {
+   "claim": "\"see each function's own index.ts for the one-line rationale doc-comment\" (CORS)",
+   "source": "CLAUDE.md \"Edge Function CORS is an explicit allow-list\"",
+   "verdict": "NOT FOUND",
+   "evidence": "No CORS/F10 comment in any supabase/functions/*/index.ts; rationale only at _shared/response.ts:15-21."
+  },
+  {
+   "claim": "\"5 of the 6 Edge Functions populate source_ip\"",
+   "source": "CLAUDE.md:426",
+   "verdict": "CONTRADICTED",
+   "evidence": "7 of 8 call getClientIp(req) (all except record-login, which writes no audit row)."
+  },
+  {
+   "claim": "\"All six functions now import from ../_shared/*.ts\"",
+   "source": "CLAUDE.md:1127",
+   "verdict": "CONTRADICTED",
+   "evidence": "All eight import _shared/response.ts."
+  },
+  {
+   "claim": "send-password-reset-link restricts the target to staff roles, never tenant_admin/super_admin, within the target's own woreda",
+   "source": "CLAUDE.md \"Admin-initiated reset link\"",
+   "verdict": "CONTRADICTED",
+   "evidence": "send-password-reset-link/index.ts:106 and :116-117 - a super_admin caller is not woreda-filtered and may target tenant_admin and super_admin accounts."
+  },
+  {
+   "claim": "\"Two RPCs are called from the client for public, unauthenticated verification\"",
+   "source": "CLAUDE.md \"Data layer\"",
+   "verdict": "CONTRADICTED",
+   "evidence": "Three: verify_credential_token, verify_service_letter, verify_receipt (src/routes/verify.receipt.$token.tsx:65)."
+  },
+  {
+   "claim": "Edge Function error bodies are fixed strings; raw driver text never reaches the client (safeError)",
+   "source": "CLAUDE.md \"Edge Function errors reach the user's screen\"; docs/openapi.yaml:29-31",
+   "verdict": "CONFIRMED",
+   "evidence": "No json(req, ..., { error: <variable> }) in any function; the only interpolated response string is the invite-platform-admin warning (:113), which contains an existing tenant admin's full_name returned to a super_admin."
+  },
+  {
+   "claim": "Rate limiter keys on the verified caller user_id and fails open",
+   "source": "CLAUDE.md \"Rate limiting\"; _shared/rateLimit.ts:1-13",
+   "verdict": "CONFIRMED",
+   "evidence": "checkRateLimit(admin, `<fn>:${callerId}`, ...) at the five call sites; fail-open at rateLimit.ts:30-38."
+  }
+ ],
+ "owasp_api_top10_2023": [
+  {
+   "risk": "API1:2023 BOLA",
+   "verdict": "PARTIAL",
+   "note": "Edge Functions re-derive targets server-side (resend-tenant-invite:85-91, send-password-reset-link:102-108). RPC gaps: get_credential_live_status (WP-DB-010), rental_eligibility (WP-DB-009); PostgREST reads lack permission checks (WP-DB-004); WP-API-012."
+  },
+  {
+   "risk": "API2:2023 Broken Authentication",
+   "verdict": "PARTIAL",
+   "note": "getUser in all 8 functions; signup and JWT settings unverified (WP-API-003); verify_jwt drift (WP-API-004)."
+  },
+  {
+   "risk": "API3:2023 BOPLA",
+   "verdict": "PARTIAL",
+   "note": "Edge Functions whitelist the columns they write; PostgREST writes accept any column RLS permits (audit_log client writes, WP-DB-008); unvalidated signature_path/photo_path (WP-API-002)."
+  },
+  {
+   "risk": "API4:2023 Unrestricted Resource Consumption",
+   "verdict": "PARTIAL",
+   "note": "WP-API-006; max_rows/statement timeouts dashboard-only."
+  },
+  {
+   "risk": "API5:2023 BFLA",
+   "verdict": "FAIL",
+   "note": "WP-API-001 console axis."
+  },
+  {
+   "risk": "API6:2023 Sensitive Business Flows",
+   "verdict": "PARTIAL",
+   "note": "Invite/reset throttled per caller; public verification of letters/receipts unthrottled (WP-API-006); WP-API-007."
+  },
+  {
+   "risk": "API7:2023 SSRF",
+   "verdict": "PASS",
+   "note": "No outbound fetch with caller-controlled URL; redirectTo built from env SITE_URL only."
+  },
+  {
+   "risk": "API8:2023 Security Misconfiguration",
+   "verdict": "PARTIAL",
+   "note": "WP-API-004, WP-API-005, WP-API-010, WP-API-013."
+  },
+  {
+   "risk": "API9:2023 Improper Inventory Management",
+   "verdict": "FAIL",
+   "note": "WP-API-011; 21 tables with no client use and 26 exposed internal RPCs."
+  },
+  {
+   "risk": "API10:2023 Unsafe Consumption of APIs",
+   "verdict": "PARTIAL",
+   "note": "GoTrue responses handled with fixed errors; unpinned esm.sh supabase-js@2 import (WP-INV-001)."
+  }
+ ],
+ "artifacts": [
+  "docs/audit/2026-09-24/api/openapi.yaml",
+  "docs/audit/2026-09-24/api/endpoint-inventory.json",
+  "docs/audit/2026-09-24/api/samples/edge-sign-credential.json",
+  "docs/audit/2026-09-24/api/samples/edge-invite-tenant-user.json",
+  "docs/audit/2026-09-24/api/samples/edge-invite-platform-admin.json",
+  "docs/audit/2026-09-24/api/samples/edge-resend-platform-invite.json",
+  "docs/audit/2026-09-24/api/samples/edge-resend-tenant-invite.json",
+  "docs/audit/2026-09-24/api/samples/edge-send-password-reset-link.json",
+  "docs/audit/2026-09-24/api/samples/edge-activate-invited-user.json",
+  "docs/audit/2026-09-24/api/samples/edge-record-login.json",
+  "docs/audit/2026-09-24/api/samples/rpc-verify_credential_token.json",
+  "docs/audit/2026-09-24/api/samples/rpc-verify_service_letter.json",
+  "docs/audit/2026-09-24/api/samples/rpc-verify_receipt.json",
+  "docs/audit/2026-09-24/api/samples/rpc-settle_rent_payment.json",
+  "docs/audit/2026-09-24/api/samples/rest-resident.json",
+  "docs/audit/2026-09-24/raw/api-edge-evidence.txt",
+  "docs/audit/2026-09-24/raw/api-edge-openapi-validation.txt",
+  "docs/audit/2026-09-24/raw/api-edge-docs-openapi-validation.txt"
+ ]
+}

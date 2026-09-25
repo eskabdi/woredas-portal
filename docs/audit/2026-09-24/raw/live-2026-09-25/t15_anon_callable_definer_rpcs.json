@@ -1,0 +1,66 @@
+{
+ "query": "select p.proname, pg_get_function_identity_arguments(p.oid) as args, pg_get_function_result(p.oid) as returns, p.prosecdef from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and has_function_privilege('anon',p.oid,'EXECUTE') and p.prorettype <> 'trigger'::regtype order by p.prosecdef desc, 1",
+ "http_status": "201",
+ "result": [
+  {
+   "proname": "rental_eligibility",
+   "args": "_resident_id uuid, _rental_house_id uuid, _request_type text",
+   "returns": "jsonb",
+   "prosecdef": true
+  },
+  {
+   "proname": "verify_credential_token",
+   "args": "_token text",
+   "returns": "TABLE(credential_number text, status text, issue_date date, expiry_date date, resident_full_name text, woreda_name_am text, woreda_name_en text, kebele_name_am text, kebele_name_en text, photo_path text, date_of_birth date)",
+   "prosecdef": true
+  },
+  {
+   "proname": "verify_receipt",
+   "args": "_token text",
+   "returns": "TABLE(receipt_number text, receipt_date date, total_amount numeric, payment_type text, channel text, printed_at timestamp with time zone, paid_by_full_name text, paid_by_full_name_am text, woreda_name_am text, woreda_name_en text, kebele_name_am text, kebele_name_en text)",
+   "prosecdef": true
+  },
+  {
+   "proname": "verify_service_letter",
+   "args": "_token text",
+   "returns": "TABLE(request_number text, issued_at timestamp with time zone, subject text, resident_full_name text, letter_summary text, service_type_am text, service_type_en text, woreda_name_am text, woreda_name_en text, kebele_name_am text, kebele_name_en text)",
+   "prosecdef": true
+  },
+  {
+   "proname": "check_credential_print_eligibility",
+   "args": "_credential_id uuid",
+   "returns": "void",
+   "prosecdef": false
+  },
+  {
+   "proname": "default_role_perms",
+   "args": "_role text",
+   "returns": "text[]",
+   "prosecdef": false
+  },
+  {
+   "proname": "gen_letter_verification_token",
+   "args": "",
+   "returns": "text",
+   "prosecdef": false
+  },
+  {
+   "proname": "gen_receipt_verification_token",
+   "args": "",
+   "returns": "text",
+   "prosecdef": false
+  },
+  {
+   "proname": "luhn_check_digit",
+   "args": "_digits text",
+   "returns": "integer",
+   "prosecdef": false
+  },
+  {
+   "proname": "storage_path_woreda_id",
+   "args": "object_name text",
+   "returns": "uuid",
+   "prosecdef": false
+  }
+ ]
+}

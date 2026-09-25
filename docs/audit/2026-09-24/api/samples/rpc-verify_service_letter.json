@@ -1,0 +1,87 @@
+{
+ "generated_by": "audit-api-edge 2026-09-24",
+ "as_is": true,
+ "synthetic_values": "All ids, names, tokens and numbers are synthetic placeholders; no production data.",
+ "endpoint": "POST /rest/v1/rpc/verify_service_letter",
+ "classification": "Public",
+ "auth": "apikey only",
+ "responses": {
+  "200": [
+   {
+    "emitted": true,
+    "response": [
+     {
+      "request_number": "<request number>",
+      "issued_at": "2026-01-01T09:00:00Z",
+      "subject": "<subject>",
+      "resident_full_name": "<name>",
+      "letter_summary": "<summary>",
+      "service_type_am": "<am>",
+      "service_type_en": "<en>",
+      "woreda_name_am": "<am>",
+      "woreda_name_en": "<en>",
+      "kebele_name_am": "<am>",
+      "kebele_name_en": "<en>"
+     }
+    ],
+    "evidence": "supabase/migrations/00000000000064_task14b_verify_letter_completed_status.sql:22-48",
+    "request": {
+     "headers": {
+      "apikey": "<publishable key>",
+      "Content-Type": "application/json"
+     },
+     "body": {
+      "_token": "<12-char token>"
+     }
+    }
+   },
+   {
+    "emitted": true,
+    "response": [],
+    "evidence": "supabase/migrations/00000000000064_task14b_verify_letter_completed_status.sql:44-47",
+    "request": "Unknown token, not issued, or status outside issued/resolved/closed/completed."
+   }
+  ],
+  "400": {
+   "emitted": false,
+   "reason": "Not emitted; SQL function accepts any text including null."
+  },
+  "401": {
+   "emitted": true,
+   "response": {
+    "message": "<platform gateway: missing apikey>"
+   },
+   "evidence": "platform",
+   "request": "Needs-live-verification."
+  },
+  "403": {
+   "emitted": false,
+   "reason": "Not emitted."
+  },
+  "404": {
+   "emitted": true,
+   "response": {
+    "code": "PGRST202",
+    "message": "Could not find the function ... in the schema cache"
+   },
+   "evidence": "PostgREST",
+   "request": "Wrong argument name."
+  },
+  "409": {
+   "emitted": false,
+   "reason": "Not emitted."
+  },
+  "422": {
+   "emitted": false,
+   "reason": "Not emitted."
+  },
+  "429": {
+   "emitted": false,
+   "reason": "No rate limit on this RPC (00000000000022_rate_limit.sql:11-17)."
+  },
+  "500": {
+   "emitted": false,
+   "reason": "No explicit 500."
+  }
+ }
+}

@@ -1,0 +1,788 @@
+{
+  "agent": "audit-crypto-qr",
+  "findings": [
+    {
+      "id": "WP-CRY-001",
+      "title": "Public ID-card verifier fails open: a revoked card can be shown as 'Verified' by re-encoding its token, or whenever the registry lookup misses or errors",
+      "severity": "High",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N (6.5)",
+      "confidence": "Confirmed",
+      "category": "Crypto",
+      "module": "QR",
+      "refs": {
+        "insa": [
+          "CRY-03",
+          "E-03"
+        ],
+        "owasp_top10": [
+          "A04:2021",
+          "A08:2021"
+        ],
+        "owasp_api": [
+          "API8:2023"
+        ],
+        "asvs": [
+          "V6.2.1",
+          "V11.1.1"
+        ],
+        "iso27001": [
+          "A.8.24",
+          "A.8.26"
+        ],
+        "nist_csf": [
+          "PR.DS-06",
+          "PR.AA-01"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "src/utils/harariCredentialCrypto.ts",
+          "line": 100,
+          "snippet": "function base64UrlDecodeToBytes(input) { ... const bin = atob(b64); ... }  // lenient: trailing bits ignored, no canonical re-encode check"
+        },
+        {
+          "path": "src/utils/harariCredentialCrypto.ts",
+          "line": 194,
+          "snippet": "const ok = await crypto.subtle.verify(CREDENTIAL_SIGN_PARAMS, key, signature..., signingInput...)  // accepts high-S and non-canonical encodings"
+        },
+        {
+          "path": "supabase/migrations/00000000000034_task3_harden_credential_verification.sql",
+          "line": 245,
+          "snippet": "WHERE rc.qr_payload = _token   -- exact string match on the whole token incl. signature"
+        },
+        {
+          "path": "supabase/migrations/00000000000034_task3_harden_credential_verification.sql",
+          "line": 253,
+          "snippet": "IF NOT FOUND THEN INSERT INTO public.credential_verification_log (...) 'not_found' ...; RETURN;"
+        },
+        {
+          "path": "src/routes/v.$token.tsx",
+          "line": 179,
+          "snippet": "const notFound = !registry && !data.registryError;"
+        },
+        {
+          "path": "src/routes/v.$token.tsx",
+          "line": 215,
+          "snippet": "const withdrawn = !!registry && !expired && WITHDRAWN.includes(registry.status);"
+        },
+        {
+          "path": "src/routes/v.$token.tsx",
+          "line": 261,
+          "snippet": ") : ( <div className=\"... bg-emerald-50 ...\"> ... የተረጋገጠ ትክክለኛ መታወቂያ ... Issued by the Harari Regional State."
+        },
+        {
+          "path": "src/routes/v.$token.tsx",
+          "line": 271,
+          "snippet": "{(data.registryError || notFound) && ( ... small grey note: 'registry has no record of it' / 'registry could not be reached' ...)}"
+        },
+        {
+          "path": "supabase/migrations/00000000000034_task3_harden_credential_verification.sql",
+          "line": 206,
+          "snippet": "IF v_hits IS NOT NULL AND v_hits > 30 THEN RAISE EXCEPTION 'Too many requests'  -- per source IP, 30/min"
+        },
+        {
+          "path": "docs/audit/2026-09-24/raw/crypto-qr-malleability.txt",
+          "line": 4,
+          "snippet": "distinct last-char variants that still verify: 15 ; (r, n-s) token differs: true  verifies: true"
+        }
+      ],
+      "description": "The public page /v/$token first verifies the ES256 signature in the browser, then asks verify_credential_token() for the card's live status by exact string equality on the whole token (qr_payload = _token). The token string is not unique for a given signed payload. (a) The 64-byte signature is 86 base64url characters, and the last character carries 4 unused bits. atob() follows WHATWG forgiving-base64 and discards those bits, so 15 other last characters decode to the same signature. (b) ECDSA signatures are malleable: (r, n-s) is also a valid signature, and WebCrypto verify() has no low-S rule. Both variants were reproduced with a throwaway P-256 key using the repo's own encode/decode code. A variant token passes the offline signature check, but the registry lookup matches nothing. The page then falls through every red and amber branch into the default green 'Verified genuine card' banner, with only a small grey note that the registry has no record. The same green banner appears whenever the RPC errors: network failure, rate-limit exhaustion (30 calls/min per source IP, which shared CGNAT egress makes easy to reach), or a deleted credential row. A forged token made with a leaked signing key also lands in this branch.",
+      "attack_scenario": "A resident's card is revoked (fraud, death, or replacement) and its RPC status is now 'invalid'. The holder, or anyone with a photo of the QR, changes the last character of the URL (for example ...Q to ...R) or computes n-s, then prints a new QR. A police officer, bank or landlord scans it with a phone camera. The page shows the green 'የተረጋገጠ ትክክለኛ መታወቂያ / Issued by the Harari Regional State' banner with the holder's name, card number, woreda, kebele and dates. No key and no special skill is needed.",
+      "impact": "The only revocation control for relying parties on the public surface can be bypassed trivially. Revoked, replaced, suspended or expired-by-status cards verify as genuine and current. This defeats CRY-03 and undermines trust in every printed card.",
+      "recommendation": "1) Make the registry lookup independent of signature encoding: match on the signed payload segment (split_part(qr_payload,'.',1)) or on the credential number taken from the verified payload, and index that expression. 2) In the verifier, reject non-canonical base64url (re-encode and compare) and high-S signatures. 3) Make the page fail closed: show green only when registry?.status === 'active' and the card is not expired. 'Not found' must be red ('not recognised by the registry'). A registry error or rate-limit must be amber ('authenticity proven, current status unknown'), never green. 4) Alert on credential_verification_log 'not_found' rows whose payload segment matches an existing credential.",
+      "secure_fix_example": "-- SQL (new migration): look up by the signed payload, not the whole token\nCREATE INDEX IF NOT EXISTS residence_credential_qr_payload_body_idx\n  ON public.residence_credential ((split_part(qr_payload, '.', 1))) WHERE qr_payload IS NOT NULL;\n-- in verify_credential_token():  WHERE split_part(rc.qr_payload,'.',1) = split_part(_token,'.',1)\n\n// harariCredentialCrypto.ts: canonical-encoding guard\nconst sigBytes = base64UrlDecodeToBytes(s);\nif (base64UrlEncodeBytes(sigBytes) !== s || sigBytes.length !== 64 || isHighS(sigBytes)) return invalid('Non-canonical signature');\n\n// v.$token.tsx: fail closed\nconst green = registry?.status === 'active' && !expired;\nconst unknown = !!data.registryError;           // amber, never green\nconst unrecognised = !registry && !data.registryError; // red",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-CRY-002",
+      "title": "In-portal staff scanner shows 'Verified' on the signature alone; the revocation (live-status) check is an optional button",
+      "severity": "Medium",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:H/PR:L/UI:R/S:U/C:N/I:L/A:N (2.6)",
+      "confidence": "Confirmed",
+      "category": "Business Logic",
+      "module": "Credentials",
+      "refs": {
+        "insa": [
+          "CRY-03"
+        ],
+        "owasp_top10": [
+          "A04:2021"
+        ],
+        "owasp_api": [],
+        "asvs": [
+          "V11.1.1"
+        ],
+        "iso27001": [
+          "A.8.26"
+        ],
+        "nist_csf": [
+          "PR.AA-01"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "src/components/verification/HararildScanner.tsx",
+          "line": 297,
+          "snippet": "const isVerifiedOk = result && result.valid && !result.expired;"
+        },
+        {
+          "path": "src/components/verification/HararildScanner.tsx",
+          "line": 414,
+          "snippet": "{isVerifiedOk ? ( <SuccessPanel ... onCheckLive={checkLiveStatus} ... />"
+        },
+        {
+          "path": "src/components/verification/HararildScanner.tsx",
+          "line": 482,
+          "snippet": "<Badge className=\"gap-1 bg-emerald-600 ...\"> ... የተረጋገጠ ትክክለኛ መታወቂያ / Verified"
+        },
+        {
+          "path": "src/components/verification/HararildScanner.tsx",
+          "line": 249,
+          "snippet": "const checkLiveStatus = useCallback(async () => { ... rpc(\"verify_credential_token\", { _token: result.payload.credentialNumber })"
+        }
+      ],
+      "description": "/woreda/credentials/verify (HararildScanner) shows a green 'Verified' badge once the signature and printed expiry pass. The registry status is fetched only if the officer clicks the live-check button. A revoked or replaced card therefore looks verified to staff unless they take an extra step. The live check uses the bare credential number, which verify_credential_token() matches only for the caller's own woreda. A card from another woreda returns 'Credential not found in registry' next to the green badge.",
+      "attack_scenario": "A counter officer scans a revoked card during a service transaction, sees the green 'Verified' badge, and serves the holder without clicking the live-check button.",
+      "impact": "Staff-side revocation enforcement depends on user diligence, not design.",
+      "recommendation": "Run the live check automatically when online. Show 'Verified' only when the live status is 'active'. Label the offline state 'signature valid, status unknown (offline)'. Show a neutral 'issued by another woreda' message instead of 'not found' for cross-woreda cards.",
+      "secure_fix_example": "useEffect(() => { if (result?.valid && online) void checkLiveStatus(); }, [result, online]);\nconst isVerifiedOk = result?.valid && !result.expired && liveStatus === 'active';",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-CRY-003",
+      "title": "Signed QR payload is readable, unencrypted PII, and the whole token travels in the URL path and into verification logs",
+      "severity": "Medium",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:L/I:N/A:N (3.1)",
+      "confidence": "Confirmed",
+      "category": "Privacy",
+      "module": "QR",
+      "refs": {
+        "insa": [
+          "CRY-02",
+          "PRV-01"
+        ],
+        "owasp_top10": [
+          "A02:2021",
+          "A04:2021"
+        ],
+        "owasp_api": [
+          "API3:2023"
+        ],
+        "asvs": [
+          "V8.3.1",
+          "V8.1.1"
+        ],
+        "iso27001": [
+          "A.5.34",
+          "A.8.11"
+        ],
+        "nist_csf": [
+          "PR.DS-01",
+          "PR.DS-02"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "supabase/functions/sign-credential/index.ts",
+          "line": 206,
+          "snippet": "const payload = { c: ..., i: resident.resident_number, n: resident.full_name, g: ..., b: compactDate(resident.date_of_birth), w, k, h: houseNumber, s, e, p, t }"
+        },
+        {
+          "path": "supabase/functions/sign-credential/index.ts",
+          "line": 233,
+          "snippet": "const payloadB64 = base64UrlEncodeString(JSON.stringify(payload));  // encoding, not encryption"
+        },
+        {
+          "path": "src/config/credentialCryptoConfig.ts",
+          "line": 44,
+          "snippet": "export function credentialVerifyUrl(token) { return `${CREDENTIAL_VERIFY_ORIGIN}/v/${token}`; }"
+        },
+        {
+          "path": "supabase/migrations/00000000000034_task3_harden_credential_verification.sql",
+          "line": 91,
+          "snippet": "attempted_value text NOT NULL CHECK (length(attempted_value) <= 512),  -- stores the full token"
+        },
+        {
+          "path": "src/routes/v.$token.tsx",
+          "line": 21,
+          "snippet": "Anonymous visitors see only enough to confirm a card is genuine. The photo and full date of birth come back solely for signed-in woreda staff"
+        },
+        {
+          "path": "src/routes/v.$token.tsx",
+          "line": 282,
+          "snippet": "A withdrawn/invalid card reveals nothing beyond the banner ... showing the resident's name/woreda/kebele/dates ... would leak exactly the identity the collapse was meant to protect."
+        },
+        {
+          "path": "docs/audit/2026-09-24/raw/crypto-qr-malleability.txt",
+          "line": 6,
+          "snippet": "decoded without key: {\"c\":...,\"i\":...,\"n\":...,\"g\":\"M\",\"b\":\"19900115\",...,\"h\":\"1234/B\",...} (synthetic data)"
+        }
+      ],
+      "description": "The token is base64url(JSON) plus a signature. Anyone who scans the QR can read the full name, date of birth, gender, resident number, house number, woreda, kebele and dates without any key. This contradicts the design comments: the DOB 'solely for staff' rule is enforced only on the RPC output, and the page's 'withdrawn card reveals nothing' collapse does not hide identity because the identity is in the URL. The QR encodes the full token in the URL path, so the PII is also recorded in hosting request logs (Vercel serves /v/<token>), browser history and screenshots. Every lookup also stores the full token in credential_verification_log.attempted_value. Any woreda staff member can read that log (RLS: woreda only, no permission check), and it has no retention policy.",
+      "attack_scenario": "A third party photographs the QR on a card left at a counter, decodes it offline, and gets DOB, house number and resident number. The same data is also retained in the hosting provider's request logs outside Ethiopia.",
+      "impact": "The PII duplicates the card face, but it leaks through channels outside the database access-control model (hosting logs, history, log table). It also weakens the stated anonymous-caller minimisation.",
+      "recommendation": "Minimise the signed payload to what offline verification actually needs: card number, expiry, a hash of the photo or of the name, and a version. Alternatively, keep the PII in the payload but put the token in the URL fragment (#), which is not sent to the server. Store a hash of the token (or only the payload hash) in credential_verification_log, add a retention job, and document the design decision in the PII inventory.",
+      "secure_fix_example": "// QR target: fragment is not sent to the server/logs\nexport const credentialVerifyUrl = (t: string) => `${CREDENTIAL_VERIFY_ORIGIN}/v#${t}`;\n-- log a digest instead of the token\nattempted_value := encode(extensions.digest(_token,'sha256'),'hex');",
+      "effort": "M",
+      "status": "Open"
+    },
+    {
+      "id": "WP-CRY-004",
+      "title": "Credential signing key has no key identifier, versioning, rotation or compromise runbook; one platform-wide key",
+      "severity": "Low",
+      "cvss_v3_1": "",
+      "confidence": "Confirmed",
+      "category": "Crypto",
+      "module": "QR",
+      "refs": {
+        "insa": [
+          "CRY-01"
+        ],
+        "owasp_top10": [
+          "A02:2021"
+        ],
+        "owasp_api": [],
+        "asvs": [
+          "V6.4.1",
+          "V6.4.2"
+        ],
+        "iso27001": [
+          "A.8.24"
+        ],
+        "nist_csf": [
+          "PR.DS-01",
+          "RS.MI-01"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "src/config/credentialCryptoConfig.ts",
+          "line": 5,
+          "snippet": "The two halves move together: replacing one without the other silently invalidates every card already in circulation"
+        },
+        {
+          "path": "src/config/credentialCryptoConfig.ts",
+          "line": 14,
+          "snippet": "export const CREDENTIAL_PUBLIC_KEY_PEM = `-----BEGIN PUBLIC KEY-----\\nMFkw…[public key, not secret]"
+        },
+        {
+          "path": "supabase/functions/sign-credential/index.ts",
+          "line": 245,
+          "snippet": "const token = `${payloadB64}.${base64UrlEncodeBytes(sig)}`;  // no kid / version segment"
+        },
+        {
+          "path": "src/utils/harariCredentialCrypto.ts",
+          "line": 154,
+          "snippet": "async function importPublicKey() { const pem = CREDENTIAL_PUBLIC_KEY_PEM ... }  // single key, no key set"
+        },
+        {
+          "path": "docs/system-review-2026-09.md",
+          "line": 436,
+          "snippet": "Key-rotation runbook | ... no standalone procedure exists for HARARI_EC_PRIVATE_KEY"
+        }
+      ],
+      "description": "The private key sits only in the sign-credential Edge Function secret HARARI_EC_PRIVATE_KEY. It does not appear in the working tree, in any of the 177 commits, or in the built client bundle (raw/crypto-qr-key-and-base64-scan.txt). That part passes. However, tokens carry no key identifier, and the verifier trusts exactly one compiled-in public key. A rotation, whether planned or after a compromise, therefore turns every card in circulation into a red 'Not a valid card / altered' result. If the key leaks, forged tokens with unknown numbers also reach the fail-open green branch described in WP-CRY-001. No written procedure exists for generation, custody, escrow, rotation or revocation of the key. Anyone who holds a Supabase PAT can read or replace the secret. One key signs for all woredas.",
+      "attack_scenario": "The key is exposed, for example through a PAT leak. The operator has no way to distrust the old key without invalidating every legitimate card, so the compromised key stays trusted.",
+      "impact": "Key compromise cannot be recovered from without mass card reissue. Signing-key risk is not contained per tenant.",
+      "recommendation": "Add a 1-2 character key id segment (kid.payload.sig) and have the verifier hold a key set with not-before and not-after dates per key. Document generation (offline, P-256, PKCS#8), custody, escrow (a sealed offline copy), rotation cadence and emergency procedure. Consider per-woreda or per-period keys.",
+      "secure_fix_example": "// token: `${kid}.${payloadB64}.${sig}`\nconst KEYS: Record<string,{pem:string; retiredAfter?:string}> = { k1: {pem: K1}, k2: {pem: K2} };\nconst entry = KEYS[kid]; if (!entry) return invalid('Unknown key');",
+      "effort": "M",
+      "status": "Open"
+    },
+    {
+      "id": "WP-CRY-005",
+      "title": "QR payload has no format/status version, 'English-only' is not enforced, and iat is never checked",
+      "severity": "Low",
+      "cvss_v3_1": "",
+      "confidence": "Confirmed",
+      "category": "Crypto",
+      "module": "QR",
+      "refs": {
+        "insa": [
+          "CRY-02",
+          "E-03"
+        ],
+        "owasp_top10": [
+          "A04:2021"
+        ],
+        "owasp_api": [],
+        "asvs": [
+          "V6.2.1"
+        ],
+        "iso27001": [
+          "A.8.24"
+        ],
+        "nist_csf": [
+          "PR.DS-06"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "supabase/functions/sign-credential/index.ts",
+          "line": 15,
+          "snippet": "interface CompactPayload { c; i; n; g; b; w; k; h; s; e; p; t }  // no version / status field"
+        },
+        {
+          "path": "supabase/functions/sign-credential/index.ts",
+          "line": 209,
+          "snippet": "n: resident.full_name ?? \"\","
+        },
+        {
+          "path": "src/lib/residentSchema.ts",
+          "line": 7,
+          "snippet": "const nameRegex = /^[\\p{L}\\p{M}\\s]+$/u;  // accepts Ge'ez script for 'Full Name (English)'"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 343,
+          "snippet": "full_name text NOT NULL,  -- no Latin-only CHECK"
+        },
+        {
+          "path": "src/utils/harariCredentialCrypto.ts",
+          "line": 216,
+          "snippet": "if (payload.expiryDate) { const exp = new Date(payload.expiryDate); if (... < Date.now()) expired = true; }  // iat (t) unchecked"
+        }
+      ],
+      "description": "The signed payload is compact (215 bytes of JSON, 374-character token, 410-character URL; limit ~1.8 KB), so the size requirement passes. Canonicalisation is not needed because the signature covers the exact base64url bytes that the verifier checks before parsing. Gaps: (1) no payload format or status version, so a future schema change or status-epoch revocation cannot be expressed; (2) 'n' comes from resident.full_name. The client labels it 'Full Name (English)', but \\p{L} accepts Amharic, and the database has no Latin-only CHECK. Records created by the birth-approval trigger bypass the client schema entirely. English-only is therefore not guaranteed. (3) The verifier never checks 't' (iat) for future-dating. Expiry is date-only and compared as UTC midnight.",
+      "attack_scenario": "Not directly exploitable. This limits future revocation design and payload hygiene.",
+      "impact": "Low. Forward-compatibility and payload hygiene only.",
+      "recommendation": "Add a version key (for example v:1). Transliterate or validate an ASCII-only English name at signing time and reject non-ASCII in sign-credential. Reject tokens whose t is in the future or later than the expiry.",
+      "secure_fix_example": "if (!/^[\\x20-\\x7E]*$/.test(payload.n)) return json(req, 409, { error: 'English name required for signing' });\nconst payload = { v: 1, ...rest };",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-CRY-006",
+      "title": "Phase C column encryption gives no at-rest protection yet: plaintext twins remain authoritative, and the key hierarchy has no versioning or escrow",
+      "severity": "Medium",
+      "cvss_v3_1": "",
+      "confidence": "Confirmed",
+      "category": "Crypto",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "A-08",
+          "PRV-01",
+          "CLS-01"
+        ],
+        "owasp_top10": [
+          "A02:2021"
+        ],
+        "owasp_api": [],
+        "asvs": [
+          "V6.1.1",
+          "V6.4.1",
+          "V8.3.7"
+        ],
+        "iso27001": [
+          "A.8.24",
+          "A.5.33"
+        ],
+        "nist_csf": [
+          "PR.DS-01"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000023_pii_encryption.sql",
+          "line": 7,
+          "snippet": "Plaintext stays authoritative until a later migration retires it."
+        },
+        {
+          "path": "supabase/migrations/00000000000023_pii_encryption.sql",
+          "line": 188,
+          "snippet": "extensions.hmac(_woreda_id::text, public.pii_root_key(), 'sha256')"
+        },
+        {
+          "path": "supabase/migrations/00000000000023_pii_encryption.sql",
+          "line": 265,
+          "snippet": "RETURN extensions.pgp_sym_encrypt(_plain, k, 'cipher-algo=aes256');"
+        },
+        {
+          "path": "supabase/migrations/00000000000023_pii_encryption.sql",
+          "line": 264,
+          "snippet": "IF k IS NULL THEN RETURN NULL; END IF;   -- key not provisioned yet (fail-soft)"
+        },
+        {
+          "path": "supabase/migrations/00000000000023_pii_encryption.sql",
+          "line": 352,
+          "snippet": "caller_woreda   := public.get_user_woreda_id();   -- status-unaware (WP-DB-001)"
+        },
+        {
+          "path": "supabase/migrations/00000000000076_rental_phase2_financial_core.sql",
+          "line": 177,
+          "snippet": "monthly_amount numeric(14, 2) NOT NULL CHECK (monthly_amount > 0),\\n  monthly_amount_enc bytea,"
+        },
+        {
+          "path": "docs/security-functionality.md",
+          "line": 196,
+          "snippet": "| 4 | Drop plaintext columns ... | Not started |"
+        },
+        {
+          "path": "docs/security-functionality.md",
+          "line": 137,
+          "snippet": "It closes the stolen-dump/backup case for the columns actually covered"
+        },
+        {
+          "path": "supabase/migrations/00000000000023_pii_encryption.sql",
+          "line": 101,
+          "snippet": "Back it up wherever HARARI_EC_PRIVATE_KEY is kept."
+        },
+        {
+          "path": "scripts/phase-c-create-vault-key.sh",
+          "line": 9,
+          "snippet": "THE KEY VALUE IS GENERATED INSIDE THIS SQL STATEMENT ... AND NEVER LEAVES THE DATABASE."
+        }
+      ],
+      "description": "The cryptographic design is sound in isolation. A 256-bit root key is generated with gen_random_bytes and stored in Supabase Vault. Per-woreda keys are derived as HMAC-SHA256(root, woreda_id). pgp_sym_encrypt uses AES-256. pii_root_key() and derive_woreda_key() are revoked from every API role including service_role. decrypt_pii_*() re-checks the caller's tenant in three-valued-logic-safe form. Blind indexes are keyed per tenant. However: (1) every *_enc column still sits beside its authoritative plaintext column (stage 4 'Not started'), so a stolen dump or backup exposes all of it in cleartext. The docs' claim that the dump case is 'closed' does not hold (same root cause as WP-DB-005; merge). (2) Ciphertext carries no key version, and decrypt swallows every error to NULL. Rotating the root key would silently blank every value, and a missing key silently writes NULL ciphertext. (3) The key 'never leaves the database', so the documented 'back it up with HARARI_EC_PRIVATE_KEY' is impossible as built. Loss of the project or Vault means permanent loss once plaintext is dropped. (4) The decrypt entitlement check reuses get_user_woreda_id(), which ignores app_user.status (WP-DB-001), so suspended or pending staff can still decrypt. (5) Whether the live Vault secret exists and the backfill completed cannot be verified from the repo (pii_encryption_status()).",
+      "attack_scenario": "An attacker obtains a database backup or dump (leaked PITR export, compromised operator laptop). resident.national_id_no, phone_number, email and all amounts are read directly from the plaintext columns. The encrypted copies add nothing.",
+      "impact": "Restricted PII (FAN/national ID, phone) and financial amounts are not protected at rest, despite documentation that says otherwise.",
+      "recommendation": "Schedule stage 4: drop or NULL the plaintext columns, and choose option (b), a non-secret amount_positive column, for the amount guard. Add a key_version byte prefix to the ciphertext and support two active root keys during rotation. Export an escrow copy of the root key under dual control to offline storage. Replace get_user_woreda_id() in decrypt_pii_text() with a status-aware helper. Emit an error (not NULL) when the key is missing on write. Run pii_encryption_status() live and record the result.",
+      "secure_fix_example": "-- decrypt gate: require an ACTIVE caller\nSELECT au.woreda_id INTO caller_woreda FROM public.app_user au\n WHERE au.user_id = auth.uid() AND au.status = 'active';\n-- encrypt: fail closed once rollout is complete\nIF k IS NULL THEN RAISE EXCEPTION 'pii key unavailable'; END IF;",
+      "effort": "L",
+      "status": "Open"
+    },
+    {
+      "id": "WP-CRY-007",
+      "title": "Receipts are not unique per payment: any cashier can mint extra publicly verifiable receipts, with client-chosen numbers and tokens, for an existing payment",
+      "severity": "Medium",
+      "cvss_v3_1": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N (4.3)",
+      "confidence": "Confirmed",
+      "category": "Business Logic",
+      "module": "Revenue",
+      "refs": {
+        "insa": [
+          "BL-01",
+          "MC-03"
+        ],
+        "owasp_top10": [
+          "A04:2021"
+        ],
+        "owasp_api": [
+          "API6:2023"
+        ],
+        "asvs": [
+          "V11.1.2",
+          "V11.1.4"
+        ],
+        "iso27001": [
+          "A.8.26"
+        ],
+        "nist_csf": [
+          "PR.DS-06"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 580,
+          "snippet": "ALTER TABLE public.receipt ADD CONSTRAINT receipt_woreda_id_receipt_number_key UNIQUE (woreda_id, receipt_number);  -- no UNIQUE(payment_id) anywhere"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1015,
+          "snippet": "IF NEW.receipt_number IS NOT NULL AND NEW.receipt_number <> '' THEN RETURN NEW;  -- client-supplied number kept"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1439,
+          "snippet": "SELECT amount INTO v_amount FROM public.payment WHERE payment_id = NEW.payment_id; ... NEW.total_amount := v_amount;  -- no existing-receipt check"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1603,
+          "snippet": "CREATE POLICY receipt_insert ... WITH CHECK (... user_has_any_perm('{payment.collect,revenue.collect,receipt.print}'))"
+        },
+        {
+          "path": "supabase/migrations/00000000000013_receipt_verification.sql",
+          "line": 43,
+          "snippet": "IF NEW.verification_token IS NULL OR NEW.verification_token = '' THEN NEW.verification_token := public.gen_receipt_verification_token();"
+        },
+        {
+          "path": "supabase/migrations/00000000000013_receipt_verification.sql",
+          "line": 179,
+          "snippet": "WHERE r.verification_token = _token AND p.status = 'confirmed'"
+        }
+      ],
+      "description": "Receipt numbering itself is race-safe. assign_receipt_number() allocates via INSERT ... ON CONFLICT DO UPDATE ... RETURNING on receipt_sequence (a row lock, gapless per woreda-year), and (woreda_id, receipt_number) is UNIQUE. But nothing limits a payment to one receipt. Any holder of payment.collect, revenue.collect or receipt.print can POST further receipt rows against any confirmed payment in their woreda. Each gets a new sequence number (or a client-chosen one) and a new verification token, and each verifies publicly as 'Verified' with the payer's name and amount. receipt_date is client-supplied. A client-chosen receipt_number that anticipates the next sequence value makes the next legitimate receipt insert fail on the UNIQUE constraint (a denial of service, same class as WP-DB-006).",
+      "attack_scenario": "A cashier inserts a second receipt for last month's 1,200 ETB rent payment, with this month's receipt_date. The occupant or a colluding third party presents it as proof of a second payment. /verify/receipt/<token> shows green 'Verified'.",
+      "impact": "Duplicate, independently verifiable proof-of-payment documents can be produced for the same payment, which enables revenue fraud and disputes.",
+      "recommendation": "Add a partial UNIQUE index on receipt(payment_id), or a trigger that allows a new receipt only via an authorised reprint path that reuses the original number and token. Ignore client-supplied receipt_number and verification_token (always assign server-side). Pin receipt_date to current_date in the trigger. Revoke direct DML on receipt_sequence (WP-DB-006).",
+      "secure_fix_example": "CREATE UNIQUE INDEX IF NOT EXISTS receipt_one_per_payment ON public.receipt (payment_id);\n-- in assign_receipt_number(): always overwrite\nNEW.receipt_number := v_woreda_code || '-RCT-' || ...;\nNEW.verification_token := NULL; -- let assign_receipt_verification_token() generate",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-CRY-008",
+      "title": "Letter and receipt verification tokens: non-CSPRNG random(), client-chosen tokens accepted, letter token mutable, and a real letter token committed to the repository",
+      "severity": "Low",
+      "cvss_v3_1": "",
+      "confidence": "Confirmed",
+      "category": "Crypto",
+      "module": "Services",
+      "refs": {
+        "insa": [
+          "E-03",
+          "SEC-01"
+        ],
+        "owasp_top10": [
+          "A02:2021"
+        ],
+        "owasp_api": [],
+        "asvs": [
+          "V6.3.1",
+          "V6.3.2"
+        ],
+        "iso27001": [
+          "A.8.24"
+        ],
+        "nist_csf": [
+          "PR.DS-01"
+        ]
+      },
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1236,
+          "snippet": "v_token := v_token || substr(v_alphabet, 1 + floor(random() * length(v_alphabet))::INT, 1);"
+        },
+        {
+          "path": "supabase/migrations/00000000000013_receipt_verification.sql",
+          "line": 28,
+          "snippet": "v_token := v_token || substr(v_alphabet, 1 + floor(random() * length(v_alphabet))::INT, 1);"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 997,
+          "snippet": "IF NEW.verification_token IS NULL OR NEW.verification_token = '' THEN  -- client value kept"
+        },
+        {
+          "path": "supabase/migrations/00000000000064_task14b_verify_letter_completed_status.sql",
+          "line": 12,
+          "snippet": "full FSM to 'completed' (request ABOKER-SRV-26-00003, token SJ44…[REDACTED])"
+        },
+        {
+          "path": "docs/remediation-report.md",
+          "line": 554,
+          "snippet": "called anonymously ... with the real token `SJ44…[REDACTED]` ... returned the correct letter data (request number, subject, resident name, ...)"
+        }
+      ],
+      "description": "Both token generators draw 12 symbols from a 32-symbol alphabet (a nominal 60 bits) using Postgres random(). random() is a seeded, non-cryptographic PRNG shared across all tenants' requests on a pooled backend. A client-supplied non-empty token is kept on INSERT. service_request.verification_token has no pin trigger (the receipt token does), so any holder of service.create can rewrite or clear an issued letter's token. A real, live letter token with its request number is committed in migration 64 and in docs/remediation-report.md. Anyone with repository access can call verify_service_letter anonymously for that letter and read the resident's name, subject and letter summary. verify_service_letter and verify_receipt are not rate-limited, which is acceptable at 60 bits. This overlaps WP-DB-013: this finding extends it with the remediation-report.md location; merge them.",
+      "attack_scenario": "A reader of the repository calls verify_service_letter('SJ44…') anonymously and obtains one real resident's letter metadata.",
+      "impact": "Low: disclosure of one real record, plus a weaker-than-necessary token generator.",
+      "recommendation": "Generate tokens with encode(extensions.gen_random_bytes(10),'base32'-like) or a rejection-sampled gen_random_bytes. Always overwrite client values. Add pin_letter_verification_token(). Rotate the committed token with UPDATE (it is not pinned, so this is possible), redact it from migration 64 and the remediation report in a follow-up commit, and treat it as disclosed.",
+      "secure_fix_example": "-- CSPRNG, unbiased: 32-symbol alphabet, 5 bits per byte\nSELECT string_agg(substr('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', (get_byte(b, i) & 31) + 1, 1), '')\n  FROM (SELECT extensions.gen_random_bytes(12) b) s, generate_series(0, 11) i;",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-CRY-009",
+      "title": "Credential number: Luhn is implemented correctly; residual properties noted (09/90 transposition blind spot, Gregorian UTC year, per-woreda uniqueness)",
+      "severity": "Info",
+      "cvss_v3_1": "",
+      "confidence": "Confirmed",
+      "category": "Business Logic",
+      "module": "Credentials",
+      "refs": {
+        "insa": [
+          "BL-01"
+        ],
+        "owasp_top10": [],
+        "owasp_api": [],
+        "asvs": [],
+        "iso27001": [],
+        "nist_csf": []
+      },
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000002_credential.sql",
+          "line": 36,
+          "snippet": "FOR i IN 1..length(_digits) LOOP ... IF i % 2 = 1 THEN v_digit := v_digit * 2; IF v_digit > 9 THEN v_digit := v_digit - 9; ... RETURN (10 - (v_sum % 10)) % 10;"
+        },
+        {
+          "path": "supabase/migrations/00000000000002_credential.sql",
+          "line": 98,
+          "snippet": "INSERT INTO public.credential_number_sequence(...) ON CONFLICT (woreda_id, seq_year) DO UPDATE SET last_value = ... + 1 RETURNING last_value INTO v_next;"
+        },
+        {
+          "path": "supabase/migrations/00000000000002_credential.sql",
+          "line": 96,
+          "snippet": "v_year := EXTRACT(YEAR FROM NOW())::SMALLINT % 100;"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 592,
+          "snippet": "UNIQUE (woreda_id, credential_number)"
+        },
+        {
+          "path": "supabase/migrations/00000000000029_workflow_insert_guard.sql",
+          "line": 36,
+          "snippet": "residence_credential may only be INSERTed at `ready_to_print` ... ONLY from generate_residence_credential_on_payment()"
+        },
+        {
+          "path": "docs/audit/2026-09-24/raw/crypto-qr-luhn-vectors.txt",
+          "line": 1,
+          "snippet": "8 vectors, all valid under an independent Luhn validator; textbook 7992739871 -> 3; 0/117 single-digit errors undetected"
+        }
+      ],
+      "description": "luhn_check_digit() is a correct mod-10 Luhn: it doubles from the rightmost body digit and always yields 0-9, so the mod-11 'check value 10' problem does not arise. The 12-digit body is WW KK YY NNNNNN. NNNNNN is allocated per (woreda, year) by an atomic upsert, which is race-safe and serialised by row lock. Numbers are immutable after assignment (migration 46) and cannot be client-supplied, because only the mint trigger may INSERT residence_credential (migration 29) and it passes no number. Residual properties: Luhn misses the 09<->90 adjacent transposition (vector shown). YY is the Gregorian year of NOW() in UTC, so cards issued between 00:00 and 03:00 on 1 January EAT get the previous year's YY. Uniqueness is (woreda_id, credential_number), which is globally unique only while woreda_numeric_code stays unique and unchanged (UNIQUE exists, but super_admin can edit it). credential_number_sequence is writable by tenant staff (WP-DB-006): resetting it causes UNIQUE violations and blocks minting, but cannot create duplicates.",
+      "attack_scenario": "None directly.",
+      "impact": "Informational.",
+      "recommendation": "Make woreda.woreda_numeric_code immutable once any credential exists. Decide whether YY should be the EC year or the Africa/Addis_Ababa local year. Revoke client DML on credential_number_sequence (WP-DB-006).",
+      "secure_fix_example": "v_year := EXTRACT(YEAR FROM (now() AT TIME ZONE 'Africa/Addis_Ababa'))::SMALLINT % 100;",
+      "effort": "S",
+      "status": "Open"
+    }
+  ],
+  "checklist": [
+    {
+      "id": "A-08",
+      "status": "FAIL",
+      "evidence": "supabase/migrations/00000000000023_pii_encryption.sql:7,148-197,252-267,324-369; 00000000000044_...:59-64; docs/security-functionality.md:196",
+      "note": "Encryption part only. AES-256 (pgp_sym_encrypt) under per-woreda HMAC-derived keys from a Vault root exists for resident phone/email/national_id_no, household phone/email/rent_amount, service_request.applicant_phone, payment.amount, rental_* amounts. Every one still has an authoritative plaintext twin (stage 4 not started). full_name, DOB, parents' names, GPS, address, letter HTML are not encrypted. Restricted PII is therefore not protected at rest (WP-CRY-006, WP-DB-005). Passwords are only in auth.users (Supabase bcrypt), which is fine but owned by auth-session. Live key presence and backfill are UNVERIFIED."
+    },
+    {
+      "id": "E-03",
+      "status": "PARTIAL",
+      "evidence": "supabase/functions/sign-credential/index.ts:221-245; src/utils/harariCredentialCrypto.ts:178-221",
+      "note": "QR part only. Asymmetric ES256 (P-256, stronger than RSA-2048), algorithm pinned on both ends with no header, so alg:none and HS confusion are impossible. Expiry (e) present and checked client-side (date-only). iat (t) present but never checked. No kid or version. Signature/encoding malleability plus exact-token lookup defeats the status check (WP-CRY-001). The session-JWT part belongs to auth-session."
+    },
+    {
+      "id": "CRY-01",
+      "status": "PARTIAL",
+      "evidence": "supabase/functions/sign-credential/index.ts:71; src/config/credentialCryptoConfig.ts:1-17; raw/crypto-qr-key-and-base64-scan.txt",
+      "note": "PASS on location: the private key exists only as the Edge secret HARARI_EC_PRIVATE_KEY. It is not in the working tree, the 177-commit history, the DB (no key tables or columns) or the built client bundle. Only the public SPKI is shipped, as expected. FAIL on kid and rotation plan (WP-CRY-004). Implementation is ES256, not RS256 (drift, accepted design)."
+    },
+    {
+      "id": "CRY-02",
+      "status": "PARTIAL",
+      "evidence": "supabase/functions/sign-credential/index.ts:15-28,206-219; src/lib/residentSchema.ts:7; raw/crypto-qr-malleability.txt",
+      "note": "Size PASS (215-byte JSON, 374-char token, 410-char URL, well under 1.8 KB). Canonical PASS (the signature covers the exact base64url bytes, which are verified before parsing). Expiry PASS. Verifier pins algorithm PASS. Status/format version FAIL. English-only not enforced (full_name accepts Ge'ez). Test vectors: raw/crypto-qr-*.txt. Non-canonical signature encodings are accepted (WP-CRY-001)."
+    },
+    {
+      "id": "CRY-03",
+      "status": "FAIL",
+      "evidence": "src/routes/v.$token.tsx:179,215,261-279; supabase/migrations/00000000000034_...:245,253-264; src/components/verification/HararildScanner.tsx:297,414",
+      "note": "An online check and 1-year validity exist, but the public page renders green when the registry returns no row or errors. The exact-token lookup can be forced to 'no row' by any holder, with no key (WP-CRY-001). The staff scanner makes the live check optional (WP-CRY-002). No documented residual-risk statement for offline verification."
+    },
+    {
+      "id": "BL-01",
+      "status": "PARTIAL",
+      "evidence": "supabase/migrations/00000000000002_credential.sql:98-102; 00000000000000_baseline.sql:580,592,1004-1027",
+      "note": "Both credential and receipt numbers are allocated with an atomic upsert (race-safe) and carry UNIQUE(woreda_id, number). Credential numbers cannot be client-supplied (insert guard, migration 29) and are immutable (migration 46). Receipt numbers and tokens accept client values, a payment can have unlimited receipts (WP-CRY-007), and counter tables are staff-writable (WP-DB-006), allowing collision-DoS."
+    }
+  ],
+  "drift": [
+    {
+      "claim": "QR/credential signing uses RS256 (key size >= 2048)",
+      "source": "Governing brief / INSA CRY-01 wording",
+      "verdict": "CONTRADICTED",
+      "evidence": "ES256 / ECDSA P-256: supabase/functions/sign-credential/index.ts:221-231; src/config/credentialCryptoConfig.ts:1-29. Stronger per bit; rationale (64-byte vs 256-byte signature) documented at docs/architecture.md:110."
+    },
+    {
+      "claim": "Credential number WW-KK-YY-NNNNNN-C with a mod-11 check digit",
+      "source": "Governing brief",
+      "verdict": "CONTRADICTED",
+      "evidence": "The hyphenated shape matches (00000000000002_credential.sql:118), but the check digit is Luhn mod-10 (00000000000002_credential.sql:5-6,22-47). Mod-11 was explicitly replaced, so 'check value 10' cannot occur."
+    },
+    {
+      "claim": "safeBase64Encode/safeBase64Decode helpers are mandatory",
+      "source": "Governing brief",
+      "verdict": "NOT FOUND",
+      "evidence": "No such helpers. Byte-level atob/btoa with TextEncoder/TextDecoder at harariCredentialCrypto.ts:103,158 and sign-credential/index.ts:38,50 is Unicode-safe, but the decoder is lenient about non-canonical encodings (WP-CRY-001)."
+    },
+    {
+      "claim": "QR payload must fit ~1.8 KB",
+      "source": "Governing brief",
+      "verdict": "CONFIRMED",
+      "evidence": "215-byte JSON, 374-char token, 410-char URL (raw/crypto-qr-malleability.txt)."
+    },
+    {
+      "claim": "ES256 via HARARI_EC_PRIVATE_KEY; public half in src/config/credentialCryptoConfig.ts",
+      "source": "CLAUDE.md 'Residence credential (ID card) signing and printing' §1",
+      "verdict": "CONFIRMED",
+      "evidence": "sign-credential/index.ts:71; credentialCryptoConfig.ts:14-17; raw/crypto-qr-key-and-base64-scan.txt"
+    },
+    {
+      "claim": "v.$token checks the signature, then calls verify_credential_token() for live revocation status",
+      "source": "CLAUDE.md §2; src/routes/v.$token.tsx:15-19",
+      "verdict": "CONFIRMED",
+      "evidence": "v.$token.tsx:100-135. The call exists, but the verdict fails open to green on no-row or error (WP-CRY-001)."
+    },
+    {
+      "claim": "The two public verification RPCs (verify_credential_token, verify_service_letter) are deliberately not rate-limited",
+      "source": "CLAUDE.md 'Rate limiting'",
+      "verdict": "CONTRADICTED",
+      "evidence": "verify_credential_token has been rate-limited since 00000000000034_...:196-225 (30/min per IP, fail-open). verify_service_letter is still not limited (00000000000064_...:22-49)."
+    },
+    {
+      "claim": "Credential number is 13 digits with a Luhn check digit; length and check-digit position are enforced invariants",
+      "source": "CLAUDE.md §5",
+      "verdict": "CONFIRMED",
+      "evidence": "00000000000002_credential.sql:22-47,112-118; test vectors raw/crypto-qr-luhn-vectors.txt"
+    },
+    {
+      "claim": "A valid receipt token doesn't by itself mean the receipt wasn't later voided (RPC confirms current status)",
+      "source": "CLAUDE.md 'Service requests and issued letters'",
+      "verdict": "CONFIRMED",
+      "evidence": "verify_receipt filters p.status = 'confirmed' (00000000000013_...:179-180); page renders red on no row (verify.receipt.$token.tsx:72-110)."
+    },
+    {
+      "claim": "Anonymous visitors see only enough to confirm a card is genuine; photo and full DOB only for signed-in staff",
+      "source": "src/routes/v.$token.tsx:21-23; 00000000000002_credential.sql:142-145",
+      "verdict": "CONTRADICTED",
+      "evidence": "DOB, gender, resident number and house number are in the base64url QR payload, which anyone can read offline (sign-credential/index.ts:206-219; raw/crypto-qr-malleability.txt line 6)."
+    },
+    {
+      "claim": "Phase C encryption closes the stolen-dump/backup case for the covered columns",
+      "source": "docs/security-functionality.md:137-150; 00000000000023_pii_encryption.sql:16-19",
+      "verdict": "CONTRADICTED",
+      "evidence": "Plaintext columns remain authoritative on the same rows; stage 4 is 'Not started' (docs/security-functionality.md:196; 00000000000023_...:7)."
+    },
+    {
+      "claim": "Stages 1-3 applied to production; Vault secret created and backfill verified",
+      "source": "docs/security-functionality.md:110,193-195; 00000000000044_...:12-15",
+      "verdict": "NOT FOUND",
+      "evidence": "Cannot be verified without the live DB. The only repo evidence is the migration-44 guard that raises if pii_root_key() is NULL (00000000000044_...:51-55). Needs-live-verification via pii_encryption_status()."
+    },
+    {
+      "claim": "Back up pii_root_key wherever HARARI_EC_PRIVATE_KEY is kept",
+      "source": "00000000000023_pii_encryption.sql:100-101",
+      "verdict": "CONTRADICTED",
+      "evidence": "scripts/phase-c-create-vault-key.sh:9-13 generates the key in-database and states it 'NEVER LEAVES THE DATABASE'. No escrow path exists."
+    },
+    {
+      "claim": "Public letter/receipt tokens have ~2^60 entropy",
+      "source": "00000000000034_...:24-26",
+      "verdict": "CONFIRMED",
+      "evidence": "12 symbols x 32-symbol alphabet = 2^60 nominal (baseline.sql:1223-1242; 00000000000013_...:16-33), but generated with non-CSPRNG random() (WP-CRY-008)."
+    },
+    {
+      "claim": "No standalone key-rotation runbook for HARARI_EC_PRIVATE_KEY",
+      "source": "docs/system-review-2026-09.md:436",
+      "verdict": "CONFIRMED",
+      "evidence": "No runbook in docs/ or scripts/; tokens carry no kid (sign-credential/index.ts:245)."
+    },
+    {
+      "claim": "Dimension G 'Credential & QR system' is Green",
+      "source": "docs/go-live-declaration.md:29",
+      "verdict": "CONTRADICTED",
+      "evidence": "The listed sub-claims hold (ES256, no private key in the bundle, density guards), but the public verifier's revocation check can be bypassed (WP-CRY-001)."
+    },
+    {
+      "claim": "Raw btoa/atob usage is byte-level and Unicode-safe (KD-2)",
+      "source": "docs/system-review-2026-09.md:455",
+      "verdict": "CONFIRMED",
+      "evidence": "4 call sites (raw/crypto-qr-key-and-base64-scan.txt), all Uint8Array<->base64 with TextEncoder/TextDecoder. Separate issue: lenient decoding enables signature re-encoding (WP-CRY-001)."
+    }
+  ],
+  "artifacts": [
+    "docs/audit/2026-09-24/raw/crypto-qr-malleability.ts.txt",
+    "docs/audit/2026-09-24/raw/crypto-qr-malleability.txt",
+    "docs/audit/2026-09-24/raw/crypto-qr-luhn.py",
+    "docs/audit/2026-09-24/raw/crypto-qr-luhn-vectors.txt",
+    "docs/audit/2026-09-24/raw/crypto-qr-key-and-base64-scan.txt"
+  ]
+}

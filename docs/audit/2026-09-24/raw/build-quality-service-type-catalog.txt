@@ -1,0 +1,3 @@
+$ bun run scripts/check-service-type-catalog.ts
+OK: no service_type core-code drift found across 6 woredas (78 rows parsed).
+exit=0

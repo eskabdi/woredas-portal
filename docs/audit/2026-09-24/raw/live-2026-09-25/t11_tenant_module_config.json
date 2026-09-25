@@ -1,0 +1,36 @@
+{
+ "query": "select module_key, is_enabled, count(*) from public.tenant_module_config group by 1,2 order by 1,2",
+ "http_status": "201",
+ "result": [
+  {
+   "module_key": "audit",
+   "is_enabled": true,
+   "count": 6
+  },
+  {
+   "module_key": "civil_registration",
+   "is_enabled": true,
+   "count": 6
+  },
+  {
+   "module_key": "credentials",
+   "is_enabled": true,
+   "count": 6
+  },
+  {
+   "module_key": "reports",
+   "is_enabled": true,
+   "count": 6
+  },
+  {
+   "module_key": "revenue",
+   "is_enabled": true,
+   "count": 6
+  },
+  {
+   "module_key": "services",
+   "is_enabled": true,
+   "count": 6
+  }
+ ]
+}

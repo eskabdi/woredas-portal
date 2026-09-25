@@ -1,0 +1,156 @@
+{
+ "generated_by": "audit-api-edge 2026-09-24",
+ "as_is": true,
+ "synthetic_values": "All ids, names, tokens and numbers are synthetic placeholders; no production data.",
+ "endpoint": "POST /functions/v1/resend-tenant-invite",
+ "classification": "Private",
+ "auth": "bearer JWT; active tenant_admin (target re-derived to own woreda) or super_admin",
+ "responses": {
+  "200": {
+   "emitted": true,
+   "response": {
+    "success": true
+   },
+   "evidence": "supabase/functions/resend-tenant-invite/index.ts:169",
+   "request": {
+    "headers": {
+     "Authorization": "Bearer <user access token>",
+     "apikey": "<publishable key>",
+     "Content-Type": "application/json"
+    },
+    "body": {
+     "user_id": "00000000-0000-4000-8000-000000000003"
+    }
+   }
+  },
+  "400": [
+   {
+    "emitted": true,
+    "response": {
+     "error": "user_id is required"
+    },
+    "evidence": "supabase/functions/resend-tenant-invite/index.ts:55-56"
+   },
+   {
+    "emitted": true,
+    "response": {
+     "error": "Cannot resend an invite for this role."
+    },
+    "evidence": "supabase/functions/resend-tenant-invite/index.ts:96-98",
+    "request": "Also returned for print_officer and custom-role staff."
+   },
+   {
+    "emitted": true,
+    "response": {
+     "error": "This user has already completed setup."
+    },
+    "evidence": "supabase/functions/resend-tenant-invite/index.ts:99-101"
+   },
+   {
+    "emitted": true,
+    "response": {
+     "error": "Failed to resend invitation"
+    },
+    "evidence": "supabase/functions/resend-tenant-invite/index.ts:107-115"
+   },
+   {
+    "emitted": true,
+    "response": {
+     "error": "User already registered"
+    },
+    "evidence": "supabase/functions/resend-tenant-invite/index.ts:121-138"
+   },
+   {
+    "emitted": true,
+    "response": {
+     "error": "Invite resent but profile update failed"
+    },
+    "evidence": "supabase/functions/resend-tenant-invite/index.ts:149-157"
+   }
+  ],
+  "401": [
+   {
+    "emitted": true,
+    "response": {
+     "error": "Missing authorization header"
+    },
+    "evidence": "supabase/functions/resend-tenant-invite/index.ts:36",
+    "request": {
+     "headers": {
+      "apikey": "<publishable key>"
+     },
+     "body": {}
+    },
+    "note": "Reached only if gateway verify_jwt=false; with verify_jwt=true the platform gateway answers first (body shape platform-defined, Needs-live-verification)."
+   },
+   {
+    "emitted": true,
+    "response": {
+     "error": "Unauthorized"
+    },
+    "evidence": "supabase/functions/resend-tenant-invite/index.ts:52",
+    "request": {
+     "headers": {
+      "Authorization": "Bearer <expired or revoked token>"
+     }
+    }
+   }
+  ],
+  "403": {
+   "emitted": true,
+   "response": {
+    "error": "Forbidden"
+   },
+   "evidence": "supabase/functions/resend-tenant-invite/index.ts:66-72"
+  },
+  "404": {
+   "emitted": true,
+   "response": {
+    "error": "User not found"
+   },
+   "evidence": "supabase/functions/resend-tenant-invite/index.ts:85-91",
+   "request": "Cross-tenant and non-existent ids are indistinguishable (woreda filter folded into the query)."
+  },
+  "405": {
+   "emitted": true,
+   "response": {
+    "error": "Method not allowed"
+   },
+   "evidence": "supabase/functions/resend-tenant-invite/index.ts:32",
+   "request": {
+    "method": "GET"
+   }
+  },
+  "409": {
+   "emitted": false,
+   "reason": "Not emitted."
+  },
+  "422": {
+   "emitted": false,
+   "reason": "Not emitted."
+  },
+  "429": {
+   "emitted": true,
+   "response": {
+    "error": "Too many requests"
+   },
+   "evidence": "supabase/functions/resend-tenant-invite/index.ts:78-79"
+  },
+  "500": [
+   {
+    "emitted": true,
+    "response": {
+     "error": "SITE_URL is not configured"
+    },
+    "evidence": "supabase/functions/resend-tenant-invite/index.ts:43-44"
+   },
+   {
+    "emitted": true,
+    "response": {
+     "error": "Internal error"
+    },
+    "evidence": "supabase/functions/resend-tenant-invite/index.ts:170-171"
+   }
+  ]
+ }
+}

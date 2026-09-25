@@ -1,0 +1,7 @@
+{
+ "query": "select * from public.pii_encryption_status()",
+ "http_status": "400",
+ "result": {
+  "message": "Failed to run sql query: ERROR:  42501: permission denied for function pii_encryption_status\n"
+ }
+}

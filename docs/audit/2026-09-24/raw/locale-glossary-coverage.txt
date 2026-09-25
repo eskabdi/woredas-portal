@@ -1,0 +1,1070 @@
+# docs/amharic-strings-glossary.csv (693 rows, last commit eb3d283 2026-09-14) vs Ethiopic runs in src/ (heuristic regex; fragments included)
+distinct Ethiopic runs in src: 1750
+not present in (or a substring of) any glossary entry: 1065
+glossary entries no longer found verbatim in src: በጥበቃ ላይ ያሉ, የመታወቂያ ጥያቄ ዝርዝር
+
+src/lib/residentConstants.ts:24	ሁለተኛ ደረጃ
+src/utils/amountInWords.ts:83	ሁለት
+src/components/settings/UsersRolesTab.tsx:82	ሁሉ አስተዳዳሪ
+src/components/admin/PlatformUsersTab.tsx:369	ሁሉ አስተዳዳሪዎች
+src/routes/woreda.rental-houses.requests.index.tsx:397	ሁሉም ሁኔታዎች
+src/routes/woreda.credentials.$requestId.print.tsx:1135	ሁሉም ህትመቶች ይመዘገባሉ
+src/routes/woreda.rental-houses.requests.index.tsx:388	ሁሉም አይነቶች
+src/routes/woreda.rental-houses.requests.index.tsx:359	ሁሉም አዲስ ምዝገባ እና የመተው ጥያቄዎች በቀበሌ ኪራይ ቤቶች
+src/routes/woreda.audit.tsx:441	ሁሉም ክፍሎች
+src/routes/woreda.revenue.index.tsx:334	ሁሉም ዓይነቶች
+src/routes/woreda.credentials.index.tsx:78	ሁሉም የመታወቂያ ጥያቄዎች
+src/routes/woreda.rental-houses.occupants.new.tsx:472	ሁሉንም መረጃዎች በጥንቃቄ መሙላትዎን ያረጋግጡ።
+src/routes/woreda.residents.$residentId.index.tsx:527	ሁሉንም አሳይ
+src/routes/woreda.services.$requestId.index.tsx:988	ሂደት ጀምር
+src/utils/amountInWords.ts:96	ሃምሳ
+src/utils/amountInWords.ts:96	ሃያ
+src/lib/credentialWorkflowSchemas.ts:23	ህትመት ስህተት
+src/routes/woreda.credentials.$requestId.print.tsx:1316	ህትመትን ያረጋግጡ
+src/components/common/StatusChip.tsx:74	ለህትመት ዝግጁ
+src/components/credentials/KpiWidgetRow.tsx:55	ለህትመት ዝግጁ/በህትመት ላይ
+src/routes/woreda.services.$requestId.print.tsx:157	ለሚመለከተው ሁሉ፣
+src/components/settings/LetterTemplatesTab.tsx:112	ለሚመለከተው አካል ሁሉ
+src/routes/woreda.reports.index.tsx:102	ለማጣሪያው ስም ይስጡ
+src/routes/woreda.services.$requestId.index.tsx:833	ለማጽደቅ ላክ
+src/routes/woreda.reports.index.tsx:255	ለምሳሌ የወርሃዊ ገቢ ግምገማ
+src/routes/woreda.credentials.new.tsx:124	ለእርማት ምክንያት ያስፈልጋል
+src/routes/woreda.credentials.new.tsx:106	ለእርማት ደጋፊ ሰነድ ያስፈልጋል
+src/routes/woreda.households.$householdId.edit.tsx:271	ለውጥ አስቀምጥ
+src/routes/woreda.residents.$residentId.edit.tsx:349	ለውጦችን አስቀምጥ
+src/routes/woreda.households.index.tsx:680	ለዚህ ቤተሰብ የተመዘገቡ ሁሉም ለውጦች።
+src/routes/woreda.households.$householdId.index.tsx:723	ለዚህ ቤተሰብ የተጫነ ሰነድ የለም
+src/routes/woreda.credentials.new.tsx:943	ለዚህ ነዋሪ ምንም ቀዳሚ ማስረጃ አልተገኘም
+src/routes/woreda.revenue.$paymentId.receipt.tsx:335	ለዚህ ክፍያ ደረሰኝ አልተገኘም
+src/routes/woreda.revenue.index.tsx:264	ለዚህ ክፍያ ደረሰኝ የለም
+src/components/print/PrintDocumentShell.tsx:285	ለዚህ ጊዜ መረጃ የለም
+src/routes/woreda.households.$householdId.index.tsx:330	ሌላ (ይግለጹ
+src/lib/phoneNumber.ts:12	ልክ 9 አሃዝ መሆን አለበት
+src/routes/woreda.rental-accounts.$occupancyId.tsx:297	ልክ ያልሆነ መጠን
+src/routes/woreda.rental-accounts.$occupancyId.tsx:372	ልክ ያልሆነ ቀን
+src/routes/woreda.rental-accounts.$occupancyId.tsx:365	ልክ ያልሆነ ብዛት
+src/routes/woreda.rental-accounts.$occupancyId.tsx:258	ልክ ያልሆነ ወር
+src/components/verification/HararildScanner.tsx:49	ልክ ያልሆነ ይዘት
+src/components/verification/HararildScanner.tsx:48	ልክ ያልሆነ ፊርማ
+src/routes/woreda.rental-accounts.$occupancyId.tsx:315	ልዩነቱ ለሂሳብ ማስተካከያ ተመዝግቧል
+src/routes/woreda.rental-reports.tsx:356	ልዩነቶች ብዛት
+src/utils/ethiopianCalendar.ts:18	ሐምሌ
+src/components/settings/LetterTemplatesTab.tsx:110	ሐረሪ ወረዳ
+src/routes/woreda.reports.index.tsx:327	ሕዝብ
+src/components/settings/LetterTemplatesTab.tsx:214	መለያ ቁልፎች
+src/routes/woreda.services.$requestId.index.tsx:804	መልስ
+src/routes/woreda.credentials.$requestId.index.tsx:1345	መመለሱን አረጋግጥ
+src/routes/woreda.civil.$eventId.tsx:400	መመለስ አልተሳካም
+src/routes/woreda.civil.$eventId.tsx:90	መረጃ ሰጪ ተረጋግጧል
+src/routes/woreda.residents.$residentId.index.tsx:932	መረጃ ተሻሽሏል
+src/routes/woreda.credentials.$requestId.print.tsx:1038	መረጃው ትክክል መሆኑን አረጋግጣለሁ
+src/components/common/TableStates.tsx:88	መረጃውን መጫን አልተቻለም
+src/routes/woreda.settings.woreda-configuration.tsx:697	መስቀል አልተሳካም
+src/utils/ethiopianCalendar.ts:8	መስከረም
+src/routes/woreda.credentials.$requestId.index.tsx:2680	መሻር
+src/routes/woreda.credentials.$requestId.index.tsx:2787	መሻር አረጋግጥ
+src/routes/woreda.dashboard.tsx:63	መታወቂያ ተሰርዟል
+src/routes/woreda.dashboard.tsx:60	መታወቂያ ተሰጥቷል
+src/routes/woreda.dashboard.tsx:111	መታወቂያ ተተክቷል
+src/routes/woreda.dashboard.tsx:61	መታወቂያ ታትሟል
+src/routes/woreda.dashboard.tsx:64	መታወቂያ ታግዷል
+src/config/permissions.ts:518	መታወቂያ ያረጋግጡ
+src/routes/woreda.dashboard.tsx:62	መታወቂያ ዳግም ታትሟል
+src/routes/woreda.dashboard.tsx:65	መታወቂያ ዳግም ነቅቷል
+src/routes/woreda.credentials.$requestId.index.tsx:2385	መታወቂያው ወደ
+src/routes/woreda.audit.tsx:143	መታወቂያዎችን ክፈት
+src/utils/amountInWords.ts:8	መቶ
+src/routes/woreda.services.$requestId.index.tsx:1051	መዝገቡን ዘጋ
+src/routes/woreda.residents.$residentId.print.tsx:312	መዝጋቢ
+src/components/settings/RolesPermissionsTab.tsx:47	መድረክ
+src/utils/ethiopianCalendar.ts:14	መጋቢት
+src/routes/woreda.revenue.$paymentId.receipt.tsx:810	መግለጫ
+src/routes/woreda.credentials.new.tsx:769	መጠቀም አይቻልም
+src/routes/woreda.revenue.$paymentId.receipt.tsx:815	መጠን (ብር
+src/components/residents/ResidentProfileTabs.tsx:56	መጫን አልተቻለም
+src/routes/woreda.rental-houses.occupants.new.tsx:744	ሙሉ ስም (የአባትና አያት ስምን ጨምሮ
+src/routes/woreda.reports.index.tsx:574	ሙሉ ትንታኔውን አውርድ
+src/lib/residentConstants.ts:14	ሙስሊም
+src/utils/amountInWords.ts:8	ሚሊዮን
+src/routes/woreda.dashboard.tsx:106	ሚና ለተጠቃሚ ተሰጥቷል
+src/components/settings/UsersRolesTab.tsx:433	ሚና ቀይር
+src/routes/woreda.dashboard.tsx:108	ሚና ተመዝግቧል
+src/routes/woreda.dashboard.tsx:110	ሚና ተሰርዟል
+src/routes/woreda.dashboard.tsx:109	ሚና ተሻሽሏል
+src/utils/ethiopianCalendar.ts:15	ሚያዝያ
+src/routes/woreda.services.new.tsx:221	ማለፊያውን ለምን እንደተጠቀሙ ምክንያት ያስፈልጋል
+src/routes/woreda.rental-accounts.$occupancyId.tsx:1041	ማመንጨት
+src/routes/verify.receipt.$token.tsx:83	ማረጋገጥ ላይ
+src/routes/woreda.credentials.$requestId.print.tsx:601	ማረጋገጥ አልተሳካም
+src/routes/woreda.credentials.$requestId.index.tsx:1469	ማረጋገጫ አልተመዘገበም
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:722	ማረጋገጫ አልፍ
+src/config/navGroups.ts:24	ማረጋገጫ እና ማጽደቅ
+src/routes/woreda.dashboard.tsx:765	ማረጋገጫ የሚጠብቁ የአገልግሎት ጥያቄዎች
+src/routes/woreda.rental-houses.$houseId.index.tsx:278	ማስለቀቅ
+src/routes/woreda.rental-houses.$houseId.index.tsx:781	ማስለቀቅ አስገባ
+src/routes/woreda.credentials.$requestId.index.tsx:2735	ማስረጃ መሻር ማረጋገጫ
+src/routes/woreda.credentials.$requestId.index.tsx:2197	ማስረጃ ማዘጋጀት አልተሳካም
+src/routes/woreda.credentials.$requestId.index.tsx:2231	ማስረጃ በመዘጋጀት ላይ...
+src/components/residents/ResidentProfileTabs.tsx:569	ማስረጃ አልተገኘም
+src/routes/woreda.credentials.$requestId.index.tsx:2157	ማስረጃ ዝግጁ ነው
+src/routes/woreda.credentials.$requestId.index.tsx:2146	ማስረጃ ዝግጁነት
+src/routes/woreda.credentials.$requestId.index.tsx:2721	ማስረጃ የመሻር ፈቃድ የለዎትም
+src/routes/woreda.credentials.$requestId.index.tsx:2928	ማስረጃ የማገድ/የማንሳት ፈቃድ የለዎትም
+src/routes/woreda.credentials.$requestId.index.tsx:2219	ማስረጃ ፈራሚ ባለሙያ በመጠበቅ ላይ
+src/routes/woreda.credentials.$requestId.index.tsx:2540	ማስረጃው ለተረካቢው በአካል ተላልፏል ብዬ አረጋግጣለሁ
+src/routes/woreda.credentials.$requestId.print.tsx:504	ማስረጃው ተፈርሟል እና ዝግጁ ነው
+src/routes/woreda.credentials.$requestId.index.tsx:2876	ማስረጃው ታግዷል
+src/routes/woreda.credentials.$requestId.print.tsx:843	ማስረጃው ገና አልተፈረመም
+src/routes/woreda.settings.woreda-configuration.tsx:695	ማስቀመጥዎን አይርሱ
+src/lib/residentConstants.ts:27	ማስተርስ
+src/routes/woreda.revenue.index.tsx:372	ማስተካከያ በዓይነት / ቻናል
+src/routes/woreda.rental-reports.tsx:329	ማስታረቂያ
+src/routes/woreda.rental-houses.occupants.new.tsx:1026	ማስታወሻ ካለ
+src/routes/woreda.services.new.tsx:678	ማስገባትን ያረጋግጡ
+src/routes/woreda.credentials.$requestId.print.tsx:755	ማተም አልተሳካም
+src/routes/woreda.credentials.$requestId.index.tsx:2978	ማንሳት አረጋግጥ
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:635	ማከል
+src/routes/woreda.credentials.$requestId.index.tsx:2940	ማገድ ማረጋገጫ
+src/routes/woreda.credentials.$requestId.index.tsx:2940	ማገድ ማንሳት ማረጋገጫ
+src/routes/woreda.credentials.$requestId.index.tsx:2978	ማገድ አረጋግጥ
+src/routes/woreda.credentials.$requestId.index.tsx:2922	ማገድ አንሳ
+src/routes/woreda.reports.index.tsx:231	ማጣሪያ ሰርዝ
+src/routes/woreda.reports.index.tsx:112	ማጣሪያ ተቀምጧል
+src/routes/woreda.reports.index.tsx:96	ማጣሪያ ተተግብሯል
+src/routes/woreda.rental-houses.index.tsx:251	ማጣሪያ አልተተገበረም
+src/routes/woreda.reports.index.tsx:214	ማጣሪያ አስቀምጥ
+src/routes/woreda.reports.index.tsx:202	ማጣሪያ ይቀይሩ
+src/routes/woreda.rental-accounts.$occupancyId.tsx:981	ማጣቀሻ ቁጥር
+src/routes/woreda.credentials.$requestId.index.tsx:107	ማጽደቅ በመጠበቅ
+src/routes/woreda.dashboard.tsx:79	ማጽደቅ ተመልሷል
+src/routes/woreda.civil.$eventId.tsx:448	ማጽደቅ አልተሳካም
+src/routes/woreda.civil.$eventId.tsx:897	ማጽደቅ ክስተቱን ይመዘግባል እና ከወገኖቹ ጋር ያገናኘዋል፤ ክፍያ ምዝገባውን ያጠናቅቃል።
+src/routes/woreda.dashboard.tsx:749	ማጽደቅ የሚጠብቁ የመታወቂያ ጥያቄዎች
+src/routes/woreda.settings.woreda-configuration.tsx:871	ማጽደቅ ይፈለጋል
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:749	ማፅደቅ በዚህ ንብረት ላይ አዲስ ንቁ ኪራይ ይከፍታል።
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:317	ማፅደቅ አልተሳካም
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:742	ማፅደቅ የአሁኑን ንቁ ኪራይ ይዘጋል እና ቤቱን ክፍት ያደርገዋል።
+src/routes/woreda.settings.woreda-configuration.tsx:679	ሜባ
+src/routes/woreda.rental-houses.occupants.new.tsx:228	ሜባ ይበልጣል
+src/routes/woreda.rental-houses.occupants.new.tsx:761	ምረጥ
+src/components/verification/HararildScanner.tsx:309	ምስል ስቀል
+src/routes/woreda.settings.woreda-configuration.tsx:722	ምስል አዘምን
+src/components/verification/HararildScanner.tsx:369	ምስል እዚህ ይጣሉ ወይም ጠቅ ያድርጉ
+src/routes/woreda.settings.woreda-configuration.tsx:714	ምስል ጫን
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:712	ምን መስተካከል እንዳለበት ያብራሩ
+src/routes/woreda.credentials.new.tsx:1020	ምን እንደተሳሳተ እና ምን መሆን እንዳለበት ያብራሩ
+src/routes/woreda.households.index.tsx:688	ምንም ለውጥ አልተመዘገበም
+src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:373	ምንም መዝገብ የለም
+src/routes/woreda.audit.tsx:336	ምንም ማጣሪያ አልተተገበረም
+src/routes/woreda.dashboard.tsx:812	ምንም ቀበሌዎች የሉም
+src/components/residents/ResidentActions.tsx:525	ምንም አልተገኘም
+src/routes/woreda.dashboard.tsx:777	ምንም አስቸኳይ ተግባር የለም
+src/routes/woreda.rental-houses.occupants.new.tsx:899	ምንም አባል አልተጨመረም
+src/routes/woreda.households.$householdId.print.tsx:254	ምንም አባል የለም
+src/routes/woreda.dashboard.tsx:923	ምንም እንቅስቃሴ የለም
+src/routes/woreda.revenue.index.tsx:438	ምንም ክፍያ አልተገኘም
+src/components/forms/ResidentSearchPicker.tsx:149	ምንም ውጤት የለም
+src/components/settings/CustomRolesTab.tsx:114	ምንም ዝግጁ ሚና የለም
+src/components/residents/ResidentProfileTabs.tsx:453	ምንም የኩነት መዝገብ አልተገኘም
+src/routes/woreda.credentials.$requestId.index.tsx:1070	ምንም ድግግሞሽ አልተገኘም
+src/routes/woreda.civil.$eventId.tsx:377	ምክንያቱ ቢያንስ 5 ፊደላት ሊኖረው ይገባል
+src/routes/woreda.civil.$eventId.tsx:1060	ምክንያት ያስገቡ (ቢያንስ 5 ፊደላት)። መዝጋቢው እንደገና ማስገባት ይችላል።
+src/routes/woreda.credentials.$requestId.index.tsx:1281	ምክንያት ያስገቡ፣ ለመቀበያ ባለሙያው ይታያል
+src/routes/woreda.credentials.$requestId.index.tsx:1360	ምክንያት ያስገቡ፣ ለክሌርኩ ይታያል
+src/routes/woreda.rental-houses.occupants.new.tsx:512	ምዝገባውን ያረጋግጡ
+src/routes/woreda.dashboard.tsx:113	ሞጁል ተቀይሯል
+src/routes/login.tsx:206	ሥርዓቱ በሙሉ ዝግጁ ነው
+src/routes/woreda.dashboard.tsx:620	ሩብ አመት
+src/routes/woreda.dashboard.tsx:620	ሩብ ዓመት
+src/routes/woreda.reports.$reportType.print.tsx:267	ሪፖርት ቁ.
+src/lib/residentConstants.ts:33	ራስ ሰራተኛ
+src/routes/woreda.credentials.$requestId.index.tsx:2554	ርክክብ አረጋግጥ
+src/utils/amountInWords.ts:96	ሰላሳ
+src/utils/amountInWords.ts:96	ሰማንያ
+src/routes/woreda.rental-houses.$houseId.index.tsx:671	ሰርዝ
+src/utils/amountInWords.ts:96	ሰባ
+src/utils/amountInWords.ts:83	ሰባት
+src/routes/woreda.services.$requestId.index.tsx:622	ሰነድ አልተያያዘም
+src/components/residents/ResidentProfileTabs.tsx:925	ሰነድ አልተጫነም
+src/routes/woreda.rental-houses.occupants.new.tsx:498	ሰነድ እየተላከ
+src/routes/woreda.credentials.$requestId.index.tsx:971	ሰነድ ያስፈልጋል
+src/routes/woreda.credentials.$requestId.index.tsx:881	ሰነድ ይመልከቱ
+src/lib/credentialWorkflowSchemas.ts:14	ሰነድ ይጎድላል
+src/routes/woreda.services.$requestId.index.tsx:666	ሰነድ ጨምር
+src/components/residents/ResidentProfileTabs.tsx:905	ሰነድ ጫን
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:45	ሰነዶች ተሟልተዋል
+src/utils/ethiopianCalendar.ts:17	ሰኔ
+src/routes/woreda.dashboard.tsx:901	ሰዓት
+src/routes/woreda.residents.$residentId.index.tsx:952	ሰዓት በፊት
+src/routes/admin.tenants.$woredaId.provision.tsx:229	ሰዓት ዞን
+src/lib/residentConstants.ts:6	ሱማሌ
+src/components/layout/AppShell.tsx:81	ሱፐር አስተዳዳሪ
+src/routes/woreda.reports.index.tsx:130	ሲ.ኤስ.ቪ ወርዷል
+src/routes/login.tsx:218	ሲስተም ዝግጁ ነው
+src/lib/residentConstants.ts:8	ሲዳማ
+src/routes/woreda.dashboard.tsx:618	ሳምንታዊ
+src/utils/amountInWords.ts:150	ሳንቲም
+src/utils/amountInWords.ts:96	ስልሳ
+src/routes/woreda.rental-houses.occupants.new.tsx:683	ስም ወይም መለያ ቁጥር ይጻፉ
+src/utils/amountInWords.ts:83	ስምንት
+src/lib/residentConstants.ts:35	ስራ አጥ
+src/utils/amountInWords.ts:83	ስድስት
+src/utils/amountInWords.ts:83	ሶስት
+src/utils/amountInWords.ts:7	ሺህ
+src/routes/woreda.rental-accounts.$occupancyId.tsx:578	ቀሪ ደረሰኝ
+src/routes/woreda.rental-reports.tsx:33	ቀርቧል
+src/routes/woreda.services.$requestId.print.tsx:97	ቀበሌ ውስጥ ነዋሪ መሆኑን/መሆኗን እናረጋግጣለን። ይህ ደብዳቤ
+src/components/workflow/WorkflowQueueTable.tsx:116	ቀናት
+src/lib/letterTemplate.ts:11	ቀን (ኢት.
+src/lib/letterTemplate.ts:12	ቀን (ግሪጎሪያን
+src/routes/woreda.residents.$residentId.index.tsx:954	ቀን በፊት
+src/components/residents/ResidentActions.tsx:263	ቀይር (ኢ-ንቁ
+src/routes/woreda.credentials.$requestId.index.tsx:2500	ቀዳሚ ማስረጃ
+src/routes/woreda.credentials.new.tsx:102	ቀዳሚ ማስረጃ ይምረጡ
+src/routes/woreda.residents.$residentId.edit.tsx:338	ቀጣይ
+src/routes/woreda.credentials.$requestId.print.tsx:194	ቁመት
+src/routes/woreda.dashboard.tsx:98	ቅንብሮች ተሻሽለዋል
+src/components/credentials/CredentialQueueTable.tsx:81	ቅድመ እይታ
+src/routes/woreda.credentials.$requestId.print.tsx:1213	ቅድመ ዕይታ
+src/routes/woreda.credentials.$requestId.index.tsx:2183	ቅድመ ዕይታ እና ህትመት
+src/routes/woreda.dashboard.tsx:742	ቅድሚያ የሚሰጣቸው ተግባራት
+src/routes/woreda.dashboard.tsx:112	ቅጽ ታትሟል
+src/lib/credentialWorkflowSchemas.ts:24	ቆሻሻ ቅጂ
+src/routes/admin.audit.tsx:344	በሁሉም ወረዳዎች ውስጥ ያሉ እንቅስቃሴዎች
+src/components/common/StatusChip.tsx:64	በህትመት ላይ
+src/routes/woreda.households.index.tsx:617	በመንጠቅ ሁኔታ ይቀየራል።
+src/routes/woreda.services.$requestId.index.tsx:697	በመጫን ላይ...
+src/routes/woreda.rental-houses.occupants.new.tsx:694	በመፈለግ ላይ
+src/routes/woreda.rental-reports.tsx:309	በማለፊያ ታልፏል
+src/components/verification/HararildScanner.tsx:399	በማረጋገጥ ላይ
+src/components/credentials/KpiWidgetRow.tsx:34	በማረጋገጫ ላይ
+src/routes/woreda.rental-houses.new.tsx:191	በማስቀመጥ ላይ
+src/components/credentials/KpiWidgetRow.tsx:41	በማጽደቅ ላይ
+src/routes/woreda.credentials.$requestId.index.tsx:1356	በማጽደቅ ደረጃ ይመልሱ
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:705	በምክንያት ይመልሱ (አማራጭ
+src/routes/woreda.credentials.$requestId.index.tsx:1507	በሞባይል
+src/components/print/PrintDocumentShell.tsx:490	በራስ-ሰር የተዘጋጀ ሰነድ
+src/routes/woreda.dashboard.tsx:618	በሳምንት
+src/routes/woreda.rental-houses.occupants.new.tsx:677	በስም / በመለያ ቁጥር ይፈልጉ
+src/routes/woreda.rental-houses.$houseId.index.tsx:617	በስም / በመታወቂያ ይፈልጉ
+src/components/common/ComingSoon.tsx:15	በቅርቡ ይመጣል
+src/routes/woreda.residents.$residentId.index.tsx:1032	በቅርቡ ይሟላል
+src/routes/woreda.services.new.tsx:616	በታች
+src/routes/woreda.credentials.$requestId.print.tsx:1090	በትክክል ታትሟል
+src/routes/woreda.settings.woreda-configuration.tsx:338	በነዋሪ መታወቂያ ካርድ ላይ
+src/routes/woreda.rental-houses.occupants.new.tsx:848	በአመት
+src/routes/woreda.services.$requestId.print.tsx:187	በአክብሮት፣
+src/components/common/DocumentViewerDialog.tsx:113	በአዲስ ትር ክፈት
+src/routes/woreda.credentials.$requestId.print.tsx:1075	በአግባቡ ያልታተመውን ካርድ ወዲያውኑ ያጥፉ። ተመሳሳይ የ
+src/routes/woreda.rental-houses.$houseId.index.tsx:56	በአጽዳቂ ተመልሷል
+src/routes/woreda.approvals.tsx:113	በእርስዎ እርምጃ የሚጠብቁ ጥያቄዎች በሙሉ በአንድ ቦታ
+src/routes/admin.tenants.index.tsx:326	በወረዳ ስም ወይም ኮድ ይፈልጉ
+src/routes/woreda.dashboard.tsx:837	በወረዳው
+src/routes/woreda.dashboard.tsx:619	በወር
+src/routes/woreda.rental-accounts.$occupancyId.tsx:685	በዕቅድ ውስጥ
+src/components/common/TableStates.tsx:33	በዚህ ማጣሪያ ምንም አልተገኘም
+src/components/residents/ResidentProfileTabs.tsx:715	በዚህ ማጣሪያ ምንም እንቅስቃሴ የለም
+src/routes/woreda.residents.$residentId.index.tsx:617	በዚህ ቤት ውስጥ ሌላ አባል የለም
+src/routes/woreda.households.$householdId.index.tsx:408	በዚህ ቤት ውስጥ የተመዘገበ ነዋሪ የለም
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:666	በዚህ ንብረት ላይ መጀመሪያ የመተውን ጥያቄ ያፅድቁ፣ ከዚያ ይህ ጥያቄ ሊፀድቅ ይችላል።
+src/components/credentials/KpiWidgetRow.tsx:77	በዚህ ወር ውድቅ የተደረጉ
+src/components/credentials/KpiWidgetRow.tsx:62	በዚህ ወር የተሰጡ
+src/routes/woreda.services.$requestId.index.tsx:1065	በዚህ ደረጃ እርምጃ ለመውሰድ ፈቃድ አልተሰጠዎትም
+src/routes/woreda.revenue.index.tsx:293	በዚያ ገጽ ላይ ያለውን የአትም አዝራር ይጠቀሙ
+src/routes/woreda.rental-houses.occupants.new.tsx:847	በየሩብ አመት
+src/routes/woreda.rental-houses.occupants.new.tsx:846	በየወሩ
+src/routes/woreda.reports.$reportType.print.tsx:162	በጊዜው የተሰጡ
+src/routes/woreda.credentials.$requestId.index.tsx:105	በግምገማ
+src/routes/woreda.rental-houses.$houseId.index.tsx:53	በግምገማ ላይ
+src/routes/woreda.rental-houses.occupants.new.tsx:998	በጠረት ላይ
+src/routes/woreda.audit.tsx:613	በፊት
+src/routes/woreda.revenue.$paymentId.receipt.tsx:876	በፊደል
+src/routes/woreda.credentials.new.tsx:805	ቢሆንም ለመቀጠል እወቅበታለሁ
+src/utils/amountInWords.ts:97	ቢሊዮን
+src/routes/woreda.rental-houses.occupants.new.tsx:688	ቢያንስ 2 ፊደል ያስገቡ
+src/routes/woreda.credentials.new.tsx:119	ቢያንስ አንድ የሚስተካከል መስክ ይምረጡ
+src/routes/woreda.households.new.tsx:190	ቤተሰብ መዝግብ
+src/routes/woreda.credentials.$requestId.index.tsx:132	ቤተሰብ በትክክል ተረጋግጧል
+src/routes/woreda.dashboard.tsx:55	ቤተሰብ ተመዝግቧል
+src/routes/woreda.households.$householdId.index.tsx:210	ቤተሰብ አልተገኘም
+src/routes/woreda.households.index.tsx:614	ቤተሰብ ኢ-ንቁ አድርግ
+src/routes/woreda.audit.tsx:131	ቤተሰብ ክፈት
+src/routes/woreda.dashboard.tsx:58	ቤተሰብ ወደ ኢ-ንቁ ተቀይሯል
+src/routes/woreda.audit.tsx:134	ቤተሰቦችን ክፈት
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:662	ቤቱ ተይዟል
+src/routes/woreda.rental-houses.$houseId.edit.tsx:117	ቤቱ አልተገኘም ወይም ማዘመን አልተቻለም
+src/routes/woreda.rental-houses.$houseId.index.tsx:218	ቤት ቁ.
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:43	ቤት ክፍት ነው
+src/routes/woreda.dashboard.tsx:87	ቤት የመልቀቅ ጥያቄ ገብቷል
+src/routes/woreda.rental-houses.occupants.new.tsx:617	ብቁ ነው
+src/routes/woreda.rental-houses.occupants.new.tsx:594	ብቁነት በመመርመር ላይ
+src/routes/woreda.settings.woreda-configuration.tsx:674	ብቻ ይፈቀዳል
+src/routes/woreda.credentials.new.tsx:1035	ብቻ፣ ከ
+src/components/common/StatusChip.tsx:80	ቦዝኗል
+src/routes/woreda.rental-houses.occupants.new.tsx:887	ተ.ቁ
+src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:68	ተለቋል
+src/components/common/DetailHeader.tsx:25	ተመለስ
+src/routes/woreda.rental-accounts.$occupancyId.tsx:699	ተመላሽ
+src/routes/woreda.rental-accounts.$occupancyId.tsx:1140	ተመላሽ አድርግ
+src/routes/woreda.credentials.$requestId.index.tsx:1288	ተመላሽ የሆነበት ምክንያት
+src/routes/woreda.rental-reports.tsx:348	ተመላሽ የተደረገ
+src/components/layout/AppShell.tsx:88	ተመልካች
+src/routes/woreda.civil.birth.new.tsx:444	ተመሳሳይ ልደት በዚህ ወረዳ ተመዝግቧል
+src/routes/woreda.civil.$eventId.tsx:91	ተመሳሳይ ምዝገባ የለም
+src/routes/woreda.civil.birth.new.tsx:447	ተመሳሳይ የልጅ ስም እና የልደት ቀን ቀደም ብሎ ተመዝግቧል፦
+src/lib/residentConstants.ts:36	ተማሪ
+src/routes/woreda.credentials.$requestId.index.tsx:2484	ተረካቢ
+src/routes/woreda.services.$requestId.index.tsx:818	ተረጋግጧል፤ ለማጽደቅ በመጠባበቅ ላይ
+src/routes/woreda.civil.$eventId.tsx:855	ተረጋግጧል፤ ለማጽደቅ ይላኩ።
+src/routes/woreda.settings.woreda-configuration.tsx:695	ተሰቅሏል
+src/routes/woreda.services.$requestId.index.tsx:969	ተሰጥቷል ብለው መዝግቡ
+src/components/residents/ResidentProfileTabs.tsx:649	ተሻሽሏል
+src/lib/residentConstants.ts:32	ተቀጣሪ
+src/components/layout/AppShell.tsx:86	ተቆጣጣሪ
+src/routes/woreda.civil.$eventId.tsx:846	ተቆጣጣሪ ወደ ማጽደቂያ ወረፋ እስኪያስገባው ድረስ በመጠባበቅ ላይ።
+src/routes/woreda.rental-houses.$houseId.index.tsx:46	ተቋርጧል
+src/routes/woreda.civil.$eventId.tsx:886	ተብሎ ይመዘገባል።
+src/components/common/StatusChip.tsx:79	ተተክቷል
+src/routes/woreda.rental-houses.index.tsx:320	ተከራይ መዝግብ
+src/routes/woreda.rental-houses.$houseId.index.tsx:271	ተከራይ ይመድቡ
+src/routes/woreda.credentials.$requestId.index.tsx:2163	ተከታታይ ቁጥር
+src/routes/woreda.credentials.index.tsx:150	ተዘጋጅቷል
+src/routes/woreda.rental-houses.occupants.new.tsx:549	ተያይዘዋል
+src/routes/woreda.credentials.$requestId.print.tsx:1169	ተደጋጋሚ ህትመት
+src/routes/woreda.audit.tsx:419	ተግባር፣ ክፍል፣ ወይም መለያ
+src/components/settings/UsersRolesTab.tsx:365	ተጠሪነት
+src/routes/woreda.dashboard.tsx:99	ተጠቃሚ ታግዷል
+src/components/settings/UsersRolesTab.tsx:351	ተጠቃሚ ጨምር
+src/components/settings/UsersRolesTab.tsx:561	ተጠቃሚን ማገድ
+src/routes/woreda.audit.tsx:196	ተጠቃሚዎችና ፈቃዶች ክፈት
+src/routes/woreda.rental-houses.occupants.new.tsx:1030	ተጨማሪ አስተያየት እዚህ ይጻፉ...
+src/routes/woreda.residents.$residentId.index.tsx:1010	ተጨማሪ አባል ጨምር
+src/routes/woreda.rental-houses.occupants.new.tsx:997	ተፈቅዷል
+src/routes/woreda.credentials.new.tsx:567	ተፈጥሯል፤ ፎቶ/ሰነድ ማያያዝ አልተሳካም። እባክዎ ይህን ቁጥር ለሱፐርቫይዘር ያሳውቁ፣ እንደገና አያስገቡ
+src/routes/woreda.services.$requestId.index.tsx:700	ታሪኩን መጫን አልተቻለም
+src/routes/v.$token.tsx:247	ታትሟል፤ ገና አልተሰጠም
+src/utils/ethiopianCalendar.ts:11	ታኅሣሥ
+src/lib/residentConstants.ts:25	ቴክኒክና ሙያ
+src/components/verification/HararildScanner.tsx:341	ትር ይሂዱ።
+src/routes/woreda.reports.index.tsx:261	ትርን ያስቀምጣል
+src/routes/v.$token.tsx:165	ትክክለኛ መታወቂያ አይደለም
+src/components/verification/HararildScanner.tsx:506	ትክክል አይደለም
+src/lib/residentConstants.ts:5	ትግራይ
+src/routes/login.tsx:330	ችግር እያጋጠመዎት ነው
+src/utils/ethiopianCalendar.ts:10	ኅዳር
+src/utils/ethiopianCalendar.ts:19	ነሐሴ
+src/routes/woreda.residents.$residentId.index.tsx:1015	ነባር ነዋሪ አክል
+src/routes/woreda.residents.new.tsx:186	ነዋሪ መዝግብ
+src/routes/woreda.credentials.new.tsx:646	ነዋሪ በመጫን ላይ
+src/routes/woreda.dashboard.tsx:49	ነዋሪ ተመዝግቧል
+src/routes/woreda.dashboard.tsx:51	ነዋሪ ታግዷል
+src/routes/woreda.residents.$residentId.edit.tsx:275	ነዋሪ አልተገኘም
+src/routes/woreda.audit.tsx:121	ነዋሪ ክፈት
+src/routes/woreda.dashboard.tsx:54	ነዋሪ ወደ ንቁ ተመልሷል
+src/routes/woreda.dashboard.tsx:53	ነዋሪ ወደ ኢ-ንቁ ተቀይሯል
+src/routes/woreda.civil.marriage.new.tsx:32	ነዋሪ ይምረጡ ወይም ስም ያስገቡ
+src/routes/woreda.dashboard.tsx:52	ነዋሪ ዳግም ነቅቷል
+src/routes/woreda.credentials.new.tsx:421	ነዋሪው በቤተሰብ ውስጥ አይደለም
+src/routes/woreda.credentials.$requestId.print.tsx:510	ነዋሪው ንቁ እና አልታገደም
+src/components/residents/ResidentActions.tsx:372	ነዋሪውን ወደ ንቁ ሁኔታ መቀየር ይፈልጋሉ
+src/components/residents/ResidentActions.tsx:326	ነዋሪውን ዳግም ማግበር ይፈልጋሉ
+src/hooks/useReportsAggregate.ts:571	ነዋሪዎች በሁኔታ
+src/hooks/useReportsAggregate.ts:581	ነዋሪዎች በሃይማኖት
+src/hooks/useReportsAggregate.ts:596	ነዋሪዎች በሙያ
+src/hooks/useReportsAggregate.ts:601	ነዋሪዎች በቤት ዓይነት
+src/hooks/useReportsAggregate.ts:576	ነዋሪዎች በብሔር
+src/hooks/useReportsAggregate.ts:591	ነዋሪዎች በትምህርት ደረጃ
+src/hooks/useReportsAggregate.ts:586	ነዋሪዎች በዕድሜ ክልል
+src/hooks/useReportsAggregate.ts:569	ነዋሪዎች በጾታ
+src/routes/woreda.audit.tsx:124	ነዋሪዎችን ክፈት
+src/routes/admin.tenants.$woredaId.provision.tsx:253	ነዋሪዎች፣ ቤተሰቦች፣ ዳሽቦርድ እና ቅንብሮች ሁልጊዜ ንቁ ናቸው
+src/routes/woreda.dashboard.tsx:900	ነገር
+src/routes/woreda.credentials.$requestId.index.tsx:1988	ነፃ ተደርጓል
+src/routes/woreda.credentials.$requestId.index.tsx:2704	ንቁ ማስረጃ
+src/routes/woreda.rental-accounts.$occupancyId.tsx:723	ንቁ የክፍያ ዕቅድ የለም
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:678	ንብረቱን ክፈት
+src/routes/woreda.approvals.tsx:160	ንዑስ ዓይነት
+src/lib/residentConstants.ts:34	ንግድ
+src/routes/woreda.rental-houses.$houseId.index.tsx:327	አሁን ተከራይ
+src/components/common/OfflineStatusBar.tsx:92	አሁን አመሳስል
+src/components/common/WorkflowStepper.tsx:96	አሁን ያለበት ደረጃ
+src/components/gis/LocationPickerMap.tsx:126	አልተመረጠም
+src/routes/woreda.households.$householdId.index.tsx:559	አልተመዘገበም
+src/components/verification/HararildScanner.tsx:592	አልተረጋገጠም
+src/routes/woreda.rental-reports.tsx:37	አልተከበረም
+src/routes/woreda.credentials.$requestId.print.tsx:1061	አልታተመም
+src/routes/woreda.credentials.$requestId.index.tsx:1002	አልፏል
+src/lib/residentConstants.ts:4	አማራ
+src/routes/woreda.credentials.new.tsx:1155	አማራጭ ማስታወሻ
+src/routes/woreda.reports.$reportType.print.tsx:204	አማካይ ክፍያ (ብር
+src/components/credentials/KpiWidgetRow.tsx:91	አማካይ የማጠናቀቂያ ጊዜ
+src/utils/amountInWords.ts:83	አምስት
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:645	አረጋጋጭ፦ ማፅደቁ ንቁ ኪራይን ከመዝጋቱ በፊት የመልቀቂያ ዝርዝሮችን ያረጋግጡ።
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:635	አረጋጋጭ፦ ማፅደቁ ኪራይን ከመክፈቱ በፊት ማንነት፣ የቤት አቅርቦት እና መጠን ያረጋግጡ።
+src/components/credentials/CredentialQueueTable.tsx:65	አረጋግጥ
+src/routes/woreda.credentials.$requestId.print.tsx:1339	አረጋግጥ እና አትም
+src/utils/amountInWords.ts:83	አራት
+src/utils/amountInWords.ts:96	አርባ
+src/utils/amountInWords.ts:87	አስራ ሁለት
+src/utils/amountInWords.ts:92	አስራ ሰባት
+src/utils/amountInWords.ts:93	አስራ ስምንት
+src/utils/amountInWords.ts:91	አስራ ስድስት
+src/utils/amountInWords.ts:88	አስራ ሶስት
+src/utils/amountInWords.ts:90	አስራ አምስት
+src/utils/amountInWords.ts:89	አስራ አራት
+src/utils/amountInWords.ts:86	አስራ አንድ
+src/utils/amountInWords.ts:94	አስራ ዘጠኝ
+src/utils/amountInWords.ts:85	አስር
+src/components/common/ChangePasswordDialog.tsx:144	አስቀምጥ
+src/routes/woreda.rental-houses.occupants.new.tsx:971	አስተዳደራዊ ማረጋገጫ
+src/routes/admin.tenants.index.tsx:437	አስተዳዳሪ መድብ
+src/routes/admin.tenants.index.tsx:396	አስተዳዳሪ አልተመደበም
+src/components/admin/PlatformUsersTab.tsx:580	አስተዳዳሪውን መፍቀድ
+src/components/admin/PlatformUsersTab.tsx:556	አስተዳዳሪውን ማገድ
+src/components/credentials/CredentialQueueTable.tsx:88	አስነቃ
+src/routes/woreda.civil.marriage.new.tsx:325	አስገባ
+src/routes/woreda.rental-houses.occupants.new.tsx:955	አስፈላጊ ሰነዶች
+src/routes/woreda.rental-accounts.$occupancyId.tsx:907	አቅርብ
+src/routes/woreda.credentials.$requestId.print.tsx:989	አቅጣጫ
+src/components/settings/LetterTemplatesTab.tsx:107	አበበ በቀለ ታደሰ
+src/components/residents/ResidentProfileTabs.tsx:361	አባል አልተገኘም
+src/routes/woreda.rental-houses.occupants.new.tsx:880	አባል ጨምር
+src/routes/woreda.credentials.$requestId.index.tsx:904	አባሪዎች
+src/routes/woreda.rental-houses.occupants.new.tsx:874	አብረው የሚኖሩ የቤተሰብ አባላት
+src/routes/woreda.credentials.$requestId.print.tsx:960	አታሚ
+src/routes/woreda.credentials.$requestId.index.tsx:1148	አትቀበል
+src/components/residents/ResidentActions.tsx:272	አንቃ
+src/utils/amountInWords.ts:83	አንድ
+src/utils/amountInWords.ts:8	አንድ ሺህ
+src/routes/woreda.reports.index.tsx:578	አውርድ
+src/routes/woreda.reports.$reportType.print.tsx:320	አዘጋጅ
+src/components/settings/CustomRolesTab.tsx:107	አዲስ ሚና
+src/components/services/ServiceRequestList.tsx:417	አዲስ ቅሬታ
+src/routes/woreda.services.new.tsx:345	አዲስ ቅሬታ ማስመዝገቢያ
+src/components/verification/HararildScanner.tsx:432	አዲስ ቅኝት
+src/routes/woreda.households.index.tsx:409	አዲስ ቤተሰብ መዝግብ
+src/routes/woreda.rental-houses.index.tsx:323	አዲስ ቤት
+src/components/settings/CustomRolesTab.tsx:223	አዲስ ብጁ ሚና
+src/config/permissionLabels.ts:27	አዲስ ነዋሪ መመዝገብ
+src/components/forms/HouseholdFormFields.tsx:240	አዲስ ነዋሪ መዝግብ
+src/components/admin/PlatformUsersTab.tsx:362	አዲስ አስተዳዳሪ
+src/routes/woreda.credentials.new.tsx:65	አዲስ አወጣጥ
+src/routes/woreda.settings.woreda-configuration.tsx:1450	አዲስ ክፍያ
+src/routes/woreda.settings.woreda-configuration.tsx:1248	አዲስ የአገልግሎት ክፍያ
+src/routes/woreda.services.new.tsx:345	አዲስ የአገልግሎት ጥያቄ
+src/components/common/ChangePasswordDialog.tsx:91	አዲስ የይለፍ ቃል
+src/components/credentials/CredentialQueueTable.tsx:344	አዲስ ጥያቄ
+src/routes/woreda.residents.$residentId.index.tsx:354	አገናኙን መቅዳት አልተሳካም
+src/components/settings/UsersRolesTab.tsx:440	አግድ
+src/routes/woreda.services.new.tsx:519	አግድ አይደለም
+src/routes/woreda.credentials.$requestId.print.tsx:193	አግድም
+src/components/common/TablePagination.tsx:63	አጠቃላይ
+src/routes/woreda.services.$requestId.index.tsx:1005	አጠናቅቅ
+src/components/workflow/WorkflowQueueTable.tsx:270	አጽዳ
+src/components/credentials/CredentialQueueTable.tsx:69	አጽድቅ
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:788	አፅድቅ
+src/lib/residentConstants.ts:9	አፋር
+src/routes/woreda.households.index.tsx:644	ኢ-ንቁ አድርግ
+src/routes/login.tsx:255	ኢሜይል ወይም የተጠቃሚ ቁጥር
+src/routes/woreda.services.$requestId.index.tsx:451	እርማት ተጠይቋል
+src/routes/woreda.civil.$eventId.tsx:1058	እርማት እንዲደረግ መልስ
+src/routes/woreda.credentials.$requestId.index.tsx:1125	እርስዎ ራስዎ ያረጋገጡትን ጥያቄ ማጽደቅ አይችሉም
+src/components/workflow/WorkflowQueueTable.tsx:257	እስከ
+src/routes/woreda.reports.index.tsx:203	እስካሁን ምንም ማጣሪያ አልተቀመጠም
+src/routes/woreda.residents.$residentId.index.tsx:540	እስካሁን ምንም እንቅስቃሴ የለም
+src/routes/woreda.settings.woreda-configuration.tsx:1284	እስካሁን ምንም ክፍያ አልተዋቀረም
+src/components/verification/HararildScanner.tsx:341	እባክዎ ወደ
+src/routes/woreda.credentials.$requestId.print.tsx:848	እባክዎ ይጠብቁ ወይም ዳግም ይሞክሩ።
+src/routes/login.tsx:249	እባክዎን የተመደበልዎትን የወረዳ ሠራተኛ መግቢያ መረጃ ያስገቡ።
+src/routes/login.tsx:249	እንኳን ደህና መጡ
+src/routes/woreda.civil.$eventId.tsx:787	እንደገና ላክ
+src/routes/woreda.credentials.$requestId.print.tsx:644	እንደገና መሞከር አልተሳካም
+src/routes/woreda.civil.$eventId.tsx:493	እንደገና ማስገባት አልተሳካም
+src/routes/woreda.rental-accounts.$occupancyId.tsx:453	እንደገና ማቅረብ አልተሳካም
+src/routes/woreda.rental-houses.occupants.new.tsx:710	እንደገና ሞክር
+src/routes/woreda.services.$requestId.index.tsx:755	እንደገና አቅርብ
+src/routes/woreda.revenue.index.tsx:476	እንደገና አትም
+src/routes/woreda.credentials.$requestId.index.tsx:896	እንደገና ክፈት
+src/routes/woreda.reports.index.tsx:278	እንደገና ይሞክሩ
+src/routes/woreda.rental-houses.occupants.new.tsx:499	እየተመዘገበ...
+src/components/settings/LetterTemplatesTab.tsx:255	እያንዳንዱ በዚህ አብነት የሚወጣ ደብዳቤ በሕዝብ ማረጋገጫ ዩአርኤል የሚሠራ
+src/routes/woreda.rental-houses.$houseId.index.tsx:41	እድሳት ላይ
+src/components/admin/PlatformUsersTab.tsx:519	እግድ
+src/lib/residentConstants.ts:15	ኦርቶዶክስ
+src/lib/residentConstants.ts:3	ኦሮሞ
+src/components/layout/AppShell.tsx:87	ኦዲተር
+src/components/print/PrintDocumentShell.tsx:447	ኦፊሴላዊ ማህተም
+src/routes/woreda.rental-houses.occupants.new.tsx:981	ኦፊሴላዊ ማረጋገጫ
+src/routes/woreda.civil.birth.new.tsx:460	ከማስገባትዎ በፊት ያረጋግጡ፤ ይህ የተለየ ልጅ ከሆነ ብቻ ይቀጥሉ።
+src/routes/woreda.revenue.index.tsx:356	ከቤተሰብ ወይም ከኪራይ ክፍል ቀበሌ ጋር ይዛመዳል
+src/routes/woreda.audit.tsx:475	ከተቀየረው መዝገብ ጋር የተመዘገበውን ቀበሌ ያዛምዳል
+src/routes/woreda.settings.woreda-configuration.tsx:421	ከነጭ ወይም ግልጽ ጀርባ ይቅናል
+src/routes/woreda.settings.woreda-configuration.tsx:338	ከዚህ በታች ካለው የይፋዊ መዝገብ ስም ይልቅ እንደ ሰጪ አካል
+src/routes/woreda.rental-accounts.$occupancyId.tsx:960	ከጠቅላላ መጠን ጋር ትክክል መሆን አለበት፣ ካልሆነ ለሂሳብ ማስተካከያ ይመዘገባል
+src/routes/woreda.rental-accounts.$occupancyId.tsx:1065	ከጠቅላላ መጠን ጋር ትክክል መሆን አለበት፣ ካልሆነ ወራቱ ሳይከፈሉ ለሂሳብ ማስተካከያ ይመዘገባል
+src/components/forms/HouseholdFormFields.tsx:320	ኪራይ (በግለሰብ
+src/routes/woreda.households.$householdId.index.tsx:337	ኪራይ (ብር
+src/routes/woreda.rental-houses.$houseId.index.tsx:289	ኪራይ ሁኔታ
+src/routes/woreda.rental-accounts.$occupancyId.tsx:1036	ኪራይ ከመስከረም እስከ ነሐሴ ብቻ ይከፈላል
+src/components/forms/ResidentWizardSteps.tsx:784	ካለፈው ቀበሌ/ወረዳ የተሰጠ የክሊራንስ ደብዳቤ ካለ ያያይዙ
+src/routes/woreda.rental-accounts.$occupancyId.tsx:882	ካሉት ያለፈባቸው ወራት ውስጥ
+src/routes/woreda.credentials.$requestId.print.tsx:1056	ካርዱ በትክክል ታትሟል
+src/routes/woreda.credentials.$requestId.print.tsx:1061	ካርዱ በአግባቡ ካልታተመ
+src/lib/residentConstants.ts:17	ካቶሊክ
+src/routes/woreda.settings.woreda-configuration.tsx:1441	ክለሳ ያስፈልጋል
+src/routes/woreda.services.$requestId.index.tsx:735	ክለሳ ጀምር
+src/components/forms/ResidentWizardSteps.tsx:528	ክልል/ከተማ/ወረዳ/ቀበሌ/ቤት ቁጥር ከተመረጠው ቤተሰብ ይወሰዳል
+src/routes/woreda.civil.$eventId.tsx:985	ክስተቱ ተመዝግቧል። አዲስ የነዋሪ መዝገብ ተፈጥሯል።
+src/routes/woreda.civil.$eventId.tsx:511	ክስተቱ አልተገኘም
+src/routes/woreda.civil.$eventId.tsx:1082	ክስተቱን ውድቅ ማድረግ
+src/routes/woreda.services.$requestId.index.tsx:1283	ክፍያ ለመመዝገብ ፈቃድ የለዎትም
+src/routes/woreda.credentials.$requestId.index.tsx:1794	ክፍያ መርሃ ግብር አልተገኘም
+src/config/permissionLabels.ts:32	ክፍያ መቀበል
+src/components/credentials/CredentialQueueTable.tsx:74	ክፍያ መዝግብ
+src/routes/woreda.rental-accounts.$occupancyId.tsx:615	ክፍያ ማመንጨት
+src/routes/woreda.rental-accounts.$occupancyId.tsx:608	ክፍያ ሰብስብ
+src/routes/woreda.credentials.$requestId.index.tsx:109	ክፍያ በመጠበቅ
+src/components/credentials/KpiWidgetRow.tsx:48	ክፍያ በመጠበቅ ላይ
+src/routes/woreda.rental-accounts.$occupancyId.tsx:1121	ክፍያ ተመላሽ
+src/routes/woreda.rental-accounts.$occupancyId.tsx:341	ክፍያ ተመላሽ ተደርጓል
+src/routes/woreda.dashboard.tsx:89	ክፍያ ተሰብስቧል
+src/routes/woreda.services.$requestId.index.tsx:952	ክፍያ ተቀበል
+src/routes/woreda.dashboard.tsx:90	ክፍያ ተነስቷል
+src/routes/woreda.rental-accounts.$occupancyId.tsx:273	ክፍያ ተፈጥሯል
+src/routes/woreda.dashboard.tsx:72	ክፍያ ተፈጽሟል
+src/routes/woreda.credentials.$requestId.index.tsx:1816	ክፍያ ነፃ ነው
+src/routes/woreda.civil.$eventId.tsx:1316	ክፍያ አልተሳካም
+src/routes/woreda.rental-reports.tsx:145	ክፍያ እና ስብሰባ በጊዜ (ኢትዮ
+src/routes/woreda.civil.$eventId.tsx:875	ክፍያ ከተጠናቀቀ በኋላ አዲስ የነዋሪ መዝገብ ይፈጠራል።
+src/routes/woreda.civil.$eventId.tsx:886	ክፍያ ከተጠናቀቀ በኋላ የነዋሪ ሁኔታ
+src/routes/woreda.credentials.$requestId.index.tsx:1930	ክፍያ የመሰብሰብ ፈቃድ የለዎትም
+src/routes/woreda.rental-accounts.$occupancyId.tsx:589	ክፍያ የሚጀምርበት ጊዜ
+src/routes/woreda.settings.woreda-configuration.tsx:868	ክፍያ ይፈለጋል
+src/routes/woreda.credentials.$requestId.index.tsx:1785	ክፍያው ሲገናኙ በአገልጋይ በኩል ይሰላል
+src/routes/woreda.rental-accounts.$occupancyId.tsx:740	ክፍያዎች ብዛት
+src/routes/woreda.rental-reports.tsx:140	ክፍያ፣ ዕዳ እድሜ፣ የክፍያ ዕቅድ ተገዢነት እና ማስታረቂያ
+src/routes/woreda.services.$requestId.print.tsx:141	ኮዱን በስልክዎ ካሜራ ይቅሙ ወይም ይህን አድራሻ ይጎብኙ
+src/components/verification/HararildScanner.tsx:346	ኮዱን በአረንጓዴ ማዕቀፍ ውስጥ ያድርጉ
+src/routes/woreda.credentials.$requestId.print.tsx:1075	ኮድ ስላለው በኋላ እንደ ትክክለኛ ሊታይ ይችላል።
+src/components/settings/LetterTemplatesTab.tsx:255	ኮድ ይይዛል።
+src/routes/admin.tenants.$woredaId.provision.tsx:54	ወረዳ ማረጋገጫ
+src/routes/set-password.tsx:44	ወረዳ አስተዳደር ሥርዓት
+src/routes/admin.tenants.index.tsx:306	ወረዳዎች
+src/routes/admin.console-roles.tsx:52	ወረዳዎችን ማስተዳደር
+src/routes/woreda.services.new.tsx:519	ወራት
+src/routes/woreda.rental-reports.tsx:189	ወራት ያለፈ
+src/routes/woreda.services.new.tsx:463	ወራት ያልተከፈለ የኪራይ ዕዳ አለበት
+src/routes/woreda.rental-houses.occupants.new.tsx:820	ወርሃዊ የኪራይ መጠን (ብር
+src/routes/woreda.dashboard.tsx:757	ወቅታቸው ያለፈባቸው መታወቂያዎች
+src/components/residents/ResidentActions.tsx:236	ወደ ቤተሰብ ጨምር
+src/routes/woreda.rental-houses.requests.index.tsx:363	ወደ ቤቶች ተመለስ
+src/routes/woreda.credentials.$requestId.index.tsx:752	ወደ ኋላ
+src/routes/woreda.residents.$residentId.index.tsx:936	ወደ ንቁ ተመልሷል
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:730	ወደ አቅራቢው መልስ
+src/routes/woreda.residents.$residentId.index.tsx:935	ወደ ኢ-ንቁ ተቀይሯል
+src/routes/woreda.rental-houses.requests.index.tsx:343	ወደ ውጪ መላክ ተጠናቋል
+src/routes/woreda.rental-houses.requests.index.tsx:345	ወደ ውጪ መላክ አልተሳካም
+src/routes/woreda.households.$householdId.index.tsx:212	ወደ ዝርዝሩ ተመለስ
+src/routes/woreda.credentials.$requestId.index.tsx:775	ወደ ዝርዝር
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:826	ወደ ገቢ ይሂዱ
+src/routes/woreda.credentials.$requestId.print.tsx:874	ወደ ጥያቄው
+src/routes/woreda.credentials.$requestId.print.tsx:940	ወደ ጥያቄው ተመለስ
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:796	ወደ ፀሐፊ መልስ
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:289	ወደ ፀሐፊ ተመልሷል
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:769	ወደ ፀሐፊ የመመለሻ ምክንያት (እርማት ሲፈለግ ብቻ
+src/routes/admin.tenants.$woredaId.provision.tsx:303	ወደዚህ አድራሻ የግብዣ ኢሜይል ይላካል። መለያው
+src/routes/woreda.credentials.$requestId.index.tsx:112	ወጪ ተደርጓል
+src/config/navGroups.ts:21	ዋና ስራዎች
+src/routes/woreda.dashboard.tsx:659	ውሳኔ በመጠባበቅ ያሉ
+src/routes/woreda.civil.$eventId.tsx:474	ውድቅ ማድረግ አልተሳካም
+src/routes/woreda.credentials.$requestId.index.tsx:1434	ውድቅ ማድረግን አረጋግጥ
+src/routes/woreda.services.$requestId.index.tsx:897	ውድቅ አድርግ
+src/routes/woreda.civil.$eventId.tsx:971	ውጤት
+src/routes/woreda.dashboard.tsx:939	ዕለታዊ ገቢ (30 ቀን
+src/routes/woreda.rental-accounts.$occupancyId.tsx:922	ዕቅድ መልስ
+src/routes/woreda.rental-accounts.$occupancyId.tsx:717	ዕቅድ ፍጠር
+src/routes/woreda.rental-reports.tsx:225	ዕቅዶች
+src/routes/woreda.rental-houses.occupants.new.tsx:890	ዕድሜ
+src/routes/woreda.households.index.tsx:594	ዘርፍ ሪፖርት
+src/utils/amountInWords.ts:96	ዘጠና
+src/utils/amountInWords.ts:83	ዘጠኝ
+src/routes/admin.dashboard.tsx:137	ዛሬ የተሰጡ መታወቂያዎች
+src/components/credentials/KpiWidgetRow.tsx:27	ዛሬ የገቡ
+src/utils/amountInWords.ts:117	ዜሮ
+src/components/residents/ResidentActions.tsx:217	ዝርዝር ይመልከቱ
+src/routes/woreda.credentials.$requestId.index.tsx:1262	የሁኔታ ታሪክ
+src/routes/woreda.services.$requestId.index.tsx:694	የሂደት ታሪክ
+src/routes/woreda.credentials.$requestId.print.tsx:954	የህትመት መቆጣጠሪያዎች
+src/routes/woreda.credentials.$requestId.index.tsx:2472	የህትመት ቀን
+src/routes/woreda.credentials.$requestId.print.tsx:1144	የህትመት ፍቃድ
+src/routes/woreda.households.index.tsx:678	የለውጥ ምዝግብ
+src/routes/woreda.rental-reports.tsx:364	የልዩነት ጠቅላላ
+src/routes/woreda.civil.$eventId.tsx:153	የልደት ማጠቃለያ
+src/config/permissionLabels.ts:31	የልደት/ሞት/ጋብቻ ምዝገባ መመዝገብ
+src/routes/woreda.civil.$eventId.tsx:87	የልጅ መረጃ ሙሉ ነው
+src/routes/woreda.civil.birth.new.tsx:38	የልጅ ስም
+src/routes/login.tsx:173	የሐረሪ ሕዝብ ክልላዊ መንግሥት
+src/components/print/PrintDocumentShell.tsx:17	የሐረሪ ብሔራዊ ክልላዊ መንግስት
+src/routes/v.$token.tsx:312	የሐረሪ ክልላዊ መንግሥት
+src/routes/woreda.credentials.$requestId.print.tsx:1433	የሐረሪ ክልል
+src/components/admin/PlatformUsersTab.tsx:63	የሐረሪ ክልል አስተዳደር
+src/components/print/PrintDocumentShell.tsx:490	የሐረሪ ወረዳዎች አስተዳደር ሥርዓት
+src/hooks/useReportsAggregate.ts:565	የሕዝብ ሪፖርት
+src/routes/woreda.dashboard.tsx:787	የሕዝብ ብዛት በቀበሌ
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:586	የመልቀቂያ ቀን
+src/routes/woreda.services.$requestId.index.tsx:518	የመመለስ ምክንያት
+src/components/credentials/KpiWidgetRow.tsx:69	የመመለሻ መጠን
+src/routes/woreda.rental-accounts.$occupancyId.tsx:817	የመመለሻ ምክንያት
+src/components/layout/AppShell.tsx:84	የመመዝገቢያ ሰራተኛ
+src/routes/woreda.credentials.$requestId.index.tsx:2748	የመሻሪያ ምክንያት
+src/routes/woreda.credentials.$requestId.index.tsx:1409	የመቀበል ምክንያት
+src/routes/woreda.rental-houses.$houseId.index.tsx:758	የመተው ቀን (ኢት
+src/routes/v.$token.tsx:73	የመታወቂያ ማረጋገጫ
+src/routes/woreda.credentials.$requestId.certificate.tsx:109	የመታወቂያ ማረጋገጫ ደብዳቤ
+src/hooks/useReportsAggregate.ts:609	የመታወቂያ ሪፖርት
+src/routes/admin.credential-template.tsx:618	የመታወቂያ ቅጽ ማስተዳደሪያ
+src/config/navGroups.ts:22	የመታወቂያ አስተዳደር
+src/routes/admin.console-roles.tsx:57	የመታወቂያ አብነት ማስተዳደር
+src/config/permissionLabels.ts:29	የመታወቂያ ካርድ ማውጣት
+src/utils/paymentType.ts:5	የመታወቂያ ክፍያ
+src/lib/serviceConstants.ts:79	የመታወቂያ ኮፒ
+src/routes/woreda.credentials.$requestId.index.tsx:836	የመታወቂያ ዓይነት
+src/config/permissionLabels.ts:30	የመታወቂያ ጥያቄ ማጽደቅ
+src/routes/woreda.audit.tsx:604	የመነሻ አድራሻ
+src/routes/woreda.revenue.$paymentId.receipt.tsx:280	የመንግስት ቤት ወርሃዊ ኪራይ
+src/components/residents/ResidentProfileTabs.tsx:338	የመኖሪያ ሁኔታ
+src/routes/woreda.audit.tsx:70	የመኖሪያ መታወቂያ
+src/lib/residentSchema.ts:184	የመኖሪያ እና የትውልድ ሥፍራ
+src/lib/residentSchema.ts:186	የመኖሪያ ጊዜ እና የቀድሞ አድራሻ
+src/routes/woreda.audit.tsx:593	የመዝገብ መለያ
+src/components/settings/RolesPermissionsTab.tsx:16	የመዝገብ ሰራተኛ
+src/components/residents/ResidentProfileTabs.tsx:548	የመዝገብ አይነት
+src/routes/woreda.audit.tsx:580	የመዝገብ ዝርዝር
+src/routes/admin.console-roles.tsx:53	የመድረክ ተጠቃሚዎችን ማስተዳደር
+src/routes/admin.dashboard.tsx:106	የመድረክ አጠቃላይ እይታ
+src/routes/admin.audit.tsx:318	የመድረክ ኦዲት መዝገብ
+src/routes/woreda.credentials.$requestId.index.tsx:802	የመጀመሪያ ማመልከቻ
+src/routes/woreda.rental-houses.occupants.new.tsx:541	የመጀመሪያ ቀን
+src/routes/woreda.rental-accounts.$occupancyId.tsx:894	የመጀመሪያ ክፍያ ቀን
+src/routes/woreda.rental-accounts.$occupancyId.tsx:368	የመጀመሪያ ክፍያ ቀን ያስፈልጋል
+src/lib/residentConstants.ts:23	የመጀመሪያ ደረጃ
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:816	የመጀመሪያውን ኪራይ ከገቢ ገጽ ይሰብስቡ። ደረሰኝ በክፍያ ጊዜ ይፈጠራል።
+src/routes/woreda.residents.$residentId.index.tsx:671	የመገኛ አካባቢ አልተመዘገበም
+src/components/common/OfflineStatusBar.tsx:98	የመጨረሻ ማመሳሰል
+src/routes/woreda.rental-accounts.$occupancyId.tsx:633	የመጨረሻ ቀን
+src/routes/woreda.services.$requestId.index.tsx:606	የመፍትሔ ማስታወሻ
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:303	የሚለቀቅ ንቁ ኪራይ የለም
+src/routes/woreda.rental-houses.occupants.new.tsx:899	የሚለውን ይጫኑ
+src/routes/woreda.credentials.$requestId.index.tsx:865	የሚስተካከሉ መስኮች
+src/components/settings/RolesPermissionsTab.tsx:307	የሚና ለውጦች ወዲያውኑ በተጠቃሚዎች ላይ ተፈፃሚ ይሆናሉ
+src/components/settings/UsersRolesTab.tsx:508	የሚና ምድብ ስጥ
+src/routes/woreda.audit.tsx:78	የሚና ፈቃድ
+src/routes/woreda.dashboard.tsx:104	የሚና ፈቃድ ተሰጥቷል
+src/routes/woreda.dashboard.tsx:103	የሚና ፈቃድ ተሻሽሏል
+src/routes/woreda.dashboard.tsx:105	የሚና ፈቃድ ተከልክሏል
+src/routes/woreda.services.$requestId.index.tsx:924	የሚከፈል
+src/routes/woreda.credentials.$requestId.index.tsx:1803	የሚከፈል ክፍያ
+src/routes/woreda.services.new.tsx:400	የሚያስፈልጉ ሰነዶች
+src/routes/woreda.rental-reports.tsx:273	የማረጋገጫ እንቅስቃሴ
+src/routes/woreda.services.$requestId.print.tsx:144	የማረጋገጫ ኮድ
+src/routes/woreda.credentials.$requestId.index.tsx:935	የማረጋገጫ ዝርዝር
+src/components/residents/ResidentProfileTabs.tsx:607	የማስረጃ ጥያቄዎች
+src/routes/woreda.credentials.$requestId.index.tsx:869	የማስተካከያ ምክንያት
+src/routes/woreda.credentials.$requestId.index.tsx:2560	የማውጣት ማረጋገጫ ፈቃድ የለዎትም
+src/routes/woreda.credentials.$requestId.index.tsx:2904	የማገጃ ምክንያት
+src/routes/woreda.reports.index.tsx:250	የማጣሪያ ስም
+src/routes/woreda.credentials.$requestId.index.tsx:1882	የማጣቀሻ ቁጥር
+src/config/permissionLabels.ts:34	የማጽደቅ ወረፋ ማየት
+src/routes/woreda.credentials.$requestId.index.tsx:1365	የማጽደቅ ደረጃ የመመለሻ ምክንያት
+src/routes/woreda.credentials.new.tsx:889	የምስክርነት ዓይነት
+src/routes/woreda.rental-houses.occupants.new.tsx:992	የምዝገባ ሁኔታ
+src/routes/woreda.dashboard.tsx:703	የምዝገባ እንቅስቃሴ
+src/routes/woreda.civil.$eventId.tsx:154	የሞት ማጠቃለያ
+src/routes/woreda.civil.$eventId.tsx:1007	የሞት ክስተት ተመዝግቧል። የነዋሪ ሁኔታ ተሻሽሏል።
+src/routes/admin.tenants.$woredaId.provision.tsx:160	የሞጁል ቅንብር አልተረጋገጠም
+src/routes/admin.tenants.$woredaId.provision.tsx:55	የሞጁል ውቅር
+src/components/settings/LetterTemplatesTab.tsx:111	የሥራ አጥነት ማረጋገጫ
+src/components/settings/UsersRolesTab.tsx:363	የሥራ ክፍል
+src/components/settings/UsersRolesTab.tsx:364	የሥራ ድርሻ
+src/routes/woreda.reports.index.tsx:276	የሪፖርት መረጃ መጫን አልተቻለም
+src/routes/woreda.services.$requestId.index.tsx:651	የሰነድ ዓይነት
+src/routes/login.tsx:330	የሲስተም አስተዳዳሪዎን
+src/routes/woreda.audit.tsx:158	የሲቪል መዝገብ ክፈት
+src/routes/woreda.audit.tsx:72	የሲቪል ምዝገባ ክስተት
+src/routes/woreda.audit.tsx:155	የሲቪል ምዝገባ ክፈት
+src/lib/credentialWorkflowSchemas.ts:15	የስም አለመመሳሰል
+src/routes/woreda.rental-houses.occupants.new.tsx:891	የስራ ሁኔታ
+src/routes/woreda.services.$requestId.index.tsx:715	የስራ ሂደት
+src/routes/woreda.rental-houses.$houseId.index.tsx:413	የስራ ፍሰት ጥያቄዎች
+src/components/settings/CustomRolesTab.tsx:353	የስርዓት ገደብ
+src/routes/woreda.complaints.tsx:21	የቀረቡ ቅሬታዎችና የመፍትሔ ሂደታቸው
+src/routes/woreda.households.$householdId.print.tsx:287	የቀበሌ ሠራተኛ
+src/routes/woreda.services.$requestId.print.tsx:194	የቀበሌ ሥራ አስኪያጅ
+src/routes/woreda.rental-houses.occupants.new.tsx:985	የቀበሌ ሰነዶች በሙሉ ኦርጅናል መሆናቸውን እና የተከራይ ማንነት መረጋገጡን አረጋግጣለሁ።
+src/routes/woreda.audit.tsx:76	የቀበሌ ቤት
+src/routes/woreda.rental-houses.occupants.new.tsx:470	የቀበሌ ቤት ተከራዮች ምዝገባ ቅጽ
+src/routes/woreda.audit.tsx:177	የቀበሌ ቤት ክፈት
+src/routes/woreda.audit.tsx:182	የቀበሌ ቤቶችን ክፈት
+src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:413	የቀበሌ አስተዳዳሪ
+src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:204	የቀበሌ ኪራይ ቤት ተከራይ መገለጫ
+src/routes/woreda.rental-houses.occupants.new.tsx:456	የቀበሌ ኪራይ ቤቶች
+src/routes/woreda.rental-houses.index.tsx:311	የቀበሌ ኪራይ ቤቶች እና የተያዥ ሁኔታቸው መዝገብ
+src/routes/woreda.credentials.$requestId.index.tsx:842	የቀድሞ መታወቂያ
+src/components/forms/ResidentWizardSteps.tsx:738	የቀድሞ መኖሪያ አለ
+src/routes/woreda.rental-houses.occupants.new.tsx:111	የቀድሞ ክሊራንስ
+src/components/verification/HararildScanner.tsx:566	የቀጥታ ሁኔታ ይፈትሹ
+src/routes/woreda.services.new.tsx:533	የቅሬታ ዝርዝር
+src/routes/woreda.dashboard.tsx:891	የቅርብ ጊዜ እንቅስቃሴዎች
+src/components/credentials/CredentialQueueTable.tsx:308	የቆየበት ጊዜ
+src/components/residents/ResidentProfileTabs.tsx:314	የቤተሰብ መረጃ
+src/routes/woreda.dashboard.tsx:56	የቤተሰብ መረጃ ተሻሽሏል
+src/routes/woreda.households.$householdId.print.tsx:156	የቤተሰብ መገለጫ
+src/routes/woreda.households.$householdId.index.tsx:463	የቤተሰብ ኃላፊ አድርግ
+src/routes/woreda.dashboard.tsx:59	የቤተሰብ አስተዳዳሪ ተቀይሯል
+src/routes/woreda.rental-houses.occupants.new.tsx:631	የቤተሰብ አባል
+src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:206	የቤት ቁ.
+src/routes/woreda.revenue.index.tsx:338	የቤት ኪራይ (የቀድሞ
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:44	የቤት ኪራይ መጠን ተረጋግጧል
+src/routes/woreda.rental-houses.new.tsx:26	የቤት ኪራይ መጠን ያስፈልጋል
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:814	የቤት ኪራይ ክፍያ
+src/routes/woreda.revenue.index.tsx:306	የቤት ኪራይ ክፍያ አሁን የሚሰበሰበው ከየኪራይ ሂሳብ ገጽ ነው
+src/routes/woreda.rental-houses.occupants.new.tsx:101	የቤት ኪራይ ውል ሰነድ
+src/routes/woreda.credentials.$requestId.index.tsx:942	የተመለሰበት ምክንያት
+src/routes/woreda.audit.tsx:608	የተመለከተውን መዝገብ ክፈት
+src/routes/woreda.rental-accounts.$occupancyId.tsx:949	የተመረጡ ክፍያዎች
+src/routes/woreda.rental-accounts.$occupancyId.tsx:1054	የተመረጡ ወራት
+src/components/civil/CivilKpiWidgetRow.tsx:19	የተመዘገበ ልደት (ወር
+src/components/civil/CivilKpiWidgetRow.tsx:26	የተመዘገበ ሞት (ወር
+src/routes/woreda.civil.death.new.tsx:50	የተመዘገበ ነዋሪ ይምረጡ ወይም የሟቹን ስም ያስገቡ
+src/components/civil/CivilKpiWidgetRow.tsx:33	የተመዘገበ ጋብቻ (ወር
+src/routes/woreda.residents.$residentId.index.tsx:663	የተመዘገበበት አካባቢ
+src/lib/offlineSync.ts:295	የተመዘገበው ክፍያ አለ፣ አስተዳዳሪ ያነጋግሩ
+src/routes/woreda.civil.$eventId.tsx:886	የተሞተ
+src/routes/woreda.credentials.$requestId.index.tsx:2514	የተረካቢ ስም
+src/components/verification/HararildScanner.tsx:484	የተረጋገጠ ትክክለኛ መታወቂያ
+src/routes/verify.receipt.$token.tsx:102	የተረጋገጠ ደረሰኝ
+src/routes/verify.letter.$token.tsx:88	የተረጋገጠ ደብዳቤ
+src/routes/woreda.reports.$reportType.print.tsx:194	የተሰበሰበ ገቢ (ብር
+src/routes/woreda.settings.woreda-configuration.tsx:338	የተሰጠበት ቦታ
+src/routes/woreda.rental-reports.tsx:340	የተስማማ ክፍያ
+src/routes/woreda.reports.index.tsx:194	የተቀመጡ ማጣሪያዎች
+src/routes/woreda.rental-accounts.$occupancyId.tsx:953	የተቀበለው መጠን
+src/components/verification/HararildScanner.tsx:47	የተበላሸ ቶከን
+src/routes/woreda.rental-houses.occupants.new.tsx:579	የተከራይ መታወቂያ መረጃ
+src/routes/woreda.rental-houses.$houseId.index.tsx:250	የተከራይ መገለጫ አትም
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:42	የተከራይ ማንነት ተረጋግጧል
+src/routes/woreda.rental-houses.occupants.new.tsx:461	የተከራይ ምዝገባ ቅጽ
+src/routes/woreda.rental-houses.occupants.new.tsx:516	የተከራይ ምዝገባ ጥያቄ ይፈጠራል። መረጃውን ያረጋግጡ።
+src/routes/woreda.rental-reports.tsx:333	የተከፈለ ጠቅላላ
+src/routes/woreda.credentials.$requestId.print.tsx:1176	የተደጋጋሚ ህትመት ምክንያት
+src/components/residents/ResidentProfileTabs.tsx:702	የተግባር አይነት
+src/routes/woreda.dashboard.tsx:107	የተጠቃሚ ሚና ተቀይሯል
+src/components/admin/PlatformUsersTab.tsx:228	የተጠቃሚ አስተዳደር
+src/routes/woreda.dashboard.tsx:101	የተጠቃሚ ፈቃድ ማስተካከያ ተነስቷል
+src/routes/woreda.dashboard.tsx:102	የተጠቃሚ ፈቃድ ማስተካከያዎች ተነስተዋል
+src/routes/woreda.dashboard.tsx:100	የተጠቃሚ ፈቃድ ተስተካክሏል
+src/components/settings/UsersRolesTab.tsx:329	የተጠቃሚዎች ዝርዝር
+src/components/admin/PlatformUsersTab.tsx:371	የተጠበቁ ግብዣዎች
+src/routes/woreda.reports.$reportType.print.tsx:184	የተጠናቀቁ
+src/routes/woreda.rental-houses.occupants.new.tsx:222	የተፈቀደው
+src/components/workflow/HistoryTimeline.tsx:93	የታሪክ መዝገብ የለም
+src/routes/woreda.rental-reports.tsx:226	የታቀደ
+src/components/print/PrintDocumentShell.tsx:480	የታተመው ቀን
+src/components/admin/PlatformUsersTab.tsx:372	የታገዱ
+src/components/forms/ResidentWizardSteps.tsx:612	የትውልድ ሥፍራ ከአሁኑ መኖሪያ ጋር ተመሳሳይ ነው
+src/routes/woreda.civil.$eventId.tsx:89	የትውልድ ቀን ተመጣጣኝ ነው
+src/components/settings/UsersRolesTab.tsx:322	የነቁ ሚናዎች
+src/routes/admin.tenants.index.tsx:250	የነቁ ሞጁሎች
+src/routes/woreda.credentials.$requestId.index.tsx:122	የነዋሪ መረጃ ሙሉ ነው
+src/routes/woreda.dashboard.tsx:50	የነዋሪ መረጃ ተሻሽሏል
+src/config/permissions.ts:510	የነዋሪ መታወቂያ
+src/config/permissionLabels.ts:28	የነዋሪ መዝገብ ማጥፋት
+src/routes/woreda.residents.$residentId.print.tsx:191	የነዋሪ መገለጫ
+src/routes/woreda.civil.$eventId.tsx:996	የነዋሪ መገለጫ ተመልከት
+src/routes/woreda.credentials.new.tsx:748	የነዋሪ መገለጫ ያርትዑ
+src/routes/woreda.credentials.new.tsx:723	የነዋሪ መገለጫ ይክፈቱ
+src/routes/woreda.services.new.tsx:347	የነዋሪ ቅሬታ በመዝገብ ውስጥ ያስገቡ
+src/routes/woreda.rental-houses.occupants.new.tsx:641	የነዋሪነት መለያ ቁጥር
+src/routes/woreda.residents.$residentId.index.tsx:725	የነዋሪው መረጃ አሻሽል
+src/routes/woreda.residents.$residentId.index.tsx:737	የነዋሪው ማህደር አትም
+src/routes/woreda.credentials.$requestId.print.tsx:1556	የነዋሪው አድራሻ
+src/routes/woreda.credentials.$requestId.index.tsx:2525	የነዋሪውን ወይም የወኪሉን ስም ያስገቡ
+src/routes/woreda.services.index.tsx:22	የነዋሪዎች የደብዳቤና የማረጃ ጥያቄዎች መዝገብ
+src/routes/woreda.credentials.$requestId.index.tsx:1838	የነፃ ምክንያት
+src/components/settings/LetterTemplatesTab.tsx:117	የናሙና ዝርዝር መረጃ
+src/routes/woreda.rental-houses.occupants.new.tsx:626	የአሁኑ የቤት ዓይነት፦
+src/components/gis/LocationPickerMap.tsx:68	የአሁኑን አካባቢ ተጠቀም
+src/routes/admin.tenants.$woredaId.provision.tsx:56	የአስተዳዳሪ መለያ
+src/routes/woreda.services.new.tsx:494	የአስቸኳይ ጊዜ ማለፊያ ተጠቀም
+src/lib/credentialWorkflowSchemas.ts:16	የአድራሻ አለመመሳሰል
+src/routes/woreda.dashboard.tsx:95	የአገልግሎት አይነት ተመዝግቧል
+src/routes/woreda.dashboard.tsx:97	የአገልግሎት አይነት ተሰርዟል
+src/routes/woreda.dashboard.tsx:96	የአገልግሎት አይነት ተሻሽሏል
+src/routes/woreda.services.$requestId.print.tsx:127	የአገልግሎት ደብዳቤ
+src/components/verification/HararildScanner.tsx:291	የአገልግሎት ጊዜው በቅርቡ ያበቃል
+src/routes/v.$token.tsx:257	የአገልግሎት ጊዜው አብቅቷል
+src/components/verification/HararildScanner.tsx:287	የአገልግሎት ጊዜው ያበቃ
+src/hooks/useReportsAggregate.ts:662	የአገልግሎት ጥያቄ ሪፖርት
+src/routes/woreda.dashboard.tsx:70	የአገልግሎት ጥያቄ ገብቷል
+src/routes/admin.console-roles.tsx:54	የኦዲት መዝገብ መመልከት
+src/routes/woreda.rental-accounts.$occupancyId.tsx:988	የከፈለው ነዋሪ
+src/components/settings/RolesPermissionsTab.tsx:17	የኩነት መዝጋቢ
+src/hooks/useReportsAggregate.ts:621	የኩነት ምዝገባ ሪፖርት
+src/components/residents/ResidentProfileTabs.tsx:439	የኩነት አይነት
+src/routes/woreda.services.new.tsx:455	የኪራይ ሁኔታ በመፈተሽ ላይ
+src/routes/woreda.rental-houses.$houseId.index.tsx:356	የኪራይ ሂሳብ
+src/routes/woreda.settings.woreda-configuration.tsx:874	የኪራይ ማረጋገጫ
+src/routes/woreda.dashboard.tsx:81	የኪራይ ቤት መረጃ ተሻሽሏል
+src/routes/woreda.dashboard.tsx:80	የኪራይ ቤት ተመዝግቧል
+src/config/permissionLabels.ts:33	የኪራይ ቤት ጥያቄ ማጽደቅ
+src/hooks/useReportsAggregate.ts:646	የኪራይ ቤቶች ሪፖርት
+src/routes/woreda.rental-houses.$houseId.index.tsx:366	የኪራይ ታሪክ
+src/routes/woreda.rental-houses.$houseId.index.tsx:385	የኪራይ ታሪክ የለም።
+src/routes/woreda.dashboard.tsx:88	የኪራይ ክፍያ ተሰብስቧል
+src/routes/woreda.settings.woreda-configuration.tsx:1174	የኪራይ ዕዳ ማረጋገጫ ተግብር
+src/routes/woreda.audit.tsx:75	የኪራይ ጥያቄ
+src/routes/woreda.dashboard.tsx:85	የኪራይ ጥያቄ ተመልሷል
+src/routes/woreda.dashboard.tsx:86	የኪራይ ጥያቄ ተረጋግጧል
+src/routes/woreda.dashboard.tsx:84	የኪራይ ጥያቄ ተቀባይነት አላገኘም
+src/routes/woreda.audit.tsx:164	የኪራይ ጥያቄ ክፈት
+src/routes/woreda.dashboard.tsx:82	የኪራይ ጥያቄ ገብቷል
+src/routes/woreda.dashboard.tsx:83	የኪራይ ጥያቄ ጸድቋል
+src/config/permissions.ts:540	የኪራይ ፋይናንስ ሪፖርቶች
+src/utils/ethiopianCalendar.ts:13	የካቲት
+src/routes/woreda.services.$requestId.index.tsx:930	የክፍያ መንገድ
+src/routes/woreda.credentials.$requestId.index.tsx:2031	የክፍያ መዝገብ አልተገኘም
+src/routes/woreda.civil.$eventId.tsx:1338	የክፍያ መጠን
+src/routes/woreda.rental-accounts.$occupancyId.tsx:315	የክፍያ መጠን አይመሳሰልም
+src/routes/woreda.rental-reports.tsx:190	የክፍያ ብዛት
+src/routes/woreda.dashboard.tsx:93	የክፍያ ተመን ተመዝግቧል
+src/routes/woreda.dashboard.tsx:94	የክፍያ ተመን ተሻሽሏል
+src/routes/woreda.settings.woreda-configuration.tsx:1450	የክፍያ አርትዕ
+src/routes/woreda.revenue.index.tsx:328	የክፍያ ዓይነት
+src/routes/woreda.rental-accounts.$occupancyId.tsx:713	የክፍያ ዕቅድ
+src/routes/woreda.rental-accounts.$occupancyId.tsx:388	የክፍያ ዕቅድ ቀርቧል
+src/routes/woreda.rental-accounts.$occupancyId.tsx:436	የክፍያ ዕቅድ ተመልሷል
+src/routes/woreda.rental-accounts.$occupancyId.tsx:474	የክፍያ ዕቅድ ተሰርዟል
+src/routes/woreda.rental-reports.tsx:218	የክፍያ ዕቅድ ተገዢነት
+src/routes/woreda.rental-accounts.$occupancyId.tsx:495	የክፍያ ዕቅድ እንደወደቀ ተመዝግቧል
+src/routes/woreda.rental-accounts.$occupancyId.tsx:456	የክፍያ ዕቅድ እንደገና ቀርቧል
+src/routes/woreda.rental-accounts.$occupancyId.tsx:412	የክፍያ ዕቅድ ጸድቋል
+src/routes/woreda.rental-accounts.$occupancyId.tsx:878	የክፍያ ዕቅድ ፍጠር
+src/routes/woreda.revenue.$paymentId.receipt.tsx:774	የክፍያ ዝርዝር
+src/routes/woreda.rental-houses.occupants.new.tsx:842	የክፍያ ድግግሞሽ
+src/routes/woreda.rental-accounts.$occupancyId.tsx:885	የክፍያዎች ብዛት
+src/routes/admin.console-roles.tsx:201	የኮንሶል ተጠቃሚዎችና ሚናዎች
+src/routes/admin.console-roles.tsx:62	የኮንሶል ተጠቃሚዎችና ሚናዎችን ማስተዳደር
+src/routes/woreda.civil.$eventId.tsx:88	የወላጆች መረጃ ተረጋግጧል
+src/routes/woreda.credentials.$requestId.print.tsx:979	የወረቀት መጠን
+src/routes/woreda.services.$requestId.print.tsx:195	የወረዳ መዝጋቢ
+src/routes/woreda.audit.tsx:202	የወረዳ ቅንብር ክፈት
+src/routes/woreda.audit.tsx:79	የወረዳ ቅንብሮች
+src/components/layout/AppShell.tsx:472	የወረዳ አስተዳደር
+src/routes/login.tsx:176	የወረዳ አስተዳደር ዲጂታል ፖርታል
+src/routes/login.tsx:241	የወረዳ አስተዳደር ፖርታል
+src/components/layout/AppShell.tsx:82	የወረዳ አስተዳዳሪ
+src/routes/admin.tenants.$woredaId.provision.tsx:202	የወረዳ አስተዳዳሪ ማቅረብ
+src/components/admin/PlatformUsersTab.tsx:370	የወረዳ አስተዳዳሪዎች
+src/routes/woreda.revenue.$paymentId.receipt.tsx:546	የወረዳው ማህተም
+src/routes/woreda.rental-accounts.$occupancyId.tsx:625	የወርሃዊ ኪራይ ክፍያዎች
+src/routes/woreda.rental-houses.$houseId.index.tsx:375	የወጣበት ቀን
+src/routes/woreda.rental-houses.occupants.new.tsx:836	የውል ማብቂያ
+src/routes/woreda.rental-houses.occupants.new.tsx:776	የውል ዝርዝር መረጃ
+src/routes/woreda.services.$requestId.index.tsx:523	የውድቅ ምክንያት
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:758	የውድቅ ምክንያት (ውድቅ ሲደረግ ብቻ
+src/routes/woreda.rental-reports.tsx:182	የዕዳ እድሜ
+src/routes/woreda.credentials.$requestId.index.tsx:1081	የዚህ ነዋሪ ቀደም ያሉ መታወቂያዎች
+src/routes/login.tsx:42	የዜጎችና ቤተሰብ ምዝገባ
+src/components/admin/PlatformUsersTab.tsx:505	የይለፍ ቃል መልሶ ማስጀመሪያ አገናኝ ላክ
+src/components/common/ChangePasswordDialog.tsx:84	የይለፍ ቃል ቀይር
+src/components/common/ChangePasswordDialog.tsx:105	የይለፍ ቃል አረጋግጥ
+src/routes/login.tsx:48	የይዞታና የኪራይ ቤቶች ቁጥጥር
+src/routes/verify.receipt.$token.tsx:78	የደረሰኝ ማረጋገጫ
+src/routes/woreda.revenue.$paymentId.receipt.tsx:258	የደረሰኝ ፒዲኤፍ መፍጠር አልተቻለም
+src/routes/verify.letter.$token.tsx:64	የደብዳቤ ማረጋገጫ
+src/components/settings/LetterTemplatesTab.tsx:132	የደብዳቤ ዓይነት አልተገኘም
+src/components/settings/LetterTemplatesTab.tsx:125	የደብዳቤ ዓይነቶች
+src/routes/woreda.services.new.tsx:347	የደብዳቤ/ማረጃ ጥያቄን በመዝገብ ውስጥ ያስገቡ
+src/lib/serviceConstants.ts:80	የድጋፍ ደብዳቤ
+src/routes/woreda.credentials.$requestId.index.tsx:1069	የድግግሞሽ ውጤት
+src/routes/woreda.credentials.$requestId.index.tsx:147	የድግግሞሽ ውጤት ተገምግሟል
+src/routes/woreda.audit.tsx:189	የገቢ መዝገብ ክፈት
+src/hooks/useReportsAggregate.ts:628	የገቢ ሪፖርት
+src/routes/woreda.revenue.$paymentId.receipt.tsx:642	የገቢ ክፍል
+src/routes/woreda.revenue.$paymentId.receipt.tsx:712	የገቢ ደረሰኝ
+src/routes/login.tsx:54	የገቢ ፋይናንስ አስተዳደር
+src/components/settings/RolesPermissionsTab.tsx:18	የገንዘብ ሰራተኛ
+src/routes/woreda.civil.$eventId.tsx:155	የጋብቻ ማጠቃለያ
+src/routes/woreda.civil.divorce.new.tsx:57	የጋብቻ ቀን ከፍቺ ቀን በፊት መሆን አለበት
+src/routes/woreda.civil.$eventId.tsx:1029	የጋብቻ ክስተት ተመዝግቧል።
+src/components/settings/UsersRolesTab.tsx:479	የግል ፈቃድ
+src/components/settings/UsersRolesTab.tsx:1204	የግል ፈቃድ ማስተካከያ
+src/routes/woreda.services.$requestId.index.tsx:532	የጥያቄ መረጃ
+src/routes/woreda.credentials.$requestId.index.tsx:832	የጥያቄ ዓይነት
+src/routes/woreda.credentials.$requestId.index.tsx:137	የጥያቄ ዓይነት ትክክል ነው
+src/routes/woreda.services.new.tsx:533	የጥያቄ ዝርዝር
+src/routes/woreda.dashboard.tsx:824	የፆታ ስርጭት
+src/components/layout/AppShell.tsx:85	የፋይናንስ ሰራተኛ
+src/components/layout/AppShell.tsx:83	የፍትሐ ብሔር መዝጋቢ
+src/routes/woreda.civil.$eventId.tsx:156	የፍቺ ማጠቃለያ
+src/routes/woreda.civil.$eventId.tsx:1029	የፍቺ ክስተት ተመዝግቧል።
+src/lib/credentialWorkflowSchemas.ts:17	የፎቶ ጥራት ችግር
+src/routes/woreda.credentials.$requestId.index.tsx:858	የፖሊስ ሪፖርት ቁጥር
+src/routes/woreda.credentials.new.tsx:112	የፖሊስ ሪፖርት ቁጥር ያስፈልጋል
+src/routes/woreda.rental-reports.tsx:228	ያለፈ ጊዜ
+src/routes/woreda.rental-reports.tsx:202	ያለፈ ጊዜ ክፍያ የለም
+src/lib/decryptedFieldGuard.ts:37	ያለፈውን መረጃ እያሳየን ነው። ችግሩ ከቀጠለ አስተዳዳሪዎን ያነጋግሩ።
+src/routes/verify.receipt.$token.tsx:102	ያልተረጋገጠ ደረሰኝ
+src/routes/verify.letter.$token.tsx:88	ያልተረጋገጠ ደብዳቤ
+src/routes/woreda.settings.woreda-configuration.tsx:528	ያልተቀመጡ ለውጦች አሉ
+src/routes/woreda.services.new.tsx:218	ያልተከፈለ የኪራይ ዕዳ ስላለ ጥያቄው ታግዷል
+src/routes/woreda.services.new.tsx:519	ያልተከፈለ የኪራይ ዕዳ አለ
+src/routes/woreda.settings.woreda-configuration.tsx:1178	ያልተከፈለ የኪራይ ዕዳ ካለ በፖሊሲ መሰረት ያግዳል
+src/routes/woreda.rental-houses.occupants.new.tsx:222	ያልተደገፈ የፋይል አይነት
+src/components/verification/HararildScanner.tsx:46	ያልታወቀ ስህተት
+src/routes/woreda.credentials.$requestId.index.tsx:2691	ያሸረ
+src/routes/woreda.credentials.$requestId.index.tsx:2470	ያተመ
+src/routes/login.tsx:330	ያግኙ
+src/routes/woreda.reports.$reportType.print.tsx:321	ያፀደቀ
+src/components/verification/HararildScanner.tsx:506	ይህ መታወቂያ
+src/routes/v.$token.tsx:225	ይህ መታወቂያ ተሰርዟል
+src/routes/woreda.settings.woreda-configuration.tsx:462	ይህ ቅርጸት በስርዓቱ ተስተካክሏል፤ ለውጥ አያስፈልገውም
+src/routes/woreda.rental-houses.$houseId.occupant-print.tsx:310	ይህ ቤት በአሁኑ ጊዜ ተከራይ የለውም
+src/routes/woreda.credentials.new.tsx:729	ይህ ነዋሪ ሟች ተብሎ ተመዝግቧል
+src/routes/woreda.credentials.new.tsx:741	ይህ ነዋሪ ስልክ ቁጥር የለውም፤ መጀመሪያ ይመዝግቡ
+src/routes/woreda.credentials.$requestId.index.tsx:1088	ይህ ነዋሪ ቀደም ሲል ምስክርነት የለውም
+src/routes/woreda.credentials.new.tsx:769	ይህ ነዋሪ ቀድሞውኑ ንቁ የመታወቂያ ማስረጃ አለው
+src/routes/woreda.credentials.new.tsx:819	ይህ ነዋሪ ቀድሞውኑ ክፍት ጥያቄ አለው
+src/routes/woreda.rental-houses.occupants.new.tsx:600	ይህ ነዋሪ ብቁ አይደለም
+src/routes/woreda.credentials.new.tsx:708	ይህ ነዋሪ ንቁ አይደለም
+src/routes/woreda.credentials.new.tsx:735	ይህ ነዋሪ ከ18 ዓመት በታች ነው
+src/routes/woreda.credentials.new.tsx:714	ይህ ነዋሪ ወደ ቤተሰብ አልተመደበም፤ መጀመሪያ ወደ ቤተሰብ ይመድቡ
+src/components/residents/ResidentProfileTabs.tsx:293	ይህ ነዋሪ ገና ወደ ቤተሰብ አልተመደበም
+src/routes/woreda.credentials.new.tsx:754	ይህ ነዋሪ ፎቶ የለውም፤ መጀመሪያ ይመዝግቡ
+src/routes/woreda.services.new.tsx:463	ይህ አመልካች/ቤተሰብ
+src/routes/woreda.credentials.$requestId.index.tsx:2739	ይህ እርምጃ የማይቀለበስ ነው። ማስረጃው ወዲያውኑ ልክ ያልሆነ ይሆናል።
+src/routes/woreda.rental-accounts.$occupancyId.tsx:320	ይህ ክፍያ ቀደም ብሎ ተመዝግቧል
+src/routes/woreda.rental-accounts.$occupancyId.tsx:1124	ይህ ክፍያ የከፈላቸው ወራት ወደ ያልተከፈለ ይመለሳሉ
+src/routes/admin.tenants.$woredaId.provision.tsx:236	ይህ ወረዳ ቀድሞውኑ አስተዳዳሪ አለው
+src/lib/decryptedFieldGuard.ts:37	ይህ ዋጋ ማረጋገጥ አልተቻለም
+src/routes/woreda.credentials.$requestId.index.tsx:1404	ይህ የመጨረሻ ነው፣ ጥያቄው መልሶ ሊከፈት አይችልም
+src/routes/woreda.civil.$eventId.tsx:1084	ይህ የመጨረሻ እርምጃ ነው። ምክንያት ያስገቡ (ቢያንስ 5 ፊደላት)።
+src/routes/woreda.settings.woreda-configuration.tsx:973	ይህ የአገልግሎት ዓይነት እስከመጨረሻው ይሰረዛል።
+src/routes/woreda.revenue.$paymentId.receipt.tsx:953	ይህ ደረሰኝ ያለ ማህተም እና ፊርማ ተቀባይነት አይኖረውም።
+src/routes/woreda.services.$requestId.index.tsx:720	ይህ ጥያቄ ተዘግቷል
+src/routes/woreda.civil.marriage.new.tsx:99	ይህን ለመጠቀም ፈቃድ የለዎትም
+src/components/residents/ResidentActions.tsx:293	ይህን ነዋሪ ለማገድ ይፈልጋሉ
+src/components/residents/ResidentActions.tsx:349	ይህን ነዋሪ ወደ ኢ-ንቁ ሁኔታ መቀየር ይፈልጋሉ
+src/routes/woreda.civil.$eventId.tsx:910	ይህን ክስተት የማጽደቅ ፈቃድ የለዎትም።
+src/routes/woreda.services.$requestId.print.tsx:140	ይህን ደብዳቤ ያረጋግጡ
+src/routes/woreda.credentials.$requestId.index.tsx:76	ይህን ገጽ ለማየት ፈቃድ የለዎትም
+src/routes/woreda.households.$householdId.index.tsx:504	ይህን ግለሰብ የቤተሰብ ኃላፊ ማድረግ ይፈልጋሉ
+src/routes/woreda.credentials.$requestId.index.tsx:1008	ይህን ጥያቄ የማረጋገጥ ፈቃድ የለዎትም
+src/routes/woreda.credentials.$requestId.index.tsx:1176	ይህን ጥያቄ የማጽደቅ ፈቃድ የለዎትም
+src/components/residents/ResidentProfileTabs.tsx:951	ይመልከቱ
+src/routes/woreda.rental-houses.occupants.new.tsx:500	ይመዝገቡ
+src/routes/woreda.credentials.$requestId.print.tsx:1061	ይምረጡ፤ በተመሳሳይ መታወቂያ እንደገና ማተም ይችላሉ።
+src/routes/woreda.settings.woreda-configuration.tsx:970	ይሰርዙ
+src/components/common/ChangePasswordDialog.tsx:132	ይቅር
+src/routes/woreda.settings.woreda-configuration.tsx:340	ይተውት፣ ያ መስክ ካርዱ ላይ ባዶ ይታተማል።
+src/routes/woreda.settings.woreda-configuration.tsx:339	ይታያል። አማርኛ/እንግሊዝኛ፦ የመዝገብ ስሙን ለመጠቀም ባዶ ይተውት። ሐረሪ/ኦሮምኛ የሚመለስበት የመዝገብ አቻ ስለሌላቸው ባዶ
+src/routes/woreda.households.$householdId.index.tsx:315	ይዞታ
+src/routes/woreda.revenue.$paymentId.receipt.tsx:324	ደረሰኙን መጫን አልተቻለም
+src/routes/woreda.revenue.$paymentId.receipt.tsx:317	ደረሰኝ በመጫን ላይ
+src/routes/woreda.revenue.index.tsx:293	ደረሰኝ ተከፍቷል
+src/routes/woreda.dashboard.tsx:91	ደረሰኝ ታትሟል
+src/routes/woreda.credentials.$requestId.index.tsx:2024	ደረሰኝ አትም
+src/routes/woreda.dashboard.tsx:92	ደረሰኝ ዳግም ታትሟል
+src/routes/woreda.audit.tsx:333	ደርድር
+src/routes/woreda.residents.$residentId.index.tsx:950	ደቂቃ በፊት
+src/components/services/ServiceRequestList.tsx:105	ደብዳቤ ስጥ
+src/routes/woreda.services.$requestId.index.tsx:500	ደብዳቤ አትም
+src/routes/woreda.civil.$eventId.tsx:92	ደጋፊ ሰነዶች በቂ ናቸው
+src/routes/woreda.credentials.$requestId.index.tsx:142	ደጋፊ ሰነዶች ተያይዘዋል እና ይነበባሉ
+src/config/permissions.ts:489	ዳሽቦርድ
+src/routes/woreda.credentials.$requestId.index.tsx:1025	ዳግም ለክለሳ አስገባ
+src/routes/woreda.credentials.$requestId.print.tsx:861	ዳግም ሞክር
+src/components/print/PrintDocumentShell.tsx:301	ድምር
+src/routes/woreda.rental-reports.tsx:182	ድረስ
+src/components/admin/PlatformUsersTab.tsx:435	ድርጊት
+src/routes/woreda.residents.index.tsx:478	ድርጊቶች
+src/lib/residentConstants.ts:26	ድግሪ
+src/routes/woreda.services.new.tsx:468	ጀምሮ
+src/routes/admin.credential-template.tsx:696	ጀርባ
+src/routes/woreda.revenue.$paymentId.receipt.tsx:906	ገቢ ሰብሳቢ
+src/routes/woreda.credentials.$requestId.index.tsx:2422	ገቢር
+src/routes/woreda.settings.woreda-configuration.tsx:894	ገና ምንም አልተመዘገበም
+src/routes/v.$token.tsx:237	ገና አልተሰጠም
+src/routes/woreda.rental-accounts.$occupancyId.tsx:651	ገና ክፍያ አልተፈጠረም
+src/routes/woreda.rental-reports.tsx:165	ገና ክፍያ የለም
+src/routes/woreda.rental-accounts.$occupancyId.tsx:834	ገና ክፍያዎች የሉም
+src/routes/woreda.rental-reports.tsx:247	ገና የክፍያ ዕቅድ የለም
+src/lib/residentConstants.ts:7	ጉራጌ
+src/routes/woreda.services.$requestId.print.tsx:99	ጉዳይ እንዲያገለግል የተሰጠ ነው።
+src/routes/woreda.services.$requestId.print.tsx:166	ጉዳይ፦
+src/components/common/StatusChip.tsx:60	ጊዜው አልፏል
+src/routes/admin.tenants.$woredaId.provision.tsx:57	ግምገማ
+src/routes/admin.tenants.$woredaId.provision.tsx:316	ግምገማ እና ማረጋገጫ
+src/components/admin/PlatformUsersTab.tsx:496	ግብዣ ድጋሚ ላክ
+src/components/settings/UsersRolesTab.tsx:290	ግብዣ ድጋሚ ተልኳል
+src/utils/ethiopianCalendar.ts:16	ግንቦት
+src/routes/woreda.revenue.index.tsx:364	ጠቅላላ (የተጣራ
+src/routes/woreda.reports.$reportType.print.tsx:180	ጠቅላላ ምዝገባዎች
+src/components/settings/UsersRolesTab.tsx:321	ጠቅላላ ተጠቃሚዎች
+src/routes/woreda.reports.$reportType.print.tsx:199	ጠቅላላ ክፍያዎች
+src/routes/admin.dashboard.tsx:113	ጠቅላላ ወረዳዎች
+src/routes/woreda.rental-accounts.$occupancyId.tsx:735	ጠቅላላ ዕዳ
+src/routes/woreda.rental-reports.tsx:294	ጠቅላላ የተፈተሸ
+src/routes/woreda.reports.$reportType.print.tsx:215	ጠቅላላ የኪራይ ቤቶች
+src/routes/woreda.revenue.$paymentId.receipt.tsx:849	ጠቅላላ ድምር
+src/routes/woreda.reports.$reportType.print.tsx:234	ጠቅላላ ጥያቄዎች
+src/routes/woreda.rental-houses.occupants.new.tsx:131	ጠንካራ ፎቶግራፍ
+src/lib/residentConstants.ts:37	ጡረተኛ
+src/routes/woreda.credentials.$requestId.print.tsx:1013	ጥራት
+src/utils/ethiopianCalendar.ts:9	ጥቅምት
+src/routes/woreda.rental-houses.$houseId.index.tsx:420	ጥያቄ ቁ.
+src/routes/woreda.rental-houses.requests.index.tsx:375	ጥያቄ ቁጥር / የቤት ቁጥር / የተከራይ ስም
+src/routes/woreda.dashboard.tsx:76	ጥያቄ ተመልሷል
+src/routes/woreda.dashboard.tsx:78	ጥያቄ ተረጋግጧል
+src/routes/woreda.dashboard.tsx:75	ጥያቄ ተቀባይነት አላገኘም
+src/components/residents/ResidentProfileTabs.tsx:612	ጥያቄ አልተገኘም
+src/routes/woreda.rental-houses.$houseId.index.tsx:675	ጥያቄ አስገባ
+src/routes/woreda.audit.tsx:140	ጥያቄ ክፈት
+src/routes/woreda.dashboard.tsx:77	ጥያቄ ዳግም ገብቷል
+src/routes/woreda.dashboard.tsx:73	ጥያቄ ገብቷል
+src/routes/woreda.dashboard.tsx:74	ጥያቄ ጸድቋል
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:215	ጥያቄው ሁኔታ ተቀይሯል
+src/routes/woreda.credentials.$requestId.index.tsx:2422	ጥያቄው ወደ
+src/routes/woreda.services.new.tsx:680	ጥያቄው ወደ ማጽደቅ ወረፋ ይላካል። መረጃው ትክክል መሆኑን ያረጋግጡ።
+src/routes/woreda.credentials.$requestId.index.tsx:1400	ጥያቄውን ውድቅ ያድርጉ
+src/routes/woreda.credentials.$requestId.index.tsx:1277	ጥያቄውን ይመልሱ
+src/routes/woreda.approvals.tsx:151	ጥያቄዎች በጥበቃ ላይ
+src/routes/woreda.rental-houses.$houseId.index.tsx:431	ጥያቄዎች የሉም።
+src/routes/woreda.audit.tsx:169	ጥያቄዎችን ክፈት
+src/components/residents/ResidentActions.tsx:560	ጨምር
+src/routes/woreda.settings.woreda-configuration.tsx:338	ጨምሮ
+src/routes/admin.tenants.$woredaId.provision.tsx:375	ጨርስ እና ወረዳ አስተዳዳሪ ፍጠር
+src/utils/ethiopianCalendar.ts:20	ጳጉሜ
+src/routes/woreda.rental-accounts.$occupancyId.tsx:1036	ጳጉሜ (13) አይፈቀድም
+src/routes/woreda.rental-houses.requests.$requestId.index.tsx:778	ፀሐፊው ከድጋሚ ማረጋገጥ በፊት ምን ማስተካከል እንዳለበት ያብራሩ
+src/routes/woreda.rental-houses.occupants.new.tsx:667	ፈልግ
+src/routes/admin.tenants.$woredaId.provision.tsx:303	ፈቃድ ይኖረዋል።
+src/routes/woreda.dashboard.tsx:130	ፈጣን ተግባራት
+src/components/workflow/WorkflowQueueTable.tsx:290	ፈጣን እርምጃ
+src/routes/woreda.dashboard.tsx:898	ፈጻሚ
+src/components/common/DocumentViewerDialog.tsx:37	ፋይሉ ሊታይ አልቻለም
+src/routes/woreda.settings.woreda-configuration.tsx:679	ፋይሉ በጣም ትልቅ ነው (ከፍተኛ
+src/routes/woreda.rental-houses.occupants.new.tsx:228	ፋይሉ ከ
+src/routes/woreda.credentials.new.tsx:1124	ፋይል ይምረጡ
+src/components/forms/ResidentWizardSteps.tsx:841	ፋይል ጫን
+src/routes/woreda.credentials.index.tsx:70	ፍለጋ
+src/routes/woreda.rental-houses.occupants.new.tsx:702	ፍለጋ አልተሳካም።
+src/components/admin/PlatformUsersTab.tsx:524	ፍቀድ
+src/components/settings/RolesPermissionsTab.tsx:204	ፍቃድ
+src/components/verification/HararildScanner.tsx:527	ፎቶ ለማየት
+src/routes/woreda.credentials.new.tsx:657	ፎቶ የለም
+src/routes/woreda.credentials.new.tsx:1064	ፎቶ ይምረጡ
+src/routes/woreda.credentials.$requestId.index.tsx:127	ፎቶ ግራፍ ጥራት ተስማሚ ነው
+src/components/forms/ResidentWizardSteps.tsx:510	ፎቶ ጫን
+src/lib/residentConstants.ts:16	ፕሮቴስታንት
+src/routes/woreda.households.$householdId.index.tsx:378	ፖ.ሳ.ቁ.

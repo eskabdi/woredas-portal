@@ -1,0 +1,32 @@
+import { JSDOM } from "/home/user/woredas-portal/node_modules/jsdom/lib/api.js";
+const dom = new JSDOM("<!doctype html><html><body></body></html>");
+(globalThis as any).window = dom.window;
+(globalThis as any).DOMParser = dom.window.DOMParser;
+const { sanitizeLetterHtml, renderLetterTemplate } = await import("/home/user/woredas-portal/src/lib/letterTemplate.ts");
+const payloads = [
+  '<img src=x onerror=alert(1)>',
+  '<svg><style><img src=x onerror=alert(1)></style></svg>',
+  '<noscript><p title="</noscript><img src=x onerror=alert(1)>"></noscript>',
+  '<math><mtext><table><mglyph><style><img src=x onerror=alert(1)>',
+  '<a href=" javascript:alert(1)">x</a>',
+  '<a href="java&#x09;script:alert(1)">x</a>',
+  '<a href="https://ok" onclick="alert(1)">x</a>',
+  '<p style="text-align:left;background:url(https://evil/x)">x</p>',
+  '<p style="text-align:left\\3b background:url(https://evil/x)">x</p>',
+  '<form action="https://evil"><input name=a></form>',
+  '<!--><img src=x onerror=alert(1)>-->',
+  '<table><td><img src=x onerror=alert(1)></td></table>',
+  '<template><img src=x onerror=alert(1)></template>',
+  '<base href="https://evil/">',
+  '<a href="https://x/{DETAILS}">t</a>',
+  '<p>{DETAILS}</p><!-- {DETAILS} -->',
+];
+for (const p of payloads) {
+  const s = sanitizeLetterHtml(p);
+  const r = renderLetterTemplate(s, { DETAILS: '"><img src=x onerror=alert(1)>--><script>alert(1)</script>' });
+  // re-parse the final output in a live-like context and look for dangerous things
+  const d = dom.window.document.createElement("div");
+  d.innerHTML = r;
+  const bad = [...d.querySelectorAll("*")].filter(e => /^(IMG|SCRIPT|SVG|MATH|IFRAME|FORM|INPUT|BASE|STYLE)$/i.test(e.tagName) || [...e.attributes].some(a => /^on/i.test(a.name) || (a.name==="href" && !/^(https?:|mailto:|tel:)/i.test(a.value)) || (a.name==="style" && /url\(/i.test(a.value))));
+  console.log(JSON.stringify({p, out: r, dangerous: bad.map(e=>e.outerHTML)}));
+}

@@ -1,0 +1,22 @@
+{
+ "endpoint": "https://api.supabase.com/v1/projects/tugzuexfyzbdnghbmrjl/api-keys?reveal=false",
+ "http_status": "200",
+ "result": [
+  {
+   "name": "anon",
+   "type": "legacy"
+  },
+  {
+   "name": "service_role",
+   "type": "legacy"
+  },
+  {
+   "name": "default",
+   "type": "publishable"
+  },
+  {
+   "name": "default_rotated",
+   "type": "secret"
+  }
+ ]
+}

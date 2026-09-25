@@ -1,0 +1,41 @@
+{
+ "endpoint": "SSL Labs API v3 analyze host=woredas-portal.vercel.app",
+ "status": "READY",
+ "testTime": 1790350755997,
+ "result": [
+  {
+   "ip": "216.198.79.3",
+   "grade": "A+",
+   "gradeTrustIgnored": "A+",
+   "hasWarnings": false,
+   "protocols": [
+    "TLS 1.2",
+    "TLS 1.3"
+   ],
+   "hsts": "present",
+   "hstsMaxAge": 63072000,
+   "forwardSecrecy": 4,
+   "vulnBeast": false,
+   "heartbleed": false,
+   "poodleTls": 1,
+   "certIssuer": "CN=WR1, O=Google Trust Services, C=US"
+  },
+  {
+   "ip": "64.29.17.3",
+   "grade": "A",
+   "gradeTrustIgnored": "A",
+   "hasWarnings": false,
+   "protocols": [
+    "TLS 1.2",
+    "TLS 1.3"
+   ],
+   "hsts": "absent",
+   "hstsMaxAge": null,
+   "forwardSecrecy": 4,
+   "vulnBeast": false,
+   "heartbleed": false,
+   "poodleTls": 1,
+   "certIssuer": "CN=WR1, O=Google Trust Services, C=US"
+  }
+ ]
+}

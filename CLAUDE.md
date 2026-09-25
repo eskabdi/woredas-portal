@@ -94,6 +94,7 @@ bun run test                # vitest run — unit tests, jsdom environment
 bun run check:role-perms-drift  # fails if permissions.ts and default_role_perms() disagree
 bun run check:fee-catalog          # fails if a woreda is missing an active fee_schedule row a fee resolver needs
 bun run check:service-type-catalog # fails if woredas' service_type codes drift out of sync with each other
+bun run check:definer-tenant-predicate # heuristic ratchet: fails on a new SECURITY DEFINER tenant-table lookup with no tenant anchor
 bun run generate:permissions-doc  # --write regenerates docs/permissions-matrix.md from ROLE_PERMISSIONS
 ```
 
@@ -109,8 +110,8 @@ drift check itself), not component or integration tests — because nothing
 here can talk to Supabase or render a real authenticated page without the live
 project. `.github/workflows/ci.yml` runs lint, build, typecheck, `bun run
 test`, the permissions-drift check, `check:fee-catalog`,
-`check:service-type-catalog`, and `generate-permissions-doc.ts --check` on
-every PR and push to `main` — all required to pass before a PR is mergeable;
+`check:service-type-catalog`, `check:definer-tenant-predicate`, and
+`generate-permissions-doc.ts --check` on every PR and push to `main` — all required to pass before a PR is mergeable;
 there was no CI at all before F13. The two catalog checks are the same static,
 no-DB-connection shape as the drift check (parse `supabase/seed.sql` as text,
 since CI has no live database credentials): `check-fee-catalog.ts` guards the

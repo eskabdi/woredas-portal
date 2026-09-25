@@ -1,0 +1,10 @@
+{
+ "endpoint": "https://api.supabase.com/v1/projects/tugzuexfyzbdnghbmrjl/ssl-enforcement",
+ "http_status": "200",
+ "result": {
+  "currentConfig": {
+   "database": false
+  },
+  "appliedSuccessfully": true
+ }
+}

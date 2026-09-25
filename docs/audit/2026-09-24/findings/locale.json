@@ -1,0 +1,1035 @@
+{
+  "agent": "audit-locale",
+  "findings": [
+    {
+      "id": "WP-LOC-001",
+      "title": "Rent-charge and arrears-installment due dates are stored one day early in the Ethiopian time zone",
+      "severity": "Medium",
+      "cvss_v3_1": "",
+      "confidence": "Confirmed",
+      "category": "Locale",
+      "module": "Rental",
+      "refs": {
+        "insa": [
+          "ET-03",
+          "ET-01"
+        ],
+        "owasp_top10": [],
+        "owasp_api": [],
+        "asvs": [],
+        "iso27001": [],
+        "nist_csf": []
+      },
+      "evidence": [
+        {
+          "path": "src/routes/woreda.rental-accounts.$occupancyId.tsx",
+          "line": 56,
+          "snippet": "return ethiopianToGregorian({ year, month, day: startEth.day }).toISOString().slice(0, 10);"
+        },
+        {
+          "path": "src/routes/woreda.rental-accounts.$occupancyId.tsx",
+          "line": 262,
+          "snippet": "const dueDate = ethiopianToGregorian({ year, month, day: dueDay });"
+        },
+        {
+          "path": "src/routes/woreda.rental-accounts.$occupancyId.tsx",
+          "line": 263,
+          "snippet": "const dueDateIso = dueDate.toISOString().slice(0, 10);"
+        },
+        {
+          "path": "src/routes/woreda.rental-accounts.$occupancyId.tsx",
+          "line": 376,
+          "snippet": "dueDates.push(i === 0 ? planFirstDueDate : addEthiopianMonths(planFirstDueDate, i));"
+        },
+        {
+          "path": "src/utils/ethiopianCalendar.ts",
+          "line": 120,
+          "snippet": "return new Date(year, month - 1, day);"
+        },
+        {
+          "path": "supabase/migrations/00000000000082_rental_phase4_review_fixes_2.sql",
+          "line": 125,
+          "snippet": "SET status = CASE WHEN rc.due_date < current_date THEN 'overdue' ELSE 'due' END,"
+        },
+        {
+          "path": "supabase/migrations/00000000000089_rental_review_round6_fixes.sql",
+          "line": 526,
+          "snippet": "SET status = CASE WHEN ai.due_date < current_date THEN 'overdue' ELSE 'due' END,"
+        },
+        {
+          "path": "supabase/migrations/00000000000083_rental_phase5_checkpoint.sql",
+          "line": 297,
+          "snippet": "AND (status = 'overdue' OR (status = 'due' AND due_date < current_date));"
+        },
+        {
+          "path": "docs/audit/2026-09-24/raw/locale-ec-vectors.txt",
+          "line": 0,
+          "snippet": "TZ=Africa/Addis_Ababa: ethiopianToGregorian({2019,2,10}).toISOString().slice(0,10) = 2026-10-19, expected 2026-10-20"
+        }
+      ],
+      "description": "ethiopianToGregorian() returns a Date at LOCAL midnight (ethiopianCalendar.ts:120). Two rental call sites then serialise it with toISOString().slice(0,10), which converts to UTC first. In East Africa Time (UTC+3), local midnight is 21:00 UTC on the previous day, so every value is one Gregorian day early. Affected: (a) the _due_date sent to generate_rent_charges() for every monthly billing run (lines 260-266); (b) every arrears installment after the first, via addEthiopianMonths() (lines 47-57, 376). Reproduced with bun under TZ=Africa/Addis_Ababa: Tikimt 10 2019 is sent as 2026-10-19 instead of 2026-10-20, and addEthiopianMonths('2026-09-24',1) returns 2026-10-23 instead of 2026-10-24. Under TZ=UTC the same code gives the correct answer, which explains why it does not show up in CI. A second defect sits in the same helper: a start date in Pagume (month 13) plus one month becomes month 14, the loop maps that to Tikimt (month 2) of the next year, and Meskerem is skipped. The converter itself is correct (see ET-03); the defect is in the callers.",
+      "attack_scenario": "No attacker needed. A finance clerk in Harar runs 'Generate billing' for Tikimt with policy due_day 10. The server stores due_date = Tikimt 9. On Tikimt 10 (still inside the real grace period) the ledger refresh marks the charge 'overdue' (due_date < current_date), and the service-request rental checkpoint (migration 83) treats the occupant as having overdue rent. That can block or flag a resident's unrelated service request.",
+      "impact": "Charges and installments turn overdue one day before the policy allows, and arrears ageing and checkpoint decisions are shifted by one day. Payment plans that start in Pagume skip a month. This touches money and service eligibility in every woreda.",
+      "recommendation": "Never use toISOString() to turn a calendar date into text. Add a toIsoDateLocal(d) helper next to parseDateOnly() in ethiopianCalendar.ts that uses getFullYear/getMonth/getDate (EthiopianDateInput.tsx:67 already does this inline), and use it at rental-accounts:56 and :263. Treat Pagume explicitly in addEthiopianMonths: month 13 + n should become month n of the next year. Add a vitest case that runs under TZ=Africa/Addis_Ababa (set process.env.TZ in the test file or the vitest config). Optionally, have generate_rent_charges() compute due_date on the server from the EC period and the policy due_day, instead of trusting the client.",
+      "secure_fix_example": "export function toIsoDateLocal(d: Date): string {\n  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;\n}\n// rental-accounts:263\nconst dueDateIso = toIsoDateLocal(ethiopianToGregorian({ year, month, day: dueDay }));",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-LOC-002",
+      "title": "No Ethiopian clock: every local time is shown on the Western 24-hour clock, including receipts and the audit trail",
+      "severity": "Medium",
+      "cvss_v3_1": "",
+      "confidence": "Confirmed",
+      "category": "Locale",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "ET-05"
+        ],
+        "owasp_top10": [],
+        "owasp_api": [],
+        "asvs": [],
+        "iso27001": [],
+        "nist_csf": []
+      },
+      "evidence": [
+        {
+          "path": "src/utils/ethiopianCalendar.ts",
+          "line": 97,
+          "snippet": "return `${formatEthiopianDate(date)} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;"
+        },
+        {
+          "path": "src/components/workflow/HistoryTimeline.tsx",
+          "line": 107,
+          "snippet": "{formatEthiopianDateTime(new Date(h.changed_at))}"
+        },
+        {
+          "path": "src/routes/woreda.households.index.tsx",
+          "line": 698,
+          "snippet": "{formatEthiopianDateTime(new Date(row.created_at))}"
+        },
+        {
+          "path": "src/components/common/OfflineStatusBar.tsx",
+          "line": 99,
+          "snippet": "{formatEthiopianDateTime(lastSyncAt)}"
+        },
+        {
+          "path": "src/routes/woreda.rental-houses.requests.$requestId.index.tsx",
+          "line": 61,
+          "snippet": "const hh = String(d.getHours()).padStart(2, \"0\");"
+        },
+        {
+          "path": "src/routes/woreda.dashboard.tsx",
+          "line": 612,
+          "snippet": ").toLocaleTimeString(\"en-GB\", { hour: \"2-digit\", minute: \"2-digit\", hour12: false })}`,"
+        },
+        {
+          "path": "src/routes/woreda.audit.tsx",
+          "line": 529,
+          "snippet": "{at.toLocaleString(\"en-GB\", { hour12: false })}"
+        },
+        {
+          "path": "src/routes/woreda.audit.tsx",
+          "line": 602,
+          "snippet": ").toLocaleTimeString(\"en-GB\", { hour12: false })}`}"
+        },
+        {
+          "path": "src/routes/woreda.services.$requestId.index.tsx",
+          "line": 566,
+          "snippet": "value={new Date(req.submitted_at).toLocaleString(\"en-GB\", { hour12: false })}"
+        },
+        {
+          "path": "src/routes/woreda.revenue.$paymentId.receipt.tsx",
+          "line": 484,
+          "snippet": "... ${new Date(printedAt).toLocaleTimeString(\"en-GB\", { hour: \"2-digit\", minute: \"2-digit\" })}"
+        }
+      ],
+      "description": "The repository has no Ethiopian-clock helper (a search for ጠዋት/ቀትር/ማታ/ለሊት and for any hour-offset logic finds nothing). The one shared date-time formatter, formatEthiopianDateTime(), pairs an EC date with a Western 24-hour clock ('14 መስከረም 2019 19:00'). Every other place that shows a time uses en-GB 24-hour formatting: the dashboard activity feed, audit trail rows and detail, the service-request 'submitted' field, rental request history, workflow history timelines, the offline-sync bar, and the printed revenue receipt ('printed' time). Under the owner convention, 19:00 should read '1:00 ማታ'. A reader who assumes the Ethiopian clock will read '01:30' as 7:30 in the morning.",
+      "attack_scenario": "Not a security exploit. Staff or residents reading official timestamps can misread them by six hours. Example: an audit reviewer checking when a record changed, or a resident disputing a receipt time.",
+      "impact": "Timestamps on official documents (receipts) and in the audit trail can be misread by six hours. The owner's Ethiopian-clock convention is not met anywhere in the product.",
+      "recommendation": "Add formatEthiopianTime(date) to ethiopianCalendar.ts, implementing EtHour = ((h + 6) mod 12) or 12. Period labels: ጠዋት for 06:00-11:59 local, ቀትር for 12:00-12:59 and ከሰዓት for the afternoon if the owner wants it, ማታ for 18:00-23:59, ለሊት for 00:00-05:59. Confirm the exact bands and labels with the owner; the checklist only fixes the four anchor points. Route formatEthiopianDateTime() and the call sites listed above through it. Show the Western time second, e.g. '1:00 ማታ (19:00)'. Add unit tests for the four anchor vectors: 07:00 → 1:00 ጠዋት, 12:00 → 6:00 ቀትር, 19:00 → 1:00 ማታ, 00:00 → 6:00 ለሊት.",
+      "secure_fix_example": "export function formatEthiopianTime(d: Date): string {\n  const h = d.getHours(); const et = ((h + 6) % 12) || 12;\n  const p = h >= 6 && h < 12 ? 'ጠዋት' : h === 12 ? 'ቀትር' : h > 12 && h < 18 ? 'ከሰዓት' : h >= 18 ? 'ማታ' : 'ለሊት';\n  return `${et}:${String(d.getMinutes()).padStart(2,'0')} ${p}`;\n}",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-LOC-003",
+      "title": "No EC fiscal year (Hamle 1 - Sene 30) anywhere in revenue, reports or dashboards",
+      "severity": "Medium",
+      "cvss_v3_1": "",
+      "confidence": "Confirmed",
+      "category": "Locale",
+      "module": "Revenue",
+      "refs": {
+        "insa": [
+          "ET-04"
+        ],
+        "owasp_top10": [],
+        "owasp_api": [],
+        "asvs": [],
+        "iso27001": [],
+        "nist_csf": []
+      },
+      "evidence": [
+        {
+          "path": "src/routes/woreda.reports.index.tsx",
+          "line": 172,
+          "snippet": "{ label: \"7d\", days: 7 }, ... { label: \"1y\", days: 365 },"
+        },
+        {
+          "path": "src/routes/woreda.reports.index.tsx",
+          "line": 66,
+          "snippet": "const TODAY = new Date().toISOString().slice(0, 10);"
+        },
+        {
+          "path": "src/routes/woreda.revenue.index.tsx",
+          "line": 344,
+          "snippet": "<Input type=\"date\" value={start} onChange={(e) => setStart(e.target.value)} />"
+        },
+        {
+          "path": "src/routes/woreda.revenue.index.tsx",
+          "line": 348,
+          "snippet": "<Input type=\"date\" value={end} onChange={(e) => setEnd(e.target.value)} />"
+        },
+        {
+          "path": "src/routes/woreda.dashboard.tsx",
+          "line": 361,
+          "snippet": "label: `Q${q} ${d.getFullYear()}`,"
+        }
+      ],
+      "description": "A search of src/, supabase/migrations/ and docs/ for fiscal, በጀት ዓመት, budget year and Hamle turns up no fiscal-period concept. Reports offer only rolling 7d/30d/90d/1y windows and free EC date ranges. The revenue page filters with two native Gregorian <input type=\"date\"> pickers. The dashboard 'quarterly' view builds Gregorian calendar quarters labelled 'Q3 2026'. No report or export can be scoped to the Ethiopian government fiscal year (Hamle 1 to Sene 30) without the operator calculating the Gregorian boundaries by hand.",
+      "attack_scenario": "Not a security exploit. A woreda finance officer preparing the annual revenue return for EFY 2018 has to pick 2025-07-08 to 2026-07-07 by hand in a Gregorian picker. An off-by-one there silently moves a day's receipts into the wrong fiscal year.",
+      "impact": "Fiscal reporting is error-prone and does not line up with how Ethiopian public-finance periods are defined. Quarterly dashboard figures do not match EFY quarters.",
+      "recommendation": "Add ethiopianFiscalYearRange(efy) to ethiopianCalendar.ts, returning { start: Hamle 1 of efy-1, end: Sene 30 of efy } as ISO dates. Offer an 'EFY' preset on reports and revenue next to the rolling windows. Replace the revenue page's Gregorian pickers with <EthiopianDateInput>. Define dashboard quarters as EFY quarters (Hamle-Meskerem, Tikimt-Tahsas, Tir-Megabit, Miyazya-Sene), or label them explicitly as Gregorian.",
+      "secure_fix_example": "export function ethiopianFiscalYearRange(efy: number) {\n  return { start: toIsoDateLocal(ethiopianToGregorian({year: efy - 1, month: 11, day: 1})),\n           end:   toIsoDateLocal(ethiopianToGregorian({year: efy,     month: 10, day: 30})) };\n}",
+      "effort": "M",
+      "status": "Open"
+    },
+    {
+      "id": "WP-LOC-004",
+      "title": "Some woreda and public screens show Gregorian dates only or first, and three woreda inputs use native Gregorian date pickers",
+      "severity": "Medium",
+      "cvss_v3_1": "",
+      "confidence": "Confirmed",
+      "category": "Locale",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "ET-01"
+        ],
+        "owasp_top10": [],
+        "owasp_api": [],
+        "asvs": [],
+        "iso27001": [],
+        "nist_csf": []
+      },
+      "evidence": [
+        {
+          "path": "src/components/services/ServiceRequestList.tsx",
+          "line": 385,
+          "snippet": "{new Date(r.submitted_at).toLocaleDateString(\"en-GB\")}"
+        },
+        {
+          "path": "src/components/services/ServiceRequestList.tsx",
+          "line": 265,
+          "snippet": "value: (r) => new Date(r.submitted_at).toLocaleDateString(\"en-GB\"),"
+        },
+        {
+          "path": "src/routes/woreda.approvals.tsx",
+          "line": 216,
+          "snippet": "{r.created_at ? new Date(r.created_at).toLocaleDateString(\"en-GB\") : \"—\"}"
+        },
+        {
+          "path": "src/routes/woreda.services.$requestId.index.tsx",
+          "line": 566,
+          "snippet": "value={new Date(req.submitted_at).toLocaleString(\"en-GB\", { hour12: false })}"
+        },
+        {
+          "path": "src/routes/woreda.services.new.tsx",
+          "line": 574,
+          "snippet": "type=\"date\""
+        },
+        {
+          "path": "src/routes/woreda.revenue.index.tsx",
+          "line": 203,
+          "snippet": "{ header: \"ቀን / Date\", value: (r) => r.payment_date },"
+        },
+        {
+          "path": "src/routes/woreda.audit.tsx",
+          "line": 339,
+          "snippet": "{ header: \"ቀን / Timestamp\", value: (r) => new Date(r.action_at).toISOString() },"
+        },
+        {
+          "path": "src/routes/woreda.residents.$residentId.print.tsx",
+          "line": 203,
+          "snippet": "printedOn={now.toLocaleDateString(\"en-GB\")}"
+        },
+        {
+          "path": "src/routes/woreda.households.$householdId.print.tsx",
+          "line": 168,
+          "snippet": "printedOn={now.toLocaleDateString(\"en-GB\")}"
+        },
+        {
+          "path": "src/routes/woreda.rental-houses.$houseId.occupant-print.tsx",
+          "line": 216,
+          "snippet": "printedOn={now.toLocaleDateString(\"en-GB\")}"
+        },
+        {
+          "path": "src/routes/woreda.reports.$reportType.print.tsx",
+          "line": 278,
+          "snippet": "printedOn={now.toLocaleDateString(\"en-GB\")}"
+        },
+        {
+          "path": "src/components/layout/AppShell.tsx",
+          "line": 482,
+          "snippet": "{new Date().toLocaleDateString(\"en-US\", { month: \"short\", day: \"numeric\" }).toUpperCase()}"
+        },
+        {
+          "path": "src/routes/v.$token.tsx",
+          "line": 302,
+          "snippet": "<Row labelAm=\"የተሰጠበት\" labelEn=\"Issued\" value={payload.issueDate} />"
+        },
+        {
+          "path": "src/utils/harariCredentialCrypto.ts",
+          "line": 115,
+          "snippet": "return /^\\d{8}$/.test(d) ? `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}` : d;"
+        }
+      ],
+      "description": "Most woreda screens do show EC first: lists, detail pages, the EthiopianDateInput-based forms, the revenue table, the credential/civil/resident exports, and the receipt/letter verify pages. The exceptions, enumerated by grepping toLocaleDateString, toLocaleString, toLocaleTimeString, type=\"date\" and raw ISO exports across src/routes/woreda.*, src/routes/v.*, src/routes/verify.* and src/components: (1) Gregorian only: the service/complaint list 'submitted' column and its CSV/PDF export; the approvals inbox date column; the service-request detail 'submitted' field; the revenue CSV/PDF 'Date' column (raw payment_date); the audit CSV export (UTC ISO timestamp); the 'Printed:' footer on four printed documents (resident, household, occupant, report). (2) Gregorian first: the AppShell header puts a red 'SEP 24' badge ahead of the EC date. (3) Gregorian input: the complaint incident date (services.new:574) and the revenue start/end filter (revenue.index:344,348). (4) Public QR verification (/v/$token) shows issue date, expiry date and date of birth as Gregorian ISO strings ('2026-09-24'). The physical card is printed in EC, so a verifier comparing the card with the verification page sees two different dates for the same event.",
+      "attack_scenario": "Not a security exploit. A checkpoint officer scanning a card sees 'Issued 2026-09-24' on the phone but '14 መስከረም 2019' on the card. Someone unfamiliar with the conversion may reject a valid card or accept a mismatched one.",
+      "impact": "The EC-first convention in README and CLAUDE.md is not universal. The QR verification surface in particular does not match the printed card.",
+      "recommendation": "Route each listed call site through formatEthiopianDate/formatEthiopianDateShortOnly, with Gregorian as an optional second value in parentheses. Replace the three type=\"date\" inputs with <EthiopianDateInput>. On /v/$token, render payload dates as '14 መስከረም 2019 (2026-09-24)'. Move the AppShell Gregorian badge after the EC date. Extend the portal-conventions-review agent's grep to include toLocaleDateString, toLocaleString, type=\"date\" and toISOString() in woreda routes.",
+      "secure_fix_example": "<Row labelAm=\"የተሰጠበት\" labelEn=\"Issued\" value={`${formatEthiopianDateOnly(payload.issueDate)} (${payload.issueDate})`} />",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-LOC-005",
+      "title": "Phone (+251) and 16-digit FAN formats are validated only in the browser; the database accepts any text",
+      "severity": "Medium",
+      "cvss_v3_1": "5.3",
+      "confidence": "Confirmed",
+      "category": "Locale",
+      "module": "Residents",
+      "refs": {
+        "insa": [
+          "ET-12",
+          "C-06"
+        ],
+        "owasp_top10": [
+          "A04:2021"
+        ],
+        "owasp_api": [],
+        "asvs": [
+          "V5.1.3"
+        ],
+        "iso27001": [],
+        "nist_csf": []
+      },
+      "evidence": [
+        {
+          "path": "src/lib/residentSchema.ts",
+          "line": 41,
+          "snippet": ".refine((v) => !v || /^\\d{16}$/.test(v), \"ልክ 16 አሃዝ መሆን አለበት / Must be exactly 16 digits\"),"
+        },
+        {
+          "path": "src/lib/phoneNumber.ts",
+          "line": 59,
+          "snippet": "return v === \"\" || /^\\d{9}$/.test(v);"
+        },
+        {
+          "path": "src/routes/woreda.settings.woreda-configuration.tsx",
+          "line": 94,
+          "snippet": ".refine((v) => !v || /^\\d{9}$/.test(v), \"Phone must be 9 digits after +251\"),"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 350,
+          "snippet": "phone_number text,"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 351,
+          "snippet": "national_id_no text,"
+        },
+        {
+          "path": "supabase/migrations/00000000000044_task6_household_rent_national_id_pii.sql",
+          "line": 128,
+          "snippet": "NEW.phone_number_enc          := public.encrypt_pii_text(NEW.phone_number, NEW.woreda_id);"
+        },
+        {
+          "path": "supabase/migrations/00000000000023_pii_encryption.sql",
+          "line": 232,
+          "snippet": "RETURN digits;"
+        },
+        {
+          "path": "docs/security-functionality.md",
+          "line": 36,
+          "snippet": "Two independent layers, consistently applied:"
+        }
+      ],
+      "description": "On the client, Zod requires exactly 16 digits for resident.national_id_no (FAN), and PhoneDigitsInput/phoneDigitsSchema() requires exactly 9 digits, prefixed '+251' when saved. On the server there is no equivalent. A search of all 90 migrations finds no CHECK constraint on any phone_number, contact_phone or national_id_no column. The latest resident_pii_sync() trigger (migration 44) encrypts and blind-indexes whatever it receives without checking the format. normalize_phone() (migration 23) returns any digit string unchanged when it is not a 12-digit 251… or 10-digit 0… number. The client regex also accepts any 9 digits (e.g. 000000000). Ethiopian subscriber numbers after +251 start with 9 or 7 (mobile) or a 1x-5x area code (fixed line). docs/security-functionality.md says the two layers are 'consistently applied'; for these identifiers they are not.",
+      "attack_scenario": "A staff member with resident.update, or any script using a staff JWT, PATCHes /rest/v1/resident directly with national_id_no='ABC' or phone_number='+1 555 0100'. The row is stored, encrypted and blind-indexed. Duplicate-FAN detection (a blind-index equality match) then misses the real person's record, and SMS or phone contact goes to a non-Ethiopian number.",
+      "impact": "Registry data integrity: malformed FANs defeat duplicate detection, and invalid phone numbers break the mint guard's 'has a phone' intent (migration 70 checks presence only, not format). This is a defence-in-depth gap against direct API writes.",
+      "recommendation": "Validate the format in the BEFORE INSERT/UPDATE PII trigger, which runs before encryption: national_id_no ~ '^[0-9]{16}$' and phone_number ~ '^\\+251[1-9][0-9]{8}$' (tighten to [79] for mobile-only fields if the owner agrees), raising a bilingual error otherwise. If the plaintext columns stay, add equivalent CHECK constraints ... NOT VALID and validate after cleaning existing data. Mirror the tighter regex in phoneNumber.ts.",
+      "secure_fix_example": "IF NEW.national_id_no IS NOT NULL AND NEW.national_id_no !~ '^[0-9]{16}$' THEN\n  RAISE EXCEPTION 'national_id_no must be 16 digits / የብሔራዊ መታወቂያ ቁጥር 16 አሃዝ መሆን አለበት' USING ERRCODE='23514';\nEND IF;\nIF NEW.phone_number IS NOT NULL AND NEW.phone_number !~ '^\\+251[1-9][0-9]{8}$' THEN\n  RAISE EXCEPTION 'phone must be +251 followed by 9 digits' USING ERRCODE='23514';\nEND IF;",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-LOC-006",
+      "title": "Dashboard 'monthly' chart counts Gregorian months but labels them with EC month names",
+      "severity": "Low",
+      "cvss_v3_1": "",
+      "confidence": "Confirmed",
+      "category": "Locale",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "ET-01",
+          "ET-04"
+        ],
+        "owasp_top10": [],
+        "owasp_api": [],
+        "asvs": [],
+        "iso27001": [],
+        "nist_csf": []
+      },
+      "evidence": [
+        {
+          "path": "src/routes/woreda.dashboard.tsx",
+          "line": 374,
+          "snippet": "// monthly (default) -- last 6 months, Ethiopian month labels"
+        },
+        {
+          "path": "src/routes/woreda.dashboard.tsx",
+          "line": 379,
+          "snippet": "const key = `${d.getFullYear()}-${d.getMonth()}`;"
+        },
+        {
+          "path": "src/routes/woreda.dashboard.tsx",
+          "line": 381,
+          "snippet": "label: ethiopianMonthLabel(d),"
+        },
+        {
+          "path": "src/routes/woreda.dashboard.tsx",
+          "line": 387,
+          "snippet": "const key = `${d.getFullYear()}-${d.getMonth()}`;"
+        }
+      ],
+      "description": "Registrations are grouped by Gregorian month (getFullYear/getMonth), but each bar is labelled with the EC month that contains today's day-of-month in that Gregorian month. Gregorian September covers Nehase 26 to Meskerem 20, including all of Pagume. From the 1st to the 10th of a Gregorian month the bar carries the previous EC month's name; from the 11th it carries the next one's. On 6-10 September the bar reads 'ጳጉሜ' but counts a whole Gregorian month. setMonth(getMonth() - i) on the 29th-31st also overflows (e.g. 31 March minus 1 month becomes 3 March), which can drop or duplicate a bucket.",
+      "attack_scenario": "Not a security exploit.",
+      "impact": "Dashboard figures are presented as EC monthly counts but are Gregorian monthly counts, and the label for the same bar changes with the day of the month.",
+      "recommendation": "Bucket by gregorianToEthiopian(d).year and .month, and step back through EC months with ethiopianToGregorian({year, month, day: 1}). Pagume can be its own bucket or folded into Nehase.",
+      "secure_fix_example": "const e = gregorianToEthiopian(d); const key = `${e.year}-${e.month}`; // label: ETHIOPIAN_MONTHS_AM[e.month-1]",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-LOC-007",
+      "title": "Tayitu/Jiret are applied only through utility classes; receipts, the ID card and canvas PDF exports use Noto Sans Ethiopic, and bold weights are not shipped",
+      "severity": "Low",
+      "cvss_v3_1": "",
+      "confidence": "Likely",
+      "category": "Locale",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "ET-08"
+        ],
+        "owasp_top10": [],
+        "owasp_api": [],
+        "asvs": [],
+        "iso27001": [],
+        "nist_csf": []
+      },
+      "evidence": [
+        {
+          "path": "src/styles.css",
+          "line": 16,
+          "snippet": "@font-face { font-family: \"Tayitu\"; src: url(\"/fonts/Tayitu-Regular.woff2\") ... font-weight: 400 700; }"
+        },
+        {
+          "path": "src/styles.css",
+          "line": 45,
+          "snippet": "--font-am-heading: \"Tayitu\", \"Noto Sans Ethiopic\", sans-serif;"
+        },
+        {
+          "path": "src/styles.css",
+          "line": 46,
+          "snippet": "--font-am-body: \"Jiret\", \"Noto Sans Ethiopic\", sans-serif;"
+        },
+        {
+          "path": "src/styles.css",
+          "line": 192,
+          "snippet": "font-family: \"Inter\", sans-serif;"
+        },
+        {
+          "path": "src/styles.css",
+          "line": 195,
+          "snippet": ":lang(am),"
+        },
+        {
+          "path": "src/utils/tableExport.ts",
+          "line": 67,
+          "snippet": "const AM_FONT = `\"Noto Sans Ethiopic\", \"Abyssinica SIL\", system-ui, sans-serif`;"
+        },
+        {
+          "path": "src/utils/reportExport.ts",
+          "line": 64,
+          "snippet": "const AM_FONT = `\"Noto Sans Ethiopic\", \"Abyssinica SIL\", system-ui, sans-serif`;"
+        },
+        {
+          "path": "src/routes/woreda.revenue.$paymentId.receipt.tsx",
+          "line": 538,
+          "snippet": "fontFamily: \"'Noto Sans Ethiopic',sans-serif\","
+        },
+        {
+          "path": "src/routes/woreda.credentials.$requestId.print.tsx",
+          "line": 1418,
+          "snippet": "fontFamily: \"'Noto Sans Ethiopic','Inter',system-ui,sans-serif\","
+        }
+      ],
+      "description": "Both fonts are present (public/fonts/Tayitu-Regular.woff2, Jiret-Regular.woff2) and declared with @font-face. Tayitu leads the heading stack (75 uses of .font-am-heading) and Jiret the body stack (980 uses of .font-am-body), with Noto Sans Ethiopic as fallback in both. Gaps: (1) The body default is Inter, and the :lang(am) rule never matches because no element sets lang=\"am\" (WP-BQ-005). Amharic text without a utility class therefore falls through Inter to the OS 'sans-serif' Ethiopic face, not Tayitu, Jiret or even the loaded Noto webfont. (2) The printed receipt (14 inline Noto declarations), the ID-card print surface (3), both canvas PDF exporters and .font-noto-ethiopic (3 uses) all bypass Tayitu/Jiret, so print and PDF output does not follow the two-typeface system. (3) Only Regular weights are shipped, but each face declares font-weight: 400 700. The browser therefore treats the one file as covering bold and will probably not synthesise bold, so font-bold Amharic headings likely render at regular weight. (4) The owner convention reads 'Tayitu primary, Jiret secondary'. The code uses Tayitu for headings and Jiret for body, and Jiret is never a fallback for Tayitu (Tayitu → Noto). This matches docs/ux/ux_amharic_typography_plan.md and the recorded licence decision (Tayitu decorative-only). The owner should confirm this reading.",
+      "attack_scenario": "Not a security exploit.",
+      "impact": "Typography differs between screen and print. Unclassed Amharic text renders in whatever Ethiopic font the device has (tofu on some Linux kiosks). Headings may lose weight.",
+      "recommendation": "Set the body/:lang(am) default to var(--font-am-body) and add lang=\"am\" on Amharic-primary containers (or <html lang=\"am\"> for /woreda). Switch AM_FONT in tableExport/reportExport, the receipt and the card print to the Tayitu/Jiret stacks, awaiting document.fonts.load() before drawing to canvas. Either ship bold files or declare font-weight: 400 so bold is synthesised. Record the owner's Tayitu/Jiret role decision in the typography plan.",
+      "secure_fix_example": ":lang(am) { font-family: var(--font-am-body); }\nconst AM_FONT = `\"Jiret\", \"Noto Sans Ethiopic\", system-ui, sans-serif`;",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-LOC-008",
+      "title": "EthiopianDateInput silently keeps the previous date on invalid or cleared input",
+      "severity": "Low",
+      "cvss_v3_1": "",
+      "confidence": "Confirmed",
+      "category": "Locale",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "ET-03"
+        ],
+        "owasp_top10": [],
+        "owasp_api": [],
+        "asvs": [],
+        "iso27001": [],
+        "nist_csf": []
+      },
+      "evidence": [
+        {
+          "path": "src/components/common/EthiopianDateInput.tsx",
+          "line": 58,
+          "snippet": "if (!yN || !mN || !dN) {"
+        },
+        {
+          "path": "src/components/common/EthiopianDateInput.tsx",
+          "line": 59,
+          "snippet": "// Mid-edit: do NOT clear external value."
+        },
+        {
+          "path": "src/components/common/EthiopianDateInput.tsx",
+          "line": 63,
+          "snippet": "if (!isValidEthiopianDate(e)) {"
+        },
+        {
+          "path": "src/components/common/EthiopianDateInput.tsx",
+          "line": 64,
+          "snippet": "return;"
+        }
+      ],
+      "description": "Pagume (month 13) is selectable, and isValidEthiopianDate() correctly allows day 6 only when year % 4 === 3. But commit() simply returns when the triple is incomplete or invalid; it does not call onChange('') or report an error. Consequences: (a) typing Pagume 6 in a common year, or day 31 in any month, leaves the form holding the previously committed ISO date while the fields show the new, invalid values, and the only hint is a stale 'Gregorian:' preview line; (b) an optional date that already has a value cannot be cleared by emptying the fields, because the parent keeps the old ISO value; (c) aria-invalid is driven only by the parent's schema, which sees the old, valid date.",
+      "attack_scenario": "Not a security exploit. A registrar corrects a birth date from '5 ጳጉሜ 2018' to '6 ጳጉሜ 2018' (not a valid date), saves, and the record keeps Pagume 5 without any warning.",
+      "impact": "Wrong dates can be saved while the screen shows something else, for DOB, event and due dates.",
+      "recommendation": "When all three parts are empty, call onChange(''). When the parts are complete but invalid, call onChange('') (or an 'invalid' sentinel the schema rejects) and render an inline bilingual error, e.g. 'ልክ ያልሆነ ቀን / Invalid date (Pagume has 5 days this year)'. Set the day input's max to 5 or 6 when month 13 is selected.",
+      "secure_fix_example": "if (!y && !m && !dy) { lastSyncedRef.current = ''; onChange(''); return; }\nif (!isValidEthiopianDate(e)) { lastSyncedRef.current = ''; onChange(''); setErr(true); return; }",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-LOC-009",
+      "title": "No approved Amharic source: the glossary is a stale self-extraction, spellings are inconsistent, and native sign-off is pending",
+      "severity": "Low",
+      "cvss_v3_1": "",
+      "confidence": "Confirmed",
+      "category": "Locale",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "ET-09"
+        ],
+        "owasp_top10": [],
+        "owasp_api": [],
+        "asvs": [],
+        "iso27001": [],
+        "nist_csf": []
+      },
+      "evidence": [
+        {
+          "path": "docs/amharic-strings-glossary.csv",
+          "line": 1,
+          "snippet": "Amharic,English,Occurrences,Example Location,Context,All Locations"
+        },
+        {
+          "path": "docs/go-live-declaration.md",
+          "line": 310,
+          "snippet": "| Amharic native-speaker sign-off | **Not yet complete** ..."
+        },
+        {
+          "path": "src/components/forms/ResidentWizardSteps.tsx",
+          "line": 447,
+          "snippet": "labelAm=\"ኃይማኖት\""
+        },
+        {
+          "path": "src/routes/woreda.residents.$residentId.print.tsx",
+          "line": 242,
+          "snippet": "labelAm=\"ሃይማኖት\""
+        },
+        {
+          "path": "src/routes/woreda.civil.birth.new.tsx",
+          "line": 313,
+          "snippet": "<FieldWrap labelAm=\"ፆታ\" labelEn=\"Sex\" ..."
+        },
+        {
+          "path": "src/routes/woreda.residents.index.tsx",
+          "line": 273,
+          "snippet": "{ header: \"ጾታ / Sex\", value: (r) => r.sex },"
+        },
+        {
+          "path": "src/components/forms/ResidentWizardSteps.tsx",
+          "line": 594,
+          "snippet": "<FieldWrap labelAm=\"ንኡስ ወረዳ\" labelEn=\"Sub-Woreda\">"
+        },
+        {
+          "path": "src/components/forms/HouseholdFormFields.tsx",
+          "line": 171,
+          "snippet": "<FieldWrap labelAm=\"ንዑስ ወረዳ\" labelEn=\"Sub-Woreda\" ..."
+        }
+      ],
+      "description": "ET-09 asks for Amharic 'verbatim from an approved source'. The repository has none. docs/amharic-strings-glossary.csv (693 rows, last changed eb3d283 on 2026-09-14) was extracted from the code for review, not approved for use, and go-live-declaration.md:310 records that native-speaker sign-off is not complete. The glossary is also stale: a heuristic extraction finds 1,749 distinct Ethiopic runs in src/, of which 1,065 are neither in the glossary nor a substring of an entry (204 of them in rental files that post-date it); two glossary entries no longer occur in src/ (raw/locale-glossary-coverage.txt). 193 lines of Amharic in 28 migrations (RAISE messages) are outside the glossary entirely. The same term is spelled differently in different places: ኃይማኖት ×4 vs ሃይማኖት ×2 (religion), ፆታ ×8 vs ጾታ ×14 (sex), ንኡስ ×1 vs ንዑስ ×2 (sub-). These are legitimate orthographic variants, not errors, but they show there is no controlled vocabulary. No clearly machine-translated strings were spotted in a sample review; the auditor is not a native-speaker authority, so this remains UNVERIFIED. English-only toasts (37) are already listed in WP-BQ-006. CLAUDE.md's narrower claim that only four translateError() entries carry Amharic is CONFIRMED (errorMessages.ts has 4 lookup entries plus GENERIC_FALLBACK).",
+      "attack_scenario": "Not a security exploit.",
+      "impact": "Legal documents (certificates, letters, receipts) may carry unreviewed or inconsistent Amharic. There is no mechanical way to prove compliance with an approved source.",
+      "recommendation": "Regenerate the glossary from src/ and supabase/migrations/ (add a --check script like generate-permissions-doc, run in CI), obtain native-speaker approval, and record the approved spelling for each term (choose between ሃይማኖት and ኃይማኖት, ጾታ and ፆታ, ንዑስ and ንኡስ). Longer term, move strings into a catalogue so approval is per key.",
+      "secure_fix_example": "",
+      "effort": "M",
+      "status": "Open"
+    },
+    {
+      "id": "WP-LOC-010",
+      "title": "Three-part name is required in the resident form but not in the database; English name is one free-text field; no short-name helper",
+      "severity": "Low",
+      "cvss_v3_1": "",
+      "confidence": "Confirmed",
+      "category": "Locale",
+      "module": "Residents",
+      "refs": {
+        "insa": [
+          "ET-06"
+        ],
+        "owasp_top10": [],
+        "owasp_api": [],
+        "asvs": [],
+        "iso27001": [],
+        "nist_csf": []
+      },
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 343,
+          "snippet": "full_name text NOT NULL,"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 357,
+          "snippet": "father_name text,"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 358,
+          "snippet": "grandfather_name text,"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 367,
+          "snippet": "first_name text,"
+        },
+        {
+          "path": "src/lib/residentSchema.ts",
+          "line": 19,
+          "snippet": "full_name: nameRule(\"Full Name (English)\"),"
+        },
+        {
+          "path": "src/lib/residentSchema.ts",
+          "line": 244,
+          "snippet": "const full_name_am = [values.first_name, values.father_name, values.grandfather_name]"
+        }
+      ],
+      "description": "The structure is correctly Ethiopian at the form level. residentSchema requires first_name, father_name and grandfather_name (the Amharic labels use 'የአባት ስም' and 'የወንድ አያት ስም'), full_name_am is composed first + father + grandfather, the birth form repeats this for the child, and there are no last_name or surname fields or Western sort assumptions anywhere (searches and sorts use full_name_am/full_name, which are given-name-first). Gaps: (1) in the database first_name, father_name and grandfather_name are nullable and only full_name is NOT NULL, so direct API writes and generate_resident_on_birth_approval() can create residents without the three parts; (2) the English name is a single free-text 'Full Name (English)' with no three-part structure and no consistency check against the Amharic parts; (3) there is no short-name (first + father) helper, so screens that need a short form (card, greetings, lists) cannot apply the owner's convention consistently; (4) app_user.full_name and the informant/witness/parent names in the civil forms are single strings.",
+      "attack_scenario": "Not a security exploit.",
+      "impact": "Inconsistent name structure between records created through the UI and through other paths, and no canonical short name.",
+      "recommendation": "Add formatShortName(r) = first_name + ' ' + father_name (and an English equivalent) in src/lib, and use it wherever a short form is shown. Consider first_name_en/father_name_en/grandfather_name_en. Once the data is backfilled, enforce the three Amharic parts on the server (NOT NULL or CHECK ... NOT VALID).",
+      "secure_fix_example": "export const formatShortName = (r: {first_name?: string|null; father_name?: string|null}) => [r.first_name, r.father_name].filter(Boolean).join(' ');",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-LOC-011",
+      "title": "Every document number carries the Gregorian two-digit year and resets on 1 January (UTC), not on Meskerem 1",
+      "severity": "Low",
+      "cvss_v3_1": "",
+      "confidence": "Confirmed",
+      "category": "Locale",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "ET-01"
+        ],
+        "owasp_top10": [],
+        "owasp_api": [],
+        "asvs": [],
+        "iso27001": [],
+        "nist_csf": []
+      },
+      "evidence": [
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1019,
+          "snippet": "v_year := EXTRACT(YEAR FROM NOW())::SMALLINT % 100;"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 1025,
+          "snippet": "NEW.receipt_number := v_woreda_code || '-RCT-' || LPAD(v_year::TEXT,2,'0') || '-' || LPAD(v_next::TEXT,6,'0');"
+        },
+        {
+          "path": "supabase/migrations/00000000000002_credential.sql",
+          "line": 96,
+          "snippet": "v_year := EXTRACT(YEAR FROM NOW())::SMALLINT % 100;"
+        },
+        {
+          "path": "supabase/migrations/00000000000076_rental_phase2_financial_core.sql",
+          "line": 140,
+          "snippet": "v_year := EXTRACT(YEAR FROM NOW())::SMALLINT % 100;"
+        },
+        {
+          "path": "supabase/migrations/00000000000080_rental_phase4_arrears.sql",
+          "line": 247,
+          "snippet": "v_year := EXTRACT(YEAR FROM NOW())::SMALLINT % 100;"
+        }
+      ],
+      "description": "The latest definitions of all nine numbering triggers (assign_credential_number [mig 2], assign_credential_request_number, assign_receipt_number, assign_rental_request_number, assign_service_request_number, assign_vital_event_number, assign_resident_number [baseline], assign_rent_account_number [mig 76], assign_arrears_plan_number [mig 80]) take the year from EXTRACT(YEAR FROM NOW()) % 100, i.e. the Gregorian year evaluated in the database session time zone (UTC on Supabase). A receipt issued on 14 መስከረም 2019 is numbered '…-RCT-26-…'. Per-year sequences restart at 03:00 EAT on 1 January, in the middle of the EC year, rather than at Meskerem 1 or the fiscal-year start. The 13-digit credential number embeds the same YY, and its format is fixed by the barcode and Luhn invariants.",
+      "attack_scenario": "Not a security exploit.",
+      "impact": "Document numbers do not show the EC year printed on the same document. Annual sequences do not line up with EC or fiscal-year reporting.",
+      "recommendation": "Owner decision: either keep Gregorian YY and document it as a deliberate choice, or add a SQL ethiopian_year(date) helper and switch the non-credential numbers to EC YY with the reset at Meskerem 1 (or Hamle 1). The credential number format must not change without the card-print-review invariants being revisited.",
+      "secure_fix_example": "",
+      "effort": "M",
+      "status": "Open"
+    },
+    {
+      "id": "WP-LOC-012",
+      "title": "'Today' comes from the UTC date: registration dates, the 'not in the future' checks and rent payment dates are one day behind from 00:00 to 03:00 EAT",
+      "severity": "Low",
+      "cvss_v3_1": "",
+      "confidence": "Confirmed",
+      "category": "Locale",
+      "module": "Civil Registration",
+      "refs": {
+        "insa": [
+          "ET-01"
+        ],
+        "owasp_top10": [],
+        "owasp_api": [],
+        "asvs": [],
+        "iso27001": [],
+        "nist_csf": []
+      },
+      "evidence": [
+        {
+          "path": "src/routes/woreda.civil.birth.new.tsx",
+          "line": 35,
+          "snippet": "const todayIso = () => new Date().toISOString().slice(0, 10);"
+        },
+        {
+          "path": "src/routes/woreda.civil.birth.new.tsx",
+          "line": 100,
+          "snippet": "registration_date: todayIso(),"
+        },
+        {
+          "path": "src/lib/residentSchema.ts",
+          "line": 5,
+          "snippet": "const todayIso = () => new Date().toISOString().slice(0, 10);"
+        },
+        {
+          "path": "src/routes/woreda.rental-accounts.$occupancyId.tsx",
+          "line": 303,
+          "snippet": "_payment_date: new Date().toISOString().slice(0, 10),"
+        },
+        {
+          "path": "src/routes/woreda.rental-accounts.$occupancyId.tsx",
+          "line": 526,
+          "snippet": "_payment_date: new Date().toISOString().slice(0, 10),"
+        },
+        {
+          "path": "src/routes/woreda.reports.index.tsx",
+          "line": 66,
+          "snippet": "const TODAY = new Date().toISOString().slice(0, 10);"
+        }
+      ],
+      "description": "new Date().toISOString().slice(0,10) returns the UTC calendar date. Between 00:00 and 03:00 EAT that is the previous day. Affected: the default registration_date and the 'cannot be in the future' checks on all four civil forms and the resident schema (so a birth on today's date would be rejected in that window), the _payment_date passed to settle_rent_payment and settle_arrears_installments, the dashboard's 'revenue today' query (dashboard.tsx:279), and the reports page's TODAY upper bound. TODAY is also a module-level constant, so it goes stale if the tab stays open past midnight. Office hours make the practical window small, but the offline queue (offlineSync.ts:241 uses the same pattern) can replay entries at any hour.",
+      "attack_scenario": "Not a security exploit.",
+      "impact": "Occasional off-by-one registration and payment dates, and rejected same-day births, at night or during offline replay.",
+      "recommendation": "Use a single todayLocalIso() helper based on local getters (see WP-LOC-001) everywhere, and compute TODAY inside the component. For authoritative dates such as payment_date, prefer letting the server default to (now() AT TIME ZONE 'Africa/Addis_Ababa')::date.",
+      "secure_fix_example": "export const todayLocalIso = () => toIsoDateLocal(new Date());",
+      "effort": "S",
+      "status": "Open"
+    },
+    {
+      "id": "WP-LOC-013",
+      "title": "Hierarchy has no Gott level; a free-text 'Sub-Woreda' field is used instead",
+      "severity": "Info",
+      "cvss_v3_1": "",
+      "confidence": "Confirmed",
+      "category": "Locale",
+      "module": "Households",
+      "refs": {
+        "insa": [
+          "ET-10"
+        ],
+        "owasp_top10": [],
+        "owasp_api": [],
+        "asvs": [],
+        "iso27001": [],
+        "nist_csf": []
+      },
+      "evidence": [
+        {
+          "path": "src/components/forms/ResidentWizardSteps.tsx",
+          "line": 594,
+          "snippet": "<FieldWrap labelAm=\"ንኡስ ወረዳ\" labelEn=\"Sub-Woreda\">"
+        },
+        {
+          "path": "src/lib/residentSchema.ts",
+          "line": 47,
+          "snippet": "sub_woreda: z.string().trim().max(100).optional().default(\"\"),"
+        },
+        {
+          "path": "supabase/migrations/00000000000000_baseline.sql",
+          "line": 199,
+          "snippet": "CREATE TABLE IF NOT EXISTS public.kebele ("
+        }
+      ],
+      "description": "Kebele is reference-only, as required. The kebele table carries no authority, app_user has no kebele column, no role or permission is kebele-scoped (no kebele_admin/clerk/officer anywhere in src/ or supabase/), and RLS is keyed on woreda. Region and Zone exist only as free-text fields inside the birth-place, work and former-residence JSON. There is no Gott (ጎጥ) level anywhere in the schema or UI. Instead, households and residents capture a free-text 'Sub-Woreda / ንዑስ ወረዳ', which is not part of the Region → Zone → Woreda → Kebele → Gott hierarchy in the checklist.",
+      "attack_scenario": "Not a security exploit.",
+      "impact": "Sub-kebele location cannot be reported consistently. The label may confuse staff.",
+      "recommendation": "Owner decision: either rename sub_woreda to Gott (ጎጥ) and back it with a per-kebele reference list, or document why Sub-Woreda is used.",
+      "secure_fix_example": "",
+      "effort": "M",
+      "status": "Open"
+    },
+    {
+      "id": "WP-LOC-014",
+      "title": "Jineala's Amharic name differs between README (ጂናኤላ) and seed/database (ጂንኤላ)",
+      "severity": "Info",
+      "cvss_v3_1": "",
+      "confidence": "Confirmed",
+      "category": "Docs",
+      "module": "Platform",
+      "refs": {
+        "insa": [
+          "ET-11",
+          "ET-09"
+        ],
+        "owasp_top10": [],
+        "owasp_api": [],
+        "asvs": [],
+        "iso27001": [],
+        "nist_csf": []
+      },
+      "evidence": [
+        {
+          "path": "README.md",
+          "line": 58,
+          "snippet": "| 5         | JINEALA     | Jineala          | ጂናኤላ             | 14, 15, 16     |"
+        },
+        {
+          "path": "supabase/seed.sql",
+          "line": 74,
+          "snippet": "... 'JINEALA', 'Jineala', 'ጂንኤላ', 'active', ... '5')"
+        }
+      ],
+      "description": "The six woreda codes, the English names, woreda_numeric_code 1-6 and the 19-kebele mapping in supabase/seed.sql match the README spec table exactly. The one mismatch is the Amharic name of woreda 5: ጂናኤላ in the README, ጂንኤላ in the seed. The seed value is what prints on every credential, letter and receipt letterhead for that woreda.",
+      "attack_scenario": "Not a security exploit.",
+      "impact": "Possible misspelling of an official woreda name on printed documents.",
+      "recommendation": "Have the owner confirm the official spelling, then correct either README.md or seed.sql (plus the live woreda row, with a woreda_settings display-name override if one is used).",
+      "secure_fix_example": "",
+      "effort": "S",
+      "status": "Open"
+    }
+  ],
+  "checklist": [
+    {
+      "id": "ET-01",
+      "status": "PARTIAL",
+      "evidence": "src/utils/ethiopianCalendar.ts:86-98; src/components/services/ServiceRequestList.tsx:385; src/routes/woreda.approvals.tsx:216; src/routes/woreda.services.new.tsx:574; src/routes/woreda.revenue.index.tsx:344,348; src/routes/v.$token.tsx:302-305; src/components/layout/AppShell.tsx:481-486",
+      "note": "Most woreda surfaces are EC-first (12 files use EthiopianDateInput; lists, details and exports use formatEthiopian*). Exceptions: Gregorian-only list/detail/export/print-footer dates, 3 native Gregorian pickers, public QR verify shows Gregorian ISO dates, and the header shows Gregorian first. See WP-LOC-004, -006, -011, -012."
+    },
+    {
+      "id": "ET-02",
+      "status": "PASS",
+      "evidence": "rg '[\\x{1369}-\\x{137C}]' over the whole repo (excl. node_modules/.git, --hidden) = 0 matches (regex validated on a sample containing Ge'ez numerals U+1369, U+1372 and U+137C); ethiopianCalendar.ts:88,93 interpolate plain JS numbers; no Intl ethiopic numbering / 'am' locale formatting in src. raw/locale-scans.txt",
+      "note": "EC dates render as '14 መስከረም 2019' and '14/01/2019' with Arabic numerals."
+    },
+    {
+      "id": "ET-03",
+      "status": "PASS",
+      "evidence": "raw/locale-ec-vectors.txt: 13/13 vectors pass incl. Meskerem 1, Pagume 5 (2016, 2018), Pagume 6 2015 and 2019 (leap: year%4===3), year boundary 2026-09-10/11, Gregorian leap days 2024-02-29 and 2028-02-29, today 2026-09-24 = 14 መስከረም 2019; 73,414-day round-trip sweep 1900-2100 with 0 mismatches. EthiopianDateInput.tsx:110-114 lists all 13 months incl. ጳጉሜ; isValidEthiopianDate ethiopianCalendar.ts:175-183.",
+      "note": "The converter is correct. Caller-side defects are recorded separately: timezone serialisation in WP-LOC-001 (Medium) and silent invalid input in WP-LOC-008 (Low)."
+    },
+    {
+      "id": "ET-04",
+      "status": "FAIL",
+      "evidence": "No 'fiscal'/'በጀት ዓመት'/'budget year' in src, migrations or docs; reports.index.tsx:172-176 rolling windows; revenue.index.tsx:344,348 Gregorian pickers; dashboard.tsx:353-372 Gregorian quarters",
+      "note": "WP-LOC-003"
+    },
+    {
+      "id": "ET-05",
+      "status": "FAIL",
+      "evidence": "ethiopianCalendar.ts:96-98; dashboard.tsx:612; audit.tsx:529,602; services.$requestId.index.tsx:566; revenue.$paymentId.receipt.tsx:484; HistoryTimeline.tsx:107",
+      "note": "Local time IS displayed, always on the Western 24-hour clock. No Ethiopian-clock conversion or period labels exist. WP-LOC-002"
+    },
+    {
+      "id": "ET-06",
+      "status": "PARTIAL",
+      "evidence": "residentSchema.ts:18-21,244-247; civil.birth.new.tsx:38-40; baseline.sql:343,357,358,367",
+      "note": "Three-part Amharic name required in forms; no last_name/surname anywhere. The DB does not enforce the parts, the English name is a single string, and there is no short-name helper. WP-LOC-010"
+    },
+    {
+      "id": "ET-07",
+      "status": "PASS",
+      "evidence": "No USD / currency:'USD' / '$' money rendering in src or migrations (rg); 72 ETB/ብር/Birr references; amountInWords.ts:142,149",
+      "note": "Observation: amounts use toLocaleString() with no locale (e.g. revenue.index.tsx:452), so separators follow the browser locale, and some money columns ('መጠን / Amount', revenue.index.tsx:408) carry no ETB unit. Recommend Intl.NumberFormat('en-US',{minimumFractionDigits:2}) + ' ብር / ETB'."
+    },
+    {
+      "id": "ET-08",
+      "status": "PARTIAL",
+      "evidence": "public/fonts/Tayitu-Regular.woff2, Jiret-Regular.woff2; styles.css:16-27,44-46,190-212; tableExport.ts:67; reportExport.ts:64; receipt.tsx:538; credentials print.tsx:1418",
+      "note": "Both fonts present and ordered Tayitu→Noto (headings) and Jiret→Noto (body). Not applied to receipt, ID card or canvas PDF output; unclassed Amharic falls through Inter; Regular-only files declared as 400-700. WP-LOC-007"
+    },
+    {
+      "id": "ET-09",
+      "status": "PARTIAL",
+      "evidence": "docs/amharic-strings-glossary.csv (693 rows, 2026-09-14); go-live-declaration.md:310; raw/locale-glossary-coverage.txt; spelling variants in raw/locale-scans.txt",
+      "note": "No approved source exists to compare against. The glossary is a stale self-extraction (1,065 uncovered runs). Missing translations: 37 English-only toasts (WP-BQ-006). Verbatim fidelity is UNVERIFIED pending native sign-off. WP-LOC-009"
+    },
+    {
+      "id": "ET-10",
+      "status": "PASS",
+      "evidence": "baseline.sql:199-207 (kebele = reference columns only); no kebele_(admin|clerk|officer|manager|user|role) in src/ or supabase/; app_user has no kebele column; RLS keyed on get_user_woreda_id()",
+      "note": "No kebele-level workflow authority. Observations: the Gott level is absent and a free-text 'Sub-Woreda' is used instead (WP-LOC-013, Info). Kebele rows are writable by any staff (WP-DB-007, database agent)."
+    },
+    {
+      "id": "ET-11",
+      "status": "PASS",
+      "evidence": "supabase/seed.sql:70-75 (woreda_numeric_code '1'..'6': AMIR_NUR, ABADIR, SHENKOR, ABOKER, JINEALA, HAKIM); seed.sql:78-96 (19 kebeles: 1={01,02,07}, 2={03,04,05,06}, 3={08,09,10}, 4={11,12,13}, 5={14,15,16}, 6={17,18,19}); README.md:52-59",
+      "note": "Exact match to the README spec table (the Section-3 brief itself is not in the repo; README is the only in-repo copy). woreda_id is a UUID, and the '1-6' identifier is woreda_numeric_code (UNIQUE, baseline.sql:627). Live DB UNVERIFIED. The Amharic spelling of Jineala differs (WP-LOC-014)."
+    },
+    {
+      "id": "ET-12",
+      "status": "FAIL",
+      "evidence": "Client: residentSchema.ts:41 (/^\\d{16}$/), phoneNumber.ts:59 (/^\\d{9}$/), PhoneDigitsInput used by 4 civil forms, occupants.new, provision, woreda-configuration.tsx:94. DB: no CHECK on phone/national_id in any migration; resident_pii_sync (mig 44:121-134) has no format check",
+      "note": "Client enforces; database does not. WP-LOC-005"
+    },
+    {
+      "id": "ET-13",
+      "status": "PASS",
+      "evidence": "236 distinct public tables/views/functions in migrations, all lower snake_case; 618 TS function declarations in src, none snake_case (rg)",
+      "note": "snake_case in TS appears only as DB column keys on Supabase rows, which is expected."
+    }
+  ],
+  "drift": [
+    {
+      "claim": "src/utils/ethiopianCalendar.ts does exact JDN-based conversion",
+      "source": "CLAUDE.md (Shared UI conventions)",
+      "verdict": "CONFIRMED",
+      "evidence": "raw/locale-ec-vectors.txt: 13 vectors + 1900-2100 round-trip sweep, 0 mismatches"
+    },
+    {
+      "claim": "Dates are Ethiopian-first in the woreda portal; input goes through <EthiopianDateInput>",
+      "source": "CLAUDE.md; .claude/agents/portal-conventions-review.md:55-57",
+      "verdict": "CONTRADICTED",
+      "evidence": "woreda.services.new.tsx:574, woreda.revenue.index.tsx:344,348 (type=date); ServiceRequestList.tsx:385; woreda.approvals.tsx:216"
+    },
+    {
+      "claim": "Ethiopian calendar: ALL dates in the Woreda portal use Ethiopian calendar as primary input and display",
+      "source": "README.md:44",
+      "verdict": "CONTRADICTED",
+      "evidence": "See WP-LOC-004 evidence list"
+    },
+    {
+      "claim": "Two-typeface Amharic system (Tayitu headers/nav, Jiret body) replacing the single .font-noto-ethiopic utility",
+      "source": "CLAUDE.md (UX restructuring)",
+      "verdict": "CONTRADICTED",
+      "evidence": ".font-noto-ethiopic still used 3x; 26 inline 'Noto Sans/Serif Ethiopic' in receipt/card print/admin template; tableExport.ts:67, reportExport.ts:64"
+    },
+    {
+      "claim": "Tayitu/Jiret both fall back to Noto Sans Ethiopic, which stays loaded",
+      "source": "src/styles.css:8-14",
+      "verdict": "CONFIRMED",
+      "evidence": "styles.css:45-46; __root.tsx:124 loads Noto Sans Ethiopic from Google Fonts"
+    },
+    {
+      "claim": "Six woreda tenants with IDs 1-6 and kebele mapping 01,02,07 / 03-06 / 08-10 / 11-13 / 14-16 / 17-19",
+      "source": "README.md:50-59",
+      "verdict": "CONFIRMED",
+      "evidence": "supabase/seed.sql:70-96 (Amharic name of woreda 5 differs, WP-LOC-014)"
+    },
+    {
+      "claim": "19 kebeles across 6 woredas in seed.sql - matches spec exactly; no kebele-level workflow actor",
+      "source": "docs/system-review-2026-09.md:117 (INV-03)",
+      "verdict": "CONFIRMED",
+      "evidence": "seed.sql:78-96; no kebele_* role in src/supabase"
+    },
+    {
+      "claim": "Only four entries in the translateError lookup have Amharic (five counting GENERIC_FALLBACK)",
+      "source": "CLAUDE.md (Edge Function errors)",
+      "verdict": "CONFIRMED",
+      "evidence": "src/lib/errorMessages.ts:25,35,43,49,71 (5 Ethiopic lines = fallback + 4 entries)"
+    },
+    {
+      "claim": "Amharic native-speaker sign-off not yet complete",
+      "source": "docs/go-live-declaration.md:310",
+      "verdict": "CONFIRMED",
+      "evidence": "No approval artefact in repo; glossary is an extraction"
+    },
+    {
+      "claim": "Input validation: two independent layers (Zod + DB CHECK), consistently applied",
+      "source": "docs/security-functionality.md:34-60",
+      "verdict": "CONTRADICTED",
+      "evidence": "Phone/FAN regex only in Zod (residentSchema.ts:41, phoneNumber.ts:59); no DB CHECK or trigger validation (WP-LOC-005)"
+    },
+    {
+      "claim": "Every stored phone is the +251-prefixed 9-digit local part",
+      "source": "src/lib/phoneNumber.ts:4-9; docs/go-live-declaration.md:157",
+      "verdict": "CONTRADICTED",
+      "evidence": "Holds only for UI writes; the DB accepts any text (baseline.sql:350, mig 44:128)"
+    },
+    {
+      "claim": "HistoryTimeline unification fixes Gregorian toLocaleString() display",
+      "source": "src/components/workflow/HistoryTimeline.tsx:81-84",
+      "verdict": "CONFIRMED",
+      "evidence": "HistoryTimeline.tsx:107 uses formatEthiopianDateTime (EC date, Western clock - see WP-LOC-002)"
+    },
+    {
+      "claim": "Pagume never billed so never appears in rent period keys",
+      "source": "src/utils/ethiopianCalendar.ts:207-209",
+      "verdict": "CONFIRMED",
+      "evidence": "mig 76:216-218 CHECK ethiopian_month BETWEEN 1 AND 12; rental-accounts:257-258 client guard"
+    }
+  ],
+  "artifacts": [
+    "docs/audit/2026-09-24/raw/locale-ec-vectors.txt",
+    "docs/audit/2026-09-24/raw/locale-scans.txt",
+    "docs/audit/2026-09-24/raw/locale-glossary-coverage.txt"
+  ]
+}
