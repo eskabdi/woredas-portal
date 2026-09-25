@@ -17,6 +17,8 @@
 
 INSA control totals (73 controls): PASS 11 · PARTIAL 32 · FAIL 28 · N/A 1 · UNVERIFIED 1. Full matrix: `03-insa-compliance-matrix.md`.
 
+**Remediation status (update 2026-09-25).** These figures describe the codebase at baseline `9950f16`. Since then one finding has changed state. **WP-VER-001 (Critical) is fixed in code but not yet deployed.** Migration `00000000000090_p0_2_definer_woreda_scope.sql` fixes it, and CI now runs the ratchet check `check:definer-tenant-predicate`. Both are on branch `claude/read-and-execute-ipi0yo` (PR #85, commits `f406f22` and `72e5dc5`). The migration has not been applied to production. It waits for P0-1 (a verified backup). Until it is applied and checked with the queries at the end of the migration, the finding stays open in production, so the verdict and counts above are unchanged. Every other finding is still open.
+
 **In one paragraph.** The portal is functionally broad and well engineered in places:
 
 - The rental financial core runs every money movement as one locked database transaction.

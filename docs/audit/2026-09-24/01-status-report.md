@@ -42,6 +42,8 @@ Legend: ✅ working, no blocking finding · 🟡 working with Medium or lower ga
 
 \* WP-VER-001 is one Critical finding spanning civil registration (`generate_resident_on_birth_approval`), rental (`rental_eligibility`) and credentials (`get_credential_live_status`). It is counted once in the totals.
 
+**Update 2026-09-25:** WP-VER-001 is fixed in code but not yet deployed (migration `00000000000090`, PR #85). The module rows above stay 🔴 until the migration is applied to production after P0-1 and verified there.
+
 ## 3. Build and code health
 
 | Check | Result | Evidence |
