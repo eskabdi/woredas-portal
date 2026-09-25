@@ -493,7 +493,8 @@ rather than overclaimed. CI itself (`.github/workflows/ci.yml`) runs on
 every PR and push to `main`: lint, build (regenerates
 `src/routeTree.gen.ts` before typecheck needs it), `tsc --noEmit`, the full
 test suite, `check:role-perms-drift`, `check:fee-catalog`,
-`check:service-type-catalog`, and `generate-permissions-doc.ts --check` —
+`check:service-type-catalog`, `check:definer-tenant-predicate`, and
+`generate-permissions-doc.ts --check` —
 all required to pass before a PR is even mergeable, independent of the
 review requirement above.
 
