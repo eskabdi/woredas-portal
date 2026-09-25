@@ -16,10 +16,12 @@
 --      child resident (the gap migration 32 recorded as out of scope and
 --      nothing closed afterwards). Every lookup is now pinned to
 --      NEW.woreda_id -- the mother's household included, so a stray
---      cross-woreda current_household_id is dropped rather than copied --
---      and a mother id that does not resolve inside the event's woreda
---      (another woreda's, or since deleted) raises instead of being
---      silently skipped.
+--      cross-woreda current_household_id is dropped rather than copied. A
+--      mother id that does not resolve inside the event's woreda (another
+--      woreda's, since deleted, or malformed) copies nothing. This trigger
+--      does not raise: it runs on the final registered transition, and a
+--      raise there would strand an already-paid event (see 2 for where a
+--      bad reference is refused).
 --
 --   2. enforce_vital_event_preconditions() only checked the household on a
 --      birth, the resident on a death and the spouses on a marriage. It now
@@ -29,7 +31,13 @@
 --      father_resident_id, deceased_resident_id, plus spouse1/spouse2
 --      .resident_id for marriage AND divorce) that does not belong to
 --      NEW.woreda_id. This is the check a clerk hits first, with a bilingual
---      message; (1) is the backstop for rows written before this migration.
+--      message. The event_details check runs when the references are
+--      written (INSERT, or an UPDATE of event_details/woreda_id), not on the
+--      later paid re-check: a resident deleted or moved after submission
+--      must not make "Record payment" raise after the payment and receipt
+--      are already committed, which would leave the event stuck at
+--      awaiting_payment. (1) is the backstop for rows written before this
+--      migration.
 --
 --   3. rental_eligibility() re-derived the woreda from the resident row
 --      instead of from the caller, so any authenticated user -- and anon,
@@ -88,12 +96,21 @@ BEGIN
   IF NEW.event_type = 'birth' AND NEW.status = 'registered' AND (OLD.status IS DISTINCT FROM 'registered')
      AND NEW.resident_id IS NULL THEN
     d := NEW.event_details;
-    v_mother_id := NULLIF(d->>'mother_resident_id', '')::UUID;
+    -- Parsed defensively: a malformed value copies nothing rather than
+    -- raising a cast error on the final registered transition.
+    v_mother_id := CASE
+      WHEN btrim(COALESCE(d->>'mother_resident_id', '')) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+      THEN btrim(d->>'mother_resident_id')::UUID
+    END;
 
     IF v_mother_id IS NOT NULL THEN
-      -- The household is joined on the event's woreda too: the mother's
-      -- current_household_id has a single-column FK, so a stray value
-      -- pointing at another woreda's household must not spread to the child.
+      -- Pinned to the event's woreda. A mother who is not a resident of
+      -- this woreda (another tenant's, or deleted since submission) matches
+      -- no row, so nothing is copied and the child falls back to the
+      -- details the clerk entered. The household is joined on the event's
+      -- woreda too: current_household_id has a single-column FK, so a stray
+      -- value pointing at another woreda's household must not spread to
+      -- the child.
       SELECT r.ethnicity, r.religion, h.household_id, r.full_name_am
         INTO v_mother_ethnicity, v_mother_religion, v_mother_household_id, v_mother_full_name_am
         FROM public.resident r
@@ -102,12 +119,6 @@ BEGIN
          AND h.woreda_id = NEW.woreda_id
        WHERE r.resident_id = v_mother_id
          AND r.woreda_id = NEW.woreda_id;
-
-      IF NOT FOUND THEN
-        RAISE EXCEPTION USING
-          ERRCODE = 'check_violation',
-          MESSAGE = 'እናቲቱ በዚህ ወረዳ አልተገኙም / mother_resident_id was not found in this woreda.';
-      END IF;
     END IF;
 
     v_full_name_am := trim(concat_ws(' ', d->>'child_first_name', d->>'child_father_name', d->>'child_grandfather_name'));
@@ -240,8 +251,12 @@ BEGIN
   -- Every other resident reference in event_details, for every event type:
   -- top-level *_resident_id keys (mother_resident_id, father_resident_id,
   -- deceased_resident_id, ...) and the nested spouse1/spouse2 references a
-  -- divorce carries in the same shape as a marriage.
-  IF d IS NOT NULL AND jsonb_typeof(d) = 'object' THEN
+  -- divorce carries in the same shape as a marriage. Checked when the
+  -- references are written, not on the paid re-check (see the header).
+  IF d IS NOT NULL AND jsonb_typeof(d) = 'object'
+     AND (TG_OP = 'INSERT'
+          OR NEW.event_details IS DISTINCT FROM OLD.event_details
+          OR NEW.woreda_id IS DISTINCT FROM OLD.woreda_id) THEN
     FOR v_ref IN
       SELECT e.key AS ref_key, e.value AS ref_value
         FROM jsonb_each_text(d) AS e
@@ -490,9 +505,27 @@ COMMIT;
 --   SELECT count(*) FROM pg_proc WHERE proname = 'generate_resident_on_birth_approval'
 --      AND prosrc LIKE '%r.woreda_id = NEW.woreda_id%';                                                    -- 1
 --
--- Pre-existing cross-woreda rows (should be 0; non-zero means data to review):
+-- Before apply AND after: every event_details resident reference that does
+-- not resolve inside its event's woreda (cross-woreda, deleted, or not a
+-- UUID). Should be 0. Rows not yet registered/rejected are the ones that
+-- matter most -- resolve them first; later edits to their event_details
+-- would be refused.
 --
---   SELECT count(*) FROM public.vital_event ve
---     JOIN public.resident m ON m.resident_id = NULLIF(ve.event_details->>'mother_resident_id','')::uuid
---    WHERE m.woreda_id <> ve.woreda_id;
+--   WITH refs AS (
+--     SELECT ve.vital_event_id, ve.woreda_id, ve.status, e.key AS ref_key, e.value AS ref_value
+--       FROM public.vital_event ve, jsonb_each_text(ve.event_details) e
+--      WHERE jsonb_typeof(ve.event_details) = 'object' AND e.key LIKE '%\_resident\_id' ESCAPE '\'
+--     UNION ALL
+--     SELECT ve.vital_event_id, ve.woreda_id, ve.status, p.party || '.resident_id',
+--            ve.event_details #>> ARRAY[p.party, 'resident_id']
+--       FROM public.vital_event ve, (VALUES ('spouse1'), ('spouse2')) p(party)
+--      WHERE jsonb_typeof(ve.event_details -> p.party) = 'object'
+--   )
+--   SELECT refs.status, refs.ref_key, count(*)
+--     FROM refs
+--    WHERE NULLIF(btrim(refs.ref_value), '') IS NOT NULL
+--      AND NOT EXISTS (
+--        SELECT 1 FROM public.resident r
+--         WHERE r.resident_id::text = lower(btrim(refs.ref_value)) AND r.woreda_id = refs.woreda_id)
+--    GROUP BY 1, 2 ORDER BY 1, 2;
 -- ---------------------------------------------------------------------------
