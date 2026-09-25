@@ -25,19 +25,30 @@ fi
 
 cd "$(dirname "$0")/.."
 
-FUNCTIONS=(
+# verify_jwt is pinned per function so a deploy reproduces the live gateway
+# setting instead of silently flipping it (security audit 2026-09-24, QW-6 /
+# WP-API-004). These are the values read from production on 2026-09-25. Every
+# function authenticates the caller in its own code either way; the gateway
+# check is a second layer, not the only one. Change a function's group here
+# deliberately, never by redeploying it with a different flag by hand.
+NO_GATEWAY_JWT=(
   invite-platform-admin
   invite-tenant-user
   resend-platform-invite
-  resend-tenant-invite
   activate-invited-user
   record-login
   sign-credential
+)
+GATEWAY_JWT=(
+  resend-tenant-invite
   send-password-reset-link
 )
 
-echo "==> Deploying ${#FUNCTIONS[@]} function(s) to $REF"
-supabase functions deploy "${FUNCTIONS[@]}" --use-api --project-ref "$REF"
+echo "==> Deploying ${#NO_GATEWAY_JWT[@]} function(s) with verify_jwt=false to $REF"
+supabase functions deploy "${NO_GATEWAY_JWT[@]}" --use-api --no-verify-jwt --project-ref "$REF"
+
+echo "==> Deploying ${#GATEWAY_JWT[@]} function(s) with verify_jwt=true to $REF"
+supabase functions deploy "${GATEWAY_JWT[@]}" --use-api --project-ref "$REF"
 
 cat <<'EOF'
 

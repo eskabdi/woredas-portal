@@ -55,7 +55,7 @@ Six woreda tenants. Seed these into the database:
 | 2         | ABADIR      | Abadir           | አባዲር             | 03, 04, 05, 06 |
 | 3         | SHENKOR     | Shenkor          | ሸንኮር             | 08, 09, 10     |
 | 4         | ABOKER      | Aboker           | አቦከር             | 11, 12, 13     |
-| 5         | JINEALA     | Jineala          | ጂናኤላ             | 14, 15, 16     |
+| 5         | JINEALA     | Jinala           | ጂናኤላ             | 14, 15, 16     |
 | 6         | HAKIM       | Hakim            | ሃኪም              | 17, 18, 19     |
 
 ---

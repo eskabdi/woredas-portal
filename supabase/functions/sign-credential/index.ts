@@ -42,6 +42,31 @@ function base64UrlEncodeString(s: string): string {
   return base64UrlEncodeBytes(new TextEncoder().encode(s));
 }
 
+/** P-256 group order n. */
+const P256_N = BigInt("0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551");
+
+/**
+ * Rewrites a raw 64-byte (r || s) ECDSA signature into its low-S form.
+ *
+ * (r, s) and (r, n - s) both verify, so every signature has a twin spelling.
+ * Emitting only the low half gives each card exactly one canonical token
+ * (security audit 2026-09-24, WP-CRY-001). Verification is unaffected -- the
+ * twin was always valid -- and cards signed before this change stay valid.
+ */
+function toLowS(sig: Uint8Array): Uint8Array {
+  if (sig.length !== 64) throw new Error("unexpected ES256 signature length");
+  let s = BigInt(0);
+  for (let i = 32; i < 64; i++) s = (s << BigInt(8)) | BigInt(sig[i]);
+  if (s <= P256_N >> BigInt(1)) return sig;
+  let low = P256_N - s;
+  const out = new Uint8Array(sig);
+  for (let i = 63; i >= 32; i--) {
+    out[i] = Number(low & BigInt(0xff));
+    low >>= BigInt(8);
+  }
+  return out;
+}
+
 function pemToDer(pem: string): Uint8Array {
   const b64 = pem
     .replace(/-----BEGIN [^-]+-----/g, "")
@@ -232,14 +257,16 @@ Deno.serve(async (req: Request) => {
 
     const payloadB64 = base64UrlEncodeString(JSON.stringify(payload));
     const signingInput = new TextEncoder().encode(payloadB64);
-    const sig = new Uint8Array(
-      await crypto.subtle.sign(
-        { name: "ECDSA", hash: "SHA-256" },
-        key,
-        signingInput.buffer.slice(
-          signingInput.byteOffset,
-          signingInput.byteOffset + signingInput.byteLength,
-        ) as ArrayBuffer,
+    const sig = toLowS(
+      new Uint8Array(
+        await crypto.subtle.sign(
+          { name: "ECDSA", hash: "SHA-256" },
+          key,
+          signingInput.buffer.slice(
+            signingInput.byteOffset,
+            signingInput.byteOffset + signingInput.byteLength,
+          ) as ArrayBuffer,
+        ),
       ),
     );
     const token = `${payloadB64}.${base64UrlEncodeBytes(sig)}`;
