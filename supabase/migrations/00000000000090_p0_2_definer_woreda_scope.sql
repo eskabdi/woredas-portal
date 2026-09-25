@@ -15,8 +15,11 @@
 --      religion, household and Amharic name from ANY woreda into the new
 --      child resident (the gap migration 32 recorded as out of scope and
 --      nothing closed afterwards). Every lookup is now pinned to
---      NEW.woreda_id, and a mother id that does not resolve inside the
---      event's woreda raises instead of being silently skipped.
+--      NEW.woreda_id -- the mother's household included, so a stray
+--      cross-woreda current_household_id is dropped rather than copied --
+--      and a mother id that does not resolve inside the event's woreda
+--      (another woreda's, or since deleted) raises instead of being
+--      silently skipped.
 --
 --   2. enforce_vital_event_preconditions() only checked the household on a
 --      birth, the resident on a death and the spouses on a marriage. It now
@@ -88,16 +91,22 @@ BEGIN
     v_mother_id := NULLIF(d->>'mother_resident_id', '')::UUID;
 
     IF v_mother_id IS NOT NULL THEN
-      SELECT r.ethnicity, r.religion, r.current_household_id, r.full_name_am
+      -- The household is joined on the event's woreda too: the mother's
+      -- current_household_id has a single-column FK, so a stray value
+      -- pointing at another woreda's household must not spread to the child.
+      SELECT r.ethnicity, r.religion, h.household_id, r.full_name_am
         INTO v_mother_ethnicity, v_mother_religion, v_mother_household_id, v_mother_full_name_am
         FROM public.resident r
+        LEFT JOIN public.household h
+          ON h.household_id = r.current_household_id
+         AND h.woreda_id = NEW.woreda_id
        WHERE r.resident_id = v_mother_id
          AND r.woreda_id = NEW.woreda_id;
 
       IF NOT FOUND THEN
         RAISE EXCEPTION USING
           ERRCODE = 'check_violation',
-          MESSAGE = 'እናቲቱ በዚህ ወረዳ አልተገኙም / mother_resident_id does not belong to this woreda.';
+          MESSAGE = 'እናቲቱ በዚህ ወረዳ አልተገኙም / mother_resident_id was not found in this woreda.';
       END IF;
     END IF;
 
@@ -258,7 +267,7 @@ BEGIN
       ) THEN
         RAISE EXCEPTION USING
           ERRCODE = 'check_violation',
-          MESSAGE = format('ነዋሪው በዚህ ወረዳ አልተገኘም (%s) / %s does not belong to this woreda.',
+          MESSAGE = format('ነዋሪው በዚህ ወረዳ አልተገኘም (%s) / %s was not found in this woreda.',
                            v_ref.ref_key, v_ref.ref_key);
       END IF;
     END LOOP;

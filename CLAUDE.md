@@ -94,7 +94,7 @@ bun run test                # vitest run — unit tests, jsdom environment
 bun run check:role-perms-drift  # fails if permissions.ts and default_role_perms() disagree
 bun run check:fee-catalog          # fails if a woreda is missing an active fee_schedule row a fee resolver needs
 bun run check:service-type-catalog # fails if woredas' service_type codes drift out of sync with each other
-bun run check:definer-tenant-predicate # fails if a SECURITY DEFINER body reads a tenant table with no woreda scoping
+bun run check:definer-tenant-predicate # heuristic ratchet: fails on a new SECURITY DEFINER tenant-table lookup with no tenant anchor
 bun run generate:permissions-doc  # --write regenerates docs/permissions-matrix.md from ROLE_PERMISSIONS
 ```
 

@@ -346,13 +346,17 @@ credential-status oracle for every authenticated user). Migration
 event's or caller's woreda, extends `enforce_vital_event_preconditions()` to
 reject any out-of-woreda resident or household reference on every civil
 event type, revokes `rental_eligibility()` from `anon`, and retires
-`get_credential_live_status()` (no client grant at all). So that a fourth
-case cannot land unnoticed, `bun run check:definer-tenant-predicate`
+`get_credential_live_status()` (no client grant at all). To make a fourth
+case harder to land unnoticed, `bun run check:definer-tenant-predicate`
 (`scripts/check-definer-tenant-predicate.ts`, run in CI) statically flags
-any `SECURITY DEFINER` statement that reads a tenant table without
-`woreda_id`, `is_super_admin()` or `auth.uid()` in it; the pre-existing
-tolerated cases are listed with their reason in the script's
-`REVIEWED_BASELINE`, and the list can only shrink.
+any `SECURITY DEFINER` statement that reads or updates a tenant table
+without a tenant anchor -- `get_user_woreda_id()`, `NEW`/`OLD.woreda_id`,
+`is_super_admin()`, `auth.uid()`, or a variable derived from one of them
+(a bare `woreda_id`, such as a parameter or a display join, does not
+count). It is a text heuristic and a ratchet, not a proof: an anchored
+statement can still be wrong, so it complements review rather than
+replacing it. The pre-existing tolerated cases are listed with their reason
+in the script's `REVIEWED_BASELINE`, and the list can only shrink.
 
 ## Related documents
 
