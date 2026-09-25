@@ -19,10 +19,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  extractToken,
   verifyCredentialToken,
   type HarariQRVerificationPayload,
 } from "@/utils/harariCredentialCrypto";
 import { supabase } from "@/integrations/supabase/client";
+import { credentialVerdict, verdictTone, type CredentialVerdict } from "@/lib/credentialVerdict";
 import { cn } from "@/lib/utils";
 
 type Mode = "camera" | "upload";
@@ -32,6 +34,8 @@ type VerifyResult = {
   expired: boolean;
   error: string | null;
   payload: HarariQRVerificationPayload | null;
+  /** The bare token scanned, used for the registry lookup. */
+  token: string;
 };
 
 const SCANNER_ELEMENT_ID = "harari-qr-scanner-region";
@@ -60,6 +64,9 @@ export function HararildScanner() {
   const [dragOver, setDragOver] = useState(false);
   const [online, setOnline] = useState(typeof navigator !== "undefined" ? navigator.onLine : true);
   const [liveStatus, setLiveStatus] = useState<string | null>(null);
+  // true once the registry answered, with a row or with none; a card the
+  // registry does not know is a red verdict, not an error.
+  const [liveAnswered, setLiveAnswered] = useState(false);
   // Fetched from storage after a live check, not carried in the QR.
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [liveStatusLoading, setLiveStatusLoading] = useState(false);
@@ -91,7 +98,9 @@ export function HararildScanner() {
   const runVerification = useCallback(async (rawText: string) => {
     setBusy(true);
     setLiveStatus(null);
+    setLiveAnswered(false);
     setLiveStatusError(null);
+    setPhotoUrl(null);
     try {
       const r = await verifyCredentialToken(rawText);
       setResult({
@@ -99,6 +108,7 @@ export function HararildScanner() {
         expired: r.expired,
         error: r.error,
         payload: r.payload,
+        token: extractToken(rawText),
       });
     } catch (e) {
       setResult({
@@ -106,6 +116,7 @@ export function HararildScanner() {
         expired: false,
         error: (e as Error).message,
         payload: null,
+        token: "",
       });
     } finally {
       setBusy(false);
@@ -240,45 +251,64 @@ export function HararildScanner() {
     setDecodeError(null);
     setCameraError(null);
     setLiveStatus(null);
+    setLiveAnswered(false);
     setLiveStatusError(null);
+    setPhotoUrl(null);
     if (mode === "camera") {
       // effect will restart camera when result cleared
     }
   }, [mode, stopCamera]);
 
   const checkLiveStatus = useCallback(async () => {
-    if (!result?.payload?.credentialNumber) return;
+    if (!result?.valid || !result.token) return;
     setLiveStatusLoading(true);
     setLiveStatusError(null);
     setLiveStatus(null);
+    setLiveAnswered(false);
     setPhotoUrl(null);
     try {
       // The signature proves the data is genuine; only the registry knows
-      // whether the card is still valid. The same call returns the resident's
-      // photo when the caller is active staff — the card's QR no longer carries
-      // one, because an embedded photo made the printed code too dense to scan.
+      // whether the card is still valid. Looked up by the scanned token, not
+      // the bare credential number: the number only matches cards of the
+      // officer's own woreda, so a genuine card from another woreda used to
+      // come back "not found" (WP-CRY-002). The same call returns the
+      // resident's photo when the caller is active staff -- the card's QR no
+      // longer carries one, because an embedded photo made the printed code
+      // too dense to scan.
       const { data, error } = await supabase.rpc("verify_credential_token", {
-        _token: result.payload.credentialNumber,
+        _token: result.token,
       });
       if (error) throw error;
       const row = Array.isArray(data) ? data[0] : data;
-      if (!row) {
-        setLiveStatusError("Credential not found in registry");
-        return;
-      }
+      setLiveAnswered(true);
+      if (!row) return;
       setLiveStatus(String(row.status));
       if (row.photo_path) {
-        const { data: signed } = await supabase.storage
-          .from("resident-photos")
-          .createSignedUrl(row.photo_path, 600);
-        setPhotoUrl(signed?.signedUrl ?? null);
+        try {
+          const { data: signed } = await supabase.storage
+            .from("resident-photos")
+            .createSignedUrl(row.photo_path, 600);
+          setPhotoUrl(signed?.signedUrl ?? null);
+        } catch {
+          setPhotoUrl(null);
+        }
       }
     } catch (e) {
-      setLiveStatusError((e as Error).message);
+      setLiveStatusError((e as Error).message || "registry unavailable");
     } finally {
       setLiveStatusLoading(false);
     }
   }, [result]);
+
+  // The live check is not optional: it runs as soon as a genuine signature
+  // is scanned (and again when the connection comes back), so a revoked card
+  // can never sit behind a green badge waiting for someone to click.
+  useEffect(() => {
+    if (result?.valid && online && !liveAnswered && !liveStatusLoading && !liveStatusError) {
+      void checkLiveStatus();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result, online]);
 
   const expiryBadge = useMemo(() => {
     if (!result?.payload?.expiryDate) return null;
@@ -294,7 +324,14 @@ export function HararildScanner() {
     return null;
   }, [result]);
 
-  const isVerifiedOk = result && result.valid && !result.expired;
+  const verdict: CredentialVerdict | null = result?.valid
+    ? credentialVerdict({
+        signatureValid: true,
+        payloadExpired: result.expired,
+        registryAnswered: liveAnswered,
+        registryStatus: liveStatus,
+      })
+    : null;
   const humanErr = humanizeError(result?.error ?? null);
 
   return (
@@ -411,9 +448,10 @@ export function HararildScanner() {
               transition={{ duration: 0.35, ease: "easeOut" }}
               className="space-y-4"
             >
-              {isVerifiedOk ? (
+              {verdict && result.payload ? (
                 <SuccessPanel
-                  payload={result.payload!}
+                  payload={result.payload}
+                  verdict={verdict}
                   expiryBadge={expiryBadge}
                   liveStatus={liveStatus}
                   liveStatusLoading={liveStatusLoading}
@@ -441,8 +479,21 @@ export function HararildScanner() {
   );
 }
 
+/** Badge copy per verdict, Amharic first. Green only for `verified`. */
+const VERDICT_BADGE: Record<CredentialVerdict, { am: string; en: string }> = {
+  verified: { am: "የተረጋገጠ ትክክለኛ መታወቂያ", en: "Verified" },
+  withdrawn: { am: "ይህ መታወቂያ ተሰርዟል", en: "Withdrawn" },
+  not_found: { am: "በመዝገቡ ውስጥ አልተገኘም", en: "Not recognised by the registry" },
+  not_issued: { am: "ገና አልተሰጠም", en: "Not yet issued" },
+  printed_not_collected: { am: "ታትሟል፤ ገና አልተሰጠም", en: "Printed, not yet collected" },
+  expired: { am: "የአገልግሎት ጊዜው አብቅቷል", en: "Expired" },
+  status_unknown: { am: "ፊርማው ትክክል ነው፤ ሁኔታው አልታወቀም", en: "Signature valid, status unknown" },
+  invalid_signature: { am: "አልተረጋገጠም", en: "Not Verified" },
+};
+
 function SuccessPanel({
   payload,
+  verdict,
   expiryBadge,
   liveStatus,
   liveStatusLoading,
@@ -452,6 +503,7 @@ function SuccessPanel({
   photoUrl,
 }: {
   payload: HarariQRVerificationPayload;
+  verdict: CredentialVerdict;
   expiryBadge: React.ReactNode;
   liveStatus: string | null;
   liveStatusLoading: boolean;
@@ -474,38 +526,97 @@ function SuccessPanel({
     { label: "Credential #", value: payload.credentialNumber },
   ];
 
-  const liveNotActive = liveStatus !== null && liveStatus !== "active";
+  const tone = verdictTone(verdict);
+  const checking = liveStatusLoading && online;
+  const badge = VERDICT_BADGE[verdict];
 
   return (
-    <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4">
+    <div
+      data-verdict={checking ? "checking" : verdict}
+      className={cn(
+        "rounded-xl border p-4",
+        checking
+          ? "border-slate-200 bg-slate-50/60"
+          : tone === "green"
+            ? "border-emerald-200 bg-emerald-50/40"
+            : tone === "red"
+              ? "border-red-200 bg-red-50/40"
+              : "border-amber-200 bg-amber-50/40",
+      )}
+    >
       <div className="flex flex-wrap items-center gap-2">
-        <Badge className="gap-1 bg-emerald-600 text-white hover:bg-emerald-600">
-          <CheckCircle2 className="h-3.5 w-3.5" />
-          <span className="font-am-body">የተረጋገጠ ትክክለኛ መታወቂያ</span>
-          <span className="opacity-90">/ Verified</span>
-        </Badge>
-        {expiryBadge}
-        {liveStatus && (
+        {checking ? (
+          <Badge variant="secondary" className="gap-1">
+            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+            <span className="font-am-body">ሁኔታው በመፈተሽ ላይ…</span>
+            <span className="opacity-90">/ Checking registry…</span>
+          </Badge>
+        ) : (
           <Badge
             className={cn(
-              liveStatus === "active"
-                ? "bg-emerald-600 text-white hover:bg-emerald-600"
-                : "bg-red-600 text-white hover:bg-red-600",
+              "gap-1 text-white",
+              tone === "green"
+                ? "bg-emerald-600 hover:bg-emerald-600"
+                : tone === "red"
+                  ? "bg-red-600 hover:bg-red-600"
+                  : "bg-amber-500 hover:bg-amber-500",
             )}
           >
+            {tone === "green" ? (
+              <CheckCircle2 className="h-3.5 w-3.5" />
+            ) : tone === "red" ? (
+              <XCircle className="h-3.5 w-3.5" />
+            ) : (
+              <AlertTriangle className="h-3.5 w-3.5" />
+            )}
+            <span className="font-am-body">{badge.am}</span>
+            <span className="opacity-90">/ {badge.en}</span>
+          </Badge>
+        )}
+        {expiryBadge}
+        {liveStatus && (
+          <Badge variant="outline" className="text-slate-700">
             Live: {liveStatus}
           </Badge>
         )}
       </div>
 
-      {liveNotActive && (
+      {!checking && tone === "red" && (
         <Alert variant="destructive" className="mt-3">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            <span className="font-am-body">
-              ይህ መታወቂያ {liveStatus === "revoked" ? "ተሰርዟል" : "ትክክል አይደለም"}
-            </span>{" "}
-            / This credential is {liveStatus}.
+            {verdict === "not_found" ? (
+              <>
+                <span className="font-am-body">ይህን መታወቂያ አይቀበሉ</span> / Do not accept this card: the
+                signature checks out, but the registry has no record of it.
+              </>
+            ) : (
+              <>
+                <span className="font-am-body">
+                  ይህ መታወቂያ {liveStatus === "revoked" ? "ተሰርዟል" : "ትክክል አይደለም"}
+                </span>{" "}
+                / This credential is {liveStatus ?? "withdrawn"}.
+              </>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+      {!checking && verdict === "status_unknown" && (
+        <Alert className="mt-3 border-amber-300 text-amber-900">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            {online ? (
+              <>
+                <span className="font-am-body">መዝገቡ አልተገኘም፤ እንደገና ይሞክሩ</span> / The registry could
+                not be reached, so whether this card is still in force is unknown. Re-check before
+                relying on it.
+              </>
+            ) : (
+              <>
+                <span className="font-am-body">ከመስመር ውጭ</span> / Offline: signature valid, current
+                status unknown until the registry can be checked.
+              </>
+            )}
           </AlertDescription>
         </Alert>
       )}
@@ -525,7 +636,7 @@ function SuccessPanel({
               {online ? (
                 <>
                   <span className="font-am-body">ፎቶ ለማየት</span>
-                  <span>Check live status to load the photo</span>
+                  <span>Photo loads after the registry check</span>
                 </>
               ) : (
                 <>
@@ -563,8 +674,8 @@ function SuccessPanel({
               <span>Checking…</span>
             ) : (
               <>
-                <span className="font-am-body">የቀጥታ ሁኔታ ይፈትሹ</span>
-                <span className="opacity-70">/ Check Live Status</span>
+                <span className="font-am-body">ሁኔታውን እንደገና ይፈትሹ</span>
+                <span className="opacity-70">/ Re-check Live Status</span>
               </>
             )}
           </Button>

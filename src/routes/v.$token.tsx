@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { BadgeCheck, Loader2, ShieldAlert, ShieldX, Clock } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
+import { credentialVerdict } from "@/lib/credentialVerdict";
 import { verifyCredentialToken } from "@/utils/harariCredentialCrypto";
 import type { HarariQRVerificationPayload } from "@/utils/harariCredentialCrypto";
 
@@ -17,6 +18,11 @@ import type { HarariQRVerificationPayload } from "@/utils/harariCredentialCrypto
  *      been altered, and it works even if the registry is unreachable.
  *   2. The registry is asked for the card's current status, because a revoked
  *      card still carries a perfectly valid signature.
+ *
+ * The verdict fails closed (credentialVerdict(), security audit 2026-09-24,
+ * WP-CRY-001): green only when the registry answers `active`. No registry row
+ * is red; a registry that cannot be reached or is rate-limiting is amber
+ * ("genuine, status unknown"). Neither ever shows the green banner.
  *
  * Anonymous visitors see only enough to confirm a card is genuine. The photo and
  * full date of birth come back solely for signed-in woreda staff — enforced in
@@ -122,16 +128,22 @@ function CredentialVerificationPage() {
         });
         if (error) throw error;
         registry = ((rows ?? []) as RegistryRow[])[0] ?? null;
-        if (registry?.photo_path) {
+      } catch (e) {
+        // The signature already stands on its own; the verdict becomes
+        // "status unknown" (amber), never green.
+        registryError = (e as Error).message || "registry unavailable";
+      }
+      if (registry?.photo_path) {
+        // Kept apart from the status lookup: a photo that fails to load must
+        // not turn a known status into "unknown".
+        try {
           const { data: signed } = await supabase.storage
             .from("resident-photos")
             .createSignedUrl(registry.photo_path, 600);
           photoUrl = signed?.signedUrl ?? null;
+        } catch {
+          photoUrl = null;
         }
-      } catch (e) {
-        // The signature already stands on its own; say the live check failed
-        // rather than implying the card is bad.
-        registryError = (e as Error).message;
       }
 
       return {
@@ -176,50 +188,23 @@ function CredentialVerificationPage() {
 
   const payload = data.payload!;
   const registry = data.registry;
-  const notFound = !registry && !data.registryError;
-
-  // Not yet a physical card in anyone's hands: still at (or heading to) the
-  // printer. The `printing` window includes a failed print whose physical card
-  // is a discarded misfeed -- scanning that must never return a green verdict.
-  const notYetIssued = registry?.status === "ready_to_print" || registry?.status === "printing";
-
-  // `printed` is NOT "a card in someone's wallet" -- that was this file's
-  // previous assumption and it is wrong. The workflow spec is explicit that
-  // collection is its own step: `Printed -> (resident collects, officer records
-  // acknowledgment) -> Active` (docs/id-card-workflow.txt:136-139, and Stage 8
-  // at :493-509 with its own collection_date). Until an officer records the
-  // handover, a `printed` card is sitting in the woreda office addressed to
-  // nobody -- so a card lost, misfiled, or taken from the output tray in that
-  // window must not scan as a card in force.
-  const printedNotCollected = registry?.status === "printed";
-
-  // Computed from the SIGNED payload's own expiry date, not from the
-  // registry -- this still works even when the registry collapses its
-  // status to "invalid" (see below), because the client already knows the
-  // card's expiry date independently and correctly regardless of what the
-  // server folded that into.
-  const expired = data.expired || registry?.status === "expired";
-
-  // verify_credential_token() (F-02 hardening) now returns a single generic
-  // "invalid" for expired/suspended/revoked/replaced to an anonymous caller,
-  // rather than the real status -- a stranger doesn't get to learn WHY a
-  // card is invalid, only that it is. A signed-in staff member's own session
-  // (this page carries no PermissionGate, so a staff member's cookies still
-  // apply if they open a public link while logged in) still gets the real
-  // granular value, hence checking for the original values too. Order
-  // matters: `expired` is checked above and takes priority, so a card that
-  // is invalid ONLY because it passed its own expiry date still gets the
-  // friendlier amber "expired" message instead of the red one below, even
-  // when the registry said just "invalid".
-  const WITHDRAWN = ["revoked", "suspended", "replaced", "invalid"];
-  const withdrawn = !!registry && !expired && WITHDRAWN.includes(registry.status);
+  const verdict = credentialVerdict({
+    signatureValid: true,
+    payloadExpired: data.expired,
+    registryAnswered: !data.registryError,
+    registryStatus: registry?.status ?? null,
+  });
+  // A withdrawn card, or one the registry does not know, reveals nothing
+  // beyond its banner -- see the note above the details block.
+  const hideDetails = verdict === "withdrawn" || verdict === "not_found";
 
   return (
     <Shell>
       <div className="overflow-hidden rounded-xl border bg-white">
-        {/* Verdict banner — signature is proven; live status may qualify it. */}
-        {withdrawn ? (
-          <div className="flex items-center gap-3 bg-red-50 px-5 py-4">
+        {/* Verdict banner. Green is reserved for a registry status of
+            `active`; every other outcome is amber or red. */}
+        {verdict === "withdrawn" ? (
+          <div className="flex items-center gap-3 bg-red-50 px-5 py-4" data-verdict={verdict}>
             <ShieldX className="h-6 w-6 shrink-0 text-red-600" />
             <div>
               <div className="font-am-body font-bold text-red-800">ይህ መታወቂያ ተሰርዟል</div>
@@ -230,8 +215,19 @@ function CredentialVerificationPage() {
               </div>
             </div>
           </div>
-        ) : notYetIssued ? (
-          <div className="flex items-center gap-3 bg-amber-50 px-5 py-4">
+        ) : verdict === "not_found" ? (
+          <div className="flex items-center gap-3 bg-red-50 px-5 py-4" data-verdict={verdict}>
+            <ShieldX className="h-6 w-6 shrink-0 text-red-600" />
+            <div>
+              <div className="font-am-body font-bold text-red-800">በመዝገቡ ውስጥ አልተገኘም</div>
+              <div className="text-sm text-red-700">
+                Not recognised by the registry. Do not accept this card; report it to the issuing
+                woreda.
+              </div>
+            </div>
+          </div>
+        ) : verdict === "not_issued" ? (
+          <div className="flex items-center gap-3 bg-amber-50 px-5 py-4" data-verdict={verdict}>
             <Clock className="h-6 w-6 shrink-0 text-amber-600" />
             <div>
               <div className="font-am-body font-bold text-amber-800">ገና አልተሰጠም</div>
@@ -240,8 +236,8 @@ function CredentialVerificationPage() {
               </div>
             </div>
           </div>
-        ) : printedNotCollected ? (
-          <div className="flex items-center gap-3 bg-amber-50 px-5 py-4">
+        ) : verdict === "printed_not_collected" ? (
+          <div className="flex items-center gap-3 bg-amber-50 px-5 py-4" data-verdict={verdict}>
             <Clock className="h-6 w-6 shrink-0 text-amber-600" />
             <div>
               <div className="font-am-body font-bold text-amber-800">ታትሟል፤ ገና አልተሰጠም</div>
@@ -250,32 +246,34 @@ function CredentialVerificationPage() {
               </div>
             </div>
           </div>
-        ) : expired ? (
-          <div className="flex items-center gap-3 bg-amber-50 px-5 py-4">
+        ) : verdict === "expired" ? (
+          <div className="flex items-center gap-3 bg-amber-50 px-5 py-4" data-verdict={verdict}>
             <Clock className="h-6 w-6 shrink-0 text-amber-600" />
             <div>
               <div className="font-am-body font-bold text-amber-800">የአገልግሎት ጊዜው አብቅቷል</div>
               <div className="text-sm text-amber-700">Genuine card, but it has expired.</div>
             </div>
           </div>
-        ) : (
-          <div className="flex items-center gap-3 bg-emerald-50 px-5 py-4">
+        ) : verdict === "verified" ? (
+          <div className="flex items-center gap-3 bg-emerald-50 px-5 py-4" data-verdict={verdict}>
             <BadgeCheck className="h-6 w-6 shrink-0 text-emerald-600" />
             <div>
               <div className="font-am-body font-bold text-emerald-800">የተረጋገጠ ትክክለኛ መታወቂያ</div>
               <div className="text-sm text-emerald-700">Issued by the Harari Regional State.</div>
             </div>
           </div>
-        )}
-
-        {(data.registryError || notFound) && (
-          <div className="flex items-start gap-2 border-t bg-slate-50 px-5 py-3 text-xs text-slate-600">
-            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
-            <span>
-              {notFound
-                ? "This card's signature is genuine, but the registry has no record of it. Report it to the issuing woreda."
-                : "The signature was verified offline. The registry could not be reached, so the card's current status is unknown."}
-            </span>
+        ) : (
+          <div className="flex items-center gap-3 bg-amber-50 px-5 py-4" data-verdict={verdict}>
+            <ShieldAlert className="h-6 w-6 shrink-0 text-amber-600" />
+            <div>
+              <div className="font-am-body font-bold text-amber-800">
+                ትክክለኛ መታወቂያ፤ የአሁኑ ሁኔታው አልታወቀም
+              </div>
+              <div className="text-sm text-amber-700">
+                Authenticity proven, current status unknown. The registry could not be reached, so
+                whether this card is still in force cannot be confirmed. Try again shortly.
+              </div>
+            </div>
           </div>
         )}
 
@@ -286,7 +284,7 @@ function CredentialVerificationPage() {
             showing the resident's name/woreda/kebele/dates right below that
             banner would leak exactly the identity the collapse was meant to
             protect. */}
-        {!withdrawn && (
+        {!hideDetails && (
           <div className="px-5 py-4">
             {data.photoUrl && (
               <img
