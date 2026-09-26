@@ -42,7 +42,7 @@ Nothing was written to any system. Tokens came from the session environment and 
 | Access-token lifetime | 3600 s | PASS |
 | Refresh-token rotation / reuse interval | On / 10 s | PASS |
 | Session time-box / inactivity timeout | **0 / 0** (Pro-plan setting) | Gap — WP-LIVE-002 |
-| Password minimum / character rules | **6** / none | Gap — WP-AUTH-007 (server allows 6) |
+| Password minimum / character rules | **6** / none (2026-09-26: now **8** / lower, upper and digit required, verified via API) | WP-AUTH-007 closed on the server; CAPTCHA (WP-AUTH-005) still open |
 | Leaked-password (HIBP) protection | **Off** (Pro-plan setting) | Gap — WP-AUTH-005/007 |
 | CAPTCHA | **Off** | Gap — WP-AUTH-005 |
 | MFA | TOTP enabled (enroll + verify); phone and WebAuthn off; **not enforced by the app** | Gap — WP-AUTH-001 |
@@ -59,8 +59,8 @@ Nothing was written to any system. Tokens came from the session environment and 
 | Backups / PITR | **No backups listed; PITR off**; Free plan. Owner: not set up, no Pro tier purchased. | WP-OPS-002 (Confirmed) |
 | Staging | None (owner) | WP-OPS-001 (Confirmed) |
 | Region / residency | Database and Storage in **AWS eu-west-1 (Ireland)**; Vercel functions in **iad1 (Washington, D.C.)** | WP-OPS-011 (Confirmed) |
-| Direct Postgres network access | **0.0.0.0/0 and ::/0; SSL not enforced** | **WP-LIVE-001 (new, Medium)** |
-| Vercel env vars | `SUPABASE_SERVICE_ROLE_KEY` set for Production and Preview (sensitive); no code reads it | WP-ARC-005 (Confirmed) |
+| Direct Postgres network access | **0.0.0.0/0 and ::/0; SSL not enforced** (2026-09-26: SSL enforcement on, verified via API; network restriction unchanged) | **WP-LIVE-001 (new, Medium)** |
+| Vercel env vars | `SUPABASE_SERVICE_ROLE_KEY` set for Production and Preview (sensitive); no code reads it (2026-09-26: deleted, verified absent from every target via API; rotation pending) | WP-ARC-005 (Confirmed) |
 | Vercel Firewall / WAF | No firewall configuration (`not_found`); platform DDoS mitigation only | WP-INV-003 (Confirmed) |
 | Preview protection | Vercel Authentication on all deployments except custom domains; no custom domain attached | Good; QR still points at `*.vercel.app` (WP-OPS-008) |
 | TLS (SSL Labs) | **A+ and A** on the two edges; TLS 1.2/1.3 only; forward secrecy; HSTS 2 years on one edge, absent on the other's sampled response | D-04 PARTIAL (web PASS; DB SSL not enforced) |
