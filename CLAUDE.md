@@ -1049,6 +1049,23 @@ and retrying with the same tool won't help.
 
 ## Supabase
 
+### Backups: a nightly GitHub Actions job, not the platform
+
+The project is on the Free plan (no platform backups, no PITR).
+`.github/workflows/nightly-backup.yml` runs `scripts/backup/` every night:
+`supabase db dump` (roles/schema/data) **plus** `managed-schema-extras.sql`
+— the CLI dump skips the `auth`/`storage` schemas, which is where the 38
+`storage.objects` tenant-isolation policies live, so a restore without it
+brings files back with no woreda isolation and no error — then a restore into
+a fresh local stack with row-count and policy/trigger-count checks, then an
+age-encrypted artifact. The repo is public: the scripts keep row counts and
+psql error text (which can quote row data) out of the log and only in the
+encrypted archive — keep it that way when editing them. Vault secrets
+(`pii_root_key`) and Edge Function secrets (`HARARI_EC_PRIVATE_KEY`) are
+**not** in any backup by design; they are escrowed offline by the owner and
+only their SHA-256 fingerprint is recorded. `docs/backup-restore-runbook.md`
+has setup, key custody and the disaster-restore procedure.
+
 ### Auth redirect URLs must be top-level, and allow-listed
 
 For `POST /auth/v1/admin/generate_link`, `redirect_to` goes at the **top level**
