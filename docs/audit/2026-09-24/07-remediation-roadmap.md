@@ -21,9 +21,9 @@ three-phase process with a verified backup taken immediately before each apply.
 
 | # | Finding(s) | Action | Owner | Effort |
 |---|---|---|---|---|
-| QW-1 | **WP-LIVE-001** | Enable SSL enforcement for database connections; restrict network access to the operator IPs that need it; rotate the DB password. | Ops | S |
-| QW-2 | **WP-ARC-005** | Delete `SUPABASE_SERVICE_ROLE_KEY` from the Vercel project (Production and Preview) and rotate the key. | Ops | S |
-| QW-3 | **WP-AUTH-005**, **WP-AUTH-007** | Enable CAPTCHA (hCaptcha or Turnstile) and send `captchaToken` from `login.tsx`; raise the server password minimum to at least 8 with character classes. | Ops + FE | S |
+| QW-1 | **WP-LIVE-001** | Enable SSL enforcement for database connections; restrict network access to the operator IPs that need it; rotate the DB password. **Status 2026-09-26: SSL enforcement turned on by the owner in the dashboard (owner-reported; API re-check pending, session egress to `api.supabase.com` denied). Network restriction and DB password rotation still open.** | Ops | S |
+| QW-2 | **WP-ARC-005** | Delete `SUPABASE_SERVICE_ROLE_KEY` from the Vercel project (Production and Preview) and rotate the key. **Status 2026-09-26: deleted by the owner (owner-reported; API re-check pending). Takes effect for running code on the next production deployment. Key rotation deferred until after backups (P0-1).** | Ops | S |
+| QW-3 | **WP-AUTH-005**, **WP-AUTH-007** | Enable CAPTCHA (hCaptcha or Turnstile) and send `captchaToken` from `login.tsx`; raise the server password minimum to at least 8 with character classes. **Status 2026-09-26: server minimum raised from 6 to 8 by the owner (owner-reported; API re-check pending). Character classes and CAPTCHA still open (CAPTCHA needs site keys and the `captchaToken` frontend change).** | Ops + FE | S |
 | QW-4 | **WP-OPS-004** | Require the `test` status check on `main` in branch protection. | Ops | S |
 | QW-5 | **WP-LOC-014** | Rename woreda 5 to "Jinala" (additive migration + `seed.sql` + README), once the owner confirms the Amharic form. **Status 2026-09-25: English name done (migration `00000000000092`, seed, README) and applied to production with the owner's go-ahead; Amharic form still awaits the owner.** | DB | S |
 | QW-6 | **WP-API-004** | Pin `verify_jwt` per function in `supabase/config.toml` and redeploy so live state matches the repo. **Status 2026-09-25: pinned in `scripts/deploy-functions.sh` (no `config.toml` exists) to the live values.** | Edge | S |
