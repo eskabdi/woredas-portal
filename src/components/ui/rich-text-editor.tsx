@@ -16,6 +16,7 @@ import {
   Underline as UnderlineIcon,
   Undo2,
 } from "lucide-react";
+import { sanitizeLetterHtml } from "@/lib/letterTemplate";
 import { cn } from "@/lib/utils";
 
 interface RichTextEditorProps {
@@ -41,9 +42,18 @@ export function RichTextEditor({
   const [focused, setFocused] = useState(false);
 
   // Sync external value in only when it differs (avoids caret jumps while typing).
+  // Assigning innerHTML on this live, contentEditable element runs inline
+  // handlers such as <img onerror>, and the value can come straight from the
+  // database (service_type.letter_body_html), so it always goes through the
+  // letter allow-list first (WP-APP-001). Both sides are compared sanitised:
+  // while typing, value === innerHTML, so the editor is never reset
+  // mid-keystroke just because execCommand produced markup the allow-list
+  // would later strip on save.
   useEffect(() => {
     const el = ref.current;
-    if (el && el.innerHTML !== value) el.innerHTML = value || "";
+    if (!el) return;
+    const safe = sanitizeLetterHtml(value || "");
+    if (sanitizeLetterHtml(el.innerHTML) !== safe) el.innerHTML = safe;
   }, [value]);
 
   const exec = (command: string, arg?: string) => {

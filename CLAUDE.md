@@ -691,7 +691,11 @@ RPC. Letter bodies are authored as HTML from templates in Settings, so
 `src/lib/letterTemplate.ts` owns both the `{TOKEN}` substitution list and an
 allow-list sanitiser (tags, attributes and even inline style properties) —
 template HTML is operator-authored but still untrusted, and it renders into the
-print surface.
+print surface. The same allow-list is enforced server-side by
+`letter_html_is_safe()` and a trigger on `service_type.letter_body_html`
+(migration 93, P0-5), which rejects rather than rewrites; a test in
+`src/lib/__tests__/letterTemplate.test.ts` fails if the client and SQL lists
+drift, so change both together.
 
 Printed revenue receipts are the third: `receipt` carries its own
 `verification_token` (`00000000000013_receipt_verification.sql`), printed
