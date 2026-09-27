@@ -14,7 +14,7 @@ export const LETTER_TOKENS: { token: string; labelAm: string; labelEn: string }[
   { token: "{DETAILS}", labelAm: "ዝርዝር", labelEn: "Request details" },
 ];
 
-const ALLOWED_TAGS = new Set([
+export const ALLOWED_TAGS = new Set([
   "P",
   "BR",
   "DIV",
@@ -45,8 +45,30 @@ const ALLOWED_TAGS = new Set([
   "HR",
 ]);
 
-const ALLOWED_ATTRS = new Set(["href", "target", "rel", "colspan", "rowspan"]);
-const ALLOWED_STYLES = new Set(["text-align", "font-weight", "font-style", "text-decoration"]);
+export const ALLOWED_ATTRS = new Set(["href", "target", "rel", "colspan", "rowspan"]);
+export const ALLOWED_STYLES = new Set([
+  "text-align",
+  "font-weight",
+  "font-style",
+  "text-decoration",
+]);
+
+// A kept declaration's value must be plain keywords/numbers, optionally with
+// rgb()/rgba()/hsl()/hsla() colours -- the same rule the server-side
+// letter_html_is_safe() applies (migration 93). Without it an allowed
+// property could carry `expression(...)`, `url(...)` or a CSS escape such as
+// `\3b` that the property-name check alone never looks at.
+function isSafeStyleValue(value: string): boolean {
+  const withoutColours = value.replace(/(rgba?|hsla?)\([0-9 .,%]*\)/gi, "");
+  return /^[A-Za-z0-9 #%.,-]*$/.test(withoutColours);
+}
+
+function isAllowedDeclaration(decl: string): boolean {
+  const colon = decl.indexOf(":");
+  if (colon < 0) return false;
+  const prop = decl.slice(0, colon).trim().toLowerCase();
+  return ALLOWED_STYLES.has(prop) && isSafeStyleValue(decl.slice(colon + 1).trim());
+}
 
 // These tags' whole point is that their "text content" is not meant to be
 // read as document text -- a <script> body is source code, a <style> body is
@@ -67,6 +89,16 @@ export function sanitizeLetterHtml(html: string): string {
   const root = doc.body.firstElementChild;
   if (!root) return "";
 
+  // Comments are inert here but carry nothing a letter needs, and Word/Chrome
+  // paste adds them (<!--StartFragment-->). Removing them keeps every
+  // sanitised value inside the server-side allow-list (migration 93), which
+  // rejects any `<!`. The walk below only visits elements, so comments are
+  // collected separately. 0x80 = NodeFilter.SHOW_COMMENT.
+  const comments: Node[] = [];
+  const tw = doc.createTreeWalker(root, 0x80);
+  while (tw.nextNode()) comments.push(tw.currentNode);
+  for (const c of comments) c.parentNode?.removeChild(c);
+
   const walk = (node: Element) => {
     for (const child of Array.from(node.children)) {
       if (STRIP_ENTIRELY.has(child.tagName)) {
@@ -84,7 +116,7 @@ export function sanitizeLetterHtml(html: string): string {
           const kept = attr.value
             .split(";")
             .map((d) => d.trim())
-            .filter((d) => d && ALLOWED_STYLES.has(d.split(":")[0]!.trim().toLowerCase()))
+            .filter((d) => d && isAllowedDeclaration(d))
             .join("; ");
           if (kept) child.setAttribute("style", kept);
           else child.removeAttribute("style");
@@ -135,7 +167,8 @@ function escapeHtml(value: string): string {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 /** Replaces {TOKEN} placeholders inside an HTML template with escaped values. */

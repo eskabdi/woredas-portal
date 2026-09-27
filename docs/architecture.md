@@ -34,11 +34,17 @@ flowchart TB
         Auth --> DB
     end
 
+    subgraph GHA["GitHub Actions — nightly backup (interim P0-1)"]
+        Backup["nightly-backup.yml: supabase db dump + Storage S3 mirror<br/>→ restore test in a fresh local stack → age-encrypted artifact (30 days)"]
+    end
+
     Browser -- "HTTPS" --> Edge
     Headers -- "anon key, JWT bearer" --> PostgREST
     Headers -- "JWT bearer" --> Auth
     Headers -- "JWT bearer, signed URLs" --> Storage
     Headers -- "JWT bearer" --> Functions
+    Backup -- "session pooler, sslmode=require (postgres role)" --> DB
+    Backup -- "Storage S3 protocol, HTTPS" --> Storage
 ```
 
 ## Why the shape is what it is
@@ -76,17 +82,18 @@ flowchart TB
 
 ## What sits where
 
-| Concern                              | Layer                                                                                                                           |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| TLS termination, cert renewal        | Vercel edge (auto-provisioned)                                                                                                  |
-| DDoS mitigation (L3/L4)              | Vercel edge (always on) + Supabase                                                                                              |
-| WAF (managed OWASP ruleset)          | Vercel Firewall — dashboard opt-in, not a repo change (see `docs/security-hardening.md`)                                        |
-| Security response headers            | `src/lib/security-headers.ts`, applied in `src/server.ts`                                                                       |
-| Authentication (session issuance)    | Supabase Auth (GoTrue) — JWT, `localStorage`-persisted client-side, bearer-header transport                                     |
-| Authorization (row-level)            | Postgres RLS policies, keyed off `app_user.role`/`status` and the permission-override chain                                     |
-| Authorization (Edge Function-level)  | In-function checks against the caller's own JWT — see `docs/api-security.md`                                                    |
-| File storage                         | Supabase Storage — 9 private buckets (8 tenant-prefixed, plus the platform-level `credential-templates`), signed-URL reads only |
-| Public, unauthenticated verification | Two RPCs (`verify_credential_token`, `verify_service_letter`) called directly by the anon client                                |
+| Concern                              | Layer                                                                                                                                            |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| TLS termination, cert renewal        | Vercel edge (auto-provisioned)                                                                                                                   |
+| DDoS mitigation (L3/L4)              | Vercel edge (always on) + Supabase                                                                                                               |
+| WAF (managed OWASP ruleset)          | Vercel Firewall — dashboard opt-in, not a repo change (see `docs/security-hardening.md`)                                                         |
+| Security response headers            | `src/lib/security-headers.ts`, applied in `src/server.ts`                                                                                        |
+| Authentication (session issuance)    | Supabase Auth (GoTrue) — JWT, `localStorage`-persisted client-side, bearer-header transport                                                      |
+| Authorization (row-level)            | Postgres RLS policies, keyed off `app_user.role`/`status` and the permission-override chain                                                      |
+| Authorization (Edge Function-level)  | In-function checks against the caller's own JWT — see `docs/api-security.md`                                                                     |
+| File storage                         | Supabase Storage — 9 private buckets (8 tenant-prefixed, plus the platform-level `credential-templates`), signed-URL reads only                  |
+| Public, unauthenticated verification | Two RPCs (`verify_credential_token`, `verify_service_letter`) called directly by the anon client                                                 |
+| Backup and restore                   | Nightly GitHub Actions job, age-encrypted, restore-tested every run — see `docs/backup-restore-runbook.md` (Free plan: no platform backups/PITR) |
 
 ## Decision record
 
@@ -509,5 +516,8 @@ review requirement above.
   for the four flows that touch PII or money.
 - [`docs/brief-reconciliation-memo.md`](./brief-reconciliation-memo.md) —
   full detail on the six governing-brief corrections.
+- [`docs/backup-restore-runbook.md`](./backup-restore-runbook.md) — the
+  nightly backup, what it does and does not hold (Vault and Edge Function
+  secrets are escrowed offline), and the disaster-restore procedure.
 - [`docs/go-live-declaration.md`](./go-live-declaration.md) — the
   production-readiness declaration this decision record supports.

@@ -68,7 +68,13 @@ export function LetterTemplatesTab() {
 
   useEffect(() => {
     if (!selected) return;
-    setHtml(selected.letter_body_html ?? plainTextToHtml(selected.letter_body_template ?? ""));
+    // Sanitised on load, not only on save: the stored value may have been
+    // written by a direct API call that never went through this editor.
+    setHtml(
+      sanitizeLetterHtml(
+        selected.letter_body_html ?? plainTextToHtml(selected.letter_body_template ?? ""),
+      ),
+    );
     setDirty(false);
     setPreview(false);
   }, [selected?.service_type_id]); // eslint-disable-line react-hooks/exhaustive-deps

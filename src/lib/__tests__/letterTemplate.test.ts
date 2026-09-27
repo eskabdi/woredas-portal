@@ -1,5 +1,10 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  ALLOWED_ATTRS,
+  ALLOWED_STYLES,
+  ALLOWED_TAGS,
   letterHtmlToText,
   letterSummary,
   plainTextToHtml,
@@ -199,5 +204,62 @@ describe("plainTextToHtml", () => {
     expect(plainTextToHtml("<script>alert(1)</script>")).toBe(
       "<p>&lt;script&gt;alert(1)&lt;/script&gt;</p>",
     );
+  });
+});
+
+describe("letter HTML allow-list, client and server in step (P0-5 / WP-APP-001)", () => {
+  it("removes HTML comments, e.g. the markers Word/Chrome paste adds", () => {
+    const out = sanitizeLetterHtml("<!--StartFragment--><p>pasted<!-- x --></p><!--EndFragment-->");
+    expect(out).toBe("<p>pasted</p>");
+  });
+
+  it("keeps an allowed style property only when its value is plain", () => {
+    expect(sanitizeLetterHtml('<p style="text-align: center; font-weight: 700">x</p>')).toBe(
+      '<p style="text-align: center; font-weight: 700">x</p>',
+    );
+    expect(
+      sanitizeLetterHtml('<p style="text-decoration: underline solid rgb(0, 0, 0)">x</p>'),
+    ).toBe('<p style="text-decoration: underline solid rgb(0, 0, 0)">x</p>');
+    expect(sanitizeLetterHtml('<p style="text-align: expression(alert(1))">x</p>')).toBe(
+      "<p>x</p>",
+    );
+    expect(
+      sanitizeLetterHtml('<p style="text-align:left\\3b background:url(https://evil/x)">x</p>'),
+    ).toBe("<p>x</p>");
+  });
+
+  it("escapes single quotes in substituted values too", () => {
+    expect(renderLetterTemplate("<p>{PURPOSE}</p>", { PURPOSE: "O'Brien" })).toBe(
+      "<p>O&#39;Brien</p>",
+    );
+  });
+
+  // Migration 93's letter_html_is_safe() rejects anything outside its lists,
+  // so a tag or style added here but not there would make every save that
+  // uses it fail server-side (and the reverse would silently widen the
+  // server check). Same static, no-DB approach as check-role-perms-drift.
+  it("matches the allow-lists in migration 93", () => {
+    const sql = readFileSync(
+      join(
+        __dirname,
+        "..",
+        "..",
+        "..",
+        "supabase",
+        "migrations",
+        "00000000000093_p0_5_letter_html_allowlist.sql",
+      ),
+      "utf-8",
+    );
+    const arrayOf = (name: string) => {
+      const m = sql.match(new RegExp(`${name} CONSTANT text\\[\\] := ARRAY\\[([^\\]]*)\\]`));
+      if (!m) throw new Error(`${name} not found in migration 93`);
+      return [...m[1]!.matchAll(/'([^']+)'/g)].map((x) => x[1]!).sort();
+    };
+    expect(arrayOf("c_tags")).toEqual([...ALLOWED_TAGS].map((t) => t.toLowerCase()).sort());
+    expect(arrayOf("c_styles")).toEqual([...ALLOWED_STYLES].sort());
+    for (const attr of ALLOWED_ATTRS) {
+      expect(sql).toMatch(new RegExp(`'${attr}'|v_name = '${attr}'`));
+    }
   });
 });

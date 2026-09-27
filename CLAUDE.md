@@ -691,7 +691,11 @@ RPC. Letter bodies are authored as HTML from templates in Settings, so
 `src/lib/letterTemplate.ts` owns both the `{TOKEN}` substitution list and an
 allow-list sanitiser (tags, attributes and even inline style properties) —
 template HTML is operator-authored but still untrusted, and it renders into the
-print surface.
+print surface. The same allow-list is enforced server-side by
+`letter_html_is_safe()` and a trigger on `service_type.letter_body_html`
+(migration 93, P0-5), which rejects rather than rewrites; a test in
+`src/lib/__tests__/letterTemplate.test.ts` fails if the client and SQL lists
+drift, so change both together.
 
 Printed revenue receipts are the third: `receipt` carries its own
 `verification_token` (`00000000000013_receipt_verification.sql`), printed
@@ -1048,6 +1052,23 @@ same token: `curl` succeeds, `urllib` doesn't. It isn't an auth or proxy issue
 and retrying with the same tool won't help.
 
 ## Supabase
+
+### Backups: a nightly GitHub Actions job, not the platform
+
+The project is on the Free plan (no platform backups, no PITR).
+`.github/workflows/nightly-backup.yml` runs `scripts/backup/` every night:
+`supabase db dump` (roles/schema/data) **plus** `managed-schema-extras.sql`
+— the CLI dump skips the `auth`/`storage` schemas, which is where the 38
+`storage.objects` tenant-isolation policies live, so a restore without it
+brings files back with no woreda isolation and no error — then a restore into
+a fresh local stack with row-count and policy/trigger-count checks, then an
+age-encrypted artifact. The repo is public: the scripts keep row counts and
+psql error text (which can quote row data) out of the log and only in the
+encrypted archive — keep it that way when editing them. Vault secrets
+(`pii_root_key`) and Edge Function secrets (`HARARI_EC_PRIVATE_KEY`) are
+**not** in any backup by design; they are escrowed offline by the owner and
+only their SHA-256 fingerprint is recorded. `docs/backup-restore-runbook.md`
+has setup, key custody and the disaster-restore procedure.
 
 ### Auth redirect URLs must be top-level, and allow-listed
 

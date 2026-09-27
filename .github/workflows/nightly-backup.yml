@@ -1,0 +1,121 @@
+name: Nightly backup
+
+# Interim control for P0-1 / WP-OPS-002 (security audit 2026-09-24): the
+# project is on the Supabase Free plan, which has no platform backups and no
+# PITR. Every night this job
+#   1. dumps the production database (roles, schema, auth/storage policies,
+#      data) and mirrors every Storage bucket,
+#   2. restores the dump into a fresh local Supabase stack and checks every
+#      table's row count, every RLS policy/trigger count and every bucket,
+#   3. encrypts everything with age to the owner's public key(s) and keeps it
+#      as a workflow artifact for 30 days.
+# Setup, key custody and the disaster-restore procedure:
+# docs/backup-restore-runbook.md.
+#
+# THIS REPOSITORY IS PUBLIC: workflow logs and summaries are world-readable
+# and artifacts are downloadable by any signed-in GitHub user. Nothing
+# plaintext leaves the runner -- the scripts keep row counts and error text
+# out of the log, and the only artifact is the age-encrypted archive.
+
+on:
+  schedule:
+    # 00:17 UTC = 03:17 in Addis Ababa (EAT, UTC+3) = 9:17 ለሊት. Off the hour
+    # because GitHub delays jobs scheduled on :00.
+    - cron: "17 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    # Secrets live on this environment, not the repository, so only this job
+    # can read them. Add required reviewers to it only if you want every
+    # manual run gated -- scheduled runs would wait too.
+    environment: backup
+    defaults:
+      run:
+        # Explicit `bash` runs with -eo pipefail; the implicit default does
+        # not, and `restore-verify.sh | tee` would then hide a failed check.
+        shell: bash
+    env:
+      SUPABASE_CLI: npx --yes supabase@2.118.0
+    steps:
+      # runner.temp is not available in job-level env, so the paths are set here.
+      - name: Set paths
+        run: |
+          echo "WORKDIR=$RUNNER_TEMP/backup" >>"$GITHUB_ENV"
+          echo "OUTDIR=$RUNNER_TEMP/out" >>"$GITHUB_ENV"
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Check configuration
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          BACKUP_AGE_RECIPIENTS: ${{ vars.BACKUP_AGE_RECIPIENTS }}
+        run: |
+          missing=0
+          [[ -n "$SUPABASE_DB_URL" ]] || { echo "::error::Secret SUPABASE_DB_URL is not set on the 'backup' environment."; missing=1; }
+          [[ -n "$BACKUP_AGE_RECIPIENTS" ]] || { echo "::error::Variable BACKUP_AGE_RECIPIENTS is not set on the 'backup' environment."; missing=1; }
+          exit $missing
+
+      - name: Install age
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq age
+
+      - name: Dump database and Storage
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_S3_ENDPOINT: ${{ vars.SUPABASE_S3_ENDPOINT }}
+          SUPABASE_S3_REGION: ${{ vars.SUPABASE_S3_REGION || 'eu-west-1' }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.SUPABASE_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.SUPABASE_S3_SECRET_ACCESS_KEY }}
+        run: scripts/backup/backup.sh "$WORKDIR"
+
+      # Runs before encryption so its detailed report and any error log go
+      # into the archive; its outcome fails the job at the end, after the
+      # backup itself has been kept.
+      - name: Test restore into a fresh Supabase stack
+        id: restore
+        continue-on-error: true
+        run: |
+          mkdir -p "$RUNNER_TEMP/restore-stack"
+          cd "$RUNNER_TEMP/restore-stack"
+          $SUPABASE_CLI init --force >/dev/null
+          $SUPABASE_CLI start -x realtime,studio,imgproxy,mailpit,postgres-meta,edge-runtime,logflare,vector,supavisor,postgrest >/dev/null
+          RESTORE_DB_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres \
+            "$GITHUB_WORKSPACE/scripts/backup/restore-verify.sh" "$WORKDIR" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Encrypt
+        env:
+          BACKUP_AGE_RECIPIENTS: ${{ vars.BACKUP_AGE_RECIPIENTS }}
+        run: |
+          scripts/backup/encrypt.sh "$WORKDIR" \
+            "$OUTDIR/woredas-backup-$(date -u +%Y%m%dT%H%MZ).tar.gz.age"
+
+      - name: Keep encrypted archive
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: woredas-backup-${{ github.run_id }}
+          path: ${{ env.OUTDIR }}/
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Remove plaintext
+        if: always()
+        run: |
+          rm -rf "$WORKDIR"
+          (cd "$RUNNER_TEMP/restore-stack" 2>/dev/null && $SUPABASE_CLI stop --no-backup >/dev/null 2>&1) || true
+
+      - name: Fail if the restore test failed
+        if: steps.restore.outcome != 'success'
+        run: |
+          echo "::error::The backup was taken and kept, but restoring it into a fresh stack failed its checks. See the job summary; details are in restore-report.md inside the encrypted archive."
+          exit 1
