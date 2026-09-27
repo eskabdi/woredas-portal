@@ -16,12 +16,18 @@ import {
   Underline as UnderlineIcon,
   Undo2,
 } from "lucide-react";
-import { sanitizeLetterHtml } from "@/lib/letterTemplate";
 import { cn } from "@/lib/utils";
 
 interface RichTextEditorProps {
   value: string;
   onChange: (html: string) => void;
+  /**
+   * Applied to every value before it is assigned to the live editor's
+   * innerHTML, which runs inline handlers such as <img onerror>. Required:
+   * values usually come from the database, so the caller must say which
+   * allow-list applies (letters pass sanitizeLetterHtml).
+   */
+  sanitize: (html: string) => string;
   placeholder?: string;
   className?: string;
   minHeight?: number;
@@ -34,6 +40,7 @@ interface RichTextEditorProps {
 export function RichTextEditor({
   value,
   onChange,
+  sanitize,
   placeholder,
   className,
   minHeight = 260,
@@ -41,20 +48,16 @@ export function RichTextEditor({
   const ref = useRef<HTMLDivElement>(null);
   const [focused, setFocused] = useState(false);
 
-  // Sync external value in only when it differs (avoids caret jumps while typing).
-  // Assigning innerHTML on this live, contentEditable element runs inline
-  // handlers such as <img onerror>, and the value can come straight from the
-  // database (service_type.letter_body_html), so it always goes through the
-  // letter allow-list first (WP-APP-001). Both sides are compared sanitised:
-  // while typing, value === innerHTML, so the editor is never reset
-  // mid-keystroke just because execCommand produced markup the allow-list
-  // would later strip on save.
+  // Sync an external value in only when it differs. While typing, `value`
+  // is this element's own innerHTML echoed back, so it returns before doing
+  // any work and the caret never jumps. Anything else is sanitised before
+  // it reaches the live DOM (WP-APP-001).
   useEffect(() => {
     const el = ref.current;
-    if (!el) return;
-    const safe = sanitizeLetterHtml(value || "");
-    if (sanitizeLetterHtml(el.innerHTML) !== safe) el.innerHTML = safe;
-  }, [value]);
+    if (!el || el.innerHTML === (value || "")) return;
+    const safe = sanitize(value || "");
+    if (el.innerHTML !== safe) el.innerHTML = safe;
+  }, [value, sanitize]);
 
   const exec = (command: string, arg?: string) => {
     ref.current?.focus();

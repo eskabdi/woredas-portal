@@ -68,13 +68,9 @@ export function LetterTemplatesTab() {
 
   useEffect(() => {
     if (!selected) return;
-    // Sanitised on load, not only on save: the stored value may have been
-    // written by a direct API call that never went through this editor.
-    setHtml(
-      sanitizeLetterHtml(
-        selected.letter_body_html ?? plainTextToHtml(selected.letter_body_template ?? ""),
-      ),
-    );
+    // The raw stored value is fine in state: every sink sanitises it (the
+    // editor via its `sanitize` prop, the preview and the save below).
+    setHtml(selected.letter_body_html ?? plainTextToHtml(selected.letter_body_template ?? ""));
     setDirty(false);
     setPreview(false);
   }, [selected?.service_type_id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -83,14 +79,19 @@ export function LetterTemplatesTab() {
     mutationFn: async () => {
       if (!selected) return;
       const clean = sanitizeLetterHtml(html);
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("service_type")
         .update({
           letter_body_html: clean || null,
           letter_body_template: letterHtmlToText(clean) || null,
         })
-        .eq("service_type_id", selected.service_type_id);
+        .eq("service_type_id", selected.service_type_id)
+        .select("service_type_id")
+        .maybeSingle();
       if (error) throw error;
+      // House rule: zero rows (RLS, a stale tab) is a failure, not a save.
+      if (!data)
+        throw new Error("ለውጡ አልተቀመጠም / The template was not saved (no access or it changed)");
     },
     onSuccess: () => {
       toast.success("የደብዳቤ አብነት ተቀምጧል / Letter template saved");
@@ -107,7 +108,9 @@ export function LetterTemplatesTab() {
     setDirty(true);
   };
 
+  // Rendered only while the preview is open, not on every keystroke.
   const previewHtml = useMemo(() => {
+    if (!preview) return "";
     const now = new Date();
     return renderLetterTemplate(sanitizeLetterHtml(html), {
       APPLICANT_NAME: "አበበ በቀለ ታደሰ",
@@ -122,7 +125,7 @@ export function LetterTemplatesTab() {
       SEX: "ወንድ",
       DETAILS: "የናሙና ዝርዝር መረጃ",
     });
-  }, [html]);
+  }, [html, preview]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
@@ -248,6 +251,7 @@ export function LetterTemplatesTab() {
             ) : (
               <RichTextEditor
                 value={html}
+                sanitize={sanitizeLetterHtml}
                 onChange={(v) => {
                   setHtml(v);
                   setDirty(true);
