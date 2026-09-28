@@ -15,6 +15,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as SetPasswordRouteImport } from './routes/set-password'
 import { Route as WoredaRouteImport } from './routes/woreda'
 import { Route as AdminAuditRouteImport } from './routes/admin.audit'
+import { Route as AdminBackupsRouteImport } from './routes/admin.backups'
 import { Route as AdminConsoleRolesRouteImport } from './routes/admin.console-roles'
 import { Route as AdminCredentialTemplateRouteImport } from './routes/admin.credential-template'
 import { Route as AdminDashboardRouteImport } from './routes/admin.dashboard'
@@ -107,6 +108,11 @@ const WoredaRoute = WoredaRouteImport.update({
 const AdminAuditRoute = AdminAuditRouteImport.update({
   id: '/audit',
   path: '/audit',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminBackupsRoute = AdminBackupsRouteImport.update({
+  id: '/backups',
+  path: '/backups',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminConsoleRolesRoute = AdminConsoleRolesRouteImport.update({
@@ -456,6 +462,7 @@ export interface FileRoutesByFullPath {
   '/set-password': typeof SetPasswordRoute
   '/woreda': typeof WoredaRouteWithChildren
   '/admin/audit': typeof AdminAuditRoute
+  '/admin/backups': typeof AdminBackupsRoute
   '/admin/console-roles': typeof AdminConsoleRolesRoute
   '/admin/credential-template': typeof AdminCredentialTemplateRoute
   '/admin/dashboard': typeof AdminDashboardRoute
@@ -527,6 +534,7 @@ export interface FileRoutesByTo {
   '/set-password': typeof SetPasswordRoute
   '/woreda': typeof WoredaRouteWithChildren
   '/admin/audit': typeof AdminAuditRoute
+  '/admin/backups': typeof AdminBackupsRoute
   '/admin/console-roles': typeof AdminConsoleRolesRoute
   '/admin/credential-template': typeof AdminCredentialTemplateRoute
   '/admin/dashboard': typeof AdminDashboardRoute
@@ -592,6 +600,7 @@ export interface FileRoutesById {
   '/set-password': typeof SetPasswordRoute
   '/woreda': typeof WoredaRouteWithChildren
   '/admin/audit': typeof AdminAuditRoute
+  '/admin/backups': typeof AdminBackupsRoute
   '/admin/console-roles': typeof AdminConsoleRolesRoute
   '/admin/credential-template': typeof AdminCredentialTemplateRoute
   '/admin/dashboard': typeof AdminDashboardRoute
@@ -665,6 +674,7 @@ export interface FileRouteTypes {
     | '/set-password'
     | '/woreda'
     | '/admin/audit'
+    | '/admin/backups'
     | '/admin/console-roles'
     | '/admin/credential-template'
     | '/admin/dashboard'
@@ -736,6 +746,7 @@ export interface FileRouteTypes {
     | '/set-password'
     | '/woreda'
     | '/admin/audit'
+    | '/admin/backups'
     | '/admin/console-roles'
     | '/admin/credential-template'
     | '/admin/dashboard'
@@ -800,6 +811,7 @@ export interface FileRouteTypes {
     | '/set-password'
     | '/woreda'
     | '/admin/audit'
+    | '/admin/backups'
     | '/admin/console-roles'
     | '/admin/credential-template'
     | '/admin/dashboard'
@@ -918,6 +930,13 @@ declare module '@tanstack/react-router' {
       path: '/audit'
       fullPath: '/admin/audit'
       preLoaderRoute: typeof AdminAuditRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/backups': {
+      id: '/admin/backups'
+      path: '/backups'
+      fullPath: '/admin/backups'
+      preLoaderRoute: typeof AdminBackupsRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/console-roles': {
@@ -1366,6 +1385,7 @@ declare module '@tanstack/react-router' {
 
 interface AdminRouteChildren {
   AdminAuditRoute: typeof AdminAuditRoute
+  AdminBackupsRoute: typeof AdminBackupsRoute
   AdminConsoleRolesRoute: typeof AdminConsoleRolesRoute
   AdminCredentialTemplateRoute: typeof AdminCredentialTemplateRoute
   AdminDashboardRoute: typeof AdminDashboardRoute
@@ -1376,6 +1396,7 @@ interface AdminRouteChildren {
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAuditRoute: AdminAuditRoute,
+  AdminBackupsRoute: AdminBackupsRoute,
   AdminConsoleRolesRoute: AdminConsoleRolesRoute,
   AdminCredentialTemplateRoute: AdminCredentialTemplateRoute,
   AdminDashboardRoute: AdminDashboardRoute,

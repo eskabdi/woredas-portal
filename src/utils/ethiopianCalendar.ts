@@ -97,6 +97,40 @@ export function formatEthiopianDateTime(date: Date): string {
   return `${formatEthiopianDate(date)} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
 }
 
+/** Ethiopia's UTC offset in minutes (EAT, UTC+3, no daylight saving). */
+const ADDIS_OFFSET_MIN = 180;
+
+/**
+ * A Date whose *local* fields equal the wall-clock time in Addis Ababa, so
+ * the existing local-field helpers (gregorianToEthiopian, getHours) read
+ * Ethiopian time whatever the browser's own time zone is.
+ */
+export function toAddisWallClock(date: Date): Date {
+  return new Date(date.getTime() + (ADDIS_OFFSET_MIN + date.getTimezoneOffset()) * 60_000);
+}
+
+/**
+ * Ethiopian clock time, Arabic numerals, from an Addis Ababa wall-clock hour:
+ * the day starts at dawn, so 07:00 = 1:00 ጠዋት, 12:00 = 6:00 ቀትር,
+ * 19:00 = 1:00 ማታ and 00:00 = 6:00 ለሊት. Periods: ጠዋት 06-11, ቀትር 12-17,
+ * ማታ 18-23, ለሊት 00-05.
+ */
+export function formatEthiopianClock(hours: number, minutes: number): string {
+  const h = ((hours % 24) + 24) % 24;
+  const ethHour = (h + 6) % 12 || 12;
+  const period = h < 6 ? "ለሊት" : h < 12 ? "ጠዋት" : h < 18 ? "ቀትር" : "ማታ";
+  return `${ethHour}:${pad2(minutes)} ${period}`;
+}
+
+/**
+ * Ethiopian date and Ethiopian-clock time in Addis Ababa, e.g.
+ * "17 መስከረም 2019, 3:43 ማታ".
+ */
+export function formatEthiopianDateTimeAddis(date: Date): string {
+  const addis = toAddisWallClock(date);
+  return `${formatEthiopianDate(addis)}, ${formatEthiopianClock(addis.getHours(), addis.getMinutes())}`;
+}
+
 export function getCurrentEthiopianDate(): string {
   return formatEthiopianDate(new Date());
 }
