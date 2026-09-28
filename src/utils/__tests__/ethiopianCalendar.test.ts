@@ -13,6 +13,9 @@ import {
   parseDateOnly,
   parseStoredDate,
   type EthiopianDate,
+  formatEthiopianClock,
+  formatEthiopianDateTimeAddis,
+  toAddisWallClock,
 } from "@/utils/ethiopianCalendar";
 
 describe("gregorianToEthiopian / ethiopianToGregorian round trip", () => {
@@ -203,5 +206,35 @@ describe("calculateAgeYears (Task 12's 18+ intake precondition)", () => {
     // Year boundary tests above exist to catch for the Ethiopian side.
     expect(() => calculateAgeYears("2008-02-29", asOf)).not.toThrow();
     expect(calculateAgeYears("2008-02-29", asOf)).toBe(18);
+  });
+});
+
+describe("Ethiopian clock (Addis Ababa, Arabic numerals)", () => {
+  it.each([
+    [7, 0, "1:00 ጠዋት"],
+    [12, 0, "6:00 ቀትር"],
+    [19, 0, "1:00 ማታ"],
+    [0, 0, "6:00 ለሊት"],
+    [6, 0, "12:00 ጠዋት"],
+    [18, 0, "12:00 ማታ"],
+    [3, 17, "9:17 ለሊት"],
+    [23, 59, "5:59 ማታ"],
+    [11, 5, "5:05 ጠዋት"],
+    [17, 30, "11:30 ቀትር"],
+  ])("%i:%i -> %s", (h, m, expected) => {
+    expect(formatEthiopianClock(h, m)).toBe(expected);
+  });
+
+  it("reads Addis Ababa time whatever the browser time zone is", () => {
+    // 00:17 UTC is 03:17 in Addis Ababa.
+    const addis = toAddisWallClock(new Date("2026-09-29T00:17:00Z"));
+    expect([addis.getHours(), addis.getMinutes()]).toEqual([3, 17]);
+    expect(formatEthiopianDateTimeAddis(new Date("2026-09-29T00:17:00Z"))).toBe(
+      "19 መስከረም 2019, 9:17 ለሊት",
+    );
+    // 22:30 UTC on 27 Sep is already 28 Sep (01:30) in Addis Ababa.
+    expect(formatEthiopianDateTimeAddis(new Date("2026-09-27T22:30:00Z"))).toBe(
+      "18 መስከረም 2019, 7:30 ለሊት",
+    );
   });
 });

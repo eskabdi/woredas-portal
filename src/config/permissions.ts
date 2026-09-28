@@ -166,6 +166,9 @@ export const CP = {
   AUDIT_VIEW: "console.audit.view",
   CREDENTIAL_TEMPLATE_MANAGE: "console.credential_template.manage",
   CONSOLE_USERS_MANAGE: "console.console_users.manage",
+  // Backup & Restore page (migration 94): run a backup, download encrypted
+  // archives, request restores and approve/reject someone else's request.
+  BACKUP_MANAGE: "console.backup.manage",
 } as const;
 
 export type ConsolePermission = (typeof CP)[keyof typeof CP];
@@ -645,5 +648,11 @@ export const ADMIN_NAV: AdminNavItem[] = [
     icon: "Users",
     href: "/admin/console-roles",
     consolePermission: CP.CONSOLE_USERS_MANAGE,
+  },
+  {
+    label: "Backup & Restore",
+    icon: "DatabaseBackup",
+    href: "/admin/backups",
+    consolePermission: CP.BACKUP_MANAGE,
   },
 ];

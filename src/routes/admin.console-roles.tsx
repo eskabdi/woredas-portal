@@ -62,6 +62,8 @@ const PERMISSION_ROWS: { key: ConsolePermission; am: string; en: string }[] = [
     am: "የኮንሶል ተጠቃሚዎችና ሚናዎችን ማስተዳደር",
     en: "Manage Console Users and Role",
   },
+  // Amharic pending native-speaker review.
+  { key: CP.BACKUP_MANAGE, am: "ምትኬና መልሶ ማግኛ ማስተዳደር", en: "Manage Backup & Restore" },
 ];
 
 interface ConsoleRoleRow {

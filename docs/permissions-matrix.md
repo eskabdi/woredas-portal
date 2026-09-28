@@ -180,6 +180,7 @@ A second, independent permission dimension scoped to the Super Admin Console its
 | `console.audit.view`                 | View the platform-wide audit log                                  |
 | `console.credential_template.manage` | Edit the shared ID card template (all tenants)                    |
 | `console.console_users.manage`       | Manage console_role assignments and mint new super_admin accounts |
+| `console.backup.manage`              | undefined                                                         |
 
 ## Woreda portal navigation
 
@@ -215,6 +216,7 @@ A second, independent permission dimension scoped to the Super Admin Console its
 | ID Card Template       | `/admin/credential-template` | `console.credential_template.manage`               |
 | Audit Logs             | `/admin/audit`               | `console.audit.view`                               |
 | Console Users and Role | `/admin/console-roles`       | `console.console_users.manage`                     |
+| Backup & Restore       | `/admin/backups`             | `console.backup.manage`                            |
 
 ## The full resolution chain — this doc is one layer of three
 

@@ -105,6 +105,35 @@ const ERROR_MESSAGES: Record<string, string> = {
   "Resident lookup failed": "Could not look up this resident. Please try again.",
   "Resident not found": "This resident could not be found.",
 
+  // backup-admin (Super Admin Console > Backup & Restore; English-only console)
+  "Forbidden: console.backup.manage required":
+    "Your console role does not include Backup & Restore.",
+  "Backup integration is not configured":
+    "Backups are not connected yet: the GitHub token has not been set on the server. See the setup steps on this page.",
+  "Unknown action": "That action is not supported.",
+  "Invalid JSON body": "The request was malformed. Please refresh and try again.",
+  "Backup not found":
+    "That backup could not be found. It may have expired (archives are kept 30 days).",
+  "GitHub request failed": "GitHub could not be reached. Try again in a moment.",
+  "not a backup archive": "That file is not a nightly backup archive from the main branch.",
+  "backup archive has expired": "That backup archive has expired (archives are kept 30 days).",
+  "mode must be verify or restore_to_target": "Choose what the restore should do.",
+  "reason must be 10-1000 characters": "Give a reason of at least 10 characters.",
+  "note must be 1-1000 characters": "The note is too long (1000 characters at most).",
+  "artifact_id must be a positive integer id": "That backup could not be identified.",
+  "restore_request_id must be a UUID": "That restore request could not be identified.",
+  "decision must be approve or reject": "Choose approve or reject.",
+  "A rejection needs a note": "Explain why you are rejecting the request.",
+  "Could not create restore request": "The restore request could not be saved. Please try again.",
+  "Restore request not found": "That restore request no longer exists.",
+  "A restore request must be decided by a different super admin":
+    "You cannot approve or reject your own restore request. Another super admin must decide it.",
+  "Restore request is no longer pending": "That request was already decided or cancelled.",
+  "Could not start the restore workflow":
+    "The request was approved, but the restore workflow could not be started. It is marked failed; create a new request.",
+  "Only your own pending request can be cancelled":
+    "Only your own pending request can be cancelled.",
+
   // Deploy/config issues -- not user-actionable, but shouldn't leak raw text
   "SITE_URL is not configured": "The server is misconfigured. Contact support.",
 

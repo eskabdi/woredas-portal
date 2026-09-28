@@ -42,6 +42,9 @@ NO_GATEWAY_JWT=(
 GATEWAY_JWT=(
   resend-tenant-invite
   send-password-reset-link
+  # New in 2026-09 (Backup & Restore console page): gateway JWT check on as
+  # a second layer from the start; the function also verifies in code.
+  backup-admin
 )
 
 echo "==> Deploying ${#NO_GATEWAY_JWT[@]} function(s) with verify_jwt=false to $REF"
@@ -61,6 +64,10 @@ deploys but fails at runtime, and it is the function behind ID card issuance.
 
   supabase secrets set HARARI_EC_PRIVATE_KEY='<value from the old project>' \
     --project-ref <project-ref>
+
+backup-admin reads GITHUB_BACKUP_TOKEN (a fine-grained token for this one
+repository, Actions read/write). Without it the Backup & Restore page loads
+but says backups are not connected. See docs/backup-restore-runbook.md §3a.
 
 SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are injected
 automatically and do not need setting.
