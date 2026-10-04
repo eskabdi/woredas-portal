@@ -1077,9 +1077,17 @@ its GitHub client and input validation live in `backup-admin/github.ts`,
 Deno-free so Vitest covers it. Restores are maker-checker rows in
 `platform_backup_restore_request` (migration 94): no client write grant, and
 a trigger enforces the FSM, requester != decider, immutable identity columns
-and an audit row per transition, even for the service role. An approval
-dispatches `.github/workflows/restore-backup.yml`, whose two modes (an
-isolated sandbox verify, or a NEW recovery project) never touch production.
+and an audit row per transition, even for the service role; the approver must
+hold the permission and have an account older than the request. An approval
+dispatches `.github/workflows/restore-backup.yml` with an HMAC signature
+(`RESTORE_APPROVAL_KEY`, held only by the function and the GitHub `restore`
+environment) that the workflow checks before decrypting anything, so the
+GitHub token or repository write access alone cannot start a restore. Its two
+modes (an isolated sandbox verify, or a NEW, empty recovery project) never
+touch production. An archive counts as a backup only if a successful
+`schedule`/`workflow_dispatch` run of this repository on `main` made it: a
+fork pull request runs its own copy of `nightly-backup.yml` and can name its
+branch `main`, so path + branch alone are not provenance.
 
 ### Auth redirect URLs must be top-level, and allow-listed
 

@@ -61,6 +61,8 @@ export const REVIEWED_BASELINE: Record<string, string> = {
     "trigger updating its own row by NEW.vital_event_id",
   "assign_credential_number:kebele": "trigger-fk: NEW.issuing_kebele_id",
   "audit_tenant_role_permission_change:tenant_role": "trigger-fk: NEW.tenant_role_id",
+  "backup_restore_actor_allowed:app_user":
+    "platform, not tenant: returns only whether a given user is an active super_admin holding console.backup.manage (role = 'super_admin'); EXECUTE revoked from clients, called only by the migration 94 restore-request trigger",
   "clear_overrides_on_role_promotion:user_permission_override":
     "trigger keyed on NEW.user_id; deletes the target user's own overrides",
   "clear_overrides_on_woreda_change:user_permission_override":

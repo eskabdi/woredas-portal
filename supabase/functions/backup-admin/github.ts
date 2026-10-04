@@ -16,6 +16,16 @@ export const RESTORE_TEST_STEP_NAME = "Test restore into a fresh Supabase stack"
 export const BACKUP_ARTIFACT_PREFIX = "woredas-backup-";
 /** Nightly schedule in nightly-backup.yml: 00:17 UTC (03:17 Addis Ababa). */
 export const BACKUP_CRON_UTC = { hour: 0, minute: 17 };
+/** The only branch whose runs count as backups (restore-backup.yml checks the same). */
+export const BACKUP_REF = "main";
+/**
+ * Events that can produce a real backup. A pull_request run executes the PR's
+ * own copy of nightly-backup.yml -- from a fork whose branch may well be
+ * called "main" -- so it must never count as one.
+ */
+export const BACKUP_EVENTS: readonly string[] = ["schedule", "workflow_dispatch"];
+/** Version tag of the approval signature restore-backup.yml verifies. */
+export const APPROVAL_VERSION = "restore-approval.v1";
 
 export type RestoreMode = "verify" | "restore_to_target";
 
@@ -43,7 +53,7 @@ export class InputError extends Error {}
 // ---------------------------------------------------------------- validation
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const REPO_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
+const REPO_RE = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})\/(?!\.\.?$)[A-Za-z0-9_.-]{1,100}$/;
 
 export function requireUuid(v: unknown, field: string): string {
   if (typeof v !== "string" || !UUID_RE.test(v)) throw new InputError(`${field} must be a UUID`);
@@ -133,6 +143,7 @@ interface GhRun {
   run_started_at?: string;
   html_url: string;
   head_branch: string;
+  head_repository?: { full_name?: string } | null;
   path: string;
   display_title: string;
 }
@@ -163,7 +174,7 @@ export interface BackupArtifact {
 export interface BackupRun {
   id: number;
   state: RunState;
-  trigger: "scheduled" | "manual" | "other";
+  trigger: "scheduled" | "manual";
   createdAt: string;
   updatedAt: string;
   url: string;
@@ -207,45 +218,95 @@ function toArtifact(a: GhArtifact): BackupArtifact {
 
 // ---------------------------------------------------------------- operations
 
+/**
+ * True only for a run of THIS repository's nightly-backup.yml on `ref`,
+ * started by the schedule or a dispatch -- never a pull_request run, whose
+ * head_branch is the (attacker-chosen) fork branch name.
+ */
+export function isBackupRun(cfg: GithubConfig, run: GhRun): boolean {
+  return (
+    run.path === `.github/workflows/${BACKUP_WORKFLOW_FILE}` &&
+    run.head_branch === cfg.ref &&
+    BACKUP_EVENTS.includes(run.event) &&
+    run.head_repository?.full_name === cfg.repo
+  );
+}
+
+// Best-effort, per-isolate cache. A completed run's jobs never change and its
+// artifact only expires, so its details are reused for a while; the run list
+// itself briefly. Keeps a watched status page well inside the token's hourly
+// GitHub API budget.
+const RUN_LIST_TTL_MS = 30_000;
+const RUN_DETAIL_TTL_MS = 10 * 60_000;
+const runListCache = new Map<string, { at: number; runs: BackupRun[] }>();
+const runDetailCache = new Map<
+  string,
+  { at: number; restoreTest: RestoreTestState; artifact: BackupArtifact | null }
+>();
+
+/** Test hook. */
+export function clearGithubCache(): void {
+  runListCache.clear();
+  runDetailCache.clear();
+}
+
 /** Recent nightly-backup runs on `ref`, each with its archive and restore-test result. */
-export async function listBackupRuns(cfg: GithubConfig, limit = 10): Promise<BackupRun[]> {
+export async function listBackupRuns(
+  cfg: GithubConfig,
+  limit = 10,
+  now = Date.now(),
+): Promise<BackupRun[]> {
+  const listKey = `${cfg.repo}|${cfg.ref}|${limit}`;
+  const cached = runListCache.get(listKey);
+  if (cached && now - cached.at < RUN_LIST_TTL_MS) return cached.runs;
+
   const { workflow_runs } = await ghJson<{ workflow_runs: GhRun[] }>(
     cfg,
     `/actions/workflows/${BACKUP_WORKFLOW_FILE}/runs?branch=${encodeURIComponent(cfg.ref)}&per_page=${limit}`,
   );
-  return Promise.all(
-    workflow_runs.map(async (run) => {
-      const [arts, jobs] = await Promise.all([
-        ghJson<{ artifacts: GhArtifact[] }>(cfg, `/actions/runs/${run.id}/artifacts`),
-        run.status === "completed"
-          ? ghJson<{ jobs: GhJob[] }>(cfg, `/actions/runs/${run.id}/jobs`).then((j) => j.jobs)
-          : Promise.resolve(null),
-      ]);
-      const art = arts.artifacts.find((a) => a.name.startsWith(BACKUP_ARTIFACT_PREFIX));
-      return {
-        id: run.id,
-        state: runState(run),
-        trigger:
-          run.event === "schedule"
-            ? "scheduled"
-            : run.event === "workflow_dispatch"
-              ? "manual"
-              : "other",
-        createdAt: run.created_at,
-        updatedAt: run.updated_at,
-        url: run.html_url,
-        restoreTest: restoreTestState(run, jobs),
-        artifact: art ? toArtifact(art) : null,
-      } satisfies BackupRun;
-    }),
+  const runs = await Promise.all(
+    workflow_runs
+      .filter((run) => isBackupRun(cfg, run))
+      .map(async (run) => {
+        const detailKey = `${cfg.repo}|${run.id}`;
+        let detail = run.status === "completed" ? runDetailCache.get(detailKey) : undefined;
+        if (!detail || now - detail.at >= RUN_DETAIL_TTL_MS) {
+          const [arts, jobs] = await Promise.all([
+            ghJson<{ artifacts: GhArtifact[] }>(cfg, `/actions/runs/${run.id}/artifacts`),
+            run.status === "completed"
+              ? ghJson<{ jobs: GhJob[] }>(cfg, `/actions/runs/${run.id}/jobs`).then((j) => j.jobs)
+              : Promise.resolve(null),
+          ]);
+          const art = arts.artifacts.find((a) => a.name.startsWith(BACKUP_ARTIFACT_PREFIX));
+          detail = {
+            at: now,
+            restoreTest: restoreTestState(run, jobs),
+            artifact: art ? toArtifact(art) : null,
+          };
+          if (run.status === "completed") runDetailCache.set(detailKey, detail);
+        }
+        return {
+          id: run.id,
+          state: runState(run),
+          trigger: run.event === "schedule" ? "scheduled" : "manual",
+          createdAt: run.created_at,
+          updatedAt: run.updated_at,
+          url: run.html_url,
+          restoreTest: detail.restoreTest,
+          artifact: detail.artifact,
+        } satisfies BackupRun;
+      }),
   );
+  runListCache.set(listKey, { at: now, runs });
+  return runs;
 }
 
 /**
- * The artifact, but only if it is an unexpired backup archive produced by
- * nightly-backup.yml on `ref` -- never an arbitrary artifact of the repo
- * (a restore request or a download must not be pointed at, say, a build
- * output a pull request produced).
+ * The artifact, but only if it is an unexpired backup archive produced by a
+ * successful scheduled or dispatched nightly-backup.yml run of this repository
+ * on `ref` -- never an arbitrary artifact of the repo (a restore request or a
+ * download must not be pointed at, say, an archive a fork pull request
+ * uploaded).
  */
 export async function getBackupArtifact(
   cfg: GithubConfig,
@@ -257,7 +318,7 @@ export async function getBackupArtifact(
     throw new InputError("not a backup archive");
   }
   const run = await ghJson<GhRun>(cfg, `/actions/runs/${runId}`);
-  if (run.path !== `.github/workflows/${BACKUP_WORKFLOW_FILE}` || run.head_branch !== cfg.ref) {
+  if (!isBackupRun(cfg, run) || run.status !== "completed" || run.conclusion !== "success") {
     throw new InputError("not a backup archive");
   }
   if (a.expired) throw new InputError("backup archive has expired");
@@ -285,25 +346,83 @@ export async function dispatchWorkflow(
   });
 }
 
+export interface RestoreRunMatch {
+  id: number;
+  state: RunState;
+  url: string;
+  conclusion: string | null;
+}
+
 /**
- * The restore-backup.yml run for a request. workflow_dispatch returns no run
- * id, so the workflow's run-name carries the request id and this matches on
- * it (run-name is set from the validated UUID input, nothing else).
+ * Recent restore-backup.yml runs of this repository on `ref`, fetched ONCE
+ * per status call and matched to each dispatched request with
+ * matchRestoreRun().
  */
-export async function findRestoreRun(
-  cfg: GithubConfig,
-  requestId: string,
-): Promise<{ id: number; state: RunState; url: string; conclusion: string | null } | null> {
+export async function listRestoreRuns(cfg: GithubConfig): Promise<GhRun[]> {
   const { workflow_runs } = await ghJson<{ workflow_runs: GhRun[] }>(
     cfg,
-    `/actions/workflows/${RESTORE_WORKFLOW_FILE}/runs?event=workflow_dispatch&per_page=50`,
+    `/actions/workflows/${RESTORE_WORKFLOW_FILE}/runs?event=workflow_dispatch&branch=${encodeURIComponent(cfg.ref)}&per_page=50`,
   );
-  const run = workflow_runs.find(
+  return workflow_runs.filter(
     (r) =>
-      r.display_title.includes(requestId) &&
-      r.path === `.github/workflows/${RESTORE_WORKFLOW_FILE}`,
+      r.path === `.github/workflows/${RESTORE_WORKFLOW_FILE}` &&
+      r.head_branch === cfg.ref &&
+      r.event === "workflow_dispatch" &&
+      r.head_repository?.full_name === cfg.repo,
   );
+}
+
+/** Allowed clock difference between the database and GitHub. */
+const DISPATCH_SKEW_MS = 2 * 60_000;
+
+/**
+ * The run for a request. workflow_dispatch returns no run id, so the
+ * workflow's run-name carries the request id (set from the validated UUID
+ * input, nothing else). A later run reusing the same id -- a hand dispatch --
+ * cannot take over: only runs created after the request was dispatched count,
+ * and the EARLIEST of those wins.
+ */
+export function matchRestoreRun(
+  runs: GhRun[],
+  requestId: string,
+  dispatchedAt: string,
+): RestoreRunMatch | null {
+  const floor = Date.parse(dispatchedAt) - DISPATCH_SKEW_MS;
+  const run = runs
+    .filter((r) => r.display_title.endsWith(` ${requestId}`) && Date.parse(r.created_at) >= floor)
+    .sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at) || a.id - b.id)[0];
   return run
     ? { id: run.id, state: runState(run), url: run.html_url, conclusion: run.conclusion }
     : null;
+}
+
+// ---------------------------------------------------------------- approval
+
+/**
+ * The message an approved dispatch signs. restore-backup.yml rebuilds the
+ * same string from its inputs and checks the HMAC with the key held on the
+ * `restore` environment, so a dispatch that did not come from an approved
+ * request (someone holding the GitHub token or repository write access) is
+ * refused before anything is decrypted.
+ */
+export function approvalMessage(
+  requestId: string,
+  artifactId: number,
+  mode: RestoreMode,
+  issuedAt: number,
+): string {
+  return `${APPROVAL_VERSION}|${requestId}|${artifactId}|${mode}|${issuedAt}`;
+}
+
+export async function signApproval(key: string, message: string): Promise<string> {
+  const enc = new TextEncoder();
+  const k = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(key),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sig = new Uint8Array(await crypto.subtle.sign("HMAC", k, enc.encode(message)));
+  return Array.from(sig, (b) => b.toString(16).padStart(2, "0")).join("");
 }

@@ -133,6 +133,10 @@ const ERROR_MESSAGES: Record<string, string> = {
     "The request was approved, but the restore workflow could not be started. It is marked failed; create a new request.",
   "Only your own pending request can be cancelled":
     "Only your own pending request can be cancelled.",
+  "Restore approval key is not configured":
+    "Restores cannot be approved yet: the restore approval key has not been set on the server. See the setup steps on this page.",
+  "Could not record the audit entry":
+    "The action was not carried out because its audit entry could not be saved. Please try again.",
 
   // Deploy/config issues -- not user-actionable, but shouldn't leak raw text
   "SITE_URL is not configured": "The server is misconfigured. Contact support.",

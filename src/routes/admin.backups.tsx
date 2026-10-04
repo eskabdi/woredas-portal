@@ -106,6 +106,8 @@ interface RestoreRequest {
 
 interface BackupStatus {
   configured: boolean;
+  /** RESTORE_APPROVAL_KEY is set: approvals can be signed and dispatched. */
+  approval_configured: boolean;
   github_error: "token_rejected" | "unreachable" | null;
   me: string;
   schedule: { description: string; next_run_at: string; retention_days: number };
@@ -182,13 +184,15 @@ function BackupsPage() {
   const status = useQuery({
     queryKey: ["backup-admin", "status"],
     queryFn: () => call<BackupStatus>({ action: "status" }),
-    // Poll while anything is in flight.
+    // Poll while anything is in flight -- every 30 s, which (with the
+    // server's short GitHub cache) keeps a watched page well inside the
+    // token's hourly GitHub API budget.
     refetchInterval: (q) => {
       const d = q.state.data;
       const busy =
         d?.runs.some((r) => r.state === "queued" || r.state === "running") ||
-        d?.requests.some((r) => r.status === "dispatched" || r.status === "approved");
-      return busy ? 15_000 : false;
+        d?.requests.some((r) => r.status === "dispatched");
+      return busy ? 30_000 : false;
     },
   });
   const refresh = () => qc.invalidateQueries({ queryKey: ["backup-admin", "status"] });
@@ -265,6 +269,7 @@ function BackupsPage() {
 
       {d && !d.configured && <SetupNotice reason="token" />}
       {d?.github_error && <SetupNotice reason={d.github_error} />}
+      {d?.configured && !d.approval_configured && <SetupNotice reason="approval_key" />}
       {d?.configured && !d.github_error && latest?.state === "failed" && !lastGood && (
         <SetupNotice reason="first_run_failed" runUrl={latest.url} />
       )}
@@ -578,7 +583,7 @@ function SetupNotice({
   reason,
   runUrl,
 }: {
-  reason: "token" | "token_rejected" | "unreachable" | "first_run_failed";
+  reason: "token" | "token_rejected" | "unreachable" | "first_run_failed" | "approval_key";
   runUrl?: string;
 }) {
   const text = {
@@ -587,6 +592,8 @@ function SetupNotice({
     token_rejected:
       "GitHub rejected the server's token (GITHUB_BACKUP_TOKEN). It may have expired or lost the Actions permission: create a new one and update the secret.",
     unreachable: "GitHub could not be reached just now. The list below may be out of date.",
+    approval_key:
+      "Restores cannot be approved yet: the server has no RESTORE_APPROVAL_KEY. Set the same random key as an Edge Function secret and as a secret on the GitHub `restore` environment (runbook §3a).",
     first_run_failed:
       "The backup job has run but has not succeeded yet. Usually the one-time setup is incomplete: the `backup` environment needs SUPABASE_DB_URL and BACKUP_AGE_RECIPIENTS (runbook §3).",
   }[reason];

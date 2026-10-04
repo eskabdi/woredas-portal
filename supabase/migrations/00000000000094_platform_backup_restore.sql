@@ -13,8 +13,8 @@
 --      maker-checker FSM enforced by trigger. Written ONLY by the Edge
 --      Function (service_role): there is no INSERT/UPDATE/DELETE policy for
 --      `authenticated`, so a direct PostgREST write is refused.
---   3. An audit trigger: every insert and status change lands in audit_log,
---      even if a future code path forgets to write one.
+--   3. An audit trigger: every insert, status change and linked workflow run
+--      lands in audit_log, even if a future code path forgets to write one.
 --
 -- Restore NEVER targets production: the workflow's two modes are an
 -- isolated verification sandbox and a NEW Supabase project (disaster
@@ -85,23 +85,79 @@ GRANT SELECT ON public.platform_backup_restore_request TO authenticated;
 --   requested  -> approved | rejected | cancelled
 --   approved   -> dispatched | failed        (failed = dispatch refused)
 --   dispatched -> succeeded | failed
--- rejected / cancelled / succeeded / failed are terminal. Only the requester
--- may cancel; only someone else may approve or reject. Identity and backup
--- columns never change after insert.
+-- rejected / cancelled / succeeded / failed are terminal and frozen. Only the
+-- requester may cancel. Only a DIFFERENT active super admin holding
+-- console.backup.manage may approve or reject, and only with an account that
+-- already existed when the request was made -- so a second account invited
+-- after the fact cannot rubber-stamp the first one's request. (Two accounts
+-- held by one person who planned ahead is the residual risk; the GitHub
+-- `restore` environment's required reviewer is the further gate, runbook §3a.)
+-- Identity and backup columns never change after insert; the decision, the
+-- timestamps and the linked workflow run are set once and then frozen. Rows
+-- are never deleted.
+
+-- console.backup.manage for a GIVEN user, the same rule user_has_console_perm()
+-- applies to auth.uid(). Internal to the trigger (the Edge Function writes as
+-- service_role, where auth.uid() is NULL); not callable by clients.
+CREATE OR REPLACE FUNCTION public.backup_restore_actor_allowed(_user uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.app_user au
+    WHERE au.user_id = _user
+      AND au.role = 'super_admin'
+      AND au.status = 'active'
+      AND (
+        au.console_role_id IS NULL
+        OR EXISTS (
+          SELECT 1 FROM public.console_role_permission crp
+          JOIN public.console_role cr ON cr.console_role_id = crp.console_role_id
+          WHERE crp.console_role_id = au.console_role_id
+            AND crp.permission_key = 'console.backup.manage'
+            AND crp.is_granted = true
+            AND cr.is_active = true
+        )
+      )
+  )
+$$;
+
 CREATE OR REPLACE FUNCTION public.enforce_backup_restore_request()
 RETURNS trigger
 LANGUAGE plpgsql
 SET search_path = ''
 AS $$
 BEGIN
+  IF TG_OP = 'DELETE' THEN
+    RAISE EXCEPTION 'restore requests are never deleted' USING ERRCODE = '42501';
+  END IF;
+
   IF TG_OP = 'INSERT' THEN
     IF NEW.status <> 'requested' THEN
       RAISE EXCEPTION 'a restore request must start as requested' USING ERRCODE = '22023';
     END IF;
-    IF NEW.decided_by IS NOT NULL OR NEW.dispatched_at IS NOT NULL OR NEW.workflow_run_id IS NOT NULL THEN
+    IF NEW.decided_by IS NOT NULL OR NEW.decision_note IS NOT NULL
+       OR NEW.workflow_run_id IS NOT NULL OR NEW.workflow_run_url IS NOT NULL
+       OR NEW.result_conclusion IS NOT NULL THEN
       RAISE EXCEPTION 'a new restore request cannot carry a decision or a dispatch' USING ERRCODE = '22023';
     END IF;
+    IF NOT public.backup_restore_actor_allowed(NEW.requested_by) THEN
+      RAISE EXCEPTION 'the requester must be an active super admin with console.backup.manage'
+        USING ERRCODE = '42501';
+    END IF;
+    NEW.requested_at := now();
+    NEW.decided_at := NULL;
+    NEW.dispatched_at := NULL;
+    NEW.completed_at := NULL;
+    NEW.updated_at := now();
     RETURN NEW;
+  END IF;
+
+  IF OLD.status IN ('rejected', 'cancelled', 'succeeded', 'failed') THEN
+    RAISE EXCEPTION 'restore request is closed (%)', OLD.status USING ERRCODE = '22023';
   END IF;
 
   IF NEW.restore_request_id IS DISTINCT FROM OLD.restore_request_id
@@ -115,36 +171,77 @@ BEGIN
     RAISE EXCEPTION 'restore request identity columns are immutable' USING ERRCODE = '22023';
   END IF;
 
-  IF NEW.status IS DISTINCT FROM OLD.status THEN
-    IF NOT (
-         (OLD.status = 'requested'  AND NEW.status IN ('approved', 'rejected', 'cancelled'))
-      OR (OLD.status = 'approved'   AND NEW.status IN ('dispatched', 'failed'))
-      OR (OLD.status = 'dispatched' AND NEW.status IN ('succeeded', 'failed'))
-    ) THEN
-      RAISE EXCEPTION 'illegal restore request transition % -> %', OLD.status, NEW.status
+  -- Timestamps belong to the trigger.
+  NEW.decided_at := OLD.decided_at;
+  NEW.dispatched_at := OLD.dispatched_at;
+  NEW.completed_at := OLD.completed_at;
+
+  -- A linked run is set once, and only while the request is dispatched.
+  IF (NEW.workflow_run_id IS DISTINCT FROM OLD.workflow_run_id
+      OR NEW.workflow_run_url IS DISTINCT FROM OLD.workflow_run_url)
+     AND (OLD.status <> 'dispatched' OR OLD.workflow_run_id IS NOT NULL) THEN
+    RAISE EXCEPTION 'the workflow run is linked once, while dispatched' USING ERRCODE = '22023';
+  END IF;
+
+  IF NEW.status IS NOT DISTINCT FROM OLD.status THEN
+    IF NEW.decided_by IS DISTINCT FROM OLD.decided_by
+       OR NEW.decision_note IS DISTINCT FROM OLD.decision_note
+       OR NEW.result_conclusion IS DISTINCT FROM OLD.result_conclusion THEN
+      RAISE EXCEPTION 'the decision and result change only with a status change' USING ERRCODE = '22023';
+    END IF;
+    NEW.updated_at := now();
+    RETURN NEW;
+  END IF;
+
+  IF NOT (
+       (OLD.status = 'requested'  AND NEW.status IN ('approved', 'rejected', 'cancelled'))
+    OR (OLD.status = 'approved'   AND NEW.status IN ('dispatched', 'failed'))
+    OR (OLD.status = 'dispatched' AND NEW.status IN ('succeeded', 'failed'))
+  ) THEN
+    RAISE EXCEPTION 'illegal restore request transition % -> %', OLD.status, NEW.status
+      USING ERRCODE = '22023';
+  END IF;
+
+  IF NEW.status IN ('approved', 'rejected') THEN
+    IF NEW.decided_by IS NULL OR NEW.decided_by = OLD.requested_by THEN
+      RAISE EXCEPTION 'a restore request must be decided by a different super admin'
         USING ERRCODE = '22023';
     END IF;
-
-    IF NEW.status IN ('approved', 'rejected') THEN
-      IF NEW.decided_by IS NULL OR NEW.decided_by = OLD.requested_by THEN
-        RAISE EXCEPTION 'a restore request must be decided by a different super admin'
-          USING ERRCODE = '22023';
-      END IF;
-      NEW.decided_at := now();
-    ELSIF NEW.status = 'cancelled' THEN
+    IF NOT public.backup_restore_actor_allowed(NEW.decided_by) THEN
+      RAISE EXCEPTION 'the decider must be an active super admin with console.backup.manage'
+        USING ERRCODE = '42501';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM public.app_user au
+                   WHERE au.user_id = NEW.decided_by AND au.created_at < OLD.requested_at) THEN
+      RAISE EXCEPTION 'the decider''s account must predate the request' USING ERRCODE = '42501';
+    END IF;
+    IF NEW.result_conclusion IS DISTINCT FROM OLD.result_conclusion THEN
+      RAISE EXCEPTION 'a decision carries no result' USING ERRCODE = '22023';
+    END IF;
+    NEW.decided_at := now();
+  ELSE
+    -- Every other transition keeps the decision as it was ...
+    IF NEW.decision_note IS DISTINCT FROM OLD.decision_note THEN
+      RAISE EXCEPTION 'the decision note is set only with the decision' USING ERRCODE = '22023';
+    END IF;
+    IF NEW.status = 'cancelled' THEN
+      -- ... except cancel: decided_by carries the canceller, who must be the
+      -- requester, and is then cleared to keep the maker-checker CHECK meaningful.
       IF NEW.decided_by IS DISTINCT FROM OLD.requested_by THEN
-        -- decided_by carries the canceller; it must be the requester.
         RAISE EXCEPTION 'only the requester can cancel a restore request' USING ERRCODE = '22023';
       END IF;
-      NEW.decided_by := NULL;             -- keep the maker-checker CHECK meaningful
+      NEW.decided_by := NULL;
       NEW.decided_at := now();
+    ELSIF NEW.decided_by IS DISTINCT FROM OLD.decided_by THEN
+      RAISE EXCEPTION 'decided_by changes only with a decision' USING ERRCODE = '22023';
     ELSIF NEW.status = 'dispatched' THEN
+      IF NEW.result_conclusion IS DISTINCT FROM OLD.result_conclusion THEN
+        RAISE EXCEPTION 'a dispatch carries no result' USING ERRCODE = '22023';
+      END IF;
       NEW.dispatched_at := now();
-    ELSIF NEW.status IN ('succeeded', 'failed') THEN
+    ELSE -- succeeded | failed
       NEW.completed_at := now();
     END IF;
-  ELSIF NEW.decided_by IS DISTINCT FROM OLD.decided_by THEN
-    RAISE EXCEPTION 'decided_by changes only with a decision' USING ERRCODE = '22023';
   END IF;
 
   NEW.updated_at := now();
@@ -153,8 +250,22 @@ END;
 $$;
 
 CREATE OR REPLACE TRIGGER trg_enforce_backup_restore_request
-  BEFORE INSERT OR UPDATE ON public.platform_backup_restore_request
+  BEFORE INSERT OR UPDATE OR DELETE ON public.platform_backup_restore_request
   FOR EACH ROW EXECUTE FUNCTION public.enforce_backup_restore_request();
+
+CREATE OR REPLACE FUNCTION public.refuse_backup_restore_request_truncate()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+BEGIN
+  RAISE EXCEPTION 'restore requests are never deleted' USING ERRCODE = '42501';
+END;
+$$;
+
+CREATE OR REPLACE TRIGGER trg_refuse_backup_restore_request_truncate
+  BEFORE TRUNCATE ON public.platform_backup_restore_request
+  FOR EACH STATEMENT EXECUTE FUNCTION public.refuse_backup_restore_request_truncate();
 
 -- 3. Audit trail ---------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.log_backup_restore_request()
@@ -164,7 +275,8 @@ SECURITY DEFINER
 SET search_path = ''
 AS $$
 BEGIN
-  IF TG_OP = 'INSERT' OR NEW.status IS DISTINCT FROM OLD.status THEN
+  IF TG_OP = 'INSERT' OR NEW.status IS DISTINCT FROM OLD.status
+     OR NEW.workflow_run_id IS DISTINCT FROM OLD.workflow_run_id THEN
     INSERT INTO public.audit_log (actor_user_id, entity_name, entity_id, action_type,
                                   old_value_json, new_value_json)
     VALUES (
@@ -174,7 +286,9 @@ BEGIN
            ELSE NULL END,
       'platform_backup_restore_request',
       NEW.restore_request_id::text,
-      'BACKUP_RESTORE_' || upper(NEW.status),
+      CASE WHEN TG_OP = 'UPDATE' AND NEW.status IS NOT DISTINCT FROM OLD.status
+           THEN 'BACKUP_RESTORE_RUN_LINKED'
+           ELSE 'BACKUP_RESTORE_' || upper(NEW.status) END,
       CASE WHEN TG_OP = 'UPDATE' THEN jsonb_build_object('status', OLD.status) END,
       jsonb_build_object('status', NEW.status, 'mode', NEW.mode,
                          'backup_run_id', NEW.backup_run_id,
@@ -188,6 +302,8 @@ $$;
 
 REVOKE EXECUTE ON FUNCTION public.log_backup_restore_request() FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.enforce_backup_restore_request() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.refuse_backup_restore_request_truncate() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.backup_restore_actor_allowed(uuid) FROM PUBLIC, anon, authenticated;
 
 CREATE OR REPLACE TRIGGER trg_log_backup_restore_request
   AFTER INSERT OR UPDATE ON public.platform_backup_restore_request

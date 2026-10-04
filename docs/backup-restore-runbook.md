@@ -113,17 +113,21 @@ page says what is missing.
    - Repository access: **only** `eskabdi/woredas-portal`.
    - Permissions: **Actions: Read and write** (Metadata: Read is added automatically). Nothing else.
    - Expiry: 90 days or less; put a renewal in the calendar.
-   - Supabase → Edge Functions → **Secrets**: add `GITHUB_BACKUP_TOKEN` with that value. `GITHUB_REPO` (default `eskabdi/woredas-portal`) and `GITHUB_BACKUP_REF` (default `main`) need setting only if those change.
+   - Supabase → Edge Functions → **Secrets**: add `GITHUB_BACKUP_TOKEN` with that value. `GITHUB_REPO` (default `eskabdi/woredas-portal`) needs setting only if the repository moves. Backups always come from `main`.
+   - **What this token can do if it leaks:** start backup runs, delete backup archives (`DELETE /actions/artifacts/{id}`) and disable the workflows. It **cannot** start a restore on its own (step 3's approval key) or read any secret. Keep the S3 mirror (§3) as the second copy, and if you ever see archives missing from the page, revoke the token first.
+   - Also add **`RESTORE_APPROVAL_KEY`**: a random string of at least 32 characters, e.g. `openssl rand -hex 32`. The Edge Function signs each approved restore with it; the same value goes on the `restore` environment in step 3.
 2. **A dedicated restore key pair** (so the private key CI needs for restores is not your offline master key):
    - `age-keygen -o woredas-restore-key.txt` on a trusted machine.
    - Add its public key to the `backup` environment's `BACKUP_AGE_RECIPIENTS`, space-separated after yours. New backups are then readable by both keys; your offline key still opens everything, and this one can be revoked alone.
    - Backups taken **before** this change are encrypted to your key only, so `verify` on those fails at decryption. Take a fresh backup (**Back up now**) after adding the key.
 3. **GitHub → Settings → Environments → New environment `restore`:**
    - Deployment branches: **Selected branches → `main`**.
-   - Optional: **Required reviewers** for a third approval step inside GitHub.
+   - **Required reviewers: yourself (required, not optional).** It is a human step on GitHub, behind your GitHub login and 2FA, after the two console approvals. Leave "Prevent self-review" off: the dispatch is made with your token, so you are its reviewer. This is the control for the one gap the console cannot close: one person holding two super admin accounts that both existed before the request.
    - Secret `BACKUP_AGE_IDENTITY`: the full contents of `woredas-restore-key.txt`.
+   - Secret `RESTORE_APPROVAL_KEY`: the same value as the Edge Function secret in step 1. Without it, or with a different value, every restore stops at "Check the approval signature" before anything is decrypted. That is the point: a dispatch made with the GitHub token or repository write access alone is refused.
    - For **Restore to new project** only (disaster recovery; leave unset until you need it):
-     - `RESTORE_TARGET_DB_URL`: the session-pooler URL of a **new, empty** Supabase project (`?sslmode=require`). The workflow refuses a URL that names the production project.
+     - `RESTORE_TARGET_DB_URL`: the session-pooler URL of a **new, empty** Supabase project (`?sslmode=require`).
+     - Variable `RESTORE_TARGET_PROJECT_REF`: that new project's ref. The workflow requires the URL to name it, refuses it if it is production's ref (or the URL is percent-encoded), and refuses a target that already has the app schema or any user.
      - `RESTORE_TARGET_S3_ACCESS_KEY_ID` and `RESTORE_TARGET_S3_SECRET_ACCESS_KEY`, plus the variable `RESTORE_TARGET_S3_ENDPOINT`, for that project's Storage.
 4. **Who can use the page:** unrestricted super admins (no console role) have it automatically. For a scoped admin, grant **Manage Backup & Restore** on their console role (Console Users and Role).
 
@@ -239,5 +243,6 @@ A restore request goes through these steps:
    - **Verify in an isolated sandbox:** a restore drill. The workflow decrypts the archive, restores it into a throwaway database inside the job and runs every check. Nothing live changes.
    - **Restore to the new recovery project:** disaster recovery into the empty project set up in §3a. It never touches production; pointing the site at the recovered project is §5 steps 4 and 6–9.
 2. A different super admin (B) approves (**Approve and run**) or rejects (a note is required). A cannot decide their own request; the page hides the buttons, and the Edge Function and a database trigger refuse it anyway. A can cancel while it is pending.
-3. On approval the page starts `restore-backup.yml`. The request shows **Running**, then **Succeeded** or **Failed** with a link to the workflow run.
+3. On approval the page starts `restore-backup.yml` with a signed approval. If the `restore` environment has a required reviewer (§3a), GitHub waits for that review; then the workflow checks the signature before decrypting anything. The request shows **Running**, then **Succeeded** or **Failed** with a link to the workflow run. A run that never appears is marked failed after an hour.
+   - The approver must be a different, active super admin with this permission whose account **existed before the request was made**: a second account created afterwards cannot approve it.
 4. Every step lands in the audit trail (Audit Logs, entity `platform_backup_restore_request` / `platform_backup`): requested, approved or rejected, dispatched, finished, and every download and manual backup.

@@ -66,8 +66,10 @@ deploys but fails at runtime, and it is the function behind ID card issuance.
     --project-ref <project-ref>
 
 backup-admin reads GITHUB_BACKUP_TOKEN (a fine-grained token for this one
-repository, Actions read/write). Without it the Backup & Restore page loads
-but says backups are not connected. See docs/backup-restore-runbook.md §3a.
+repository, Actions read/write) and RESTORE_APPROVAL_KEY (>= 32 random
+characters, the same value as the GitHub `restore` environment's secret).
+Without them the Backup & Restore page loads but says what is missing. See
+docs/backup-restore-runbook.md §3a.
 
 SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are injected
 automatically and do not need setting.

@@ -452,6 +452,7 @@ paths:
                 status:
                   value:
                     configured: true
+                    approval_configured: true
                     github_error: null
                     me: "02cb990d-4d7b-48d3-9a97-0217eb5401b4"
                     schedule:
@@ -475,7 +476,12 @@ paths:
             application/json:
               example: { restore_request_id: "8e3bfdab-e433-4aed-aa7b-4040e96a0343" }
         "202":
-          description: Workflow dispatched (`run_backup`, or `decide_restore` approve).
+          description: >
+            Workflow dispatched (`run_backup`, or `decide_restore` approve). An
+            approved restore is dispatched with `issued_at` and an HMAC-SHA256
+            `approval` signature that restore-backup.yml verifies before
+            decrypting anything. Every action is audited BEFORE it runs, and is
+            refused (500 "Could not record the audit entry") if it cannot be.
           content:
             application/json:
               example: { status: dispatched }
@@ -514,11 +520,15 @@ paths:
               schema: { $ref: "#/components/schemas/ErrorBody" }
               example: { error: "GitHub request failed" }
         "503":
-          description: The server has no GitHub token configured.
+          description: >
+            The server has no GitHub token configured, or (approve only) no
+            RESTORE_APPROVAL_KEY to sign the dispatch with.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorBody" }
-              example: { error: "Backup integration is not configured" }
+              examples:
+                token: { value: { error: "Backup integration is not configured" } }
+                approval_key: { value: { error: "Restore approval key is not configured" } }
   /rpc/verify_credential_token:
     servers:
       - url: "{SUPABASE_URL}/rest/v1"
