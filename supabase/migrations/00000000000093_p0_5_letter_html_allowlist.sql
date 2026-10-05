@@ -28,6 +28,10 @@
 -- parser. Where this tokenizer and a browser could disagree, the value is
 -- rejected rather than accepted.
 --
+-- Revised in place on 2026-09-27, after code review and before it had been
+-- applied to any database: shared value-rule constants, a linear-time tag
+-- pattern and a 50 KB cap.
+--
 -- Additive only: two new functions and a new trigger (CREATE OR REPLACE).
 -- Rolling back = CREATE OR REPLACE public.letter_html_is_safe to RETURN true.
 
@@ -41,13 +45,25 @@ DECLARE
   -- One start or end tag. Attribute values: double-quoted, single-quoted or
   -- unquoted (HTML's unquoted-value character set). Attributes must be
   -- separated by whitespace; a '/'-separated attribute (<a/onclick=..>) does
-  -- not match, leaves a '<' behind and so fails.
-  c_tag  CONSTANT text := '<(/?)([A-Za-z][A-Za-z0-9]*)((?:\s+[^\s"''>/=]+(?:\s*=\s*(?:"[^"]*"|''[^'']*''|[^\s"''=<>`]+))?)*)\s*/?>';
-  c_attr CONSTANT text := '\s+([^\s"''>/=]+)(?:\s*=\s*("[^"]*"|''[^'']*''|[^\s"''=<>`]+))?';
+  -- not match, leaves a '<' behind and so fails. Attribute names exclude
+  -- '<' so a failed match stops at the next '<' instead of rescanning the
+  -- rest of the string (keeps the work linear on hostile input).
+  c_tag  CONSTANT text := '<(/?)([A-Za-z][A-Za-z0-9]*)((?:\s+[^\s"''>/=<]+(?:\s*=\s*(?:"[^"]*"|''[^'']*''|[^\s"''=<>`]+))?)*)\s*/?>';
+  c_attr CONSTANT text := '\s+([^\s"''>/=<]+)(?:\s*=\s*("[^"]*"|''[^'']*''|[^\s"''=<>`]+))?';
+  -- The lists and value rules below must equal the ALLOWED_* sets and
+  -- LETTER_*_RE constants in src/lib/letterTemplate.ts, character for
+  -- character; src/lib/__tests__/letterTemplate.test.ts compares them.
   c_tags CONSTANT text[] := ARRAY['p','br','div','span','strong','b','em','i','u','s','sub','sup',
                                   'h1','h2','h3','h4','ul','ol','li','blockquote','a',
                                   'table','thead','tbody','tr','td','th','hr'];
+  c_attrs CONSTANT text[] := ARRAY['href','target','rel','colspan','rowspan','style'];
   c_styles CONSTANT text[] := ARRAY['text-align','font-weight','font-style','text-decoration'];
+  c_href_re CONSTANT text := '^(https?:|mailto:|tel:)';
+  c_token_attr_re CONSTANT text := '^[A-Za-z0-9 _-]*$';
+  c_span_attr_re CONSTANT text := '^[0-9]{1,3}$';
+  c_colour_fn_re CONSTANT text := '(rgba?|hsla?)\([0-9 .,%]*\)';
+  c_style_value_re CONSTANT text := '^[A-Za-z0-9 #%.,-]*$';
+  c_max_len CONSTANT int := 50000;          -- production's longest template is ~500 chars
   t text[];
   a text[];
   v_name text;
@@ -59,8 +75,7 @@ BEGIN
   IF _html IS NULL OR _html = '' THEN
     RETURN true;
   END IF;
-  -- Bound the work; a letter body is a few KB.
-  IF length(_html) > 200000 THEN
+  IF length(_html) > c_max_len THEN
     RETURN false;
   END IF;
 
@@ -80,19 +95,21 @@ BEGIN
       END IF;
       v_val := coalesce(v_val, '');
 
-      IF v_name = 'href' THEN
-        IF v_val !~* '^(https?:|mailto:|tel:)' THEN
+      IF NOT (v_name = ANY (c_attrs)) THEN
+        RETURN false;                       -- any other attribute (on*, src, id, ...)
+      ELSIF v_name = 'href' THEN
+        IF v_val !~* c_href_re THEN
           RETURN false;
         END IF;
       ELSIF v_name IN ('target', 'rel') THEN
-        IF v_val !~ '^[A-Za-z0-9 _-]*$' THEN
+        IF v_val !~ c_token_attr_re THEN
           RETURN false;
         END IF;
       ELSIF v_name IN ('colspan', 'rowspan') THEN
-        IF v_val !~ '^[0-9]{1,3}$' THEN
+        IF v_val !~ c_span_attr_re THEN
           RETURN false;
         END IF;
-      ELSIF v_name = 'style' THEN
+      ELSE                                  -- style
         FOREACH v_decl IN ARRAY string_to_array(v_val, ';') LOOP
           CONTINUE WHEN btrim(v_decl) = '';
           v_prop := lower(btrim(split_part(v_decl, ':', 1)));
@@ -102,13 +119,10 @@ BEGIN
           END IF;
           -- Colour functions only; then plain keywords/numbers. No '&', no
           -- '\', no quotes, no url()/expression()/var().
-          v_css := regexp_replace(v_css, '(rgba?|hsla?)\([0-9 .,%]*\)', '', 'gi');
-          IF v_css !~ '^[A-Za-z0-9 #%.,-]*$' THEN
+          IF regexp_replace(v_css, c_colour_fn_re, '', 'gi') !~ c_style_value_re THEN
             RETURN false;
           END IF;
         END LOOP;
-      ELSE
-        RETURN false;                       -- any other attribute (on*, src, id, ...)
       END IF;
     END LOOP;
   END LOOP;

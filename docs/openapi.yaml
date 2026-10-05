@@ -375,6 +375,160 @@ paths:
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "500": { $ref: "#/components/responses/ServerError" }
 
+  /backup-admin:
+    post:
+      summary: Super Admin Console Backup & Restore (one endpoint, action-dispatched)
+      description: >
+        Private. Caller must be an active `super_admin` holding
+        `console.backup.manage` (unrestricted super admins hold it), checked
+        with `user_has_console_perm()` as the caller. The GitHub token lives
+        only in this function. Restore requests are maker-checker: the
+        requester can never approve or reject their own (also enforced by a
+        table trigger and CHECK, migration 94). Restores never target
+        production. Rate limited per caller and action.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  required: [action]
+                  properties: { action: { type: string, enum: [status, run_backup] } }
+                - type: object
+                  required: [action, artifact_id]
+                  properties:
+                    action: { type: string, enum: [download] }
+                    artifact_id: { type: integer, minimum: 1 }
+                - type: object
+                  required: [action, artifact_id, mode, reason]
+                  properties:
+                    action: { type: string, enum: [request_restore] }
+                    artifact_id: { type: integer, minimum: 1 }
+                    mode: { type: string, enum: [verify, restore_to_target] }
+                    reason: { type: string, minLength: 10, maxLength: 1000 }
+                - type: object
+                  required: [action, restore_request_id, decision]
+                  properties:
+                    action: { type: string, enum: [decide_restore] }
+                    restore_request_id: { type: string, format: uuid }
+                    decision: { type: string, enum: [approve, reject] }
+                    note:
+                      type: string
+                      maxLength: 1000
+                      nullable: true
+                      description: Required when rejecting.
+                - type: object
+                  required: [action, restore_request_id]
+                  properties:
+                    action: { type: string, enum: [cancel_restore] }
+                    restore_request_id: { type: string, format: uuid }
+            examples:
+              request:
+                value:
+                  {
+                    action: request_restore,
+                    artifact_id: 2003,
+                    mode: verify,
+                    reason: "Monthly restore drill",
+                  }
+              approve:
+                value:
+                  {
+                    action: decide_restore,
+                    restore_request_id: "8e3bfdab-e433-4aed-aa7b-4040e96a0343",
+                    decision: approve,
+                    note: "Drill approved",
+                  }
+      responses:
+        "200":
+          description: >
+            `status`: backups, restore requests, schedule. `download`: a
+            short-lived signed URL to the age-ENCRYPTED archive.
+            `decide_restore` (reject) / `cancel_restore`: new status.
+          content:
+            application/json:
+              examples:
+                status:
+                  value:
+                    configured: true
+                    approval_configured: true
+                    github_error: null
+                    me: "02cb990d-4d7b-48d3-9a97-0217eb5401b4"
+                    schedule:
+                      {
+                        description: "Daily 00:17 UTC (03:17 Addis Ababa, 9:17 ለሊት)",
+                        next_run_at: "2026-09-29T00:17:00.000Z",
+                        retention_days: 30,
+                      }
+                    runs:
+                      - id: 1003
+                        state: succeeded
+                        trigger: scheduled
+                        restoreTest: passed
+                        artifact:
+                          { id: 2003, name: woredas-backup-1003, sizeBytes: 118000, expired: false }
+                    requests: []
+                download: { value: { url: "https://…signed-github-blob-url…" } }
+        "201":
+          description: Restore request created (`request_restore`).
+          content:
+            application/json:
+              example: { restore_request_id: "8e3bfdab-e433-4aed-aa7b-4040e96a0343" }
+        "202":
+          description: >
+            Workflow dispatched (`run_backup`, or `decide_restore` approve). An
+            approved restore is dispatched with `issued_at` and an HMAC-SHA256
+            `approval` signature that restore-backup.yml verifies before
+            decrypting anything. Every action is audited BEFORE it runs, and is
+            refused (500 "Could not record the audit entry") if it cannot be.
+          content:
+            application/json:
+              example: { status: dispatched }
+        "400":
+          description: Unknown action or invalid input (ids are validated as integers/UUIDs before any GitHub call).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorBody" }
+              example: { error: "not a backup archive" }
+        "401": { $ref: "#/components/responses/MissingAuth" }
+        "403":
+          description: Lacks `console.backup.manage`, or tried to decide their own request.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorBody" }
+              example: { error: "A restore request must be decided by a different super admin" }
+        "404":
+          description: Restore request or backup not found.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorBody" }
+              example: { error: "Restore request not found" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "409":
+          description: The request is no longer pending, or is not yours to cancel.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorBody" }
+              example: { error: "Restore request is no longer pending" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/ServerError" }
+        "502":
+          description: GitHub failed (body is fixed; GitHub's own response is never relayed).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorBody" }
+              example: { error: "GitHub request failed" }
+        "503":
+          description: >
+            The server has no GitHub token configured, or (approve only) no
+            RESTORE_APPROVAL_KEY to sign the dispatch with.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorBody" }
+              examples:
+                token: { value: { error: "Backup integration is not configured" } }
+                approval_key: { value: { error: "Restore approval key is not configured" } }
   /rpc/verify_credential_token:
     servers:
       - url: "{SUPABASE_URL}/rest/v1"

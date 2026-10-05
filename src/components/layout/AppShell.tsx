@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   Building2,
   ChevronDown,
+  DatabaseBackup,
   type LucideIcon,
   MailQuestion,
   MessageSquareWarning,
@@ -61,6 +62,7 @@ import {
 
 const ICON_MAP: Record<string, LucideIcon> = {
   LayoutDashboard,
+  DatabaseBackup,
   Users,
   Home,
   CreditCard,

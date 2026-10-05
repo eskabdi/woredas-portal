@@ -75,6 +75,7 @@ const CP_DESCRIPTIONS: Record<ConsolePermission, string> = {
   [CP.AUDIT_VIEW]: "View the platform-wide audit log",
   [CP.CREDENTIAL_TEMPLATE_MANAGE]: "Edit the shared ID card template (all tenants)",
   [CP.CONSOLE_USERS_MANAGE]: "Manage console_role assignments and mint new super_admin accounts",
+  [CP.BACKUP_MANAGE]: "View backups, run one now, download archives, request and decide restores",
 };
 
 function checkMark(granted: boolean): string {

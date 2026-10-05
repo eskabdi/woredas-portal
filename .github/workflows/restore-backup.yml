@@ -1,0 +1,222 @@
+name: Restore backup
+
+# Started ONLY by the backup-admin Edge Function after a restore request has
+# been approved by a second super admin (maker-checker, migration 94). The
+# function signs each approved dispatch (HMAC-SHA256 over request id, archive,
+# mode and issue time, key RESTORE_APPROVAL_KEY) and the first step below
+# refuses a run whose signature is missing, wrong, or was not issued when the
+# run was created -- so the GitHub token, or repository write access, cannot
+# start a restore on its own. Two modes, and neither ever touches production:
+#
+#   verify             decrypt the chosen archive and restore it into a fresh,
+#                      throwaway local Supabase stack inside this job, then run
+#                      the same row-count / policy-count / Storage checks as
+#                      the nightly restore test.
+#   restore_to_target  disaster recovery: restore into the NEW, empty project
+#                      whose connection string is the `restore` environment's
+#                      RESTORE_TARGET_DB_URL secret. The URL must name the
+#                      project ref in vars.RESTORE_TARGET_PROJECT_REF (never
+#                      production's), and the target must be empty.
+#
+# Decrypting needs a private key in CI, which the nightly job deliberately
+# avoids. It lives ONLY on the `restore` environment (BACKUP_AGE_IDENTITY):
+# a dedicated restore key pair whose public half is one of the nightly job's
+# BACKUP_AGE_RECIPIENTS, so the owner's offline key still decrypts everything
+# and this key can be revoked alone. Restrict the environment to `main`
+# and add a required reviewer: a human step on GitHub after the two console
+# approvals. See docs/backup-restore-runbook.md §3a.
+#
+# THIS REPOSITORY IS PUBLIC: logs are world-readable. Nothing here prints row
+# data, error text or secrets; the detailed report stays on the runner and
+# is deleted with the plaintext.
+
+run-name: "Restore (${{ inputs.mode }}) request ${{ inputs.request_id }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      request_id:
+        description: "platform_backup_restore_request id (UUID)"
+        required: true
+        type: string
+      artifact_id:
+        description: "Backup archive artifact id (from a nightly-backup run on main)"
+        required: true
+        type: string
+      mode:
+        description: "verify | restore_to_target"
+        required: true
+        type: choice
+        options: [verify, restore_to_target]
+      issued_at:
+        description: "Approval issue time (unix seconds), set by backup-admin"
+        required: true
+        type: string
+      approval:
+        description: "Approval signature, set by backup-admin"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: restore-backup
+  cancel-in-progress: false
+
+jobs:
+  restore:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    environment: restore
+    defaults:
+      run:
+        shell: bash
+    env:
+      SUPABASE_CLI: npx --yes supabase@2.118.0
+      # Inputs reach scripts only through env, never ${{ }} inside `run`.
+      REQUEST_ID: ${{ inputs.request_id }}
+      ARTIFACT_ID: ${{ inputs.artifact_id }}
+      MODE: ${{ inputs.mode }}
+      ISSUED_AT: ${{ inputs.issued_at }}
+      APPROVAL: ${{ inputs.approval }}
+      PRODUCTION_REF: ${{ vars.PRODUCTION_PROJECT_REF || 'tugzuexfyzbdnghbmrjl' }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Validate inputs and configuration
+        env:
+          BACKUP_AGE_IDENTITY: ${{ secrets.BACKUP_AGE_IDENTITY }}
+          RESTORE_TARGET_DB_URL: ${{ secrets.RESTORE_TARGET_DB_URL }}
+          TARGET_REF: ${{ vars.RESTORE_TARGET_PROJECT_REF }}
+        run: |
+          [[ "$REQUEST_ID" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]] || { echo "::error::request_id is not a UUID"; exit 1; }
+          [[ "$ARTIFACT_ID" =~ ^[0-9]{1,15}$ ]] || { echo "::error::artifact_id is not numeric"; exit 1; }
+          [[ "$MODE" == verify || "$MODE" == restore_to_target ]] || { echo "::error::bad mode"; exit 1; }
+          [[ "$ISSUED_AT" =~ ^[0-9]{10}$ ]] || { echo "::error::issued_at is not a unix time"; exit 1; }
+          [[ "$APPROVAL" =~ ^[0-9a-f]{64}$ ]] || { echo "::error::approval is not a signature"; exit 1; }
+          [[ -n "$BACKUP_AGE_IDENTITY" ]] || { echo "::error::Secret BACKUP_AGE_IDENTITY is not set on the 'restore' environment."; exit 1; }
+          if [[ "$MODE" == restore_to_target ]]; then
+            [[ -n "$RESTORE_TARGET_DB_URL" ]] || { echo "::error::Secret RESTORE_TARGET_DB_URL is not set on the 'restore' environment."; exit 1; }
+            [[ "$TARGET_REF" =~ ^[a-z]{20}$ ]] || { echo "::error::Variable RESTORE_TARGET_PROJECT_REF (the new project's ref) is not set on the 'restore' environment."; exit 1; }
+            url_lc=${RESTORE_TARGET_DB_URL,,}
+            if [[ "$TARGET_REF" == "${PRODUCTION_REF,,}" || "$url_lc" == *"${PRODUCTION_REF,,}"* || "$url_lc" == *%* ]]; then
+              echo "::error::The restore target names the production project (or is percent-encoded). Restores go to a NEW project only."
+              exit 1
+            fi
+            [[ "$url_lc" == *"$TARGET_REF"* ]] || { echo "::error::RESTORE_TARGET_DB_URL does not name RESTORE_TARGET_PROJECT_REF."; exit 1; }
+          fi
+          echo "WORKDIR=$RUNNER_TEMP/restore" >>"$GITHUB_ENV"
+
+      - name: Check the approval signature
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESTORE_APPROVAL_KEY: ${{ secrets.RESTORE_APPROVAL_KEY }}
+        run: |
+          [[ ${#RESTORE_APPROVAL_KEY} -ge 32 ]] || { echo "::error::Secret RESTORE_APPROVAL_KEY is not set on the 'restore' environment."; exit 1; }
+          # The approval must have been issued when this run was created (not
+          # when the job starts: a required reviewer may hold it for hours).
+          created=$(curl -fsS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" | jq -r '.created_at')
+          RUN_CREATED=$(date -d "$created" +%s) python3 "$GITHUB_WORKSPACE/scripts/backup/verify-approval.py" \
+            || { echo "::error::This restore was not approved in the Super Admin Console (bad or stale approval signature)."; exit 1; }
+          echo "Approval signature verified."
+
+      - name: Check the archive is a nightly backup from main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          api() { curl -fsS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY$1"; }
+          art=$(api "/actions/artifacts/$ARTIFACT_ID")
+          run_id=$(jq -r '.workflow_run.id' <<<"$art")
+          [[ "$(jq -r '.name' <<<"$art")" == woredas-backup-* && "$(jq -r '.expired' <<<"$art")" == false ]] \
+            || { echo "::error::Artifact is not an unexpired backup archive"; exit 1; }
+          run=$(api "/actions/runs/$run_id")
+          # A pull_request run executes the PR's own workflow file and reports
+          # the fork's branch name, so path + branch alone are not provenance.
+          jq -e --arg repo "$GITHUB_REPOSITORY" '
+              .path == ".github/workflows/nightly-backup.yml" and .head_branch == "main"
+              and (.event == "schedule" or .event == "workflow_dispatch")
+              and .head_repository.full_name == $repo
+              and .status == "completed" and .conclusion == "success"' <<<"$run" >/dev/null \
+            || { echo "::error::Artifact was not produced by a successful nightly-backup.yml run of this repository on main"; exit 1; }
+          echo "Backup run $run_id ($(jq -r '.created_at' <<<"$run"))"
+
+      - name: Install age
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq age
+
+      - name: Download and decrypt
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BACKUP_AGE_IDENTITY: ${{ secrets.BACKUP_AGE_IDENTITY }}
+        run: |
+          umask 077
+          mkdir -p "$RUNNER_TEMP/dl" "$WORKDIR"
+          curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+            -o "$RUNNER_TEMP/dl/archive.zip" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID/zip"
+          (cd "$RUNNER_TEMP/dl" && unzip -q archive.zip && sha256sum -c --quiet ./*.tar.gz.age.sha256)
+          # The identity never touches disk.
+          age -d -i <(printf '%s\n' "$BACKUP_AGE_IDENTITY") "$RUNNER_TEMP"/dl/*.tar.gz.age | tar -xzf - -C "$WORKDIR"
+          (cd "$WORKDIR" && sed -n '/^$/,$p' MANIFEST | tail -n +2 | sha256sum -c --quiet)
+          echo "Archive decrypted; manifest verified."
+
+      - name: Restore into an isolated sandbox and verify
+        if: env.MODE == 'verify'
+        run: |
+          mkdir -p "$RUNNER_TEMP/stack" && cd "$RUNNER_TEMP/stack"
+          $SUPABASE_CLI init --force >/dev/null
+          $SUPABASE_CLI start -x realtime,studio,imgproxy,mailpit,postgres-meta,edge-runtime,logflare,vector,supavisor,postgrest >/dev/null
+          RESTORE_DB_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres \
+            "$GITHUB_WORKSPACE/scripts/backup/restore-verify.sh" "$WORKDIR" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Restore into the new target project and verify
+        if: env.MODE == 'restore_to_target'
+        env:
+          RESTORE_DB_URL: ${{ secrets.RESTORE_TARGET_DB_URL }}
+          ALLOW_REMOTE_RESTORE: "yes"
+        run: |
+          # Only ever into an EMPTY project: no app schema, no users.
+          empty=$(psql "$RESTORE_DB_URL" -X -A -t -v ON_ERROR_STOP=1 -c \
+            "select to_regclass('public.app_user') is null and not exists (select 1 from auth.users)" 2>/dev/null) || empty=error
+          [[ "$empty" == t ]] || { echo "::error::The restore target is not an empty, reachable project. Refusing to restore."; exit 1; }
+          "$GITHUB_WORKSPACE/scripts/backup/restore-verify.sh" "$WORKDIR" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Storage files to the target project
+        if: env.MODE == 'restore_to_target'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.RESTORE_TARGET_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.RESTORE_TARGET_S3_SECRET_ACCESS_KEY }}
+          S3_ENDPOINT: ${{ vars.RESTORE_TARGET_S3_ENDPOINT }}
+          AWS_DEFAULT_REGION: ${{ vars.RESTORE_TARGET_S3_REGION || 'eu-west-1' }}
+        run: |
+          if [[ -z "$AWS_ACCESS_KEY_ID" || -z "$S3_ENDPOINT" || ! -d "$WORKDIR/storage/objects" ]]; then
+            echo "::warning::No target S3 credentials, or no Storage objects in this backup; upload Storage files by hand (runbook §5 step 5)."
+            exit 0
+          fi
+          if [[ "$S3_ENDPOINT" == *"$PRODUCTION_REF"* ]]; then
+            echo "::error::Target S3 endpoint names the production project."; exit 1
+          fi
+          failed=0
+          for b in "$WORKDIR"/storage/objects/*/; do
+            # cp, not sync: the restored storage.objects rows make every file
+            # look present already, so sync would upload nothing. Errors name
+            # object keys (which can carry residents' file names), so they go
+            # to a file on the runner, never to this public log.
+            aws --endpoint-url "$S3_ENDPOINT" s3 cp --recursive --only-show-errors "$b" "s3://$(basename "$b")" \
+              >>"$WORKDIR/s3-errors.log" 2>&1 || failed=$((failed + 1))
+          done
+          if (( failed )); then
+            echo "::error::Storage upload failed for $failed bucket(s); check the target S3 credentials and endpoint."
+            exit 1
+          fi
+          echo "Storage files uploaded to the target project."
+
+      - name: Remove plaintext
+        if: always()
+        run: |
+          rm -rf "$RUNNER_TEMP/restore" "$RUNNER_TEMP/dl"
+          (cd "$RUNNER_TEMP/stack" 2>/dev/null && $SUPABASE_CLI stop --no-backup >/dev/null 2>&1) || true

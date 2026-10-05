@@ -599,12 +599,12 @@ the target project's `auth.users` — when a template or config table (e.g.
 `id_card_template_field`) is edited live in the DB, sync the same values into
 `seed.sql` or a fresh deploy silently regresses.
 
-The eight `supabase/functions/*` Edge Functions (`sign-credential`,
+The nine `supabase/functions/*` Edge Functions (`sign-credential`,
 `invite-tenant-user`, `invite-platform-admin`, `resend-platform-invite`,
 `resend-tenant-invite`, `activate-invited-user`, `record-login`,
-`send-password-reset-link`) are a separate deploy artifact from the schema —
+`send-password-reset-link`, `backup-admin`) are a separate deploy artifact from the schema —
 `supabase db push` and seed files don't touch them. `scripts/deploy-functions.sh`
-deploys all eight via the Management API (the CLI's `functions deploy` doesn't
+deploys all nine via the Management API (the CLI's `functions deploy` doesn't
 work from a proxied/sandboxed shell — see below). The `/deploy` skill in
 `.claude/skills/deploy/` covers the full deploy and its ordering. All eight
 import shared helpers from `supabase/functions/_shared/` (`response.ts` for
@@ -1069,6 +1069,25 @@ encrypted archive — keep it that way when editing them. Vault secrets
 **not** in any backup by design; they are escrowed offline by the owner and
 only their SHA-256 fingerprint is recorded. `docs/backup-restore-runbook.md`
 has setup, key custody and the disaster-restore procedure.
+
+Super admins drive it from **Backup & Restore** (`src/routes/admin.backups.tsx`,
+console permission `CP.BACKUP_MANAGE`) through one Edge Function,
+`backup-admin`, which alone holds the GitHub token (`GITHUB_BACKUP_TOKEN`);
+its GitHub client and input validation live in `backup-admin/github.ts`,
+Deno-free so Vitest covers it. Restores are maker-checker rows in
+`platform_backup_restore_request` (migration 94): no client write grant, and
+a trigger enforces the FSM, requester != decider, immutable identity columns
+and an audit row per transition, even for the service role; the approver must
+hold the permission and have an account older than the request. An approval
+dispatches `.github/workflows/restore-backup.yml` with an HMAC signature
+(`RESTORE_APPROVAL_KEY`, held only by the function and the GitHub `restore`
+environment) that the workflow checks before decrypting anything, so the
+GitHub token or repository write access alone cannot start a restore. Its two
+modes (an isolated sandbox verify, or a NEW, empty recovery project) never
+touch production. An archive counts as a backup only if a successful
+`schedule`/`workflow_dispatch` run of this repository on `main` made it: a
+fork pull request runs its own copy of `nightly-backup.yml` and can name its
+branch `main`, so path + branch alone are not provenance.
 
 ### Auth redirect URLs must be top-level, and allow-listed
 

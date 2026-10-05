@@ -6,13 +6,15 @@ owner buys Pro + PITR, this nightly job is the only copy of production data. Kee
 after the upgrade as an off-platform copy, since PITR does not protect against losing
 the project or the account.
 
-|                    |                                                                                                                                                                                                                                |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Job                | `.github/workflows/nightly-backup.yml` (daily 00:17 UTC = 03:17 Addis Ababa = 9:17 ለሊት; also runnable by hand)                                                                                                                 |
-| Scripts            | `scripts/backup/backup.sh`, `restore-verify.sh`, `encrypt.sh`, `row-counts.sql`, `managed-schema-extras.sql`                                                                                                                   |
-| Kept for           | 30 days, as age-encrypted workflow artifacts                                                                                                                                                                                   |
-| **RPO**            | ≤ 24 hours (one nightly snapshot; up to 30 days of history)                                                                                                                                                                    |
-| **RTO (estimate)** | ~2 hours to a working replacement project (steps in §5). The data path (decrypt, restore, verify) takes minutes and is re-tested every night. The rest is manual configuration and has **not** been timed in a full drill yet. |
+|                    |                                                                                                                                                                                                                                  |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Job                | `.github/workflows/nightly-backup.yml` (daily 00:17 UTC = 03:17 Addis Ababa = 9:17 ለሊት; also runnable by hand)                                                                                                                   |
+| Console page       | Super Admin Console → **Backup & Restore** (`/admin/backups`, console permission `console.backup.manage`): backup history with restore-test results, back up now, download encrypted archives, request and approve restores (§8) |
+| Restore workflow   | `.github/workflows/restore-backup.yml`: started only after a second super admin approves a request, or by a repository admin                                                                                                     |
+| Scripts            | `scripts/backup/backup.sh`, `restore-verify.sh`, `encrypt.sh`, `row-counts.sql`, `managed-schema-extras.sql`                                                                                                                     |
+| Kept for           | 30 days, as age-encrypted workflow artifacts                                                                                                                                                                                     |
+| **RPO**            | ≤ 24 hours (one nightly snapshot; up to 30 days of history)                                                                                                                                                                      |
+| **RTO (estimate)** | ~2 hours to a working replacement project (steps in §5). The data path (decrypt, restore, verify) takes minutes and is re-tested every night. The rest is manual configuration and has **not** been timed in a full drill yet.   |
 
 ## 1. What a backup contains, and what it does not
 
@@ -101,6 +103,34 @@ Do these on your own machine or in the dashboards. Nothing here goes through Cla
      printf '%s' '<the key value>' | sha256sum   # must equal the pii_root_key line in db/vault-secret-fingerprints.tsv
      ```
 
+### 3a. Connect the console page and the restore workflow (owner, one time)
+
+The page and the restore workflow work only after these steps. Until then the
+page says what is missing.
+
+1. **GitHub token for the Edge Function:**
+   - GitHub → Settings → Developer settings → **Fine-grained personal access tokens** → Generate new token.
+   - Repository access: **only** `eskabdi/woredas-portal`.
+   - Permissions: **Actions: Read and write** (Metadata: Read is added automatically). Nothing else.
+   - Expiry: 90 days or less; put a renewal in the calendar.
+   - Supabase → Edge Functions → **Secrets**: add `GITHUB_BACKUP_TOKEN` with that value. `GITHUB_REPO` (default `eskabdi/woredas-portal`) needs setting only if the repository moves. Backups always come from `main`.
+   - **What this token can do if it leaks:** start backup runs, delete backup archives (`DELETE /actions/artifacts/{id}`) and disable the workflows. It **cannot** start a restore on its own (step 3's approval key) or read any secret. Keep the S3 mirror (§3) as the second copy, and if you ever see archives missing from the page, revoke the token first.
+   - Also add **`RESTORE_APPROVAL_KEY`**: a random string of at least 32 characters, e.g. `openssl rand -hex 32`. The Edge Function signs each approved restore with it; the same value goes on the `restore` environment in step 3.
+2. **A dedicated restore key pair** (so the private key CI needs for restores is not your offline master key):
+   - `age-keygen -o woredas-restore-key.txt` on a trusted machine.
+   - Add its public key to the `backup` environment's `BACKUP_AGE_RECIPIENTS`, space-separated after yours. New backups are then readable by both keys; your offline key still opens everything, and this one can be revoked alone.
+   - Backups taken **before** this change are encrypted to your key only, so `verify` on those fails at decryption. Take a fresh backup (**Back up now**) after adding the key.
+3. **GitHub → Settings → Environments → New environment `restore`:**
+   - Deployment branches: **Selected branches → `main`**.
+   - **Required reviewers: yourself (required, not optional).** It is a human step on GitHub, behind your GitHub login and 2FA, after the two console approvals. Leave "Prevent self-review" off: the dispatch is made with your token, so you are its reviewer. This is the control for the one gap the console cannot close: one person holding two super admin accounts that both existed before the request.
+   - Secret `BACKUP_AGE_IDENTITY`: the full contents of `woredas-restore-key.txt`.
+   - Secret `RESTORE_APPROVAL_KEY`: the same value as the Edge Function secret in step 1. Without it, or with a different value, every restore stops at "Check the approval signature" before anything is decrypted. That is the point: a dispatch made with the GitHub token or repository write access alone is refused.
+   - For **Restore to new project** only (disaster recovery; leave unset until you need it):
+     - `RESTORE_TARGET_DB_URL`: the session-pooler URL of a **new, empty** Supabase project (`?sslmode=require`).
+     - Variable `RESTORE_TARGET_PROJECT_REF`: that new project's ref. The workflow requires the URL to name it, refuses it if it is production's ref (or the URL is percent-encoded), and refuses a target that already has the app schema or any user.
+     - `RESTORE_TARGET_S3_ACCESS_KEY_ID` and `RESTORE_TARGET_S3_SECRET_ACCESS_KEY`, plus the variable `RESTORE_TARGET_S3_ENDPOINT`, for that project's Storage.
+4. **Who can use the page:** unrestricted super admins (no console role) have it automatically. For a scoped admin, grant **Manage Backup & Restore** on their console role (Console Users and Role).
+
 ## 4. Checking a backup by hand
 
 ```bash
@@ -178,3 +208,41 @@ All of this was run against a local `supabase start` stack using the Postgres im
 - **Storage re-upload:** `s3 cp --recursive` restores a file that serves correctly afterwards; `s3 sync` skips it.
 - **Production read access** (checked 2026-09-26): the production `postgres` role can read everything the backup needs (`vault.decrypted_secrets` for the fingerprint, `extensions.digest`, `storage.objects`).
 - **Not yet done:** the first run against production, which needs §3, and a timed full drill of §5.
+
+**Console page (2026-09-28).** The page, the `backup-admin` Edge Function and migration 94 were tested on a local `supabase start` stack (all 95 migrations and the seed), with the function running in the real Edge runtime against a stateful mock of the GitHub Actions API:
+
+- **API:**
+  - a tenant admin and a super admin whose console role lacks the permission both get 403;
+  - an artifact that is not a nightly backup, a path-injection id, an unknown mode, a short reason and an unknown action are all rejected;
+  - the requester approving their own request gets 403, and a second approval gets 409;
+  - an approval dispatches `restore-backup.yml` with exactly the request id, artifact and mode;
+  - the request's status follows the workflow run to succeeded;
+  - cancel and reject both work;
+  - direct REST insert and update on the table are refused (no grant);
+  - a tenant admin's REST read returns nothing;
+  - the trigger refuses an illegal transition even from the service role;
+  - the audit trail has every step.
+- **Browser (Playwright):**
+  - admin A requests a restore through the dialog;
+  - admin B approves it, and the workflow link appears;
+  - the scoped admin sees neither the nav item nor the page;
+  - the tenant admin is redirected out of `/admin`;
+  - no console errors.
+
+## 8. Using the console page
+
+**Backup & Restore** in the Super Admin Console shows:
+
+- **Summary:** the last successful backup and its restore test, the next scheduled run, and the restore requests waiting for you. Times are Addis Ababa time on the Ethiopian clock (e.g. 9:17 ለሊት), with UTC alongside for matching GitHub.
+- **Backups:** each run with its status, restore-test result and archive. **Download** returns the **encrypted** archive (decrypt it offline, §4). **Back up now** starts an extra run.
+- **Restore requests:** a restore is never started by one person.
+
+A restore request goes through these steps:
+
+1. Admin A chooses a backup, then **Restore…**, picks a mode and gives a reason.
+   - **Verify in an isolated sandbox:** a restore drill. The workflow decrypts the archive, restores it into a throwaway database inside the job and runs every check. Nothing live changes.
+   - **Restore to the new recovery project:** disaster recovery into the empty project set up in §3a. It never touches production; pointing the site at the recovered project is §5 steps 4 and 6–9.
+2. A different super admin (B) approves (**Approve and run**) or rejects (a note is required). A cannot decide their own request; the page hides the buttons, and the Edge Function and a database trigger refuse it anyway. A can cancel while it is pending.
+3. On approval the page starts `restore-backup.yml` with a signed approval. If the `restore` environment has a required reviewer (§3a), GitHub waits for that review; then the workflow checks the signature before decrypting anything. The request shows **Running**, then **Succeeded** or **Failed** with a link to the workflow run. A run that never appears is marked failed after an hour.
+   - The approver must be a different, active super admin with this permission whose account **existed before the request was made**: a second account created afterwards cannot approve it.
+4. Every step lands in the audit trail (Audit Logs, entity `platform_backup_restore_request` / `platform_backup`): requested, approved or rejected, dispatched, finished, and every download and manual backup.

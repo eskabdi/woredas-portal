@@ -5,6 +5,11 @@ import {
   ALLOWED_ATTRS,
   ALLOWED_STYLES,
   ALLOWED_TAGS,
+  LETTER_COLOUR_FN_RE,
+  LETTER_HREF_RE,
+  LETTER_SPAN_ATTR_RE,
+  LETTER_STYLE_VALUE_RE,
+  LETTER_TOKEN_ATTR_RE,
   letterHtmlToText,
   letterSummary,
   plainTextToHtml,
@@ -234,11 +239,24 @@ describe("letter HTML allow-list, client and server in step (P0-5 / WP-APP-001)"
     );
   });
 
-  // Migration 93's letter_html_is_safe() rejects anything outside its lists,
-  // so a tag or style added here but not there would make every save that
-  // uses it fail server-side (and the reverse would silently widen the
-  // server check). Same static, no-DB approach as check-role-perms-drift.
-  it("matches the allow-lists in migration 93", () => {
+  it("keeps content after a stray closing tag", () => {
+    expect(sanitizeLetterHtml("<p>Intro</p></div><p>Body</p>")).toBe("<p>Intro</p><p>Body</p>");
+  });
+
+  it("drops attribute values the server would reject", () => {
+    expect(sanitizeLetterHtml('<table><tr><td colspan="" rowspan="1000">x</td></tr></table>')).toBe(
+      "<table><tbody><tr><td>x</td></tr></tbody></table>",
+    );
+    expect(sanitizeLetterHtml('<div rel="a&amp;b">x</div>')).toBe("<div>x</div>");
+    expect(sanitizeLetterHtml('<td colspan="2">x</td>')).toBe("x");
+  });
+
+  // Migration 93's letter_html_is_safe() rejects anything outside its lists
+  // and value rules. A tag, attribute or rule changed on one side only either
+  // makes honest saves fail server-side or silently widens the server check,
+  // so every list and every regex must match exactly. Same static, no-DB
+  // approach as check-role-perms-drift.
+  describe("matches migration 93 exactly", () => {
     const sql = readFileSync(
       join(
         __dirname,
@@ -251,15 +269,32 @@ describe("letter HTML allow-list, client and server in step (P0-5 / WP-APP-001)"
       ),
       "utf-8",
     );
-    const arrayOf = (name: string) => {
+    const sqlArray = (name: string) => {
       const m = sql.match(new RegExp(`${name} CONSTANT text\\[\\] := ARRAY\\[([^\\]]*)\\]`));
       if (!m) throw new Error(`${name} not found in migration 93`);
       return [...m[1]!.matchAll(/'([^']+)'/g)].map((x) => x[1]!).sort();
     };
-    expect(arrayOf("c_tags")).toEqual([...ALLOWED_TAGS].map((t) => t.toLowerCase()).sort());
-    expect(arrayOf("c_styles")).toEqual([...ALLOWED_STYLES].sort());
-    for (const attr of ALLOWED_ATTRS) {
-      expect(sql).toMatch(new RegExp(`'${attr}'|v_name = '${attr}'`));
-    }
+    const sqlText = (name: string) => {
+      const m = sql.match(new RegExp(`${name} CONSTANT text := '((?:[^']|'')*)';`));
+      if (!m) throw new Error(`${name} not found in migration 93`);
+      return m[1]!.replace(/''/g, "'");
+    };
+
+    it("tags", () => {
+      expect(sqlArray("c_tags")).toEqual([...ALLOWED_TAGS].map((t) => t.toLowerCase()).sort());
+    });
+    it("attributes (style is handled separately on the client)", () => {
+      expect(sqlArray("c_attrs")).toEqual([...ALLOWED_ATTRS, "style"].sort());
+    });
+    it("style properties", () => {
+      expect(sqlArray("c_styles")).toEqual([...ALLOWED_STYLES].sort());
+    });
+    it("value rules", () => {
+      expect(sqlText("c_href_re")).toBe(LETTER_HREF_RE);
+      expect(sqlText("c_token_attr_re")).toBe(LETTER_TOKEN_ATTR_RE);
+      expect(sqlText("c_span_attr_re")).toBe(LETTER_SPAN_ATTR_RE);
+      expect(sqlText("c_colour_fn_re")).toBe(LETTER_COLOUR_FN_RE);
+      expect(sqlText("c_style_value_re")).toBe(LETTER_STYLE_VALUE_RE);
+    });
   });
 });

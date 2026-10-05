@@ -53,14 +53,35 @@ export const ALLOWED_STYLES = new Set([
   "text-decoration",
 ]);
 
-// A kept declaration's value must be plain keywords/numbers, optionally with
-// rgb()/rgba()/hsl()/hsla() colours -- the same rule the server-side
-// letter_html_is_safe() applies (migration 93). Without it an allowed
-// property could carry `expression(...)`, `url(...)` or a CSS escape such as
-// `\3b` that the property-name check alone never looks at.
+// Value rules shared, character for character, with letter_html_is_safe()
+// in migration 93 (each pattern is valid as both a JS RegExp and a Postgres
+// ARE). A test compares these strings against the SQL, so the client can
+// never keep a value the server rejects and the server can never silently
+// widen. A kept style declaration's value must be plain keywords/numbers,
+// optionally with rgb()/hsl() colours: without that, an allowed property
+// could carry `expression(...)`, `url(...)` or a CSS escape such as `\3b`.
+export const LETTER_HREF_RE = "^(https?:|mailto:|tel:)";
+export const LETTER_TOKEN_ATTR_RE = "^[A-Za-z0-9 _-]*$"; // target, rel
+export const LETTER_SPAN_ATTR_RE = "^[0-9]{1,3}$"; // colspan, rowspan
+export const LETTER_COLOUR_FN_RE = "(rgba?|hsla?)\\([0-9 .,%]*\\)";
+export const LETTER_STYLE_VALUE_RE = "^[A-Za-z0-9 #%.,-]*$";
+
+const HREF_RE = new RegExp(LETTER_HREF_RE, "i");
+const TOKEN_ATTR_RE = new RegExp(LETTER_TOKEN_ATTR_RE);
+const SPAN_ATTR_RE = new RegExp(LETTER_SPAN_ATTR_RE);
+const COLOUR_FN_RE = new RegExp(LETTER_COLOUR_FN_RE, "gi");
+const STYLE_VALUE_RE = new RegExp(LETTER_STYLE_VALUE_RE);
+
 function isSafeStyleValue(value: string): boolean {
-  const withoutColours = value.replace(/(rgba?|hsla?)\([0-9 .,%]*\)/gi, "");
-  return /^[A-Za-z0-9 #%.,-]*$/.test(withoutColours);
+  return STYLE_VALUE_RE.test(value.replace(COLOUR_FN_RE, ""));
+}
+
+/** Same per-attribute value rule as the server; false means drop the attribute. */
+function isAllowedAttrValue(name: string, value: string): boolean {
+  if (name === "href") return HREF_RE.test(value);
+  if (name === "target" || name === "rel") return TOKEN_ATTR_RE.test(value);
+  if (name === "colspan" || name === "rowspan") return SPAN_ATTR_RE.test(value);
+  return false;
 }
 
 function isAllowedDeclaration(decl: string): boolean {
@@ -85,9 +106,11 @@ export function sanitizeLetterHtml(html: string): string {
   if (typeof window === "undefined" || typeof window.DOMParser === "undefined") {
     return html.replace(/<(script|style|iframe|object|embed)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, "");
   }
-  const doc = new DOMParser().parseFromString(`<div>${html}</div>`, "text/html");
-  const root = doc.body.firstElementChild;
-  if (!root) return "";
+  // Parsed as a whole document and read back from <body>, not wrapped in a
+  // <div>: inside a wrapper, a stray `</div>` in the input closes it early
+  // and everything after it is silently dropped.
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const root = doc.body;
 
   // Comments are inert here but carry nothing a letter needs, and Word/Chrome
   // paste adds them (<!--StartFragment-->). Removing them keeps every
@@ -122,12 +145,8 @@ export function sanitizeLetterHtml(html: string): string {
           else child.removeAttribute("style");
           continue;
         }
-        if (!ALLOWED_ATTRS.has(name)) {
+        if (!ALLOWED_ATTRS.has(name) || !isAllowedAttrValue(name, attr.value)) {
           child.removeAttribute(attr.name);
-          continue;
-        }
-        if (name === "href" && !/^(https?:|mailto:|tel:)/i.test(attr.value)) {
-          child.removeAttribute("href");
         }
       }
       if (child.tagName === "A") {

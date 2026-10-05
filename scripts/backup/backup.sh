@@ -91,7 +91,13 @@ if [[ -n "${AWS_ACCESS_KEY_ID:-}" && -n "${AWS_SECRET_ACCESS_KEY:-}" && -n "${SU
   mapfile -t buckets < <(s3 s3api list-buckets --query 'Buckets[].Name' --output text | tr '\t' '\n' | sed '/^$/d')
   for b in "${buckets[@]}"; do
     mkdir -p "$WORKDIR/storage/objects/$b"
-    s3 s3 sync --only-show-errors "s3://$b" "$WORKDIR/storage/objects/$b"
+    # Errors name object keys (which can carry residents' file names): keep
+    # them in the encrypted archive, never in the public log.
+    if ! s3 s3 sync --only-show-errors "s3://$b" "$WORKDIR/storage/objects/$b" \
+      >>"$WORKDIR/storage/s3-errors.log" 2>&1; then
+      echo "::error::Storage mirror failed for a bucket (details in the encrypted archive)."
+      exit 1
+    fi
   done
   echo "mirrored" >"$WORKDIR/storage/STATUS"
 else
