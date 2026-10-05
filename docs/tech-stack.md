@@ -10,7 +10,7 @@ below indefinitely.
 | Layer        | Choice                                                                                     | Version             |
 | ------------ | ------------------------------------------------------------------------------------------ | ------------------- |
 | UI           | React                                                                                      | 19.2.0              |
-| Routing/SSR  | TanStack Start (server entry, build) + TanStack Router (file-based routing)                | 1.168.44 / 1.170.27 |
+| Routing/SSR  | TanStack Start (server entry, build) + TanStack Router (file-based routing)                | 1.168.60 / 1.170.41 |
 | Server state | TanStack Query                                                                             | 5.83.0              |
 | Client state | Zustand                                                                                    | 5.0.14              |
 | Forms        | React Hook Form + Zod (`@hookform/resolvers` bridges the two)                              | 7.71.2 / 3.24.2     |
