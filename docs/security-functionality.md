@@ -46,6 +46,15 @@ branch on tenant operational tables (residents, payments, documents) has no
 console key yet, so any active super admin can still read and write tenant
 data across woredas.
 
+Account status is enforced at the database, not only at sign-in (P0-4,
+migration 97): `get_user_woreda_id()` returns NULL for any account that is not
+`active`, so a pending, suspended or inactive user's still-valid session reads
+nothing from any tenant table, storage bucket or PII decrypt. Suspension goes
+through the `set-staff-status` Edge Function, which also bans the GoTrue user
+so the refresh token stops working; reactivation unbans. Verified live: the
+same access token went from full reads to 0 rows on suspension, the refresh
+grant and password login returned 400, and reactivation restored access.
+
 `audit_log` is append-only for clients at the grant layer (no `anon`
 access, no `UPDATE`/`DELETE`/`TRUNCATE` for `authenticated`), and a
 `BEFORE INSERT` trigger stamps `actor_user_id` with the caller's

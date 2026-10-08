@@ -66,6 +66,17 @@ const ERROR_MESSAGES: Record<string, string> = {
   "Could not resolve this user's email address": "Could not find an email address for this user.",
   "Failed to send the reset link": "Could not send the reset link. Please try again.",
 
+  // set-staff-status
+  "Invalid status": "Choose a valid account status.",
+  "You cannot change the status of your own account.":
+    "You can't suspend or reactivate your own account.",
+  "Cannot change the status of this role.": "This account's status can't be changed here.",
+  "This invitation has not been accepted yet.":
+    "This user hasn't accepted the invitation yet. Resend the invite instead.",
+  "This user was changed by someone else.":
+    "Someone else changed this user just now. Refresh and try again.",
+  "Status update failed": "Could not update this user's status. Please try again.",
+
   // Invite flow
   "No app_user profile found": "This user's profile could not be found.",
   "User already registered": "ይህ ኢሜይል ቀድሞ ተመዝግቧል / This email is already registered",

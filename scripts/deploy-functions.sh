@@ -45,6 +45,8 @@ GATEWAY_JWT=(
   # New in 2026-09 (Backup & Restore console page): gateway JWT check on as
   # a second layer from the start; the function also verifies in code.
   backup-admin
+  # P0-4: suspend/reactivate + GoTrue ban; verifies the caller in code too.
+  set-staff-status
 )
 
 echo "==> Deploying ${#NO_GATEWAY_JWT[@]} function(s) with verify_jwt=false to $REF"
