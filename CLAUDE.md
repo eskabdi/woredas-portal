@@ -318,7 +318,12 @@ where these named roles are defined and assigned; `<ConsolePermissionGate>`
 gates the admin-console UI the same way `<PermissionGate>` gates the woreda
 portal). `app_user.console_role_id IS NULL` means **unrestricted** super
 admin — the load-bearing default, so a `NULL` console role is not a bug to
-fix. `CP` keys must match the migration's `CHECK` constraint exactly, and
+fix. Since migration 95 (P1-7) the keys are enforced server-side too: RLS on
+the console-owned tables calls `user_has_console_perm()`, and every Edge
+Function that accepts a `super_admin` caller re-checks a key through
+`supabase/functions/_shared/consolePerm.ts`; a new console-owned table or
+super-admin Edge Function path needs the same. The `is_super_admin()` branch
+on tenant operational tables is not yet scoped by any key. `CP` keys must match the migration's `CHECK` constraint exactly, and
 there is no drift check for this axis the way there is for `ROLE_PERMISSIONS`
 — a new console permission needs the migration's `CHECK` widened by hand.
 
@@ -420,8 +425,9 @@ a possible future enhancement, not a gap to fix opportunistically.
 
 ### Audit trail
 
-`audit_log` (generic, polymorphic `(entity_name, entity_id)`, insert-only by
-convention but not DB-enforced) is the underlying table behind both
+`audit_log` (generic, polymorphic `(entity_name, entity_id)`; append-only for
+clients at the grant layer since migration 95, which also stamps
+`actor_user_id` from `auth.uid()` on every authenticated insert) is the underlying table behind both
 `admin.audit.tsx` (platform-level, gated by `CP.AUDIT_VIEW`) and
 `woreda.audit.tsx` (per-tenant, RLS-scoped). Since INSA remediation Phase B,
 5 of the 6 Edge Functions populate `source_ip` (`clientIp.ts`, derived from
@@ -703,6 +709,11 @@ from `woreda.revenue.$paymentId.receipt.tsx` and checked publicly at
 `src/routes/verify.receipt.$token.tsx`, the same pattern as the credential
 and letter surfaces (client renders, a DB RPC confirms current status —
 a valid token doesn't by itself mean the receipt wasn't later voided).
+Letter and receipt tokens are generated server-side from
+`extensions.gen_random_bytes()` (migration 96, P0-7: 26 symbols, 130 bits).
+A token a client sends on insert is overwritten, and once set a token cannot
+be changed from a user session. Only a service-level update can rotate one,
+which is the path for a disclosed token.
 
 `/woreda/complaints` (`woreda.complaints.tsx`) is not a separate module — it
 renders the same `ServiceRequestList` component as `/woreda/services`,

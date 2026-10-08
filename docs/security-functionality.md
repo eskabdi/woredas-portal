@@ -31,6 +31,27 @@ A second, independent dimension (`console_role`/`console_role_permission`)
 scopes what an individual `super_admin` can do inside `/admin` — see the
 same ERD section.
 
+Since migration 95 (P1-7) those console keys are enforced server-side, not
+only by `<ConsolePermissionGate>`: RLS on `woreda`, `office`,
+`tenant_module_config` (`console.tenants.manage`), `app_user` writes
+(`console.users.manage`), the platform-wide `audit_log` read
+(`console.audit.view`), `id_card_template*`, the `credential-templates`
+bucket and the publish/discard RPCs (`console.credential_template.manage`)
+call `user_has_console_perm()`, and `workflow_transition` writes need an
+unrestricted super admin (`is_unrestricted_super_admin()`). Every Edge
+Function that accepts a `super_admin` caller re-checks a console key
+through `supabase/functions/_shared/consolePerm.ts`, fail-closed. A `NULL`
+`console_role_id` is still unrestricted. Known gap: the `is_super_admin()`
+branch on tenant operational tables (residents, payments, documents) has no
+console key yet, so any active super admin can still read and write tenant
+data across woredas.
+
+`audit_log` is append-only for clients at the grant layer (no `anon`
+access, no `UPDATE`/`DELETE`/`TRUNCATE` for `authenticated`), and a
+`BEFORE INSERT` trigger stamps `actor_user_id` with the caller's
+`auth.uid()` on every authenticated insert, so a client can neither forge
+nor blank the actor.
+
 ## Input validation strategy
 
 Two independent layers, consistently applied:

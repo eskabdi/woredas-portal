@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, json, safeError } from "../_shared/response.ts";
 import { checkRateLimit } from "../_shared/rateLimit.ts";
 import { getClientIp } from "../_shared/clientIp.ts";
+import { CONSOLE_PERM, hasAnyConsolePerm } from "../_shared/consolePerm.ts";
 
 interface Body {
   user_id: string;
@@ -65,6 +66,17 @@ Deno.serve(async (req) => {
     const isSuper = caller.role === "super_admin";
     const isTenantAdmin = caller.role === "tenant_admin";
     if (!isSuper && !isTenantAdmin) return json(req, 403, { error: "Forbidden" });
+
+    // P1-7: the console gates this on the Tenants/Users screens; a scoped
+    // super_admin's JWT reaches this function directly, so re-check here.
+    if (
+      isSuper &&
+      !(await hasAnyConsolePerm(userClient, [
+        CONSOLE_PERM.TENANTS_MANAGE,
+        CONSOLE_PERM.USERS_MANAGE,
+      ]))
+    )
+      return json(req, 403, { error: "Forbidden" });
     // A tenant_admin row with no woreda_id shouldn't exist (invite-platform-admin
     // forces one on creation), but nothing enforces that at the database level.
     // Rejecting it here up front means the target query below never has to

@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, isDuplicateEmailError, json, safeError } from "../_shared/response.ts";
 import { checkRateLimit } from "../_shared/rateLimit.ts";
 import { getClientIp } from "../_shared/clientIp.ts";
+import { CONSOLE_PERM, hasAnyConsolePerm } from "../_shared/consolePerm.ts";
 
 interface Body {
   email: string;
@@ -91,6 +92,18 @@ Deno.serve(async (req) => {
           error: "Forbidden: inviting a new super_admin requires console.console_users.manage.",
         });
       }
+    }
+
+    // P1-7: a tenant_admin invite is tenant/user administration -- a scoped
+    // super_admin needs the Tenants or Users console key for it.
+    if (
+      role === "tenant_admin" &&
+      !(await hasAnyConsolePerm(userClient, [
+        CONSOLE_PERM.TENANTS_MANAGE,
+        CONSOLE_PERM.USERS_MANAGE,
+      ]))
+    ) {
+      return json(req, 403, { error: "Forbidden" });
     }
 
     // Keyed by the VERIFIED caller, after every authz gate. Tighter than the
