@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 import { corsHeaders, json, safeError } from "../_shared/response.ts";
 import { getClientIp } from "../_shared/clientIp.ts";
+import { CONSOLE_PERM, hasAnyConsolePerm } from "../_shared/consolePerm.ts";
 
 /**
  * Compact signed credential payload.
@@ -141,6 +142,14 @@ Deno.serve(async (req: Request) => {
     if (appUser.status !== "active") return json(req, 403, { error: "Account is not active" });
     if (appUser.role !== "super_admin" && appUser.woreda_id !== body.woredaId) {
       return json(req, 403, { error: "Woreda mismatch" });
+    }
+    // P1-7: signing for an arbitrary woreda is the super_admin's cross-tenant
+    // branch; a scoped super_admin needs the Tenants console key for it.
+    if (
+      appUser.role === "super_admin" &&
+      !(await hasAnyConsolePerm(userClient, [CONSOLE_PERM.TENANTS_MANAGE]))
+    ) {
+      return json(req, 403, { error: "Forbidden" });
     }
     if (appUser.role !== "super_admin") {
       const { data: canPrint, error: permErr } = await userClient.rpc("user_has_perm", {

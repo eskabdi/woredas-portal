@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, isDuplicateEmailError, json, safeError } from "../_shared/response.ts";
 import { checkRateLimit } from "../_shared/rateLimit.ts";
 import { getClientIp } from "../_shared/clientIp.ts";
+import { CONSOLE_PERM, hasAnyConsolePerm } from "../_shared/consolePerm.ts";
 
 interface Body {
   email: string;
@@ -91,6 +92,17 @@ Deno.serve(async (req) => {
     const isSuper = caller.role === "super_admin";
     const isTenantAdmin = caller.role === "tenant_admin" && caller.woreda_id === woredaId;
     if (!isSuper && !isTenantAdmin) return json(req, 403, { error: "Forbidden" });
+
+    // P1-7: the console gates this on the Tenants/Users screens; a scoped
+    // super_admin's JWT reaches this function directly, so re-check here.
+    if (
+      isSuper &&
+      !(await hasAnyConsolePerm(userClient, [
+        CONSOLE_PERM.TENANTS_MANAGE,
+        CONSOLE_PERM.USERS_MANAGE,
+      ]))
+    )
+      return json(req, 403, { error: "Forbidden" });
 
     // Keyed by the VERIFIED caller (never anything request-supplied), after
     // the authz gate so unauthenticated junk can't spend database writes.

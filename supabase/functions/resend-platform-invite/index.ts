@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, isDuplicateEmailError, json, safeError } from "../_shared/response.ts";
 import { checkRateLimit } from "../_shared/rateLimit.ts";
 import { getClientIp } from "../_shared/clientIp.ts";
+import { CONSOLE_PERM, hasAnyConsolePerm } from "../_shared/consolePerm.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders(req) });
@@ -48,6 +49,16 @@ Deno.serve(async (req) => {
         error: "Forbidden: only an active super_admin can resend platform invites.",
       });
     }
+
+    // P1-7: platform-admin accounts are managed from the Tenants/Users
+    // screens; a scoped super_admin needs one of those console keys.
+    if (
+      !(await hasAnyConsolePerm(userClient, [
+        CONSOLE_PERM.TENANTS_MANAGE,
+        CONSOLE_PERM.USERS_MANAGE,
+      ]))
+    )
+      return json(req, 403, { error: "Forbidden" });
 
     // Keyed by the VERIFIED caller, after the authz gate -- resends are rare
     // (one per stuck invite), so a small budget still leaves real headroom.
