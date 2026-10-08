@@ -1254,3 +1254,13 @@ console_role_permission rows:     10
 workflow_transition rows:         70  (22 credential_request, 9 residence_credential,
                                         12 vital_event, 20 service_request, 7 rental_occupancy_request)
 ```
+
+## Note (2026-10-08): disclosed letter token, P0-7
+
+The letter-verification token quoted above and in migration `00000000000064` was
+public in this repository. On 2026-10-08 it matched no row in production, so no
+live letter could be verified with it and there was nothing to rotate. The
+history above is left as written. Migration `00000000000096` replaced the token
+generator with a CSPRNG (130 bits), ignores tokens a client supplies, and pins
+a letter's token once it is set (see WP-DB-013 in
+`docs/audit/2026-09-24/02-findings-register.md`).

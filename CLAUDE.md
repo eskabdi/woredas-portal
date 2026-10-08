@@ -709,6 +709,11 @@ from `woreda.revenue.$paymentId.receipt.tsx` and checked publicly at
 `src/routes/verify.receipt.$token.tsx`, the same pattern as the credential
 and letter surfaces (client renders, a DB RPC confirms current status —
 a valid token doesn't by itself mean the receipt wasn't later voided).
+Letter and receipt tokens are generated server-side from
+`extensions.gen_random_bytes()` (migration 96, P0-7: 26 symbols, 130 bits).
+A token a client sends on insert is overwritten, and once set a token cannot
+be changed from a user session. Only a service-level update can rotate one,
+which is the path for a disclosed token.
 
 `/woreda/complaints` (`woreda.complaints.tsx`) is not a separate module — it
 renders the same `ServiceRequestList` component as `/woreda/services`,
