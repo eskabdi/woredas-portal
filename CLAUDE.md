@@ -264,6 +264,14 @@ rather than only reflecting the compiled default. `user_has_perm()` (baseline
 migration) is what actually gates a query's RLS, keyed off `app_user.role` /
 `app_user.status` and the same override chain.
 
+Since migrations 99/100 (P1-2/P1-3), tenant SELECT policies and tenant
+storage policies also require a key in the table's/bucket's module family
+(`user_has_module_perm(ARRAY['resident', ...])`, over `current_permissions()`),
+not only `woreda_id = get_user_woreda_id()`. A new tenant table needs the
+same: pick its module family, and keep any cross-module read a real screen
+depends on (see the migration 99 header for the map). `audit_log` needs
+`audit.view`.
+
 Two independent gates still have to both be right:
 
 1. Client-side: `<PermissionGate permission={P.X}>` gates UI and route access,
@@ -579,7 +587,10 @@ than client-side only) and `attachments` (Task 11's generic
 entity-bound upload table, for the credential and civil-registration
 workflows, which had no multi-document table of their own). Tenant isolation for objects comes from
 `storage_path_woreda_id(name)`, which derives the owning woreda **from the
-object's path prefix**. So every upload must write
+object's path prefix**. Since migration 100 (P1-3) each bucket's policies
+also require a permission (read: the module family; write: the module's
+maker keys; deleting evidence: `tenant.manage`); see the migration header
+for the per-bucket map. So every upload must write
 `` `${woredaId}/...` `` — an object stored at a bare filename is invisible to
 its own tenant, and no error says so. Existing call sites all follow
 `` `${woredaId}/${crypto.randomUUID()}.${ext}` `` (or a stable field name for

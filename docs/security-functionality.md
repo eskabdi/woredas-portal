@@ -46,6 +46,17 @@ branch on tenant operational tables (residents, payments, documents) has no
 console key yet, so any active super admin can still read and write tenant
 data across woredas.
 
+Read access is enforced per module, not only per woreda (P1-2, P1-3,
+migrations 99 and 100). Every tenant SELECT policy and every tenant storage
+policy also requires a key in the table's or bucket's module family. That
+is resolved by `user_has_module_perm()` over `current_permissions()`, so
+tenant overrides, user overrides and custom roles all count. Writes to a
+bucket need its maker keys, and deleting evidence from the document buckets
+is `tenant.manage` only. `audit_log` needs `audit.view`. A print_officer
+reads only residents (and their photos) who have a card at a print stage. A
+zero-grant custom role reads only reference data (kebeles, offices, service
+types, fees, settings).
+
 Account status is enforced at the database, not only at sign-in (P0-4,
 migration 97): `get_user_woreda_id()` returns NULL for any account that is not
 `active`, so a pending, suspended or inactive user's still-valid session reads
