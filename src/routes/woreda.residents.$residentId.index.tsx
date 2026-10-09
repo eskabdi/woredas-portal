@@ -213,9 +213,12 @@ function ResidentProfilePage() {
     },
   });
 
+  // audit_log is readable only with audit.view (migration 99, P1-2); without
+  // it the query would come back empty and read as "no activity".
+  const canViewAudit = hasPermission(P.AUDIT_VIEW);
   const recentActivityQuery = useQuery({
     queryKey: ["resident-recent-activity", residentId],
-    enabled: !!residentId && !!woredaId,
+    enabled: !!residentId && !!woredaId && canViewAudit,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("audit_log")
@@ -534,7 +537,16 @@ function ResidentProfilePage() {
                     <Skeleton className="h-12 w-full" />
                   </div>
                 )}
-                {!recentActivityQuery.isLoading &&
+                {!canViewAudit && (
+                  <p className="font-am-body rounded-md border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-500">
+                    የእንቅስቃሴ ታሪክ ለማየት ፈቃድ የለዎትም
+                    <span className="ml-1 text-xs text-slate-400">
+                      / You don&apos;t have permission to view activity history
+                    </span>
+                  </p>
+                )}
+                {canViewAudit &&
+                  !recentActivityQuery.isLoading &&
                   (recentActivityQuery.data?.length ?? 0) === 0 && (
                     <p className="font-am-body rounded-md border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-500">
                       እስካሁን ምንም እንቅስቃሴ የለም
@@ -768,7 +780,16 @@ function ResidentProfilePage() {
           />
         </TabsContent>
         <TabsContent value="activity" className="mt-4">
-          <ActivityTab residentId={residentId} woredaId={woredaId} />
+          {canViewAudit ? (
+            <ActivityTab residentId={residentId} woredaId={woredaId} />
+          ) : (
+            <p className="font-am-body rounded-md border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-500">
+              የእንቅስቃሴ ታሪክ ለማየት ፈቃድ የለዎትም
+              <span className="ml-1 text-xs text-slate-400">
+                / You don&apos;t have permission to view activity history
+              </span>
+            </p>
+          )}
         </TabsContent>
       </Tabs>
 
