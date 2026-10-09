@@ -259,42 +259,29 @@ export function PlatformUsersTab() {
     (u) => u.role === "super_admin" && u.status === "active",
   ).length;
 
-  async function suspend(u: AdminUserRow) {
-    const { data: updated, error } = await supabase
-      .from("app_user")
-      .update({ status: "suspended" })
-      .eq("user_id", u.user_id)
-      .select("user_id")
-      .maybeSingle();
-    if (error) return toast.error(error.message);
-    if (!updated) return toast.error(ROW_VERIFICATION_FAILURE_MESSAGE);
-    await supabase.from("audit_log").insert({
-      actor_user_id: callerId ?? null,
-      entity_name: "app_user",
-      entity_id: u.user_id,
-      action_type: "PLATFORM_ADMIN_SUSPENDED",
-      new_value_json: { role: u.role },
+  // set-staff-status (P0-4) changes the row, bans/unbans the auth user so a
+  // suspended admin's refresh token stops working, and writes the audit row
+  // server-side -- the client no longer updates app_user.status itself.
+  async function setStatus(u: AdminUserRow, status: "active" | "suspended") {
+    const { friendlyError } = await invokeEdgeFunction("set-staff-status", {
+      user_id: u.user_id,
+      status,
     });
+    if (friendlyError) {
+      toast.error(friendlyError);
+      return false;
+    }
+    return true;
+  }
+
+  async function suspend(u: AdminUserRow) {
+    if (!(await setStatus(u, "suspended"))) return;
     toast.success("ተጠቃሚው ታግዷል / User suspended");
     await refresh();
   }
 
   async function reactivate(u: AdminUserRow) {
-    const { data: updated, error } = await supabase
-      .from("app_user")
-      .update({ status: "active" })
-      .eq("user_id", u.user_id)
-      .select("user_id")
-      .maybeSingle();
-    if (error) return toast.error(error.message);
-    if (!updated) return toast.error(ROW_VERIFICATION_FAILURE_MESSAGE);
-    await supabase.from("audit_log").insert({
-      actor_user_id: callerId ?? null,
-      entity_name: "app_user",
-      entity_id: u.user_id,
-      action_type: "PLATFORM_ADMIN_REACTIVATED",
-      new_value_json: { role: u.role },
-    });
+    if (!(await setStatus(u, "active"))) return;
     toast.success("ተጠቃሚው ተመልሷል / User reactivated");
     await refresh();
   }
@@ -823,21 +810,13 @@ function UserDetailDialog({
       return;
     }
     const nextStatus = checked ? "active" : "suspended";
-    const { data: updated, error } = await supabase
-      .from("app_user")
-      .update({ status: nextStatus })
-      .eq("user_id", user.user_id)
-      .select("user_id")
-      .maybeSingle();
-    if (error) return toast.error(error.message);
-    if (!updated) return toast.error(ROW_VERIFICATION_FAILURE_MESSAGE);
-    await supabase.from("audit_log").insert({
-      actor_user_id: callerId ?? null,
-      entity_name: "app_user",
-      entity_id: user.user_id,
-      action_type: checked ? "PLATFORM_ADMIN_REACTIVATED" : "PLATFORM_ADMIN_SUSPENDED",
-      new_value_json: { role: user.role },
+    // set-staff-status (P0-4): row update, auth ban/unban and audit row,
+    // all server-side.
+    const { friendlyError } = await invokeEdgeFunction("set-staff-status", {
+      user_id: user.user_id,
+      status: nextStatus,
     });
+    if (friendlyError) return toast.error(friendlyError);
     toast.success(checked ? "ተጠቃሚው ተመልሷል / User activated" : "ተጠቃሚው ታግዷል / User suspended");
     await onChanged();
   }

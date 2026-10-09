@@ -375,6 +375,67 @@ paths:
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "500": { $ref: "#/components/responses/ServerError" }
 
+  /set-staff-status:
+    post:
+      summary: Suspend, deactivate or reactivate a staff or platform-admin account
+      description: >
+        Private. The only path that changes `app_user.status` (P0-4). Caller is
+        resolved from their own JWT and must be `active`: a `tenant_admin` may
+        change staff roles in their own woreda only; a `super_admin` may change
+        anyone except themselves, holding `console.tenants.manage` or
+        `console.users.manage` for staff targets and `console.users.manage` for
+        `tenant_admin`/`super_admin` targets. Disabling flips the row first,
+        then bans the GoTrue user (~100 years) so the refresh token stops
+        working; reactivating unbans first, then flips the row. A `pending`
+        invitee cannot be activated here. Writes an `audit_log` row with
+        `source_ip`. Rate limited per caller (30 per 10 minutes). Gateway JWT
+        verification is on.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, status]
+              properties:
+                user_id: { type: string, format: uuid }
+                status: { type: string, enum: [active, suspended, inactive] }
+            example: { user_id: "8d1c2f0e-4b7a-4c1e-9f3a-2b6d5e7c9a10", status: "suspended" }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean, enum: [true] }
+                  status: { type: string }
+                  unchanged: { type: boolean }
+              example: { ok: true, status: "suspended" }
+        "400":
+          description: Invalid input, the caller's own account, a role this function does not manage, or activating a pending invitee.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorBody" }
+              example: { error: "You cannot change the status of your own account." }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404":
+          description: No such user, or (for a tenant admin) a user in another woreda.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorBody" }
+              example: { error: "User not found" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "409":
+          description: The row changed between lookup and update.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorBody" }
+              example: { error: "This user was changed by someone else." }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
   /backup-admin:
     post:
       summary: Super Admin Console Backup & Restore (one endpoint, action-dispatched)

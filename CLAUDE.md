@@ -334,9 +334,18 @@ updates `default_role_perms()` — the drift check catches divergence, but
 default (that's what makes it an override) and is not part of what the check
 compares.
 
-A `pending` app_user authenticates fine but `user_has_perm()` requires
-`status = 'active'`, so every query comes back empty with nothing in the UI
-explaining why — check status before assuming a permission is misconfigured.
+A `pending`, `suspended` or `inactive` app_user authenticates fine, but since
+migration 97 (P0-4) `get_user_woreda_id()` returns NULL unless
+`status = 'active'` (as `user_has_perm()`, `is_super_admin()` and
+`is_tenant_admin()` already did), so every tenant table, storage object and
+PII decrypt comes back empty — only the user's own `app_user` row stays
+readable. `woreda.tsx` and `admin.tsx` sign such a session out with an
+explanation; check status before assuming a permission is misconfigured.
+Changing another account's status goes through the `set-staff-status` Edge
+Function only (`UsersRolesTab.tsx`, `PlatformUsersTab.tsx`): it verifies the
+caller (tenant admin: own-woreda staff; super admin: console key), updates the
+row, bans the GoTrue user on suspend/deactivate so the refresh token stops
+working (unbans on reactivate), and writes the audit row server-side.
 RLS also lets a user read their own `app_user` row but not write it, so a
 client-side `.update()` can never flip `status` on its own row. Two Edge
 Functions are the deliberate exceptions, both service-role and both resolving
@@ -605,12 +614,12 @@ the target project's `auth.users` — when a template or config table (e.g.
 `id_card_template_field`) is edited live in the DB, sync the same values into
 `seed.sql` or a fresh deploy silently regresses.
 
-The nine `supabase/functions/*` Edge Functions (`sign-credential`,
+The ten `supabase/functions/*` Edge Functions (`sign-credential`,
 `invite-tenant-user`, `invite-platform-admin`, `resend-platform-invite`,
 `resend-tenant-invite`, `activate-invited-user`, `record-login`,
-`send-password-reset-link`, `backup-admin`) are a separate deploy artifact from the schema —
+`send-password-reset-link`, `backup-admin`, `set-staff-status`) are a separate deploy artifact from the schema —
 `supabase db push` and seed files don't touch them. `scripts/deploy-functions.sh`
-deploys all nine via the Management API (the CLI's `functions deploy` doesn't
+deploys all ten via the Management API (the CLI's `functions deploy` doesn't
 work from a proxied/sandboxed shell — see below). The `/deploy` skill in
 `.claude/skills/deploy/` covers the full deploy and its ordering. All eight
 import shared helpers from `supabase/functions/_shared/` (`response.ts` for

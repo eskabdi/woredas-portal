@@ -251,23 +251,14 @@ export function UsersRolesTab() {
     return true;
   }
 
+  // set-staff-status (P0-4) suspends the row, bans the auth user so their
+  // refresh token stops working, and writes the audit row server-side.
   async function suspendUserAction(user: AppUserRow) {
-    const { data: updated, error } = await supabase
-      .from("app_user")
-      .update({ status: "suspended" })
-      .eq("user_id", user.user_id)
-      .select("user_id")
-      .maybeSingle();
-    if (error) return toast.error(error.message);
-    if (!updated) return toast.error(ROW_VERIFICATION_FAILURE_MESSAGE);
-    await supabase.from("audit_log").insert({
-      actor_user_id: callerId ?? null,
-      woreda_id: woredaId,
-      entity_name: "app_user",
-      entity_id: user.user_id,
-      action_type: "USER_SUSPENDED",
-      new_value_json: {},
+    const { friendlyError } = await invokeEdgeFunction("set-staff-status", {
+      user_id: user.user_id,
+      status: "suspended",
     });
+    if (friendlyError) return toast.error(friendlyError);
     toast.success("ተጠቃሚው ታግዷል / User suspended");
     await refresh();
   }

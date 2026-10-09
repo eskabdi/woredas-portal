@@ -75,6 +75,7 @@ describe("CONSOLE_PERM", () => {
       "resend-tenant-invite",
       "send-password-reset-link",
       "sign-credential",
+      "set-staff-status",
     ];
     for (const fn of fns) {
       const src = readFileSync(join(__dirname, "..", "..", fn, "index.ts"), "utf8");
