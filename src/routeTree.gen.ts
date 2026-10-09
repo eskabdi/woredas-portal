@@ -34,6 +34,7 @@ import { Route as WoredaResidentsRouteImport } from './routes/woreda.residents'
 import { Route as WoredaRevenueRouteImport } from './routes/woreda.revenue'
 import { Route as WoredaServicesRouteImport } from './routes/woreda.services'
 import { Route as AdminTenantsIndexRouteImport } from './routes/admin.tenants.index'
+import { Route as VerifyCertificateTokenRouteImport } from './routes/verify.certificate.$token'
 import { Route as VerifyLetterTokenRouteImport } from './routes/verify.letter.$token'
 import { Route as VerifyReceiptTokenRouteImport } from './routes/verify.receipt.$token'
 import { Route as WoredaCivilIndexRouteImport } from './routes/woreda.civil.index'
@@ -208,6 +209,11 @@ const AdminTenantsIndexRoute = AdminTenantsIndexRouteImport.update({
   id: '/tenants/',
   path: '/tenants/',
   getParentRoute: () => AdminRoute,
+} as any)
+const VerifyCertificateTokenRoute = VerifyCertificateTokenRouteImport.update({
+  id: '/verify/certificate/$token',
+  path: '/verify/certificate/$token',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const VerifyLetterTokenRoute = VerifyLetterTokenRouteImport.update({
   id: '/verify/letter/$token',
@@ -500,6 +506,7 @@ export interface FileRoutesByFullPath {
   '/woreda/residents': typeof WoredaResidentsRouteWithChildren
   '/woreda/revenue': typeof WoredaRevenueRouteWithChildren
   '/woreda/services': typeof WoredaServicesRouteWithChildren
+  '/verify/certificate/$token': typeof VerifyCertificateTokenRoute
   '/verify/letter/$token': typeof VerifyLetterTokenRoute
   '/verify/receipt/$token': typeof VerifyReceiptTokenRoute
   '/woreda/credentials/new': typeof WoredaCredentialsNewRoute
@@ -568,6 +575,7 @@ export interface FileRoutesByTo {
   '/woreda/complaints': typeof WoredaComplaintsRoute
   '/woreda/dashboard': typeof WoredaDashboardRoute
   '/woreda/rental-reports': typeof WoredaRentalReportsRoute
+  '/verify/certificate/$token': typeof VerifyCertificateTokenRoute
   '/verify/letter/$token': typeof VerifyLetterTokenRoute
   '/verify/receipt/$token': typeof VerifyReceiptTokenRoute
   '/woreda/credentials/new': typeof WoredaCredentialsNewRoute
@@ -644,6 +652,7 @@ export interface FileRoutesById {
   '/woreda/residents': typeof WoredaResidentsRouteWithChildren
   '/woreda/revenue': typeof WoredaRevenueRouteWithChildren
   '/woreda/services': typeof WoredaServicesRouteWithChildren
+  '/verify/certificate/$token': typeof VerifyCertificateTokenRoute
   '/verify/letter/$token': typeof VerifyLetterTokenRoute
   '/verify/receipt/$token': typeof VerifyReceiptTokenRoute
   '/woreda/credentials/new': typeof WoredaCredentialsNewRoute
@@ -721,6 +730,7 @@ export interface FileRouteTypes {
     | '/woreda/residents'
     | '/woreda/revenue'
     | '/woreda/services'
+    | '/verify/certificate/$token'
     | '/verify/letter/$token'
     | '/verify/receipt/$token'
     | '/woreda/credentials/new'
@@ -789,6 +799,7 @@ export interface FileRouteTypes {
     | '/woreda/complaints'
     | '/woreda/dashboard'
     | '/woreda/rental-reports'
+    | '/verify/certificate/$token'
     | '/verify/letter/$token'
     | '/verify/receipt/$token'
     | '/woreda/credentials/new'
@@ -864,6 +875,7 @@ export interface FileRouteTypes {
     | '/woreda/residents'
     | '/woreda/revenue'
     | '/woreda/services'
+    | '/verify/certificate/$token'
     | '/verify/letter/$token'
     | '/verify/receipt/$token'
     | '/woreda/credentials/new'
@@ -922,6 +934,7 @@ export interface RootRouteChildren {
   SetPasswordRoute: typeof SetPasswordRoute
   WoredaRoute: typeof WoredaRouteWithChildren
   VTokenRoute: typeof VTokenRoute
+  VerifyCertificateTokenRoute: typeof VerifyCertificateTokenRoute
   VerifyLetterTokenRoute: typeof VerifyLetterTokenRoute
   VerifyReceiptTokenRoute: typeof VerifyReceiptTokenRoute
 }
@@ -1102,6 +1115,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/tenants/'
       preLoaderRoute: typeof AdminTenantsIndexRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/verify/certificate/$token': {
+      id: '/verify/certificate/$token'
+      path: '/verify/certificate/$token'
+      fullPath: '/verify/certificate/$token'
+      preLoaderRoute: typeof VerifyCertificateTokenRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/verify/letter/$token': {
       id: '/verify/letter/$token'
@@ -1668,6 +1688,7 @@ const rootRouteChildren: RootRouteChildren = {
   SetPasswordRoute: SetPasswordRoute,
   WoredaRoute: WoredaRouteWithChildren,
   VTokenRoute: VTokenRoute,
+  VerifyCertificateTokenRoute: VerifyCertificateTokenRoute,
   VerifyLetterTokenRoute: VerifyLetterTokenRoute,
   VerifyReceiptTokenRoute: VerifyReceiptTokenRoute,
 }

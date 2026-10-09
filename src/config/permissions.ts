@@ -80,6 +80,10 @@ export const P = {
   CIVIL_REJECT: "civil.reject",
   CIVIL_RECORD_PAYMENT: "civil.record_payment",
   CIVIL_VIEW: "civil.view",
+  // Certificate issuance (migration 102): print the certificate of a
+  // registered event (registered -> issued), and authorize a reprint.
+  CIVIL_PRINT_CERTIFICATE: "civil.print_certificate",
+  CIVIL_AUTHORIZE_REPRINT: "civil.authorize_reprint",
   PAYMENT_COLLECT: "payment.collect",
   PAYMENT_READ: "payment.read",
   RECEIPT_PRINT: "receipt.print",
@@ -289,6 +293,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     P.RENTAL_PLAN_APPROVE,
     P.RENTAL_PLAN_MANAGE,
     P.SERVICE_CHECKPOINT_OVERRIDE,
+    P.CIVIL_PRINT_CERTIFICATE,
+    P.CIVIL_AUTHORIZE_REPRINT,
   ],
   supervisor: [
     P.RESIDENT_READ,
@@ -323,6 +329,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     P.RENTAL_PLAN_APPROVE,
     P.RENTAL_PLAN_MANAGE,
     P.SERVICE_CHECKPOINT_OVERRIDE,
+    P.CIVIL_AUTHORIZE_REPRINT,
   ],
   civil_registrar: [
     P.RESIDENT_CREATE,
@@ -360,6 +367,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     P.SERVICE_RETURN,
     P.SERVICE_ISSUE_LETTER,
     P.SERVICE_COMPLETE,
+    P.CIVIL_PRINT_CERTIFICATE,
   ],
   registry_clerk: [
     P.RESIDENT_CREATE,
@@ -402,6 +410,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     P.SERVICE_RETURN,
     P.SERVICE_ISSUE_LETTER,
     P.SERVICE_COMPLETE,
+    P.CIVIL_PRINT_CERTIFICATE,
   ],
   finance_clerk: [
     P.PAYMENT_COLLECT,
@@ -466,6 +475,10 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     P.CREDENTIAL_AUTHORIZE_REPRINT,
     P.CREDENTIAL_ACTIVATE,
     P.APPROVAL_QUEUE_VIEW,
+    P.CIVIL_READ,
+    P.CIVIL_VIEW,
+    P.CIVIL_PRINT_CERTIFICATE,
+    P.CIVIL_AUTHORIZE_REPRINT,
   ],
   // D4/A5 (Task 13): no compiled default -- see the Role type's own comment.
   custom: [],

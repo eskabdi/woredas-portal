@@ -886,3 +886,153 @@ paths:
                       },
                     ]
                 notFound: { value: [] }
+
+  /rpc/record_civil_certificate_print:
+    servers:
+      - url: "{SUPABASE_URL}/rest/v1"
+        variables:
+          SUPABASE_URL:
+            default: https://your-project-ref.supabase.co
+    post:
+      summary: Issue (first print) or reprint a civil-registration certificate (Private, tenant)
+      description: >
+        Called by `woreda.civil.$eventId.certificate.tsx` before the PDF is
+        produced (migrations 102/103). `SECURITY DEFINER`; resolves the
+        caller's own woreda (never a parameter), requires the event in it,
+        `registered` or `issued`, and a published template for its type.
+        First print requires `civil.print_certificate`, generates the
+        130-bit `certificate_token` and moves the event to `issued`. A
+        reprint requires `civil.authorize_reprint` and a reason of at least
+        5 characters, and keeps the same token. Every call appends to
+        `civil_certificate_print_log` and `audit_log`. Not executable by
+        `anon`. See `docs/civil-certificates.md`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [_vital_event_id]
+              properties:
+                _vital_event_id: { type: string, format: uuid }
+                _reprint_reason:
+                  type: string
+                  nullable: true
+                  minLength: 5
+                  maxLength: 500
+                  description: Required (and only used) when the certificate is already issued.
+            examples:
+              firstPrint: { value: { _vital_event_id: "3f6c0d0e-8a1b-4c55-9e2f-0b7d6c1a2e44" } }
+              reprint:
+                value:
+                  {
+                    _vital_event_id: "3f6c0d0e-8a1b-4c55-9e2f-0b7d6c1a2e44",
+                    _reprint_reason: "Original damaged by water",
+                  }
+      responses:
+        "200":
+          description: The token to encode in the QR, and this print's number.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    certificate_token: { type: string, pattern: "^[A-HJ-NP-Z2-9]{26}$" }
+                    print_no: { type: integer, minimum: 1 }
+                    is_reprint: { type: boolean }
+              example:
+                [
+                  {
+                    certificate_token: "K7M2QX9TRB4HWN6PZC3JDF8LVA",
+                    print_no: 1,
+                    is_reprint: false,
+                  },
+                ]
+        "400":
+          description: >
+            Plain Postgres error via PostgREST. Messages: event not found (or
+            not in the caller's woreda), event not registered yet, no
+            published template, missing `civil.print_certificate` /
+            `civil.authorize_reprint`, reprint reason missing.
+          content:
+            application/json:
+              example:
+                {
+                  code: "P0001",
+                  message: "workflow: reprinting a certificate requires civil.authorize_reprint",
+                }
+        "401":
+          description: No JWT, or the `anon` role (no EXECUTE grant).
+
+  /rpc/verify_civil_certificate:
+    servers:
+      - url: "{SUPABASE_URL}/rest/v1"
+        variables:
+          SUPABASE_URL:
+            default: https://your-project-ref.supabase.co
+    post:
+      summary: Public verification of an issued civil-registration certificate (Public)
+      description: >
+        Backs `/verify/certificate/<token>` (`src/routes/verify.certificate.$token.tsx`),
+        the target of the QR printed on every birth, death, marriage,
+        divorce and adoption certificate. Anonymous, `SECURITY DEFINER`, no
+        permission check by design. The token is checked against
+        `^[A-HJ-NP-Z2-9]{26}$` and a row is returned only for an `issued`
+        event. It discloses only what is printed on the certificate. Not
+        rate-limited, the same as `verify_service_letter`/`verify_receipt`
+        (130-bit token).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [_token]
+              properties:
+                _token: { type: string, description: vital_event.certificate_token }
+            example: { _token: "K7M2QX9TRB4HWN6PZC3JDF8LVA" }
+      responses:
+        "200":
+          description: Always 200 with a JSON array, empty when nothing matched.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    certificate_type:
+                      { type: string, enum: [birth, death, marriage, divorce, adoption] }
+                    registration_number: { type: string, nullable: true }
+                    event_date: { type: string, format: date, nullable: true }
+                    registration_date: { type: string, format: date, nullable: true }
+                    issued_at: { type: string, format: date-time }
+                    subject_name_am: { type: string, nullable: true }
+                    subject_name_en: { type: string, nullable: true }
+                    second_party_name_am: { type: string, nullable: true }
+                    second_party_name_en: { type: string, nullable: true }
+                    woreda_name_am: { type: string }
+                    woreda_name_en: { type: string }
+              examples:
+                found:
+                  value:
+                    [
+                      {
+                        "certificate_type": "birth",
+                        "registration_number": "HR-BR-26-000014",
+                        "event_date": "2026-08-30",
+                        "registration_date": "2026-09-04",
+                        "issued_at": "2026-09-10T09:15:00Z",
+                        "subject_name_am": "ሰላም አህመድ ዩሱፍ",
+                        "subject_name_en": "Selam Ahmed Yusuf",
+                        "second_party_name_am": null,
+                        "second_party_name_en": null,
+                        "woreda_name_am": "አቦከር",
+                        "woreda_name_en": "Aboker",
+                      },
+                    ]
+                notFound: { value: [] }

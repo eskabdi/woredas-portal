@@ -54,19 +54,21 @@ INSA Enforcer Phase 2.3 / Phase 4 Access Control. Generated from `src/config/per
 
 ### Civil Registration
 
-| Permission             | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer | print_officer | custom |
-| ---------------------- | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ | ------------- | ------ |
-| `civil.register`       |             | ✓            |            | ✓               |                |               |         |        |               |        |
-| `civil.approve`        |             | ✓            | ✓          |                 |                |               |         |        |               |        |
-| `civil.read`           |             | ✓            | ✓          | ✓               | ✓              |               | ✓       | ✓      |               |        |
-| `civil.create_event`   |             | ✓            |            | ✓               | ✓              |               |         |        |               |        |
-| `civil.submit`         |             | ✓            |            | ✓               | ✓              |               |         |        |               |        |
-| `civil.resubmit`       |             | ✓            |            | ✓               | ✓              |               |         |        |               |        |
-| `civil.verify`         |             | ✓            |            | ✓               | ✓              |               |         |        |               |        |
-| `civil.return`         |             | ✓            |            | ✓               | ✓              |               |         |        |               |        |
-| `civil.reject`         |             | ✓            | ✓          |                 |                |               |         |        |               |        |
-| `civil.record_payment` |             | ✓            |            |                 |                | ✓             |         |        |               |        |
-| `civil.view`           |             | ✓            | ✓          | ✓               | ✓              | ✓             | ✓       | ✓      |               |        |
+| Permission                | super_admin | tenant_admin | supervisor | civil_registrar | registry_clerk | finance_clerk | auditor | viewer | print_officer | custom |
+| ------------------------- | ----------- | ------------ | ---------- | --------------- | -------------- | ------------- | ------- | ------ | ------------- | ------ |
+| `civil.register`          |             | ✓            |            | ✓               |                |               |         |        |               |        |
+| `civil.approve`           |             | ✓            | ✓          |                 |                |               |         |        |               |        |
+| `civil.read`              |             | ✓            | ✓          | ✓               | ✓              |               | ✓       | ✓      | ✓             |        |
+| `civil.create_event`      |             | ✓            |            | ✓               | ✓              |               |         |        |               |        |
+| `civil.submit`            |             | ✓            |            | ✓               | ✓              |               |         |        |               |        |
+| `civil.resubmit`          |             | ✓            |            | ✓               | ✓              |               |         |        |               |        |
+| `civil.verify`            |             | ✓            |            | ✓               | ✓              |               |         |        |               |        |
+| `civil.return`            |             | ✓            |            | ✓               | ✓              |               |         |        |               |        |
+| `civil.reject`            |             | ✓            | ✓          |                 |                |               |         |        |               |        |
+| `civil.record_payment`    |             | ✓            |            |                 |                | ✓             |         |        |               |        |
+| `civil.view`              |             | ✓            | ✓          | ✓               | ✓              | ✓             | ✓       | ✓      | ✓             |        |
+| `civil.print_certificate` |             | ✓            |            | ✓               | ✓              |               |         |        | ✓             |        |
+| `civil.authorize_reprint` |             | ✓            | ✓          |                 |                |               |         |        | ✓             |        |
 
 ### Payments
 

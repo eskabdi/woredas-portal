@@ -133,6 +133,13 @@ describe("certificate catalog", () => {
     }
   });
 
+  it("puts a verification QR and code on every certificate", () => {
+    for (const t of CERTIFICATE_TYPES) {
+      expect(certificateField(t, "verification_qr")?.kind, t).toBe("qr");
+      expect(certificateField(t, "verification_code")?.source, t).toBe("certificate_token");
+    }
+  });
+
   it("offers the right formats per kind", () => {
     expect(formatsFor("bilingual")).toEqual(["am", "en", "am_en"]);
     expect(formatsFor("date")).toContain("ec_full");

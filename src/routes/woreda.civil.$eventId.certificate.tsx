@@ -8,10 +8,10 @@ import jsPDF from "jspdf";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2, Printer } from "lucide-react";
 
-import { PermissionGate } from "@/components/common/PermissionGate";
 import { CertificatePage } from "@/components/certificates/CertificatePage";
 import type { Orientation, PlacedField } from "@/components/certificates/certificateLayout";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { CERTIFICATE_TYPE_LABELS } from "@/config/certificateFields";
 import { P } from "@/config/permissions";
 import { isCertificateType, resolveCertificateValues } from "@/lib/certificateData";
@@ -20,20 +20,27 @@ import { useAuthStore } from "@/stores/authStore";
 
 export const Route = createFileRoute("/woreda/civil/$eventId/certificate")({
   ssr: false,
-  component: () => (
-    <PermissionGate
-      permission={P.CIVIL_READ}
-      fallback={
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-800">
-          <p className="font-am-body font-medium">ይህን ለመጠቀም ፈቃድ የለዎትም</p>
-          <p className="text-sm">You do not have permission.</p>
-        </div>
-      }
-    >
-      <CertificatePrintPage />
-    </PermissionGate>
-  ),
+  component: CertificateAccessGate,
 });
+
+// Readers, printers (print_officer holds civil.print_certificate) and
+// reprint authorizers may open the page; what each can do is decided below
+// and, authoritatively, by record_civil_certificate_print().
+function CertificateAccessGate() {
+  const hasPermission = useAuthStore((s) => s.hasPermission);
+  const allowed = [P.CIVIL_READ, P.CIVIL_PRINT_CERTIFICATE, P.CIVIL_AUTHORIZE_REPRINT].some((k) =>
+    hasPermission(k),
+  );
+  if (!allowed) {
+    return (
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-800">
+        <p className="font-am-body font-medium">ይህን ለመጠቀም ፈቃድ የለዎትም</p>
+        <p className="text-sm">You do not have permission.</p>
+      </div>
+    );
+  }
+  return <CertificatePrintPage />;
+}
 
 // certificate_template* (migration 101) are not in the generated types yet.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -73,16 +80,26 @@ function CertificatePrintPage() {
       const { data: ev, error } = await supabase
         .from("vital_event")
         .select(
-          "vital_event_id, event_type, event_number, event_date, registration_date, issued_at, status, event_details, issued_by_user_id, approved_by_user_id",
+          "vital_event_id, event_type, event_number, event_date, registration_date, issued_at, status, event_details, issued_by_user_id, approved_by_user_id, certificate_token" as "*",
         )
         .eq("vital_event_id", eventId)
         .eq("woreda_id", woredaId!)
         .maybeSingle();
       if (error) throw error;
       if (!ev) return null;
-      const event = ev as typeof ev & {
+      // certificate_token (migration 102) predates the regenerated types.
+      const event = ev as unknown as {
+        vital_event_id: string;
+        event_type: string;
+        event_number: string | null;
+        event_date: string | null;
+        registration_date: string | null;
         issued_at: string | null;
+        status: string;
+        event_details: unknown;
         issued_by_user_id: string | null;
+        approved_by_user_id: string | null;
+        certificate_token: string | null;
       };
       if (!isCertificateType(event.event_type)) return { event, template: null };
 
@@ -166,6 +183,10 @@ function CertificatePrintPage() {
 
   const d = dataQuery.data;
   const type = d?.event && isCertificateType(d.event.event_type) ? d.event.event_type : null;
+  // The token is assigned by record_civil_certificate_print() on the first
+  // print; until then the QR shows a placeholder in the on-screen preview.
+  const [issuedToken, setIssuedToken] = useState<string | null>(null);
+  const token = issuedToken ?? d?.event.certificate_token ?? null;
   const values = useMemo(() => {
     if (!d || !type || !d.template) return null;
     return resolveCertificateValues(type, {
@@ -176,12 +197,20 @@ function CertificatePrintPage() {
         registration_date: d.event.registration_date,
         issued_at: d.event.issued_at,
         event_details: (d.event.event_details ?? {}) as Record<string, unknown>,
+        certificate_token: token,
       },
       registrar: d.registrar,
       woreda: d.woreda,
       printedOn: todayIso(),
     });
-  }, [d, type]);
+  }, [d, type, token]);
+
+  const hasPermission = useAuthStore((s) => s.hasPermission);
+  const isReprint = d?.event.status === "issued";
+  const canPrint = isReprint
+    ? hasPermission(P.CIVIL_AUTHORIZE_REPRINT)
+    : hasPermission(P.CIVIL_PRINT_CERTIFICATE);
+  const [reason, setReason] = useState("");
 
   const [docTitle, setDocTitle] = useState("");
   useEffect(() => {
@@ -189,10 +218,35 @@ function CertificatePrintPage() {
       setDocTitle(`${CERTIFICATE_TYPE_LABELS[type].en} ${d.event.event_number ?? ""}`);
   }, [type, d]);
 
+  const nextFrame = () =>
+    new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+
   const handlePrint = async () => {
     if (!printRef.current || !d?.template || !type) return;
+    if (isReprint && reason.trim().length < 5) {
+      toast.error(
+        "የድጋሚ ህትመት ምክንያት ያስገቡ (ቢያንስ 5 ፊደል) / Enter a reprint reason (at least 5 characters)",
+      );
+      return;
+    }
     setPrinting(true);
     try {
+      // 1. Issue / log the print server-side first: permission, state,
+      //    published template, print number and the QR token are decided
+      //    there, in one transaction. No PDF without a logged print.
+      const { data: rows, error } = await supabase.rpc(
+        "record_civil_certificate_print" as never,
+        { _vital_event_id: eventId, _reprint_reason: isReprint ? reason.trim() : null } as never,
+      );
+      if (error) throw error;
+      const row = (
+        rows as unknown as { certificate_token: string; print_no: number }[] | null
+      )?.[0];
+      if (!row?.certificate_token) throw new Error("No certificate token returned");
+      setIssuedToken(row.certificate_token);
+      // 2. Let React render the QR with the token before capturing.
+      await nextFrame();
+      if (!printRef.current) throw new Error("Print surface unavailable");
       const canvas = await html2canvas(printRef.current, {
         scale: 2.5,
         useCORS: true,
@@ -212,7 +266,7 @@ function CertificatePrintPage() {
         landscape ? 297 : 210,
         landscape ? 210 : 297,
       );
-      pdf.setProperties({ title: docTitle });
+      pdf.setProperties({ title: `${docTitle} #${row.print_no}` });
       const blobUrl = URL.createObjectURL(pdf.output("blob"));
       // Anchor click, never a pre-opened window: Chromium silently blocks a
       // deferred navigation of an already-open tab to a blob: URL.
@@ -224,17 +278,15 @@ function CertificatePrintPage() {
       link.click();
       link.remove();
       setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
-      await supabase.from("audit_log").insert({
-        woreda_id: woredaId,
-        entity_name: "vital_event",
-        entity_id: eventId,
-        action_type: "CERTIFICATE_PRINTED",
-        new_value_json: { certificate_type: type } as never,
-      });
-    } catch (e) {
-      toast.error(
-        `የምስክር ወረቀቱ አልታተመም / Could not generate the certificate: ${(e as Error).message}`,
+      setReason("");
+      toast.success(
+        isReprint
+          ? `ድጋሚ ታትሟል (#${row.print_no}) / Reprinted (#${row.print_no})`
+          : "የምስክር ወረቀቱ ተሰጥቷል / Certificate issued",
       );
+      void dataQuery.refetch();
+    } catch (e) {
+      toast.error(`የምስክር ወረቀቱ አልታተመም / Could not print the certificate: ${(e as Error).message}`);
     } finally {
       setPrinting(false);
     }
@@ -294,22 +346,49 @@ function CertificatePrintPage() {
           <span className="font-am-heading">{label.am}</span>
           <span className="ml-2 text-sm font-normal text-slate-500">/ {label.en}</span>
         </h1>
-        <Button
-          type="button"
-          size="sm"
-          onClick={handlePrint}
-          disabled={printing}
-          className="rounded-md bg-blue-700 text-white hover:bg-blue-800"
-        >
-          {printing ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Printer className="mr-2 h-4 w-4" />
-          )}
-          <span className="font-am-body">አትም</span>
-          <span className="ml-1 opacity-80">/ Print</span>
-        </Button>
+        {isReprint && canPrint && (
+          <Input
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            maxLength={500}
+            placeholder="የድጋሚ ህትመት ምክንያት / Reprint reason"
+            aria-label="Reprint reason"
+            className="font-am-body h-9 w-72"
+          />
+        )}
+        {canPrint ? (
+          <Button
+            type="button"
+            size="sm"
+            onClick={handlePrint}
+            disabled={printing || (isReprint && reason.trim().length < 5)}
+            className="rounded-md bg-blue-700 text-white hover:bg-blue-800"
+          >
+            {printing ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Printer className="mr-2 h-4 w-4" />
+            )}
+            <span className="font-am-body">{isReprint ? "ድጋሚ አትም" : "አትምና ስጥ"}</span>
+            <span className="ml-1 opacity-80">/ {isReprint ? "Reprint" : "Print & issue"}</span>
+          </Button>
+        ) : (
+          <span className="font-am-body text-xs text-slate-500">
+            {isReprint ? "ድጋሚ ለማተም ፈቃድ የለዎትም" : "ለማተም ፈቃድ የለዎትም"}
+            <span className="ml-1">
+              / {isReprint ? "You may not reprint" : "You may not print"} this certificate
+            </span>
+          </span>
+        )}
       </div>
+      {isReprint && (
+        <p className="font-am-body text-xs text-slate-500">
+          ይህ የምስክር ወረቀት ተሰጥቷል፤ ድጋሚ ህትመት ከምክንያቱ ጋር ይመዘገባል።
+          <span className="ml-1">
+            / This certificate was already issued; a reprint is logged with its reason.
+          </span>
+        </p>
+      )}
 
       <div className="overflow-auto rounded-xl border border-slate-200 bg-slate-100 p-4">
         {/* Dedicated capture node at real paper width, not the live page. */}

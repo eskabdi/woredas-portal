@@ -57,7 +57,8 @@ const STATUS_OPTIONS = [
   { value: "approved", label: "ፀድቋል / Approved" },
   { value: "awaiting_payment", label: "ክፍያ በመጠባበቅ ላይ / Awaiting Payment" },
   { value: "paid", label: "ተከፍሏል / Paid" },
-  { value: "registered", label: "ተመዝግቧል / Registered" },
+  { value: "registered", label: "ተመዝግቧል — ለህትመት / Registered — to print" },
+  { value: "issued", label: "የምስክር ወረቀት ተሰጥቷል / Certificate issued" },
   { value: "returned", label: "ተመልሷል / Returned" },
   { value: "rejected", label: "ውድቅ / Rejected" },
 ];

@@ -175,6 +175,7 @@ const WORKFLOW_STAGES: WorkflowStage[] = [
   { key: "awaiting_payment", am: "ክፍያ በመጠበቅ", en: "Awaiting Payment" },
   { key: "paid", am: "ተከፍሏል", en: "Paid" },
   { key: "registered", am: "ተመዝግቧል", en: "Registered" },
+  { key: "issued", am: "የምስክር ወረቀት ተሰጥቷል", en: "Certificate Issued" },
 ];
 
 // Task 14-A: resolve_civil_fee() (00000000000059) -- same fail-closed,
@@ -969,7 +970,7 @@ function CivilEventDetailPage() {
       )}
 
       {/* Card 5 — Outcome (registered / rejected) */}
-      {(status === "registered" || status === "rejected") && (
+      {(status === "registered" || status === "issued" || status === "rejected") && (
         <Card
           title={status === "rejected" ? "ውጤት — ውድቅ" : "ውጤት — ተመዝግቧል"}
           titleEn={status === "rejected" ? "Outcome — Rejected" : "Outcome — Registered"}

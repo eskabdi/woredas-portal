@@ -9,12 +9,14 @@
  * on paper at 210 x 297 mm.
  */
 import type { CSSProperties, ReactNode } from "react";
+import { QRCodeSVG } from "qrcode.react";
 
 import {
   certificateField,
   type CertificateType,
   type ResolvedValue,
 } from "@/config/certificateFields";
+import { certificateVerifyUrl } from "@/config/certificateVerify";
 
 import {
   PAGE_MM,
@@ -88,7 +90,28 @@ export function CertificatePage({
         const imgUrl = isImage ? (imageUrls?.[f.field_key] ?? null) : null;
         return (
           <div key={f.certificate_field_id} className="absolute" style={box}>
-            {isImage ? (
+            {def?.kind === "qr" ? (
+              (() => {
+                const token = values?.[f.field_key]?.text ?? null;
+                if (token) {
+                  // Level M, quiet zone included; the SVG keeps its square
+                  // aspect inside the box (xMidYMid meet), never stretched.
+                  return (
+                    <QRCodeSVG
+                      value={certificateVerifyUrl(token)}
+                      level="M"
+                      marginSize={2}
+                      style={{ width: "100%", height: "100%" }}
+                    />
+                  );
+                }
+                return (
+                  <div className="flex h-full w-full items-center justify-center border border-dashed border-slate-400 text-[10px] text-slate-500">
+                    QR
+                  </div>
+                );
+              })()
+            ) : isImage ? (
               imgUrl ? (
                 <img
                   src={imgUrl}

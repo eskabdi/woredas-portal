@@ -22,6 +22,8 @@ export interface CertificateEventRow {
   registration_date: string | null;
   issued_at: string | null;
   event_details: Record<string, unknown> | null;
+  /** Public verification token, assigned on the first print (migration 102). */
+  certificate_token?: string | null;
 }
 
 export interface CertificateRegistrar {
@@ -98,6 +100,8 @@ function resolveOne(
       return { image: woreda?.stamp_path ?? null };
     case "woreda_name":
       return { am: woreda?.name_am ?? null, en: woreda?.name_en ?? null };
+    case "certificate_token":
+      return { text: event.certificate_token ?? null };
   }
 }
 

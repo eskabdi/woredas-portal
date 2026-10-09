@@ -110,8 +110,14 @@ export function CertificateDetailsCard({ eventId, woredaId, status, event }: Pro
   const filled = fields.filter((f) => inputKeysOf(f).some((k) => (values[k] ?? "").trim())).length;
   const dirty = JSON.stringify(values) !== JSON.stringify(saved);
   const label = CERTIFICATE_TYPE_LABELS[certType];
+  // Print (registered -> issued) or reprint (issued), as in the ID card flow;
+  // record_civil_certificate_print() enforces the same rules server-side.
+  const published = !!templateQuery.data?.published_at;
   const canPrint =
-    (status === "registered" || status === "issued") && !!templateQuery.data?.published_at;
+    published &&
+    ((status === "registered" && hasPermission(P.CIVIL_PRINT_CERTIFICATE)) ||
+      (status === "issued" &&
+        (hasPermission(P.CIVIL_AUTHORIZE_REPRINT) || hasPermission(P.CIVIL_READ))));
 
   const prefill = () => {
     const byId = new Map((residentsQuery.data ?? []).map((r) => [r.resident_id, r]));
@@ -204,8 +210,12 @@ export function CertificateDetailsCard({ eventId, woredaId, status, event }: Pro
           <Link to="/woreda/civil/$eventId/certificate" params={{ eventId }}>
             <Button size="sm" className="bg-[color:var(--color-shell-header)] text-white">
               <Printer className="mr-1 h-4 w-4" />
-              <span className="font-am-body">የምስክር ወረቀት አትም</span>
-              <span className="ml-1 opacity-80">/ Print certificate</span>
+              <span className="font-am-body">
+                {status === "issued" ? "የምስክር ወረቀት" : "የምስክር ወረቀት አትምና ስጥ"}
+              </span>
+              <span className="ml-1 opacity-80">
+                / {status === "issued" ? "Certificate" : "Print & issue certificate"}
+              </span>
             </Button>
           </Link>
         )}

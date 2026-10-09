@@ -736,3 +736,9 @@ orientation, publish state), `certificate_template_field` (live placements)
 and `certificate_template_field_draft` (draft placements, same shape). See
 `docs/civil-certificates.md` for the full diagram and field model.
 `vital_event.event_type` now also accepts `adoption`.
+
+Migration 102 adds `vital_event.certificate_token` (unique when set; the
+QR's verification token) and `civil_certificate_print_log` (one row per
+print: `print_no`, `is_reprint`, `reprint_reason`, `printed_by_user_id`,
+`woreda_id`; unique `(vital_event_id, print_no)`; no client writes), plus the
+`vital_event` workflow row `registered → issued`.

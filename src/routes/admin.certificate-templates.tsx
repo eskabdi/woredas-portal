@@ -255,8 +255,11 @@ function CertificateTemplatesPage() {
     const def = isStatic ? null : certificateField(type, fieldKey);
     if (!isStatic && !def) return;
     const isImage = def?.kind === "image";
-    const width = isImage ? 18 : 30;
-    const height = isImage ? 9 : 3;
+    const isQr = def?.kind === "qr";
+    const page = PAGE_MM[orientation];
+    // A QR is placed physically square (25 mm) -- percent units differ per axis.
+    const width = isQr ? round2((25 / page.w) * 100) : isImage ? 18 : 30;
+    const height = isQr ? round2((25 / page.h) * 100) : isImage ? 9 : 3;
     const cx = at?.x ?? 50;
     const cy = at?.y ?? 50;
     const maxZ = fields.reduce((m, f) => Math.max(m, f.z_index), 0);
@@ -609,6 +612,7 @@ function CertificateTemplatesPage() {
 
         <PropertiesPanel
           type={type}
+          orientation={orientation}
           field={selected}
           onPatch={(p) => selected && patchField(selected.certificate_field_id, p)}
           onDelete={() => void deleteSelected()}
@@ -790,6 +794,15 @@ function EditorCanvas({
       }
       if (x + w > 100) w = 100 - x;
       if (y + hh > 100) hh = 100 - y;
+      if (certificateField(type, f.field_key)?.kind === "qr") {
+        // Keep the QR physically square: the side follows whichever axis the
+        // handle drives, converted through the page's mm dimensions.
+        const page = PAGE_MM[orientation];
+        const sideMm = h === "n" || h === "s" ? (hh / 100) * page.h : (w / 100) * page.w;
+        const side = Math.min(sideMm, ((100 - x) / 100) * page.w, ((100 - y) / 100) * page.h);
+        w = (side / page.w) * 100;
+        hh = (side / page.h) * 100;
+      }
       onPatch(
         f.certificate_field_id,
         { x: round2(x), y: round2(y), width: round2(w), height: round2(hh) },
@@ -914,11 +927,13 @@ function NumField({
 
 function PropertiesPanel({
   type,
+  orientation,
   field,
   onPatch,
   onDelete,
 }: {
   type: CertificateType;
+  orientation: Orientation;
   field: PlacedField | null;
   onPatch: (p: Partial<PlacedField>) => void;
   onDelete: () => void;
@@ -932,13 +947,27 @@ function PropertiesPanel({
   }
   const def = field.binding_mode === "data" ? certificateField(type, field.field_key) : undefined;
   const formats: FieldFormat[] = def ? formatsFor(def.kind) : ["plain"];
-  const isImage = def?.kind === "image";
+  const isImage = def?.kind === "image" || def?.kind === "qr";
+  const qrMm = def?.kind === "qr" ? Math.round((field.width / 100) * PAGE_MM[orientation].w) : null;
   return (
     <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div>
         <p className="font-am-body text-sm font-semibold text-slate-900">{def?.am ?? "ቋሚ ጽሑፍ"}</p>
         <p className="text-xs text-slate-500">{def?.en ?? "Static text"}</p>
       </div>
+
+      {qrMm !== null && (
+        <p
+          className={`rounded-md px-2 py-1 text-xs ${
+            qrMm < 20 ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"
+          }`}
+        >
+          QR {qrMm} mm × {qrMm} mm
+          {qrMm < 20
+            ? " — too small to scan reliably; keep it at 20 mm or more."
+            : " — links to the public verification page."}
+        </p>
+      )}
 
       {field.binding_mode === "static" && (
         <label className="block text-xs">

@@ -109,3 +109,64 @@ describe("CertificatePage", () => {
     expect(screen.getByText("<img src=x onerror=alert(1)>")).toBeTruthy();
   });
 });
+
+describe("verification QR", () => {
+  it("renders a QR encoding the public verify URL once a token exists", () => {
+    const v = resolveCertificateValues("death", {
+      event: {
+        event_type: "death",
+        event_number: "HR-DT-25-000002",
+        event_date: "2025-01-20",
+        registration_date: "2025-01-25",
+        issued_at: "2025-02-01T08:00:00Z",
+        event_details: {},
+        certificate_token: "ABCDEFGHJKLMNPQRSTUVWXYZ23",
+      },
+      registrar: null,
+      woreda: null,
+      printedOn: "2025-02-01",
+    });
+    expect(v.verification_qr.text).toBe("ABCDEFGHJKLMNPQRSTUVWXYZ23");
+    const { container } = render(
+      <CertificatePage
+        type="death"
+        orientation="portrait"
+        backgroundUrl={null}
+        values={v}
+        fields={[
+          placed({ certificate_type: "death", field_key: "verification_qr", format: "image" }),
+          placed({ certificate_type: "death", field_key: "verification_code", format: "plain" }),
+        ]}
+      />,
+    );
+    expect(container.querySelector("svg")).not.toBeNull();
+    expect(screen.getByText("ABCDEFGHJKLMNPQRSTUVWXYZ23")).toBeTruthy();
+  });
+
+  it("shows a placeholder, not a QR, before the certificate is issued", () => {
+    const v = resolveCertificateValues("birth", {
+      event: {
+        event_type: "birth",
+        event_number: null,
+        event_date: null,
+        registration_date: null,
+        issued_at: null,
+        event_details: {},
+      },
+      registrar: null,
+      woreda: null,
+      printedOn: "2025-02-01",
+    });
+    const { container } = render(
+      <CertificatePage
+        type="birth"
+        orientation="portrait"
+        backgroundUrl={null}
+        values={v}
+        fields={[placed({ field_key: "verification_qr", format: "image" })]}
+      />,
+    );
+    expect(container.querySelector("svg")).toBeNull();
+    expect(screen.getByText("QR")).toBeTruthy();
+  });
+});

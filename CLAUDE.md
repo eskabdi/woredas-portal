@@ -746,6 +746,17 @@ once the event is registered). `src/lib/certificateData.ts` resolves the
 printed values and the capture-card prefill. See `docs/civil-certificates.md`.
 A new certificate field goes into the catalog, never into a route.
 
+Certificates print the way ID cards do: as the last workflow step.
+`record_civil_certificate_print()` (migrations 102/103) is the only way a
+civil event moves `registered → issued` — it issues the 130-bit
+`vital_event.certificate_token` (first print, `civil.print_certificate`) or
+logs a reprint (`civil.authorize_reprint` plus a reason, same token) — and a
+GUC-gated trigger rejects any direct write of the status, token or issue
+stamp. Every certificate carries a QR of
+`/verify/certificate/<token>` (`src/config/certificateVerify.ts`,
+`VITE_PUBLIC_SITE_URL`), backed by the public `verify_civil_certificate` RPC:
+the fourth public verification surface after cards, letters and receipts.
+
 Printed revenue receipts are the third: `receipt` carries its own
 `verification_token` (`00000000000013_receipt_verification.sql`), printed
 from `woreda.revenue.$paymentId.receipt.tsx` and checked publicly at

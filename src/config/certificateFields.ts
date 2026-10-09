@@ -52,8 +52,9 @@ export const FIELD_GROUPS: { key: FieldGroup; am: string; en: string }[] = [
  * date:      ISO yyyy-mm-dd, printable in Ethiopian or Gregorian form.
  * sex:       "male" | "female", printed in Amharic or English.
  * image:     a storage path (registrar signature, woreda seal).
+ * qr:        the certificate's public verification QR (migration 102).
  */
-export type FieldKind = "bilingual" | "text" | "date" | "sex" | "image";
+export type FieldKind = "bilingual" | "text" | "date" | "sex" | "image" | "qr";
 
 /**
  * input:     captured on the event's Certificate details card.
@@ -71,7 +72,8 @@ export type FieldSource =
   | "registrar_grandfather_name"
   | "registrar_signature"
   | "seal"
-  | "woreda_name";
+  | "woreda_name"
+  | "certificate_token";
 
 export interface CertificateField {
   key: string;
@@ -124,6 +126,22 @@ function common(type: CertificateType): {
   const regEn = t.en.replace(" Certificate", "");
   return {
     head: [
+      f(
+        "verification_qr",
+        "identifiers",
+        "የማረጋገጫ QR ኮድ",
+        "Verification QR Code",
+        "qr",
+        "certificate_token",
+      ),
+      f(
+        "verification_code",
+        "identifiers",
+        "የማረጋገጫ ኮድ",
+        "Verification Code",
+        "text",
+        "certificate_token",
+      ),
       f(
         "register_form_no",
         "identifiers",
@@ -450,6 +468,7 @@ export function formatsFor(kind: FieldKind): FieldFormat[] {
         "gc_year",
       ];
     case "image":
+    case "qr":
       return ["image"];
   }
 }
@@ -534,6 +553,7 @@ export function renderFieldText(
       return am || en;
     }
     case "image":
+    case "qr":
       return "";
   }
 }
