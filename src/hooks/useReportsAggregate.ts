@@ -40,6 +40,7 @@ const EVENT_TYPE_LABEL: Record<string, string> = {
   death: "ሞት / Death",
   marriage: "ጋብቻ / Marriage",
   divorce: "ፍቺ / Divorce",
+  adoption: "ጉዲፈቻ / Adoption",
 };
 const OCCUPANCY_STATUS_LABEL: Record<string, string> = {
   vacant: "ክፍት / Vacant",

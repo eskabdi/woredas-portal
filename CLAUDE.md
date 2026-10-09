@@ -733,6 +733,30 @@ print surface. The same allow-list is enforced server-side by
 `src/lib/__tests__/letterTemplate.test.ts` fails if the client and SQL lists
 drift, so change both together.
 
+Civil-registration certificates (birth, death, marriage, divorce,
+adoption) are designed by super admins in **Certificate Templates**
+(`admin.certificate-templates.tsx`, console permission
+`CP.CERTIFICATE_TEMPLATE_MANAGE`, migration 101) and printed from
+`woreda.civil.$eventId.certificate.tsx`. Every field, with its Amharic and
+English label, group, format options and data source, is defined once in
+`src/config/certificateFields.ts`; the database stores only placements
+(`certificate_template_field(_draft)`, positions in percent of an A4 page)
+and the captured values (`vital_event.event_details.certificate`, frozen
+once the event is registered). `src/lib/certificateData.ts` resolves the
+printed values and the capture-card prefill. See `docs/civil-certificates.md`.
+A new certificate field goes into the catalog, never into a route.
+
+Certificates print the way ID cards do: as the last workflow step.
+`record_civil_certificate_print()` (migrations 102/103) is the only way a
+civil event moves `registered → issued` — it issues the 130-bit
+`vital_event.certificate_token` (first print, `civil.print_certificate`) or
+logs a reprint (`civil.authorize_reprint` plus a reason, same token) — and a
+GUC-gated trigger rejects any direct write of the status, token or issue
+stamp. Every certificate carries a QR of
+`/verify/certificate/<token>` (`src/config/certificateVerify.ts`,
+`VITE_PUBLIC_SITE_URL`), backed by the public `verify_civil_certificate` RPC:
+the fourth public verification surface after cards, letters and receipts.
+
 Printed revenue receipts are the third: `receipt` carries its own
 `verification_token` (`00000000000013_receipt_verification.sql`), printed
 from `woreda.revenue.$paymentId.receipt.tsx` and checked publicly at

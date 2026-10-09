@@ -14,6 +14,7 @@ import {
   Loader2,
   Receipt as ReceiptIcon,
   Scale,
+  HandHeart,
   ShieldCheck,
   UserCheck,
   XCircle,
@@ -41,6 +42,7 @@ import {
   useActorNames,
 } from "@/components/workflow/HistoryTimeline";
 import { PermissionGate } from "@/components/common/PermissionGate";
+import { CertificateDetailsCard } from "@/components/civil/CertificateDetailsCard";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -56,7 +58,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { P } from "@/config/permissions";
 import { formatEthiopianDateOnly } from "@/utils/ethiopianCalendar";
 
-export const Route = createFileRoute("/woreda/civil/$eventId")({
+export const Route = createFileRoute("/woreda/civil/$eventId/")({
   ssr: false,
   component: () => (
     <PermissionGate
@@ -154,6 +156,7 @@ const EVENT_TITLES: Record<
   death: { am: "የሞት ማጠቃለያ", en: "Death Summary", icon: HeartCrack },
   marriage: { am: "የጋብቻ ማጠቃለያ", en: "Marriage Summary", icon: Heart },
   divorce: { am: "የፍቺ ማጠቃለያ", en: "Divorce Summary", icon: Scale },
+  adoption: { am: "የጉዲፈቻ ማጠቃለያ", en: "Adoption Summary", icon: HandHeart },
 };
 
 // Matches the seeded FSM (workflow_transition rows for the `civil` entity):
@@ -172,6 +175,7 @@ const WORKFLOW_STAGES: WorkflowStage[] = [
   { key: "awaiting_payment", am: "ክፍያ በመጠበቅ", en: "Awaiting Payment" },
   { key: "paid", am: "ተከፍሏል", en: "Paid" },
   { key: "registered", am: "ተመዝግቧል", en: "Registered" },
+  { key: "issued", am: "የምስክር ወረቀት ተሰጥቷል", en: "Certificate Issued" },
 ];
 
 // Task 14-A: resolve_civil_fee() (00000000000059) -- same fail-closed,
@@ -218,7 +222,7 @@ function CivilEventDetailPage() {
           `vital_event_id, event_number, event_type, event_date, registration_date, status, notes,
            event_details, verification_checklist, verified_by_user_id, verified_at,
            approved_by_user_id, approval_decision_at, return_reason, reject_reason,
-           requested_by_user_id, created_at, resident_id, payment_id,
+           requested_by_user_id, created_at, resident_id, payment_id, issued_at,
            resident:resident_id (resident_id, resident_number, full_name, full_name_am)`,
         )
         .eq("vital_event_id", eventId)
@@ -966,7 +970,7 @@ function CivilEventDetailPage() {
       )}
 
       {/* Card 5 — Outcome (registered / rejected) */}
-      {(status === "registered" || status === "rejected") && (
+      {(status === "registered" || status === "issued" || status === "rejected") && (
         <Card
           title={status === "rejected" ? "ውጤት — ውድቅ" : "ውጤት — ተመዝግቧል"}
           titleEn={status === "rejected" ? "Outcome — Rejected" : "Outcome — Registered"}
@@ -1047,6 +1051,22 @@ function CivilEventDetailPage() {
           rendering, which also fixes a real bug -- it rendered
           changed_at via toLocaleString(), i.e. Gregorian, in a portal
           whose dates are Ethiopian-first everywhere else. */}
+      {/* Certificate details + print (migration 101) */}
+      <CertificateDetailsCard
+        eventId={eventId}
+        woredaId={woredaId!}
+        status={status}
+        event={{
+          event_type: eventType,
+          event_number: event.event_number ?? null,
+          event_date: event.event_date ?? null,
+          registration_date: event.registration_date ?? null,
+          issued_at: (event as { issued_at?: string | null }).issued_at ?? null,
+          event_details: rawDetails,
+          resident_id: event.resident_id ?? null,
+        }}
+      />
+
       <Card title="የሁኔታ ታሪክ" titleEn="Status History" icon={History}>
         <HistoryTimeline rows={historyQuery.data ?? []} actorNames={actorNamesQuery.data} />
       </Card>

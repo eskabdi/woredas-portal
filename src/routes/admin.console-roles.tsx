@@ -64,6 +64,11 @@ const PERMISSION_ROWS: { key: ConsolePermission; am: string; en: string }[] = [
   },
   // Amharic pending native-speaker review.
   { key: CP.BACKUP_MANAGE, am: "ምትኬና መልሶ ማግኛ ማስተዳደር", en: "Manage Backup & Restore" },
+  {
+    key: CP.CERTIFICATE_TEMPLATE_MANAGE,
+    am: "የምስክር ወረቀት አብነቶችን ማስተዳደር",
+    en: "Manage Certificate Templates",
+  },
 ];
 
 interface ConsoleRoleRow {
