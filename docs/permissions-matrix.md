@@ -173,14 +173,15 @@ INSA Enforcer Phase 2.3 / Phase 4 Access Control. Generated from `src/config/per
 
 A second, independent permission dimension scoped to the Super Admin Console itself (`console_role` / `console_role_permission`, `00000000000009_console_roles.sql`). **This table is not compiled data like the roles above** — `console_role` rows are ordinary, admin-editable database rows (`/admin/console-roles`), not something this generator can read from source. `app_user.console_role_id IS NULL` means **unrestricted** — the default for every super_admin until an installation opts into scoping one down.
 
-| Key                                  | Description                                                               |
-| ------------------------------------ | ------------------------------------------------------------------------- |
-| `console.tenants.manage`             | Create, edit, suspend woreda tenants                                      |
-| `console.users.manage`               | Manage tenant_admin accounts across all woredas                           |
-| `console.audit.view`                 | View the platform-wide audit log                                          |
-| `console.credential_template.manage` | Edit the shared ID card template (all tenants)                            |
-| `console.console_users.manage`       | Manage console_role assignments and mint new super_admin accounts         |
-| `console.backup.manage`              | View backups, run one now, download archives, request and decide restores |
+| Key                                   | Description                                                               |
+| ------------------------------------- | ------------------------------------------------------------------------- |
+| `console.tenants.manage`              | Create, edit, suspend woreda tenants                                      |
+| `console.users.manage`                | Manage tenant_admin accounts across all woredas                           |
+| `console.audit.view`                  | View the platform-wide audit log                                          |
+| `console.credential_template.manage`  | Edit the shared ID card template (all tenants)                            |
+| `console.console_users.manage`        | Manage console_role assignments and mint new super_admin accounts         |
+| `console.backup.manage`               | View backups, run one now, download archives, request and decide restores |
+| `console.certificate_template.manage` | undefined                                                                 |
 
 ## Woreda portal navigation
 
@@ -209,14 +210,15 @@ A second, independent permission dimension scoped to the Super Admin Console its
 
 `ADMIN_NAV` — gated by console permission instead (an array means any one satisfies it).
 
-| Label                  | Route                        | Required console permission                        |
-| ---------------------- | ---------------------------- | -------------------------------------------------- |
-| Dashboard              | `/admin/dashboard`           | _(always visible)_                                 |
-| Tenants                | `/admin/tenants`             | `console.tenants.manage` or `console.users.manage` |
-| ID Card Template       | `/admin/credential-template` | `console.credential_template.manage`               |
-| Audit Logs             | `/admin/audit`               | `console.audit.view`                               |
-| Console Users and Role | `/admin/console-roles`       | `console.console_users.manage`                     |
-| Backup & Restore       | `/admin/backups`             | `console.backup.manage`                            |
+| Label                  | Route                          | Required console permission                        |
+| ---------------------- | ------------------------------ | -------------------------------------------------- |
+| Dashboard              | `/admin/dashboard`             | _(always visible)_                                 |
+| Tenants                | `/admin/tenants`               | `console.tenants.manage` or `console.users.manage` |
+| ID Card Template       | `/admin/credential-template`   | `console.credential_template.manage`               |
+| Certificate Templates  | `/admin/certificate-templates` | `console.certificate_template.manage`              |
+| Audit Logs             | `/admin/audit`                 | `console.audit.view`                               |
+| Console Users and Role | `/admin/console-roles`         | `console.console_users.manage`                     |
+| Backup & Restore       | `/admin/backups`               | `console.backup.manage`                            |
 
 ## The full resolution chain — this doc is one layer of three
 

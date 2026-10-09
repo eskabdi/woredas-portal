@@ -733,6 +733,19 @@ print surface. The same allow-list is enforced server-side by
 `src/lib/__tests__/letterTemplate.test.ts` fails if the client and SQL lists
 drift, so change both together.
 
+Civil-registration certificates (birth, death, marriage, divorce,
+adoption) are designed by super admins in **Certificate Templates**
+(`admin.certificate-templates.tsx`, console permission
+`CP.CERTIFICATE_TEMPLATE_MANAGE`, migration 101) and printed from
+`woreda.civil.$eventId.certificate.tsx`. Every field, with its Amharic and
+English label, group, format options and data source, is defined once in
+`src/config/certificateFields.ts`; the database stores only placements
+(`certificate_template_field(_draft)`, positions in percent of an A4 page)
+and the captured values (`vital_event.event_details.certificate`, frozen
+once the event is registered). `src/lib/certificateData.ts` resolves the
+printed values and the capture-card prefill. See `docs/civil-certificates.md`.
+A new certificate field goes into the catalog, never into a route.
+
 Printed revenue receipts are the third: `receipt` carries its own
 `verification_token` (`00000000000013_receipt_verification.sql`), printed
 from `woreda.revenue.$paymentId.receipt.tsx` and checked publicly at

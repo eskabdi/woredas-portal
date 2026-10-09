@@ -169,6 +169,9 @@ export const CP = {
   // Backup & Restore page (migration 94): run a backup, download encrypted
   // archives, request restores and approve/reject someone else's request.
   BACKUP_MANAGE: "console.backup.manage",
+  // Civil-registration certificate templates (migration 101): design the
+  // birth / death / marriage / divorce / adoption certificates and publish.
+  CERTIFICATE_TEMPLATE_MANAGE: "console.certificate_template.manage",
 } as const;
 
 export type ConsolePermission = (typeof CP)[keyof typeof CP];
@@ -636,6 +639,12 @@ export const ADMIN_NAV: AdminNavItem[] = [
     icon: "CreditCard",
     href: "/admin/credential-template",
     consolePermission: CP.CREDENTIAL_TEMPLATE_MANAGE,
+  },
+  {
+    label: "Certificate Templates",
+    icon: "FileText",
+    href: "/admin/certificate-templates",
+    consolePermission: CP.CERTIFICATE_TEMPLATE_MANAGE,
   },
   {
     label: "Audit Logs",
