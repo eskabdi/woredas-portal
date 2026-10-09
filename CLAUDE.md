@@ -532,6 +532,16 @@ function also enforces **maker ≠ checker** (one person can never both verify
 and approve the same row) and blocks a system-only transition from firing
 off a live user session.
 
+Since migration 98 (P0-6), `enforce_workflow_insert()` also guards
+`vital_event` and `service_request`: a row can only be created at `draft` or
+`submitted` with every verifier/approver/issuer/payment column NULL, and an
+AFTER INSERT trigger (`log_workflow_creation()`) writes the creation row to
+`workflow_status_history`. `workflow_transition` has a nullable `category`
+(NULL = every row; `letter`/`complaint` for `service_request`) that the
+engine matches against the row's own, immutable category, so a letter can't
+take the complaint edges that skip approval and payment. A new
+service-request edge needs the right category.
+
 `workflow_transition` deliberately carries **no `woreda_id`**: which state
 changes are legal is fixed for the whole platform. A tenant can change _who_
 holds a permission (`role_permission`), but never remove a

@@ -200,6 +200,7 @@ erDiagram
         text to_status
         text required_permission "NULL only if is_system"
         boolean is_system "true = engine-only, never user-driven"
+        text category "NULL = every row; letter | complaint (service_request, migration 98)"
         text note
     }
     workflow_status_history {

@@ -130,45 +130,65 @@ stateDiagram-v2
 
 The `[*] --> awaiting_payment` edge stands for "any status in the CHECK constraint, including `approved`, `paid` and `registered`". It is not in `workflow_transition`; it exists because no BEFORE INSERT trigger on `vital_event` inspects `status`. Dead states: `approval_returned`, `issued`.
 
-## 4. Service request (`service_request`: letters and complaints share one FSM) — 20 transitions
+## 4. Service request (`service_request`: one table, two category-scoped FSMs) — 20 transitions
+
+Updated 2026-10-09 for P0-6 (migration 98). Each `workflow_transition` row now
+carries a `category` (`letter`, `complaint`, or NULL for both), and the
+engine matches it against the row's own category, which is immutable after
+insert. Inserts are accepted only at `draft`/`submitted` with no
+verifier/approver/issuer/payment column set, and write a creation row to
+`workflow_status_history`. `issued_at`/`issued_by_user_id` change only on
+`paid -> issued`; an issued letter's public content is frozen.
+`verify_service_letter()` accepts only `category = 'letter'` at `issued` or
+`completed`.
+
+Letter path:
 
 ```mermaid
 stateDiagram-v2
-    [*] --> draft : INSERT
-    [*] --> submitted : INSERT
-    [*] --> issued : INSERT at any status, no guard, WP-WF-001
+    [*] --> draft : INSERT (guarded)
+    [*] --> submitted : INSERT (guarded)
     draft --> submitted : service.submit
     submitted --> under_review : service.verify
     under_review --> verified : service.verify
-    under_review --> pending_approval : service.verify, complaint edge usable by letters
     under_review --> returned : service.return
     returned --> under_review : service.resubmit
     verified --> pending_approval : service.approve
     pending_approval --> approved : service.approve, verifier not approver
-    pending_approval --> in_progress : service.approve, complaint edge, no SoD check
     pending_approval --> returned : service.return
-    pending_approval --> approval_returned : service.return, complaint sink
     pending_approval --> rejected : service.reject
     approved --> awaiting_payment : service.record_payment
-    approved --> in_progress : service.issue, no UI path
     awaiting_payment --> paid : service.record_payment, payment gate
-    paid --> issued : service.issue_letter, issuance gate
+    paid --> issued : service.issue_letter, issuance gate, sets issued_at
     issued --> completed : service.complete
-    issued --> closed : service.issue
-    in_progress --> resolved : service.issue
-    resolved --> closed : service.issue
     completed --> [*]
-    closed --> [*]
     rejected --> [*]
-    note right of resolved
-      WP-WF-002 verify_service_letter accepts issued,
-      resolved, closed and completed. A letter driven
-      along the complaint edges verifies publicly
-      with no approval SoD and no payment.
-    end note
 ```
 
-`approval_returned` has no exit (WP-WF-016). The `[*] --> issued` edge stands for "any status", as in §3.
+Complaint path:
+
+```mermaid
+stateDiagram-v2
+    [*] --> draft : INSERT (guarded)
+    [*] --> submitted : INSERT (guarded)
+    draft --> submitted : service.submit
+    submitted --> under_review : service.verify
+    under_review --> pending_approval : service.verify
+    under_review --> returned : service.return
+    returned --> under_review : service.resubmit
+    pending_approval --> in_progress : service.approve
+    pending_approval --> approval_returned : service.return
+    pending_approval --> rejected : service.reject
+    approved --> in_progress : service.issue, no UI path
+    in_progress --> resolved : service.issue
+    resolved --> closed : service.issue
+    issued --> closed : service.issue, unreachable for complaints
+    closed --> [*]
+    rejected --> [*]
+```
+
+`approval_returned` has no exit (WP-WF-016, still open). WP-WF-001 and
+WP-WF-002 are fixed by migration 98.
 
 ## 5. Rental occupancy request (`rental_occupancy_request`) — 11 transitions
 

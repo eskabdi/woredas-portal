@@ -27,6 +27,17 @@ complaints: approved → in_progress → resolved | closed
 
 Same stage/return/reject vocabulary as the existing credential workflow, so staff see a familiar stepper.
 
+Letters and complaints share the table but not the transitions: since
+migration 98 (P0-6) every `workflow_transition` row for `service_request` is
+scoped to `letter`, `complaint` or both, a request's category cannot change
+after it is created, and a request can only be created at `draft` or
+`submitted`. A letter must go `under_review -> verified -> pending_approval
+-> approved -> awaiting_payment -> paid -> issued -> completed`; the
+complaint edges (`pending_approval -> in_progress -> resolved -> closed`) are
+rejected for letters. Only an issued or completed letter verifies publicly,
+and its content is frozen once issued. See
+`docs/audit/2026-09-24/architecture/workflows.md` §4 for both diagrams.
+
 ### Pages
 
 - `/woreda/services` — list with tabs **Letters** / **Complaints**, plus the standard toolbar the other tables already use (debounced search, status + service-type + kebele filters, sortable columns, URL-persisted pagination, CSV/PDF export, skeleton/empty/error states).
