@@ -72,6 +72,28 @@ between the security-hardening review and an actual audit pass:
       headers survive the platform after any deploy (`docs/security-hardening.md`'s
       verification snippet).
 
+## Live end-to-end testing
+
+The `live-e2e-test` subagent (`.claude/agents/live-e2e-test.md`, described in
+`CLAUDE.md` under "Live end-to-end test") runs the full live end-to-end test
+against a deployed target. It runs in tiers and records a PASS / FAIL /
+UNVERIFIED verdict with evidence for every check:
+
+| Tier | Coverage                                                                                                | Production                    |
+| ---- | ------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| 0    | Preflight; resolves the target's Supabase ref from its own bundle                                       | yes                           |
+| 1    | Security headers, every route unauthenticated, public verify pages with a bogus token                   | yes                           |
+| 2    | Edge Functions closed without a JWT, CORS allow-list, anon reads of every table, public/privileged RPCs | yes                           |
+| 3    | Per-role authenticated sweep, UI gates against `current_permissions()`, cross-tenant reads, session end | read-only, needs credentials  |
+| 4    | `BEGIN … ROLLBACK` gate probes (`scripts/run-live-probes.py`) and catalog checks                        | yes, needs a Management token |
+| 5    | Full mutating lifecycle through public QR verification for cards, letters, certificates and receipts    | **refused**                   |
+
+Against production (`eharari.gov.et`, the vercel.app alias, or local dev
+pointed at the production ref), Tiers 0–4 run and Tier 5 is refused.
+Tier 5's write-path coverage therefore waits on the staging project in
+`docs/staging-runbook.md`, the same as the test credentials in the section
+above.
+
 ## Out of scope for this pass
 
 Dynamic penetration testing and load testing were not performed as part of
