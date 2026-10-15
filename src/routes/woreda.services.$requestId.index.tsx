@@ -25,6 +25,7 @@ import { Select } from "@/components/forms/FormSection";
 import { PermissionGate } from "@/components/common/PermissionGate";
 import { supabase } from "@/integrations/supabase/client";
 import { APPROVAL_BLOCK_MESSAGE, approvalBlock } from "@/lib/makerChecker";
+import { recordFeePayment } from "@/lib/feePayment";
 import { useAuthStore } from "@/stores/authStore";
 import { formatEthiopianDate } from "@/utils/ethiopianCalendar";
 import {
@@ -325,42 +326,19 @@ function ServiceRequestDetailPage() {
     }
     setBusy(true);
     try {
-      const today = new Date().toISOString().slice(0, 10);
-      const { data: pay, error: payErr } = await supabase
-        .from("payment")
-        .insert({
-          woreda_id: woredaId,
-          resident_id: req.resident_id,
-          payment_type: "service_fee",
-          amount,
-          payment_date: today,
-          channel,
-          reference_no: channel === "cash" ? null : referenceNo.trim(),
-          status: "confirmed",
-          posted_by_user_id: actorUserId,
-          service_request_id: req.service_request_id,
-        } as never)
-        .select("payment_id")
-        .single();
-      if (payErr) throw payErr;
-      const paymentId = (pay as { payment_id: string }).payment_id;
-
-      const { error: recErr } = await supabase.from("receipt").insert({
-        woreda_id: woredaId,
-        payment_id: paymentId,
-        receipt_date: today,
-        total_amount: amount,
-        cash_bank_channel: channel,
-        receipt_number: "",
-      } as never);
-      if (recErr) throw recErr;
-
-      await transition("paid", {
-        extra: { payment_id: paymentId },
-        reason: `Fee collected (${channel})`,
-        action: "SERVICE_FEE_COLLECTED",
-        successAm: "ክፍያ ተመዝግቧል / Payment recorded",
+      const result = await recordFeePayment({
+        entity: "service_request",
+        entityId: req.service_request_id,
+        channel,
+        referenceNo: channel === "cash" ? null : referenceNo.trim(),
       });
+      toast.success(
+        result.already_recorded
+          ? "ክፍያው ቀደም ብሎ ተመዝግቧል / This payment was already recorded"
+          : "ክፍያ ተመዝግቧል / Payment recorded",
+      );
+      invalidate();
+      setBusy(false);
       setReferenceNo("");
       queryClient.invalidateQueries({ queryKey: ["revenue"] });
     } catch (e) {
@@ -1168,108 +1146,20 @@ function ServiceLetterPaymentCard({
     if (!canSubmit) return;
     setBusy(true);
     try {
-      const today = new Date().toISOString().slice(0, 10);
-
-      if (status === "approved") {
-        const { data: raiseRow, error: raiseErr } = await supabase
-          .from("service_request")
-          .update({ status: "awaiting_payment" })
-          .eq("service_request_id", requestId)
-          .select("service_request_id")
-          .maybeSingle();
-        if (raiseErr) throw raiseErr;
-        if (!raiseRow) {
-          throw new Error(
-            "ክፍያው ሊጠየቅ አልቻለም / Could not raise the fee — the request may have been moved by someone else",
-          );
-        }
-
-        await supabase.from("service_request_status_history").insert({
-          service_request_id: requestId,
-          old_status: "approved",
-          new_status: "awaiting_payment",
-          changed_by_user_id: actorUserId,
-          change_reason: "Fee raised for payment",
-        } as never);
-
-        await supabase.from("audit_log").insert({
-          woreda_id: woredaId,
-          actor_user_id: actorUserId,
-          entity_name: "service_request",
-          entity_id: requestId,
-          action_type: "SERVICE_REQUEST_AWAITING_PAYMENT",
-          new_value_json: { status: "awaiting_payment", fee } as never,
-          action_at: new Date().toISOString(),
-        });
-      }
-
-      const { data: pay, error: payErr } = await supabase
-        .from("payment")
-        .insert({
-          woreda_id: woredaId,
-          resident_id: residentId,
-          payment_type: "service_fee",
-          amount: fee,
-          payment_date: today,
-          channel,
-          reference_no: channel === "cash" ? null : referenceNo.trim(),
-          status: "confirmed",
-          posted_by_user_id: actorUserId,
-          service_request_id: requestId,
-        } as never)
-        .select("payment_id")
-        .single();
-      if (payErr) throw payErr;
-      const paymentId = (pay as { payment_id: string }).payment_id;
-
-      const { data: receiptRow, error: recErr } = await supabase
-        .from("receipt")
-        .insert({
-          woreda_id: woredaId,
-          payment_id: paymentId,
-          receipt_date: today,
-          total_amount: fee,
-          cash_bank_channel: channel,
-          receipt_number: "",
-        } as never)
-        .select("receipt_id")
-        .single();
-      if (recErr) throw recErr;
-      if (!receiptRow) {
-        throw new Error("ደረሰኝ ሊፈጠር አልቻለም / The payment was recorded but no receipt was created");
-      }
-
-      const { data: paidRow, error: updErr } = await supabase
-        .from("service_request")
-        .update({ status: "paid", payment_id: paymentId })
-        .eq("service_request_id", requestId)
-        .select("service_request_id")
-        .maybeSingle();
-      if (updErr) throw updErr;
-      if (!paidRow) {
-        throw new Error(
-          "ክፍያው ሊመዘገብ አልቻለም / Payment was collected but the request could not be marked paid — the request may have been moved by someone else. Contact an administrator before recording another payment.",
-        );
-      }
-
-      await supabase.from("service_request_status_history").insert({
-        service_request_id: requestId,
-        old_status: "awaiting_payment",
-        new_status: "paid",
-        changed_by_user_id: actorUserId,
-        change_reason: "Payment recorded",
-      } as never);
-
-      await supabase.from("audit_log").insert({
-        woreda_id: woredaId,
-        actor_user_id: actorUserId,
-        entity_name: "service_request",
-        entity_id: requestId,
-        action_type: "SERVICE_REQUEST_PAID",
-        new_value_json: { status: "paid", payment_id: paymentId, amount: fee } as never,
-        action_at: new Date().toISOString(),
+      // One transaction server-side (record_fee_payment, migration 108):
+      // fee resolved by the database (zero-fee letters still get a payment
+      // and receipt), fee raise, paid transition, history and audit.
+      const result = await recordFeePayment({
+        entity: "service_request",
+        entityId: requestId,
+        channel,
+        referenceNo: channel === "cash" ? null : referenceNo.trim(),
       });
-
+      if (result.already_recorded) {
+        toast.info("ክፍያው ቀደም ብሎ ተመዝግቧል / This payment was already recorded");
+        onDone();
+        return;
+      }
       toast.success("ክፍያው ተመዝግቧል / Payment recorded");
       onDone();
     } catch (e) {

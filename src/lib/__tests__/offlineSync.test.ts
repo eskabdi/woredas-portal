@@ -143,13 +143,14 @@ describe("offlineSync (Task 12-C)", () => {
     expect(getQueue("w1")).toHaveLength(1);
   });
 
-  it("record_payment_draft: fails without side effects when raising approved->awaiting_payment matches zero rows (house rule)", async () => {
+  const CR = "0d6f3c1a-2b4e-4c5d-8e9f-1a2b3c4d5e6f";
+  const enqueuePayment = () =>
     enqueue(
       "w1",
       "credential_request",
       "record_payment_draft",
       {
-        credential_request_id: "cr-1",
+        credential_request_id: CR,
         channel: "cash",
         reference_no: null,
         waived: false,
@@ -157,8 +158,8 @@ describe("offlineSync (Task 12-C)", () => {
       },
       "credential-payment",
     );
-
-    const fetchReqBuilder = createQueryBuilderMock({
+  const fetchReq = () =>
+    createQueryBuilderMock({
       data: {
         status: "approved",
         request_type: "new_issue",
@@ -168,62 +169,22 @@ describe("offlineSync (Task 12-C)", () => {
       },
       error: null,
     });
-    // The raise update matched zero rows -- error is null, but so is the row
-    // (e.g. someone else rejected the request in the meantime).
-    const raiseBuilder = createQueryBuilderMock({ data: null, error: null });
-    fromMock.mockReturnValueOnce(fetchReqBuilder).mockReturnValueOnce(raiseBuilder);
 
-    const results: { ok: boolean; message: string }[] = [];
-    await runSync("w1", (r) => results.push(r));
-
-    expect(results[0].ok).toBe(false);
-    expect(results[0].message).toContain("ክፍያው ሊጠየቅ አልቻለም");
-    // Never reached the fee RPC or the payment insert -- no partial write.
-    expect(rpcMock).not.toHaveBeenCalled();
-    expect(fromMock).toHaveBeenCalledTimes(2);
-  });
-
-  it("record_payment_draft: succeeds end-to-end when the request is genuinely awaiting_payment", async () => {
-    enqueue(
-      "w1",
-      "credential_request",
-      "record_payment_draft",
-      {
-        credential_request_id: "cr-1",
-        channel: "cash",
-        reference_no: null,
-        waived: false,
-        waiver_reason: null,
-      },
-      "credential-payment",
-    );
-
-    const fetchReqBuilder = createQueryBuilderMock({
+  it("record_payment_draft: records through the single record_fee_payment RPC (P1-12), never a client-side payment/receipt insert", async () => {
+    enqueuePayment();
+    fromMock.mockReturnValueOnce(fetchReq());
+    rpcMock.mockResolvedValue({
       data: {
-        status: "awaiting_payment",
-        request_type: "new_issue",
-        request_number: "CR-0001",
-        resident_id: "res-1",
-        household_id: "hh-1",
+        payment_id: "pay-1",
+        receipt_id: "rec-1",
+        receipt_number: "W1-RCT-26-000001",
+        amount: 50,
+        waived: false,
+        status: "paid",
+        already_recorded: false,
       },
       error: null,
     });
-    rpcMock.mockResolvedValue({ data: 50, error: null });
-    const paymentBuilder = createQueryBuilderMock({ data: { payment_id: "pay-1" }, error: null });
-    const receiptBuilder = createQueryBuilderMock({ data: null, error: null });
-    const paidBuilder = createQueryBuilderMock({
-      data: { credential_request_id: "cr-1" },
-      error: null,
-    });
-    const historyBuilder = createQueryBuilderMock({ data: null, error: null });
-    const auditBuilder = createQueryBuilderMock({ data: null, error: null });
-    fromMock
-      .mockReturnValueOnce(fetchReqBuilder)
-      .mockReturnValueOnce(paymentBuilder)
-      .mockReturnValueOnce(receiptBuilder)
-      .mockReturnValueOnce(paidBuilder)
-      .mockReturnValueOnce(historyBuilder)
-      .mockReturnValueOnce(auditBuilder);
 
     const results: { ok: boolean; message: string }[] = [];
     await runSync("w1", (r) => results.push(r));
@@ -231,6 +192,53 @@ describe("offlineSync (Task 12-C)", () => {
     expect(results[0].ok).toBe(true);
     expect(results[0].message).toContain("CR-0001");
     expect(getQueue("w1")).toHaveLength(0);
+    expect(rpcMock).toHaveBeenCalledTimes(1);
+    expect(rpcMock).toHaveBeenCalledWith("record_fee_payment", {
+      _entity: "credential_request",
+      _entity_id: CR,
+      _channel: "cash",
+      _reference_no: null,
+      _waived: false,
+      _waiver_reason: null,
+    });
+    // Only the read of the request -- no payment, receipt, status, history or audit write from the client.
+    expect(fromMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("record_payment_draft: a replay whose first attempt already committed is a success, not a second payment", async () => {
+    enqueuePayment();
+    fromMock.mockReturnValueOnce(fetchReq());
+    rpcMock.mockResolvedValue({
+      data: { payment_id: "pay-1", status: "paid", already_recorded: true },
+      error: null,
+    });
+
+    const results: { ok: boolean }[] = [];
+    await runSync("w1", (r) => results.push(r));
+
+    expect(results[0].ok).toBe(true);
+    expect(getQueue("w1")).toHaveLength(0);
+  });
+
+  it("record_payment_draft: surfaces a server rejection and drops the item without any other write", async () => {
+    enqueuePayment();
+    fromMock.mockReturnValueOnce(fetchReq());
+    rpcMock.mockResolvedValue({
+      data: null,
+      error: {
+        message: "ጥያቄው ለክፍያ ዝግጁ አይደለም (ሁኔታ: rejected) / The request is not ready for payment",
+        code: "23514",
+      },
+    });
+
+    const results: { ok: boolean; transient: boolean; message: string }[] = [];
+    await runSync("w1", (r) => results.push(r));
+
+    expect(results[0].ok).toBe(false);
+    expect(results[0].transient).toBe(false);
+    expect(results[0].message).toContain("not ready for payment");
+    expect(getQueue("w1")).toHaveLength(0);
+    expect(fromMock).toHaveBeenCalledTimes(1);
   });
 
   it("ties into sign-out clearing -- clearOfflineQueue() empties the queue F-08 already sweeps", () => {

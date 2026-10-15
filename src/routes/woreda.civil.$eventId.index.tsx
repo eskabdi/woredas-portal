@@ -56,6 +56,7 @@ import {
 import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/integrations/supabase/client";
 import { APPROVAL_BLOCK_MESSAGE, approvalBlock } from "@/lib/makerChecker";
+import { recordFeePayment } from "@/lib/feePayment";
 import { P } from "@/config/permissions";
 import { formatEthiopianDateOnly } from "@/utils/ethiopianCalendar";
 
@@ -1279,75 +1280,22 @@ function PaymentCard({
     if (!canSubmit || !woredaId || !actorUserId) return;
     setBusy(true);
     try {
-      const today = new Date().toISOString().slice(0, 10);
-
-      // approved -> awaiting_payment is its own transition (civil.record_payment)
-      // -- raise the fee before recording it, mirroring credential's hand-off.
-      if (status === "approved") {
-        const { data: raiseRow, error: raiseErr } = await supabase
-          .from("vital_event")
-          .update({ status: "awaiting_payment" })
-          .eq("vital_event_id", eventId)
-          .select("vital_event_id")
-          .maybeSingle();
-        if (raiseErr) throw raiseErr;
-        if (!raiseRow) {
-          throw new Error(
-            "ክፍያው ሊጠየቅ አልቻለም / Could not raise the fee — the event may have been moved by someone else",
-          );
-        }
+      // One transaction server-side (record_fee_payment, migration 108):
+      // the fee is resolved by the database, approved -> awaiting_payment is
+      // raised when needed, and the payment, receipt and paid transition are
+      // written together. The paid row advances to `registered` in the same
+      // transaction (the AFTER UPDATE trigger), which the refetch picks up.
+      const result = await recordFeePayment({
+        entity: "vital_event",
+        entityId: eventId,
+        channel: channel as "cash" | "bank" | "mobile",
+        referenceNo: referenceNo.trim() || null,
+      });
+      if (result.already_recorded) {
+        toast.info("ክፍያው ቀደም ብሎ ተመዝግቧል / This payment was already recorded");
+        onDone();
+        return;
       }
-
-      const { data: pay, error: payErr } = await supabase
-        .from("payment")
-        .insert({
-          woreda_id: woredaId,
-          resident_id: resident?.resident_id ?? null,
-          household_id: null,
-          payment_type: "civil_registration_fee",
-          amount: fee,
-          payment_date: today,
-          channel: channel as "cash" | "bank" | "mobile",
-          reference_no: channel === "cash" ? referenceNo.trim() || null : referenceNo.trim(),
-          status: "confirmed",
-          posted_by_user_id: actorUserId,
-          vital_event_id: eventId,
-        } as never)
-        .select("payment_id")
-        .single();
-      if (payErr) throw payErr;
-      const paymentId = (pay as { payment_id: string }).payment_id;
-
-      const { error: recErr } = await supabase.from("receipt").insert({
-        woreda_id: woredaId,
-        payment_id: paymentId,
-        receipt_date: today,
-        total_amount: fee,
-        cash_bank_channel: channel,
-        receipt_number: "",
-      } as never);
-      if (recErr) throw recErr;
-
-      // This UPDATE is the payment gate + system transition trigger's own
-      // cascade point: by the time this call resolves, the row is already
-      // at `registered` (the AFTER UPDATE trigger advances it inside the
-      // same transaction) -- invalidating below re-fetches that final state.
-      // A payment + receipt now exist, so an empty result here (a stale row,
-      // a concurrent edit) must surface as a failure, not a silent no-op --
-      // same house rule the `awaiting_payment` raise above already follows.
-      const { data: paidRow, error: updErr } = await supabase
-        .from("vital_event")
-        .update({ status: "paid", payment_id: paymentId })
-        .eq("vital_event_id", eventId)
-        .select("vital_event_id")
-        .maybeSingle();
-      if (updErr) throw updErr;
-      if (!paidRow) {
-        throw new Error(
-          "ክፍያው ሊመዘገብ አልቻለም / Payment was collected but the event could not be marked paid — the event may have been moved by someone else. Contact an administrator before recording another payment.",
-        );
-      }
-
       toast.success("ክፍያው ተመዝግቧል / Payment recorded");
       onDone();
     } catch (e) {

@@ -8,6 +8,7 @@
  * never to re-implement or second-guess that decision client-side.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { recordFeePayment } from "@/lib/feePayment";
 import {
   getQueue,
   dequeue,
@@ -171,13 +172,9 @@ async function syncSubmitIntake(item: QueueItem, actorUserId: string): Promise<S
 }
 
 /** credential_request only (see mapping memo §2/§4) -- the fee itself is
- * never carried in the payload; it is resolved fresh, server-side, at
- * sync time so a stale client-cached amount can never be trusted. This
- * mirrors PaymentCard's own handleRecord() sequence: raise the fee
- * (approved -> awaiting_payment) if needed, resolve the live fee, insert
- * the payment + receipt, then the paid transition -- all server-validated
- * at each step by the existing triggers, exactly as if the officer had
- * done this online. */
+ * never carried in the payload; record_fee_payment() resolves it fresh,
+ * server-side, at sync time so a stale client-cached amount can never be
+ * trusted. Same single RPC call as PaymentCard's online handleRecord(). */
 async function syncRecordPaymentDraft(item: QueueItem, actorUserId: string): Promise<SyncResult> {
   const { credential_request_id, channel, reference_no, waived, waiver_reason } = item.payload as {
     credential_request_id: string;
@@ -202,144 +199,32 @@ async function syncRecordPaymentDraft(item: QueueItem, actorUserId: string): Pro
     };
   }
 
-  if (req.status === "approved") {
-    // House rule (CLAUDE.md): error === null doesn't mean the row matched --
-    // mirrors PaymentCard's own handleRecord() (woreda.credentials.$requestId.index.tsx),
-    // which treats a null returned row as a failure rather than inferring
-    // success from a null error alone.
-    const { data: raiseRow, error: raiseErr } = await supabase
-      .from("credential_request")
-      .update({ status: "awaiting_payment" })
-      .eq("credential_request_id", credential_request_id)
-      .select("credential_request_id")
-      .maybeSingle();
-    if (raiseErr)
-      return { item, ok: false, transient: isTransient(raiseErr), message: raiseErr.message };
-    if (!raiseRow) {
-      return {
-        item,
-        ok: false,
-        transient: false,
-        message:
-          "ክፍያው ሊጠየቅ አልቻለም / Could not raise the fee — the request may have been moved by someone else",
-      };
-    }
-  } else if (req.status !== "awaiting_payment") {
-    return {
-      item,
-      ok: false,
-      transient: false,
-      message: `ጥያቄው ከዚህ በኋላ ለክፍያ ዝግጁ አይደለም (ሁኔታ: ${req.status}) / The request is no longer ready for payment (status: ${req.status})`,
-    };
-  }
-
-  const { data: feeAmount, error: feeErr } = await supabase.rpc("resolve_credential_fee", {
-    _request_type: req.request_type,
-  });
-  if (feeErr) return { item, ok: false, transient: isTransient(feeErr), message: feeErr.message };
-
-  const amount = waived ? 0 : (feeAmount as number);
-  const today = new Date().toISOString().slice(0, 10);
-
-  const { data: pay, error: payErr } = await supabase
-    .from("payment")
-    .insert({
-      woreda_id: item.woredaId,
-      resident_id: req.resident_id,
-      household_id: req.household_id,
-      payment_type: "credential_fee",
-      amount,
-      payment_date: today,
+  // One server-side transaction (record_fee_payment, migration 108): the
+  // fee is resolved live, approved -> awaiting_payment is raised when
+  // needed, and payment + receipt + paid transition + history + audit are
+  // written together. A replay of an item whose first attempt actually
+  // committed (response lost) comes back as already_recorded instead of a
+  // second payment, so it is treated as success and dequeued.
+  try {
+    await recordFeePayment({
+      entity: "credential_request",
+      entityId: credential_request_id,
       channel,
-      reference_no: waived ? null : reference_no,
-      status: "confirmed",
-      posted_by_user_id: actorUserId,
-      credential_request_id,
+      referenceNo: waived ? null : reference_no,
       waived,
-      waiver_reason: waived ? waiver_reason : null,
-    } as never)
-    .select("payment_id")
-    .single();
-  if (payErr) return { item, ok: false, transient: isTransient(payErr), message: payErr.message };
-  const paymentId = (pay as { payment_id: string }).payment_id;
-
-  const { error: recErr } = await supabase.from("receipt").insert({
-    woreda_id: item.woredaId,
-    payment_id: paymentId,
-    receipt_date: today,
-    total_amount: amount,
-    cash_bank_channel: channel,
-    receipt_number: "",
-  } as never);
-  if (recErr) return { item, ok: false, transient: isTransient(recErr), message: recErr.message };
-
-  const { data: paidRow, error: updErr } = await supabase
-    .from("credential_request")
-    .update({ status: "paid", payment_id: paymentId })
-    .eq("credential_request_id", credential_request_id)
-    .select("credential_request_id")
-    .maybeSingle();
-  if (updErr) {
-    // Task 8: the payment and receipt above are already committed as
-    // separate PostgREST calls by this point (this function has no single
-    // enclosing transaction) -- a rejection here (e.g. the age/identity
-    // mint guard, migration 00000000000068/69, firing because the resident
-    // became ineligible while this item sat in the offline queue) must not
-    // read as a plain error with no guidance, the same as the !paidRow case
-    // below already gets right.
+      waiverReason: waived ? waiver_reason : null,
+    });
+  } catch (e) {
+    const err = e as { message?: string; code?: string };
     return {
       item,
       ok: false,
-      transient: isTransient(updErr),
-      message: isTransient(updErr)
-        ? updErr.message
-        : `${updErr.message} — የተመዘገበው ክፍያ አለ፣ አስተዳዳሪ ያነጋግሩ / The payment was recorded; contact an administrator to reconcile.`,
-    };
-  }
-  if (!paidRow) {
-    return {
-      item,
-      ok: false,
-      transient: false,
-      message:
-        "ወደ ተከፍሏል ሊዘዋወር አልቻለም / Could not move the request to paid — it may have been moved by someone else. The payment was recorded; contact an administrator to reconcile.",
+      transient: isTransient(err),
+      message: err.message ?? "ክፍያው አልተመዘገበም / The payment was not recorded",
     };
   }
 
-  // Money is booked and the request is paid -- dequeue now, before the
-  // history/audit follow-ups, so an interruption here never re-inserts a
-  // second payment on the next sync (see syncSubmitIntake's identical note).
   dequeue(item.woredaId, item.id);
-
-  await supabase.from("credential_request_status_history").insert({
-    credential_request_id,
-    old_status: "awaiting_payment",
-    new_status: "paid",
-    changed_by_user_id: actorUserId,
-    change_reason: waived
-      ? `Payment waived (synced from offline queue): ${waiver_reason}`
-      : "Payment recorded (synced from offline queue)",
-  } as never);
-
-  // Matches PaymentCard's own handleRecord() audit row exactly
-  // (woreda.credentials.$requestId.index.tsx) -- a payment or waiver
-  // recorded via sync must appear in /woreda/audit identically to one
-  // recorded online, revenue-handling actions are never audit-silent.
-  await supabase.from("audit_log").insert({
-    woreda_id: item.woredaId,
-    actor_user_id: actorUserId,
-    entity_name: "credential_request",
-    entity_id: credential_request_id,
-    action_type: waived ? "PAYMENT_WAIVED" : "PAYMENT_COLLECTED",
-    new_value_json: {
-      amount,
-      channel,
-      waived,
-      waiver_reason: waived ? waiver_reason : undefined,
-      synced_from_offline: true,
-    } as never,
-    action_at: new Date().toISOString(),
-  });
 
   return {
     item,

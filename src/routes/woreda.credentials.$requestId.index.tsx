@@ -63,6 +63,7 @@ import {
 } from "@/lib/credentialWorkflowSchemas";
 import { useFeeSchedule } from "@/hooks/useCredentialRequests";
 import { APPROVAL_BLOCK_MESSAGE, approvalBlock } from "@/lib/makerChecker";
+import { recordFeePayment } from "@/lib/feePayment";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useOfflineQueue } from "@/hooks/useOfflineQueue";
 import { useOfflineGuard } from "@/hooks/useOfflineGuard";
@@ -1662,94 +1663,26 @@ function PaymentCard({ request, status, onDone }: PaymentCardProps) {
 
     setBusy(true);
     try {
-      const today = new Date().toISOString().slice(0, 10);
-
-      // The fee is raised as its own transition: `approved -> awaiting_payment`
-      // is the moment the amount is fixed, and the FSM requires it before a
-      // request may reach `paid`. Arriving straight from `approved` (the
-      // approver hands off to finance) we do it here.
-      if (status === "approved") {
-        const { data: raiseRow, error: raiseErr } = await supabase
-          .from("credential_request")
-          .update({ status: "awaiting_payment" })
-          .eq("credential_request_id", request.credential_request_id)
-          .select("credential_request_id")
-          .maybeSingle();
-        if (raiseErr) throw raiseErr;
-        if (!raiseRow) {
-          throw new Error(
-            "ክፍያው ሊጠየቅ አልቻለም / Could not raise the fee — the request may have been moved by someone else",
-          );
-        }
+      // One transaction server-side (record_fee_payment, migration 108):
+      // fee resolved by the database, approved -> awaiting_payment raised
+      // when needed, payment + receipt + paid transition + history + audit.
+      const result = await recordFeePayment({
+        entity: "credential_request",
+        entityId: request.credential_request_id,
+        channel: paymentChannel as "cash" | "bank" | "mobile",
+        referenceNo: waived ? null : refNo,
+        waived,
+        waiverReason: waived ? waiverReason.trim() : null,
+      });
+      if (result.already_recorded) {
+        toast.info("ክፍያው ቀደም ብሎ ተመዝግቧል / This payment was already recorded");
+        onDone();
+        return;
       }
-
-      const { data: pay, error: payErr } = await supabase
-        .from("payment")
-        .insert({
-          woreda_id: woredaId,
-          resident_id: request.resident_id,
-          household_id: request.household_id,
-          payment_type: "credential_fee",
-          amount: effectiveAmount,
-          payment_date: today,
-          channel: paymentChannel as "cash" | "bank" | "mobile",
-          reference_no: waived ? null : refNo,
-          status: "confirmed",
-          posted_by_user_id: actorUserId,
-          waived,
-          waiver_reason: waived ? waiverReason.trim() : null,
-          credential_request_id: request.credential_request_id,
-        } as never)
-        .select("payment_id")
-        .single();
-      if (payErr) throw payErr;
-      const paymentId = (pay as { payment_id: string }).payment_id;
-
-      const { error: recErr } = await supabase.from("receipt").insert({
-        woreda_id: woredaId,
-        payment_id: paymentId,
-        receipt_date: today,
-        total_amount: effectiveAmount,
-        cash_bank_channel: paymentChannel,
-        receipt_number: "",
-      } as never);
-      if (recErr) throw recErr;
-
-      const { error: updErr } = await supabase
-        .from("credential_request")
-        .update({ status: "paid", payment_id: paymentId })
-        .eq("credential_request_id", request.credential_request_id);
-      if (updErr) throw updErr;
-
-      await supabase.from("credential_request_status_history").insert({
-        credential_request_id: request.credential_request_id,
-        old_status: "awaiting_payment",
-        new_status: "paid",
-        changed_by_user_id: actorUserId,
-        change_reason: waived ? `Payment waived: ${waiverReason.trim()}` : "Payment collected",
-      });
-
-      const nowIso = new Date().toISOString();
-      await supabase.from("audit_log").insert({
-        woreda_id: woredaId,
-        actor_user_id: actorUserId,
-        entity_name: "credential_request",
-        entity_id: request.credential_request_id,
-        action_type: waived ? "PAYMENT_WAIVED" : "PAYMENT_COLLECTED",
-        new_value_json: {
-          amount: effectiveAmount,
-          expected_fee: fee,
-          channel: paymentChannel,
-          waived,
-          waiver_reason: waived ? waiverReason.trim() : undefined,
-        } as never,
-        action_at: nowIso,
-      });
-
       toast.success("ክፍያው ተመዝግቧል / Payment recorded");
       onDone();
     } catch (e) {
-      toast.error(`Payment failed: ${(e as Error).message}`);
+      toast.error(`ክፍያ አልተሳካም / Payment failed: ${(e as Error).message}`);
     } finally {
       setBusy(false);
     }
