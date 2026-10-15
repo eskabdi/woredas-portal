@@ -93,7 +93,7 @@ of the Cloudflare products can be attached to `*.vercel.app`.
 After any deploy, confirm the headers survived the platform:
 
 ```bash
-curl -sSI https://woredas-portal.vercel.app/ | grep -iE \
+curl -sSI https://eharari.gov.et/ | grep -iE \
   "strict-transport|content-security|x-frame|permissions-policy|x-content-type|referrer"
 ```
 

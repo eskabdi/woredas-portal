@@ -5,7 +5,7 @@
  * receiptVerify.ts and credentialCryptoConfig.ts).
  */
 export const CERTIFICATE_VERIFY_ORIGIN = (
-  import.meta.env.VITE_PUBLIC_SITE_URL || "https://woredas-portal.vercel.app"
+  import.meta.env.VITE_PUBLIC_SITE_URL || "https://eharari.gov.et"
 ).replace(/\/+$/, "");
 
 /** Full URL encoded into a certificate's QR for its verification token. */

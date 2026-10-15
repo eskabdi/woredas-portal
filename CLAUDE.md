@@ -131,6 +131,21 @@ route but are really just a stale generated tree.
 
 ## Architecture
 
+### Domains: production is eharari.gov.et
+
+Production is **`https://eharari.gov.et`** (`www` redirects to it).
+`https://woredas-portal.vercel.app` is a second alias of the **same** Vercel
+deployment and the **same** Supabase project, so it is only "staging" by
+name: anything deployed or written there is live. Treat it as production
+until `docs/staging-runbook.md` is carried out. Keep the alias: cards,
+receipts and letters printed before 15 Oct 2026 carry QR codes pointing at
+it. The production origin is set in four places, which must agree:
+`VITE_PUBLIC_SITE_URL` on Vercel (QR origin; the code fallback is also
+`https://eharari.gov.et`), the `SITE_URL` Edge Function secret (invite and
+reset links, CORS), `ADDITIONAL_ALLOWED_ORIGINS` (the vercel.app alias for
+CORS), and Supabase Auth's site URL and redirect allow-list
+(`https://eharari.gov.et/**,https://woredas-portal.vercel.app/**,http://localhost:5173/**`).
+
 ### Two portals, one multi-tenant database
 
 Each woreda (a Harari regional administrative district) is an isolated tenant.
@@ -486,9 +501,10 @@ text.
 ### Edge Function CORS is an explicit allow-list
 
 Every Edge Function's `corsHeaders()` echoes `Access-Control-Allow-Origin`
-only for an origin in its own `ALLOWED_ORIGINS` set (`SITE_URL` env var plus
-`http://localhost:5173` for local dev against the real project — this repo has
-no staging project), never a bare `*` (F10). This was a real gap but a narrow
+only for an origin in its own `ALLOWED_ORIGINS` set (`SITE_URL`, the
+optional comma-separated `ADDITIONAL_ALLOWED_ORIGINS`, plus
+`http://localhost:5173` for local dev against the real project), never a bare
+`*` (F10). This was a real gap but a narrow
 one: the app's bearer-token auth model means CORS can't leak or forge that
 token to a third party either way — see each function's own `index.ts` for the
 one-line rationale doc-comment.
