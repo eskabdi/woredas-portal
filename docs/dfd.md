@@ -103,10 +103,14 @@ Encryption discussion in
 
 ### 3. Payment → receipt 💰
 
-Staff collects a fee (cash/bank/mobile) against a credential request, rental
-request, or service request; the `payment` row records `amount` and
-`channel`. A `receipt` is generated with its own sequence number and
-verification token. No external payment gateway is involved anywhere in this
+Staff collects a fee (cash/bank/mobile) against a credential request, civil
+event or service letter by calling `record_fee_payment()` (migration 108):
+inside one database transaction the fee is resolved server-side, the
+`payment` row (`amount`, `channel`) and its `receipt` (server-assigned
+sequence number and verification token) are written, the request moves to
+`paid`, and the status history and audit rows are written. A repeated call
+returns the existing payment. Rental rent goes through `settle_rent_payment()`
+the same way. The browser never inserts a payment or receipt directly. No external payment gateway is involved anywhere in this
 flow — see [`docs/tech-stack.md`](./tech-stack.md#third-party-integrations-none).
 
 ### 4. Invite → activate 🔒

@@ -887,6 +887,104 @@ paths:
                     ]
                 notFound: { value: [] }
 
+  /rpc/record_fee_payment:
+    servers:
+      - url: "{SUPABASE_URL}/rest/v1"
+        variables:
+          SUPABASE_URL:
+            default: https://your-project-ref.supabase.co
+    post:
+      summary: Record the fee for an ID card request, civil event or service letter (Private, tenant)
+      description: >
+        The only way a fee is recorded (migration 108, P1-12). `SECURITY
+        DEFINER`; resolves the caller's own woreda, locks the request, and
+        requires `credential.record_payment` / `civil.record_payment` /
+        `service.record_payment`. The fee is resolved server-side (no
+        amount parameter). In one transaction it raises `approved ->
+        awaiting_payment` when needed, inserts the confirmed payment and
+        its receipt (number and verification token assigned by the
+        database), moves the request to `paid` and writes the status
+        history and the `PAYMENT_COLLECTED` / `PAYMENT_WAIVED` audit row.
+        A waiver records 0 and needs a reason (5-500 characters), the
+        module's approve permission (`credential.approve`, `civil.approve`,
+        `service.approve`), and a caller who is neither the request's
+        approver nor its requester. A call on a request that is already
+        paid returns the existing payment with `already_recorded: true`.
+        Not executable by `anon`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [_entity, _entity_id, _channel]
+              properties:
+                _entity: { type: string, enum: [credential_request, vital_event, service_request] }
+                _entity_id: { type: string, format: uuid }
+                _channel: { type: string, enum: [cash, bank, mobile] }
+                _reference_no:
+                  type: string
+                  nullable: true
+                  maxLength: 100
+                  description: Required for bank and mobile; ignored for a waiver.
+                _waived: { type: boolean, default: false }
+                _waiver_reason: { type: string, nullable: true, minLength: 5, maxLength: 500 }
+            examples:
+              cash:
+                value:
+                  {
+                    _entity: credential_request,
+                    _entity_id: "0d6f3c1a-2b4e-4c5d-8e9f-1a2b3c4d5e6f",
+                    _channel: cash,
+                  }
+              waiver:
+                value:
+                  {
+                    _entity: credential_request,
+                    _entity_id: "0d6f3c1a-2b4e-4c5d-8e9f-1a2b3c4d5e6f",
+                    _channel: cash,
+                    _waived: true,
+                    _waiver_reason: "Hardship, approved by the kebele office",
+                  }
+      responses:
+        "200":
+          description: The payment and receipt on file for the request.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  payment_id: { type: string, format: uuid }
+                  receipt_id: { type: string, format: uuid }
+                  receipt_number: { type: string, example: "HR01-RCT-26-000042" }
+                  amount: { type: number }
+                  waived: { type: boolean }
+                  status:
+                    {
+                      type: string,
+                      description: "Request status after the call (a civil event advances to registered).",
+                    }
+                  already_recorded: { type: boolean }
+              example:
+                {
+                  payment_id: "6a1e0c4b-77d2-4f0e-a2b3-1c9d8e7f6a50",
+                  receipt_id: "9b2f1d3c-5e6a-4b7c-8d9e-0f1a2b3c4d5e",
+                  receipt_number: "HR01-RCT-26-000042",
+                  amount: 150,
+                  waived: false,
+                  status: paid,
+                  already_recorded: false,
+                }
+        "400":
+          description: >
+            Plain Postgres error via PostgREST, bilingual message. Request not
+            found in the caller's woreda (P0002), not ready for payment or bad
+            channel/reference/waiver reason (23514), missing permission or a
+            waiver by the approver/requester (42501), no active fee schedule
+            (P0002).
+
   /rpc/record_civil_certificate_print:
     servers:
       - url: "{SUPABASE_URL}/rest/v1"

@@ -839,6 +839,22 @@ The **zero-fee rule**: a free service (fee resolves to `0`) still writes a
 real `payment` row and a real `receipt` row — the pipeline never skips
 payment recording just because nothing is owed.
 
+Since migration 108 (P1-12) a fee is recorded **only** through
+`record_fee_payment()` (`src/lib/feePayment.ts`): one transaction that
+resolves the fee server-side (the client never sends an amount), raises
+`approved -> awaiting_payment`, inserts the payment and its receipt, moves
+the request to `paid` and writes history and audit. It is idempotent on a
+paid request (`already_recorded`), which the offline replay relies on. Triggers reject a
+direct payment or receipt insert, any edit of a non-rental payment, a
+receipt change other than `printed_at`, and re-pointing a request's
+`payment_id`; one confirmed payment per request and one receipt per payment
+are unique indexes. A waiver needs the module's approve permission and a
+caller who is neither the request's approver nor its requester. Numbering
+triggers always assign the number in a user session, the counter tables are
+read-only for clients, `kebele` writes are super-admin only, and fee-catalog
+edits write an audit row. A new fee-bearing flow goes through the RPC, never
+`.from("payment").insert(...)`.
+
 ### Shared UI conventions
 
 Follow the existing list pages (`woreda.residents.index.tsx` is the canonical

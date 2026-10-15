@@ -521,12 +521,19 @@ erDiagram
     }
 ```
 
-| Table              | Purpose                                                                                               | Key constraints                                                                                           |
-| ------------------ | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `payment`          | The revenue ledger. One row can fund a credential request, a rental request, **or** a service request | `payment_amount_check (amount > 0)`; `payment_source_exclusive_check` — see note below                    |
-| `receipt`          | Printed receipt for a confirmed payment                                                               | unique `(woreda_id, receipt_number)`; carries its own `verification_token` (added in `00000000000013`)    |
-| `receipt_sequence` | Per-woreda, per-year counter                                                                          | composite PK                                                                                              |
-| `fee_schedule`     | Per-woreda, per-service-type standard fee + penalty rate                                              | unique `(woreda_id, service_type)`; `effective_from date` added in Task 11 (`00000000000048`) — see below |
+| Table              | Purpose                                                                                               | Key constraints                                                                                                                                                      |
+| ------------------ | ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `payment`          | The revenue ledger. One row can fund a credential request, a rental request, **or** a service request | `payment_amount_check (amount > 0)`; `payment_source_exclusive_check` — see note below                                                                               |
+| `receipt`          | Printed receipt for a confirmed payment                                                               | unique `(woreda_id, receipt_number)`; unique `payment_id` (one receipt per payment, migration 108); carries its own `verification_token` (added in `00000000000013`) |
+| `receipt_sequence` | Per-woreda, per-year counter                                                                          | composite PK                                                                                                                                                         |
+| `fee_schedule`     | Per-woreda, per-service-type standard fee + penalty rate                                              | unique `(woreda_id, service_type)`; `effective_from date` added in Task 11 (`00000000000048`) — see below                                                            |
+
+Since migration 108 (P1-12): at most one `confirmed` payment per
+`credential_request_id` and per `service_request_id` (partial unique indexes;
+`vital_event_id` was already unique), one receipt per payment, and fee
+payments are written only by `record_fee_payment()` (rental payments by
+`settle_rent_payment()`), never by a client insert. A non-rental payment is
+immutable from a user session; a receipt only takes `printed_at`.
 
 **Document as it actually is, not as it should be:** `payment_source_exclusive_check`
 reads `CHECK (NOT (credential_request_id IS NOT NULL AND rental_request_id IS NOT NULL))`
@@ -615,7 +622,10 @@ not optional for a view meant to sit behind RLS.
 `(woreda_id [, event_type], seq_year) -> last_value`, incremented via
 `INSERT ... ON CONFLICT DO UPDATE ... RETURNING` inside each domain's
 `assign_*_number()` trigger. Listed once here rather than repeated in every
-domain table above.
+domain table above. Clients can read them but not write them (migration 84
+for the rental counters, migration 108 for the rest: INSERT/UPDATE/DELETE
+revoked from `anon`/`authenticated`), and in a user session the trigger always
+assigns the number, ignoring any number the client sent.
 
 `rate_limit_bucket` (`00000000000022_rate_limit.sql`, INSA remediation
 Phase B) is the same fixed-window-counter shape —

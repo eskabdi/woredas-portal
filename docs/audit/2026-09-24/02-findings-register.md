@@ -1677,7 +1677,7 @@ Refs: insa: ET-10, TEN-02; owasp_top10: A01:2021; owasp_api: API5:2023; asvs: V4
 - **Attack scenario:** A viewer renames kebeles, inserts fake ones, or changes kebele_number. Credentials minted afterwards carry the wrong kebele segment.
 - **Impact:** The reference hierarchy Region > Woreda > Kebele can be tampered with, and so can the identifiers printed on credentials.
 - **Recommendation:** Allow SELECT for tenant users and restrict INSERT/UPDATE/DELETE to super_admin (or tenant.manage).
-- **Effort:** S · **Status:** Open
+- **Effort:** S · **Status:** Fixed and deployed 2026-10-15 (migration 108, P1-12: `record_fee_payment()`, unique payment/receipt, write guards, numbering and kebele lockdown, waiver separation, fee-catalog audit)
 
 ### WP-API-007
 **Invite flow sends the e-mail before creating the profile; app_user.username (e-mail local part) is globally UNIQUE, leaving orphaned invited accounts and a cross-tenant username oracle**  
@@ -1934,7 +1934,7 @@ Refs: insa: BL-01, MC-03; owasp_top10: A04:2021; owasp_api: API6:2023; asvs: V11
 - **Attack scenario:** A cashier inserts a second receipt for last month's 1,200 ETB rent payment, with this month's receipt_date. The occupant or a colluding third party presents it as proof of a second payment. /verify/receipt/<token> shows green 'Verified'.
 - **Impact:** Duplicate, independently verifiable proof-of-payment documents can be produced for the same payment, which enables revenue fraud and disputes.
 - **Recommendation:** Add a partial UNIQUE index on receipt(payment_id), or a trigger that allows a new receipt only via an authorised reprint path that reuses the original number and token. Ignore client-supplied receipt_number and verification_token (always assign server-side). Pin receipt_date to current_date in the trigger. Revoke direct DML on receipt_sequence (WP-DB-006).
-- **Effort:** S · **Status:** Open
+- **Effort:** S · **Status:** Fixed and deployed 2026-10-15 (migration 108, P1-12: `record_fee_payment()`, unique payment/receipt, write guards, numbering and kebele lockdown, waiver separation, fee-catalog audit)
 
 ### WP-DB-006
 **Document-number counter tables are writable by every tenant user, and numbering triggers accept client-supplied numbers**  
@@ -1948,7 +1948,7 @@ Refs: insa: BL-01, C-06; owasp_top10: A04:2021, A01:2021; owasp_api: API6:2023; 
 - **Attack scenario:** A viewer PATCHes receipt_sequence to set last_value back by 10. From then on every receipt insert collides with receipt_woreda_id_receipt_number_key and cashiering stops until an administrator repairs the counter. Or a cashier inserts a receipt with a hand-picked receipt_number that sits outside the official series.
 - **Impact:** Any tenant user can deny issuance of credentials, receipts and certificates. The official numbering series can contain forged or out-of-sequence numbers.
 - **Recommendation:** Replace the six FOR ALL policies with SELECT-only policies, as migration 84 did. Always overwrite the number in the BEFORE INSERT trigger except when a dedicated service-only flag is set. Add format CHECK constraints (the Luhn/13-digit rule for credential_number, prefix patterns for the others).
-- **Effort:** S · **Status:** Open
+- **Effort:** S · **Status:** Fixed and deployed 2026-10-15 (migration 108, P1-12: `record_fee_payment()`, unique payment/receipt, write guards, numbering and kebele lockdown, waiver separation, fee-catalog audit)
 
 ### WP-LOC-003
 **No EC fiscal year (Hamle 1 - Sene 30) anywhere in revenue, reports or dashboards**  
@@ -1975,7 +1975,7 @@ Refs: insa: BL-01, MC-02; owasp_top10: A04:2021; owasp_api: API6:2023; asvs: V11
 - **Attack scenario:** A cashier double-clicks or retries after a timeout. Two confirmed payments and two publicly verifiable receipts exist for one ID request. Or a finance clerk collects and receipts a fee for a request that was never approved. The receipt verifies publicly even if the request is later rejected.
 - **Impact:** Double charging, orphaned receipts that are hard to reconcile, and money collected before approval, all against the 'payment after approval' control.
 - **Recommendation:** Replace the client sequence with one SECURITY DEFINER RPC per module (the pattern settle_rent_payment() already uses): resolve the fee server-side, lock the request FOR UPDATE, require status IN ('approved','awaiting_payment'), insert payment + receipt, transition to paid, and accept an idempotency key. Add partial unique indexes on payment(credential_request_id) and payment(service_request_id) WHERE status='confirmed', and UNIQUE(receipt.payment_id).
-- **Effort:** M · **Status:** Open
+- **Effort:** M · **Status:** Fixed and deployed 2026-10-15 (migration 108, P1-12: `record_fee_payment()`, unique payment/receipt, write guards, numbering and kebele lockdown, waiver separation, fee-catalog audit)
 
 ### WP-WF-010
 **Fee-waiver control is weak: any module's approve permission authorises it, the approver can waive their own approval, the audit entry is written by the client, and unaudited fee-catalog edits can zero a fee outright**  
@@ -1989,7 +1989,7 @@ Refs: insa: MC-03, MC-01; owasp_top10: A04:2021, A09:2021; owasp_api: API6:2023;
 - **Attack scenario:** A tenant_admin approves a relative's ID request, records a waiver with the reason 'hardship', and then deletes the client-written audit row (audit_log is mutable, WP-DB-008). Or the tenant_admin temporarily zeroes 'New ID Issuance' in Settings, processes several requests, and restores the fee. The only remaining trace is payment rows with amount 0 and waived=false.
 - **Impact:** Revenue can be waived or suppressed by one person with no durable, trigger-written evidence.
 - **Recommendation:** Require the waiver to be authorised by a second user holding the approve permission of that module and different from the request's approver. Store waived_by/waiver_authorised_by as pinned actor columns. Write the waiver audit row inside the trigger. Add audit triggers (old/new values) on fee_schedule and service_type fee columns.
-- **Effort:** M · **Status:** Open
+- **Effort:** M · **Status:** Fixed and deployed 2026-10-15 (migration 108, P1-12: `record_fee_payment()`, unique payment/receipt, write guards, numbering and kebele lockdown, waiver separation, fee-catalog audit)
 
 ### WP-WF-011
 **Non-rental payment status and links can be changed by any payment.collect holder via direct PATCH, and uncategorised payment types yield publicly verifiable receipts for arbitrary amounts**  
@@ -2003,7 +2003,7 @@ Refs: insa: MC-03; owasp_top10: A01:2021, A04:2021; owasp_api: API3:2023; asvs: 
 - **Attack scenario:** A finance clerk takes cash, records a 'penalty' payment for 50 ETB but tells the payer 500 ETB and hands over a printed receipt. Later the clerk flips a genuine credential_fee payment to 'reversed' to cover a till shortage. No audit row records either change.
 - **Impact:** Cash-handling fraud and reconciliation gaps outside the rental module, which already has the proper controls.
 - **Recommendation:** Generalise guard_rental_payment_status_change() to all payment types. Make status/amount/type changes possible only through a reversal RPC that requires a reason, reverser != poster, and writes audit. Either retire the free-form 'penalty'/'house_rent' types or require them to be linked to an obligation and priced by the fee guard.
-- **Effort:** M · **Status:** Open
+- **Effort:** M · **Status:** Fixed and deployed 2026-10-15 (migration 108, P1-12: `record_fee_payment()`, unique payment/receipt, write guards, numbering and kebele lockdown, waiver separation, fee-catalog audit)
 
 ## Module: Authentication and session
 
