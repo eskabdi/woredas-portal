@@ -48,6 +48,14 @@ flowchart TB
     Functions -- "backup-admin: GitHub Actions API (fine-grained token)" --> GHA
 ```
 
+**Domains (15 Oct 2026).** Production is `https://eharari.gov.et`;
+`https://woredas-portal.vercel.app` is an alias of the same Vercel deployment
+and the same Supabase project, kept because earlier printed QR codes point at
+it. It is not a staging environment. `VITE_PUBLIC_SITE_URL` (QR origin),
+the `SITE_URL` and `ADDITIONAL_ALLOWED_ORIGINS` Edge Function secrets (links
+and CORS) and the Auth site URL / redirect allow-list all name
+`eharari.gov.et` as the primary origin.
+
 ## Why the shape is what it is
 
 - **No server-side application logic between the browser and Supabase.**

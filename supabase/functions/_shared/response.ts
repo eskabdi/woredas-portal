@@ -19,10 +19,20 @@
 // already applies to Supabase Auth redirect URLs. SITE_URL is the same
 // secret F2 introduced; localhost:5173 covers local dev against the real
 // project (this repo has no staging project).
+//
+// SITE_URL is the production origin (https://eharari.gov.et), which is also
+// where invite and reset links point. ADDITIONAL_ALLOWED_ORIGINS is an
+// optional comma-separated list of exact origins served by the same
+// deployment (https://woredas-portal.vercel.app, the Vercel alias earlier
+// printed QR codes point at). Exact matches only, never a wildcard.
 const ALLOWED_ORIGINS = new Set(
-  [Deno.env.get("SITE_URL"), "http://localhost:5173"]
-    .filter((o): o is string => !!o)
-    .map((o) => o.trim().replace(/\/+$/, "")),
+  [
+    Deno.env.get("SITE_URL"),
+    ...(Deno.env.get("ADDITIONAL_ALLOWED_ORIGINS") ?? "").split(","),
+    "http://localhost:5173",
+  ]
+    .map((o) => (o ?? "").trim().replace(/\/+$/, ""))
+    .filter((o) => /^https?:\/\/[^/*\s]+$/.test(o)),
 );
 
 export function corsHeaders(req: Request): Record<string, string> {

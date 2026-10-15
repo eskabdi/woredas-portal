@@ -7,7 +7,7 @@
  * types that happen to need the same origin lookup.
  */
 export const RECEIPT_VERIFY_ORIGIN = (
-  import.meta.env.VITE_PUBLIC_SITE_URL || "https://woredas-portal.vercel.app"
+  import.meta.env.VITE_PUBLIC_SITE_URL || "https://eharari.gov.et"
 ).replace(/\/+$/, "");
 
 /** Full URL encoded into a receipt's QR for a given verification token. */

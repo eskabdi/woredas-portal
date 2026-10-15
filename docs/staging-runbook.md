@@ -6,7 +6,9 @@ in this document or `scripts/seed-staging-users.ts` provisions any cloud
 infrastructure by itself. Running this is a deliberate go-ahead (a new
 Supabase + Vercel project, real cost), not something to trigger opportunistically.
 
-**This app has no staging project today.** Local development and every prior
+**This app has no staging project today.** `woredas-portal.vercel.app` is
+an alias of the production deployment (`eharari.gov.et`) on the production
+Supabase project, not a staging environment. Local development and every prior
 deploy in this repo's history ran against the single production Supabase
 project (see `CLAUDE.md`'s sandboxed-environment notes). `docs/testing-scope.md`
 flags this gap; this document is what closes it, once an operator decides to.
