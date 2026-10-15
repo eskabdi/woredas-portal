@@ -24,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/forms/FormSection";
 import { PermissionGate } from "@/components/common/PermissionGate";
 import { supabase } from "@/integrations/supabase/client";
+import { APPROVAL_BLOCK_MESSAGE, approvalBlock } from "@/lib/makerChecker";
 import { useAuthStore } from "@/stores/authStore";
 import { formatEthiopianDate } from "@/utils/ethiopianCalendar";
 import {
@@ -79,6 +80,8 @@ interface Detail {
   payment_id: string | null;
   submitted_at: string;
   verified_at: string | null;
+  verified_by_user_id?: string | null;
+  requested_by_user_id?: string | null;
   approval_decision_at: string | null;
   issued_at: string | null;
   closed_at: string | null;
@@ -141,7 +144,7 @@ function ServiceRequestDetailPage() {
       const { data, error } = await supabase
         .from("service_request")
         .select(
-          "service_request_id, request_number, category, status, priority, service_type_id, subject, purpose, addressed_to, details, applicant_name, respondent_name, incident_date, incident_place, resolution_notes, return_reason, reject_reason, fee_amount, payment_id, submitted_at, verified_at, approval_decision_at, issued_at, closed_at, resident_id, kebele_id, resident:resident_id(resident_id, resident_number, full_name_am, full_name), kebele:kebele_id(kebele_name_am, kebele_name_en), service_type:service_type_id(name_am, name_en, requires_approval, requires_payment, fee_amount)",
+          "service_request_id, request_number, category, status, priority, service_type_id, subject, purpose, addressed_to, details, applicant_name, respondent_name, incident_date, incident_place, resolution_notes, return_reason, reject_reason, fee_amount, payment_id, submitted_at, verified_at, approval_decision_at, issued_at, closed_at, resident_id, kebele_id, verified_by_user_id, requested_by_user_id, resident:resident_id(resident_id, resident_number, full_name_am, full_name), kebele:kebele_id(kebele_name_am, kebele_name_en), service_type:service_type_id(name_am, name_en, requires_approval, requires_payment, fee_amount)",
         )
         .eq("service_request_id", requestId)
         .maybeSingle();
@@ -193,6 +196,9 @@ function ServiceRequestDetailPage() {
   });
 
   const req = detailQuery.data ?? null;
+  const svcApprovalBlock = req
+    ? approvalBlock(actorUserId, req.verified_by_user_id, req.requested_by_user_id)
+    : null;
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["service-request", requestId] });
@@ -839,9 +845,19 @@ function ServiceRequestDetailPage() {
                 ["pending_approval", "approval_returned"].includes(req.status) &&
                 canApprove && (
                   <div className="space-y-3">
+                    {svcApprovalBlock && (
+                      <p className="rounded-md border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900">
+                        <span className="font-am-body">
+                          {APPROVAL_BLOCK_MESSAGE[svcApprovalBlock].am}
+                        </span>
+                        <span className="ml-1 text-xs">
+                          / {APPROVAL_BLOCK_MESSAGE[svcApprovalBlock].en}
+                        </span>
+                      </p>
+                    )}
                     <Button
                       className="w-full"
-                      disabled={busy}
+                      disabled={busy || !!svcApprovalBlock}
                       onClick={() =>
                         transition(isLetter ? "approved" : nextAfterApproval(req), {
                           extra: {

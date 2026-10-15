@@ -570,6 +570,14 @@ per-module status-history table of their own the way credentials did — it
 does not replace `credential_request_status_history`/
 `credential_status_history`, which stay app-written.
 
+Since migration 107 (P1-5), maker ≠ checker is about the people acting in
+the current cycle: on credential_request, vital_event and service_request
+the verify step must record `auth.uid()` as verifier (credential/civil also
+with a checklist whose `reviewed_by` is `auth.uid()`), and the approval step
+must record `auth.uid()` as approver, distinct from that verifier and from
+the requester. `src/lib/makerChecker.ts` mirrors the rule so the detail pages
+explain a disabled Approve button.
+
 Since migration 105 (P1-4), what was approved is what takes effect:
 `pin_workflow_subject()` freezes each workflow table's subject columns
 (resident, type, event, letter text, fee) once a row leaves

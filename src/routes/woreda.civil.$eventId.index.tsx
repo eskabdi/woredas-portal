@@ -55,6 +55,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/integrations/supabase/client";
+import { APPROVAL_BLOCK_MESSAGE, approvalBlock } from "@/lib/makerChecker";
 import { P } from "@/config/permissions";
 import { formatEthiopianDateOnly } from "@/utils/ethiopianCalendar";
 
@@ -234,6 +235,13 @@ function CivilEventDetailPage() {
   });
 
   const event = eventQuery.data;
+  const civilApprovalBlock = event
+    ? approvalBlock(
+        actorUserId,
+        (event as { verified_by_user_id?: string | null }).verified_by_user_id,
+        (event as { requested_by_user_id?: string | null }).requested_by_user_id,
+      )
+    : null;
   const status = event?.status ?? "";
   const eventType = event?.event_type ?? "birth";
   const rawDetails = (event?.event_details ?? {}) as Record<string, unknown>;
@@ -918,10 +926,20 @@ function CivilEventDetailPage() {
                   </p>
                 }
               >
+                {civilApprovalBlock && (
+                  <p className="mb-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900">
+                    <span className="font-am-body">
+                      {APPROVAL_BLOCK_MESSAGE[civilApprovalBlock].am}
+                    </span>
+                    <span className="ml-1 text-xs">
+                      / {APPROVAL_BLOCK_MESSAGE[civilApprovalBlock].en}
+                    </span>
+                  </p>
+                )}
                 <div className="flex flex-wrap gap-2">
                   <Button
                     onClick={handleApprove}
-                    disabled={busy || !canApprove}
+                    disabled={busy || !canApprove || !!civilApprovalBlock}
                     className="bg-[color:var(--color-shell-header)] text-white hover:bg-[color:var(--color-shell-header)]/90"
                   >
                     {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

@@ -62,6 +62,7 @@ import {
   type ReturnReasonCode,
 } from "@/lib/credentialWorkflowSchemas";
 import { useFeeSchedule } from "@/hooks/useCredentialRequests";
+import { APPROVAL_BLOCK_MESSAGE, approvalBlock } from "@/lib/makerChecker";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useOfflineQueue } from "@/hooks/useOfflineQueue";
 import { useOfflineGuard } from "@/hooks/useOfflineGuard";
@@ -184,7 +185,7 @@ function CredentialRequestDetailPage() {
           `credential_request_id, request_number, status, request_type, credential_type,
            resident_id, household_id, issuing_kebele_id, prior_credential_id, credential_id,
            supporting_document_path, supporting_document_name,
-           verification_checklist, verified_by_user_id, verified_at,
+           verification_checklist, verified_by_user_id, verified_at, requested_by_user_id,
            return_reason, submitted_at, created_at,
            duplicate_flag, duplicate_notes,
            police_report_number, correction_fields, correction_reason,
@@ -209,6 +210,9 @@ function CredentialRequestDetailPage() {
   });
 
   const request = requestQuery.data;
+  const credApprovalBlock = request
+    ? approvalBlock(actorUserId, request.verified_by_user_id, request.requested_by_user_id)
+    : null;
 
   // supporting_document_content_type isn't in the generated Supabase types
   // yet (regenerated only after the migration adding it is applied to the
@@ -1117,16 +1121,14 @@ function CredentialRequestDetailPage() {
 
               {(status === "verified" || status === "pending_approval") &&
                 canApprove &&
-                actorUserId &&
-                request.verified_by_user_id === actorUserId && (
+                credApprovalBlock && (
                   <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                     <div>
-                      <p className="font-am-body font-medium">እርስዎ ራስዎ ያረጋገጡትን ጥያቄ ማጽደቅ አይችሉም</p>
-                      <p className="text-xs">
-                        / You verified this request yourself — the server will reject an approval by
-                        the same person (maker≠checker). A different approver must handle this one.
+                      <p className="font-am-body font-medium">
+                        {APPROVAL_BLOCK_MESSAGE[credApprovalBlock].am}
                       </p>
+                      <p className="text-xs">/ {APPROVAL_BLOCK_MESSAGE[credApprovalBlock].en}</p>
                     </div>
                   </div>
                 )}
@@ -1159,7 +1161,7 @@ function CredentialRequestDetailPage() {
                     </Button>
                     <Button
                       onClick={handleApprove}
-                      disabled={busy || isOffline}
+                      disabled={busy || isOffline || !!credApprovalBlock}
                       className="bg-emerald-700 text-white hover:bg-emerald-800"
                     >
                       {busy ? (
