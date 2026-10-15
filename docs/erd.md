@@ -533,7 +533,8 @@ Since migration 108 (P1-12): at most one `confirmed` payment per
 `vital_event_id` was already unique), one receipt per payment, and fee
 payments are written only by `record_fee_payment()` (rental payments by
 `settle_rent_payment()`), never by a client insert. A non-rental payment is
-immutable from a user session; a receipt only takes `printed_at`.
+immutable from a user session; a receipt only takes `printed_at`. The only
+way back is `reverse_fee_payment()` (migration 109), which sets `reversed`.
 
 **Document as it actually is, not as it should be:** `payment_source_exclusive_check`
 reads `CHECK (NOT (credential_request_id IS NOT NULL AND rental_request_id IS NOT NULL))`

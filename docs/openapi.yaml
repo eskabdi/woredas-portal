@@ -985,6 +985,61 @@ paths:
             waiver by the approver/requester (42501), no active fee schedule
             (P0002).
 
+  /rpc/reverse_fee_payment:
+    servers:
+      - url: "{SUPABASE_URL}/rest/v1"
+        variables:
+          SUPABASE_URL:
+            default: https://your-project-ref.supabase.co
+    post:
+      summary: Reverse a confirmed ID card or service-letter fee payment (Private, tenant)
+      description: >
+        Migration 109. `SECURITY DEFINER`; caller's own woreda, `tenant.manage`
+        (tenant administrator), never the payment's collector, reason of 10
+        to 500 characters. Only for `credential_fee` (request still `paid`,
+        card still `ready_to_print`) and `service_fee` (letter still `paid`).
+        The payment becomes `reversed` (its receipt stops verifying), a
+        minted card is revoked, the request returns to `awaiting_payment`
+        through system-only transitions with `payment_id` cleared, and status
+        history plus a `FEE_PAYMENT_REVERSED` audit row are written. Civil
+        and rental payments are rejected. Not executable by `anon`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [_payment_id, _reason]
+              properties:
+                _payment_id: { type: string, format: uuid }
+                _reason: { type: string, minLength: 10, maxLength: 500 }
+            example:
+              {
+                _payment_id: "6a1e0c4b-77d2-4f0e-a2b3-1c9d8e7f6a50",
+                _reason: "Applicant paid twice; second payment refunded",
+              }
+      responses:
+        "200":
+          description: The reversed payment and the request it reopened.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  payment_id: { type: string, format: uuid }
+                  status: { type: string, enum: [reversed] }
+                  entity: { type: string, enum: [credential_request, service_request] }
+                  entity_id: { type: string, format: uuid }
+                  revoked_credential_id: { type: string, format: uuid, nullable: true }
+        "400":
+          description: >
+            Plain Postgres error via PostgREST, bilingual message: not a tenant
+            administrator, or the collector (42501); short reason, not
+            confirmed, civil/rental type, request past payment, card already
+            printing (23514); payment not found in the caller's woreda (P0002).
+
   /rpc/record_civil_certificate_print:
     servers:
       - url: "{SUPABASE_URL}/rest/v1"
