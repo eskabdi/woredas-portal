@@ -116,6 +116,12 @@ export const REVIEWED_BASELINE: Record<string, string> = {
   "reverse_rental_payment:arrears_installment_charge": "parent-scoped (rental_payment)",
   "reverse_rental_payment:arrears_repayment_installment": "parent-scoped (rental_payment)",
   "reverse_rental_payment:arrears_repayment_plan": "parent-scoped (rental_payment)",
+  "reverse_fee_payment:credential_request":
+    "parent-scoped (request locked FOR UPDATE with the caller's woreda just before; migration 109)",
+  "reverse_fee_payment:payment":
+    "parent-scoped (payment locked FOR UPDATE with the caller's woreda just before; migration 109)",
+  "reverse_fee_payment:service_request":
+    "parent-scoped (request locked FOR UPDATE with the caller's woreda just before; migration 109)",
   "reverse_rental_payment:payment":
     "parent-scoped (payment locked FOR UPDATE with the caller's woreda just before)",
   "reverse_rental_payment:rent_charge": "parent-scoped (rental_payment)",

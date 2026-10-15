@@ -61,3 +61,12 @@ describe("feePaymentArgs", () => {
     ).toThrow();
   });
 });
+
+describe("reversalReason", () => {
+  it("needs 10 to 500 characters after trimming", async () => {
+    const { reversalReason } = await import("@/lib/feePayment");
+    expect(reversalReason.safeParse("  paid twice by mistake ").success).toBe(true);
+    expect(reversalReason.safeParse("  short   ").success).toBe(false);
+    expect(reversalReason.safeParse("x".repeat(501)).success).toBe(false);
+  });
+});

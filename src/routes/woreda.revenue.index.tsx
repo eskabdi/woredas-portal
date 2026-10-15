@@ -1,7 +1,7 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Banknote, Printer } from "lucide-react";
+import { Banknote, Printer, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card } from "@/components/ui/card";
@@ -9,6 +9,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { REVERSIBLE_FEE_TYPES, reversalReason, reverseFeePayment } from "@/lib/feePayment";
 import { KebeleFilter } from "@/components/common/KebeleFilter";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
@@ -46,6 +56,7 @@ interface PaymentRow {
   channel: "cash" | "bank" | "mobile";
   reference_no: string | null;
   status: string;
+  posted_by_user_id: string | null;
   credential_request_id: string | null;
   rental_request_id: string | null;
   receipt: { receipt_id: string; receipt_number: string; printed_at: string | null } | null;
@@ -72,7 +83,7 @@ function RevenuePage() {
       let q = supabase
         .from("payment")
         .select(
-          `payment_id, payment_type, amount, payment_date, channel, reference_no, status, credential_request_id, rental_request_id,
+          `payment_id, payment_type, amount, payment_date, channel, reference_no, status, posted_by_user_id, credential_request_id, rental_request_id,
            household:household_id ( kebele_id ),
            rental_request:rental_request_id ( rental_house:rental_house_id ( kebele_id ) ),
            receipt:receipt!receipt_payment_id_fkey ( receipt_id, receipt_number, printed_at )`,
@@ -297,6 +308,27 @@ function RevenuePage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // Controlled reversal (reverse_fee_payment, migration 109): tenant
+  // administrator only, never the collector, reason required; the database
+  // decides whether the request can still be reopened.
+  const [reverseTarget, setReverseTarget] = useState<PaymentRow | null>(null);
+  const [reverseReason, setReverseReason] = useState("");
+  const canReverse = hasPermission(P.TENANT_MANAGE);
+  const reverse = useMutation({
+    mutationFn: async () => {
+      if (!reverseTarget) return;
+      await reverseFeePayment(reverseTarget.payment_id, reverseReason);
+    },
+    onSuccess: () => {
+      toast.success("ክፍያው ተመልሷል / Payment reversed — the request is waiting for payment again");
+      setReverseTarget(null);
+      setReverseReason("");
+      qc.invalidateQueries({ queryKey: ["revenue-payments"] });
+    },
+    onError: (e: Error) => toast.error(`ክፍያውን መመለስ አልተቻለም / Reversal failed: ${e.message}`),
+  });
+  const reasonOk = reversalReason.safeParse(reverseReason).success;
+
   if (!hasPermission(P.REVENUE_VIEW)) return <Navigate to="/woreda/dashboard" />;
 
   return (
@@ -476,6 +508,27 @@ function RevenuePage() {
                           {p.receipt.printed_at ? "እንደገና አትም / Reprint" : "አትም / Print"}
                         </Button>
                       )}
+                      {canReverse &&
+                        (REVERSIBLE_FEE_TYPES as readonly string[]).includes(p.payment_type) && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="ml-2 text-red-700"
+                            disabled={p.posted_by_user_id === actorUserId}
+                            title={
+                              p.posted_by_user_id === actorUserId
+                                ? "ክፍያውን የሰበሰበ ሰው ሊመልሰው አይችልም / The collector cannot reverse their own payment"
+                                : "ክፍያውን መልስ / Reverse this payment"
+                            }
+                            onClick={() => {
+                              setReverseReason("");
+                              setReverseTarget(p);
+                            }}
+                          >
+                            <Undo2 className="mr-1 h-4 w-4" />
+                            መልስ / Reverse
+                          </Button>
+                        )}
                     </td>
                   </tr>
                 ))}
@@ -490,6 +543,62 @@ function RevenuePage() {
           onPageSizeChange={setPageSize}
         />
       </Card>
+
+      <Dialog
+        open={!!reverseTarget}
+        onOpenChange={(o) => {
+          if (!o && !reverse.isPending) setReverseTarget(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              <span className="font-am-heading">ክፍያ መመለስ</span> / Reverse payment
+            </DialogTitle>
+            <DialogDescription>
+              {reverseTarget?.receipt?.receipt_number ?? reverseTarget?.payment_id} ·{" "}
+              {Number(reverseTarget?.amount ?? 0).toLocaleString()} ETB
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-900">
+              <span className="font-am-body block">
+                ክፍያው ይመለሳል፣ ደረሰኙ ከእንግዲህ አይረጋገጥም፣ ጥያቄው እንደገና ክፍያ ይጠብቃል። ለህትመት የተዘጋጀ መታወቂያ ይሰረዛል።
+              </span>
+              The payment is reversed, its receipt stops verifying and the request waits for payment
+              again. An ID card already minted for it (not yet printing) is revoked. Not possible
+              once the card is printing or the letter is issued.
+            </p>
+            <Label htmlFor="reverse-reason">
+              <span className="font-am-body">ምክንያት</span> / Reason (10–500)
+            </Label>
+            <Textarea
+              id="reverse-reason"
+              rows={3}
+              maxLength={500}
+              value={reverseReason}
+              onChange={(e) => setReverseReason(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setReverseTarget(null)}
+              disabled={reverse.isPending}
+            >
+              ተወው / Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => reverse.mutate()}
+              disabled={!reasonOk || reverse.isPending}
+            >
+              <Undo2 className="mr-1 h-4 w-4" />
+              ክፍያውን መልስ / Reverse payment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

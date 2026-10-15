@@ -88,3 +88,32 @@ export async function recordFeePayment(input: FeePaymentInput): Promise<FeePayme
   if (!data) throw new Error("ክፍያው አልተመዘገበም / The payment was not recorded");
   return data as FeePaymentResult;
 }
+
+/** Fee types reverse_fee_payment() (migration 109) accepts. Civil fees
+ * complete the registration in the same transaction and rental payments
+ * have their own reversal, so neither is offered. */
+export const REVERSIBLE_FEE_TYPES = ["credential_fee", "service_fee"] as const;
+
+export const reversalReason = z
+  .string()
+  .trim()
+  .min(10, "ምክንያቱ ቢያንስ 10 ፊደላት ይሁን / The reason needs at least 10 characters")
+  .max(500, "ምክንያቱ ከ500 ፊደላት አይበልጥ / The reason can be at most 500 characters");
+
+/**
+ * Reverse a confirmed fee payment (tenant administrator, never the collector,
+ * only before the card goes to print / the letter is issued). The request
+ * goes back to awaiting_payment, a minted card is revoked, the receipt stops
+ * verifying, and the database writes history and audit rows.
+ */
+export async function reverseFeePayment(paymentId: string, reason: string): Promise<void> {
+  const id = z.string().uuid().safeParse(paymentId);
+  const why = reversalReason.safeParse(reason);
+  if (!id.success) throw new Error("Invalid payment");
+  if (!why.success) throw new Error(why.error.issues[0]?.message ?? "Invalid reason");
+  const { error } = await rpc.rpc("reverse_fee_payment", {
+    _payment_id: id.data,
+    _reason: why.data,
+  });
+  if (error) throw Object.assign(new Error(error.message), { code: error.code });
+}

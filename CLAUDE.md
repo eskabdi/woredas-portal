@@ -853,7 +853,12 @@ caller who is neither the request's approver nor its requester. Numbering
 triggers always assign the number in a user session, the counter tables are
 read-only for clients, `kebele` writes are super-admin only, and fee-catalog
 edits write an audit row. A new fee-bearing flow goes through the RPC, never
-`.from("payment").insert(...)`.
+`.from("payment").insert(...)`. The one way back is `reverse_fee_payment()`
+(migration 109, Revenue page): tenant administrator, never the collector,
+reason of 10+ characters, only while the card is still `ready_to_print` or
+the letter not yet issued; it revokes the minted card, returns the request to
+`awaiting_payment` through system-only edges, and writes history and audit.
+Civil fees are not reversible (the event registers with its payment).
 
 ### Shared UI conventions
 
