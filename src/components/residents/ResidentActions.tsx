@@ -47,7 +47,8 @@ export interface ActionResident {
   current_household_id: string | null;
 }
 
-type Mode = null | "addHousehold" | "suspend" | "reactivate" | "deactivate" | "activate";
+type Mode =
+  null | "addHousehold" | "suspend" | "reactivate" | "deactivate" | "activate" | "correctDeceased";
 
 interface Props {
   resident: ActionResident;
@@ -74,6 +75,10 @@ export function ResidentActions({
   const hasPermission = useAuthStore((s) => s.hasPermission);
   const canRead = hasPermission(P.RESIDENT_READ);
   const canUpdate = hasPermission(P.RESIDENT_UPDATE);
+  // 'deceased' is set only by a registered death and corrected only by a
+  // tenant admin through correct_resident_deceased_status() (migration 105).
+  const isTenantAdmin = useAuthStore((s) => s.role) === "tenant_admin";
+  const [correctTo, setCorrectTo] = useState<"active" | "suspended">("active");
   const [internalMode, setInternalMode] = useState<Mode>(null);
   const mode = externalMode !== undefined ? externalMode : internalMode;
   const setMode = (m: Mode) => {
@@ -183,10 +188,31 @@ export function ResidentActions({
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const correctDeceasedMutation = useMutation({
+    mutationFn: async (reasonText: string) => {
+      const { error } = await supabase.rpc(
+        "correct_resident_deceased_status" as never,
+        {
+          _resident_id: resident.resident_id,
+          _new_status: correctTo,
+          _reason: reasonText,
+        } as never,
+      );
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("የሞት ሁኔታው ተስተካክሏል / Deceased status corrected");
+      onChanged();
+      close();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const showSuspend = canUpdate && resident.residency_status === "active";
   const showReactivate = canUpdate && resident.residency_status === "suspended";
   const showDeactivate = canUpdate && resident.active_flag === true;
   const showActivate = canUpdate && resident.active_flag === false;
+  const showCorrectDeceased = isTenantAdmin && resident.residency_status === "deceased";
 
   const TriggerIcon = variant === "header" ? MoreVertical : MoreHorizontal;
 
@@ -237,9 +263,11 @@ export function ResidentActions({
               <span className="ml-2 text-xs text-slate-500">/ Add to Household</span>
             </DropdownMenuItem>
           )}
-          {(showSuspend || showReactivate || showDeactivate || showActivate) && (
-            <DropdownMenuSeparator />
-          )}
+          {(showSuspend ||
+            showReactivate ||
+            showDeactivate ||
+            showActivate ||
+            showCorrectDeceased) && <DropdownMenuSeparator />}
           {showSuspend && (
             <DropdownMenuItem
               className="text-amber-700 focus:text-amber-800"
@@ -271,6 +299,15 @@ export function ResidentActions({
             >
               <span className="font-am-body">አንቃ</span>
               <span className="ml-2 text-xs text-slate-500">/ Reactivate</span>
+            </DropdownMenuItem>
+          )}
+          {showCorrectDeceased && (
+            <DropdownMenuItem
+              className="text-red-700 focus:text-red-800"
+              onClick={() => setMode("correctDeceased")}
+            >
+              <span className="font-am-body">የሞት ሁኔታን አስተካክል</span>
+              <span className="ml-2 text-xs text-slate-500">/ Correct deceased status</span>
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>
@@ -388,6 +425,63 @@ export function ResidentActions({
           </AlertDialogContent>
         </AlertDialog>
       </PermissionGate>
+
+      {showCorrectDeceased && (
+        <AlertDialog open={mode === "correctDeceased"} onOpenChange={(o) => !o && close()}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="font-am-body">
+                የሞት ሁኔታን ማስተካከል / Correct a deceased status
+              </AlertDialogTitle>
+              <AlertDialogDescription className="font-am-body">
+                ይህ የሚደረገው ሞት በስህተት ሲመዘገብ ብቻ ነው። የተሰረዙ መታወቂያዎች አይመለሱም፤ አዲስ መታወቂያ በመደበኛው ጥያቄ ይሰጣል።
+                ምክንያቱ በኦዲት መዝገብ ይቀመጣል።
+                <span className="mt-1 block">
+                  Only for a death recorded in error. Revoked ID cards stay revoked; a new card goes
+                  through the normal request. The reason is kept in the audit log.
+                </span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="flex gap-2">
+              {(["active", "suspended"] as const).map((s) => (
+                <Button
+                  key={s}
+                  type="button"
+                  size="sm"
+                  variant={correctTo === s ? "default" : "outline"}
+                  onClick={() => setCorrectTo(s)}
+                >
+                  <span className="font-am-body">{s === "active" ? "ንቁ" : "የታገደ"}</span>
+                  <span className="ml-1 opacity-80">
+                    / {s === "active" ? "Active" : "Suspended"}
+                  </span>
+                </Button>
+              ))}
+            </div>
+            <Textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="ምክንያት (ቢያንስ 10 ፊደል) / Reason (at least 10 characters)…"
+              className="font-am-body"
+              maxLength={500}
+              rows={3}
+            />
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={reason.trim().length < 10 || correctDeceasedMutation.isPending}
+                onClick={(e) => {
+                  e.preventDefault();
+                  correctDeceasedMutation.mutate(reason.trim());
+                }}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                <span className="font-am-body">አስተካክል / Correct</span>
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </>
   );
 }
