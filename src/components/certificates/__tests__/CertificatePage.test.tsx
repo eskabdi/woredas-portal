@@ -69,17 +69,31 @@ describe("CertificatePage", () => {
     expect(screen.getByText("ፌዴራላዊ")).toBeTruthy();
   });
 
-  it("shows bilingual labels in design mode (no values)", () => {
+  it("shows each field's name in its placed language in design mode (no values)", () => {
     render(
       <CertificatePage
         type="birth"
         orientation="landscape"
         backgroundUrl={null}
         values={null}
-        fields={[placed({ field_key: "mother_full_name" })]}
+        fields={[
+          placed({ field_key: "mother_full_name", format: "am" }),
+          placed({ field_key: "father_full_name", format: "en" }),
+          placed({ field_key: "child_nationality", format: "am_en" }),
+          placed({ field_key: "child_date_of_birth", format: "ec_full" }),
+          placed({ field_key: "registration_date", format: "gc_year" }),
+          placed({ field_key: "registration_uid", format: "plain" }),
+        ]}
       />,
     );
-    expect(screen.getByText("የእናት ሙሉ ስም / Mother's Full Name")).toBeTruthy();
+    expect(screen.getByText("የእናት ሙሉ ስም")).toBeTruthy();
+    expect(screen.getByText("Father's Full Name")).toBeTruthy();
+    expect(screen.getByText("ዜግነት / Nationality")).toBeTruthy();
+    expect(screen.getByText("የትውልድ ቀን")).toBeTruthy();
+    expect(screen.getByText("Date of Birth Registration (Year)")).toBeTruthy();
+    expect(
+      screen.getByText("የልደት ምዝገባ ልዩ መለያ ቁጥር / Birth Registration Unique Identification Number"),
+    ).toBeTruthy();
   });
 
   it("renders captured text as text, never as markup", () => {
