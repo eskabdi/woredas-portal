@@ -209,7 +209,10 @@ ready, but no staging project has actually been provisioned yet (real infra
 cost, needs a deliberate go-ahead). `docs/go-live-declaration.md` is the
 production-readiness declaration (dimension scoreboard, invariant table,
 go-live plan, rollback path) — proposed, awaiting the system owner's
-signature, not a self-certification.
+signature, not a self-certification. Everything in production today is
+pilot/test data (owner decision, 15 Oct 2026); `docs/go-live-reset-runbook.md`
+and `scripts/go-live-reset/` reset it to configuration only on go-live day,
+after a verified backup, never before.
 
 ### Routing
 
