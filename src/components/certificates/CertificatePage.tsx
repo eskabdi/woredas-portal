@@ -6,7 +6,8 @@
  *
  * Font sizes are stored in points and rendered in container-query units of
  * the page width, so the same placement is correct on screen at any zoom and
- * on paper at 210 x 297 mm.
+ * on paper (A4 landscape, 297 x 210 mm). In design mode (no values) a field
+ * shows its own name in the language its format prints (placeholderLabel).
  */
 import type { CSSProperties, ReactNode } from "react";
 import { QRCodeSVG } from "qrcode.react";
@@ -23,6 +24,7 @@ import {
   PT_TO_MM,
   fontCss,
   placedFieldText,
+  placeholderLabel,
   type Orientation,
   type PlacedField,
 } from "./certificateLayout";
@@ -68,7 +70,7 @@ export function CertificatePage({
       {fields.map((f) => {
         const def = f.binding_mode === "data" ? certificateField(type, f.field_key) : undefined;
         const isImage = def?.kind === "image";
-        const label = def ? `${def.am} / ${def.en}` : (f.static_value ?? "");
+        const label = def ? placeholderLabel(def, f.format) : (f.static_value ?? "");
         const text = values ? placedFieldText(type, f, values) : label;
         const fontMm = f.font_size * PT_TO_MM;
         const box: CSSProperties = {

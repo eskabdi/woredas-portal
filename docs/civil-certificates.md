@@ -115,6 +115,37 @@ The template builder inserts the QR at 25 mm square, keeps it square on
 resize and warns below 20 mm. The text field `verification_code` prints the
 same token for manual entry.
 
+### Template builder ergonomics
+
+- **Palette.** Field groups are collapsible and start collapsed; the header
+  shows how many of the group's fields are placed. A search opens every group
+  with a match. Each bilingual or sex field has an **አማ** and an **EN** chip
+  (placing format `am` / `en`), each date an **አማ** chip (Ethiopian date,
+  `ec_full`) and an **EN** chip (Gregorian, `gc_full`), so both language
+  versions of a field are one click or drag away; the row itself still places
+  the default format. The same field may be placed more than once.
+- **Placeholders.** In design mode a placed field shows its own name in the
+  language its format prints (`placeholderLabel()` in
+  `certificateLayout.ts`): "የልጁ ስም" for an Amharic placement, "Child's
+  Name" for an English one, the part in brackets for a day / month / year
+  box. Language-neutral fields (numbers, images, the QR) keep both names.
+- **Default size.** A new text placement (data or static) is 8 % of the page
+  wide and 5 % high (`TEXT_DEFAULT_SIZE`, about 23.8 × 10.5 mm on A4
+  landscape). Images stay 18 × 9 %, the QR 25 mm square.
+- **Multi-selection.** Shift-, Ctrl- or Cmd-click toggles a field; dragging a
+  box on an empty part of the page selects every field it touches; Ctrl+A
+  selects all, Esc clears, arrow keys nudge by 0.1 % (Shift: 1 %), Delete
+  removes the selection. Dragging any selected field moves the group, clamped
+  as one block at the page edge.
+- **Alignment.** One field aligns to the page; several align to their
+  common bounds (left, centre, right, top, middle, bottom). With three or more
+  selected, distribute horizontally or vertically. Match width / height
+  copies the last-selected field's size (the QR is left out, it stays square).
+  Several selected text fields share one style editor (font, size, colour,
+  bold, italic, text alignment). The geometry lives in
+  `src/lib/certificateAlign.ts` (unit-tested); every change is one undo step
+  and is saved with the draft.
+
 `verify_civil_certificate(_token)` (anon + authenticated) checks the token
 format, returns a row only for an `issued` event, and discloses only what is
 already printed on the certificate: type, registration number, event,

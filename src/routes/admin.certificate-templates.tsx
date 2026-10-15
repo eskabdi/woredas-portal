@@ -4,10 +4,19 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   AlignCenter,
+  AlignCenterHorizontal,
+  AlignCenterVertical,
+  AlignEndHorizontal,
+  AlignEndVertical,
+  AlignHorizontalDistributeCenter,
   AlignLeft,
   AlignRight,
+  AlignStartHorizontal,
+  AlignStartVertical,
+  AlignVerticalDistributeCenter,
   Bold,
   CheckCircle2,
+  ChevronRight,
   Eye,
   FileDown,
   FileText,
@@ -19,6 +28,8 @@ import {
   RotateCcw,
   Save,
   Send,
+  StretchHorizontal,
+  StretchVertical,
   Trash2,
   Type,
   Undo2,
@@ -35,9 +46,24 @@ import {
   PAGE_MM,
   STATIC_FIELD_KEY,
   CERTIFICATE_ORIENTATION,
+  formatForLanguage,
+  formatLanguage,
+  placeholderLabel,
   type Orientation,
   type PlacedField,
+  type PlacementLanguage,
 } from "@/components/certificates/certificateLayout";
+import {
+  alignBoxes,
+  boxesInRect,
+  distributeBoxes,
+  matchSize,
+  moveBoxes,
+  type AlignMode,
+  type Axis,
+  type Box,
+  type BoxPatch,
+} from "@/lib/certificateAlign";
 import { captureCertificatePdf, toDataUrl } from "@/lib/certificatePdf";
 import { Button } from "@/components/ui/button";
 import {
@@ -62,6 +88,8 @@ import {
   CERTIFICATE_TYPE_LABELS,
   FIELD_GROUPS,
   FORMAT_LABELS,
+  type CertificateField,
+  type FieldGroup,
   certificateField,
   defaultFormat,
   formatsFor,
@@ -101,6 +129,8 @@ const db = supabase as unknown as {
 const BUCKET = "certificate-templates";
 const FONT_FAMILIES = ["Tayitu", "Jiret", "Noto Sans Ethiopic", "Times New Roman", "Arial"];
 const MIN_PCT = 1;
+/** Default box for a new text placement (data or static), in percent of the page. */
+const TEXT_DEFAULT_SIZE = { width: 8, height: 5 };
 type Handle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
 
 interface TemplateRow {
@@ -135,7 +165,9 @@ function CertificateTemplatesPage() {
   const [patches, setPatches] = useState<Record<string, Partial<PlacedField>>>({});
   const [past, setPast] = useState<Record<string, Partial<PlacedField>>[]>([]);
   const [future, setFuture] = useState<Record<string, Partial<PlacedField>>[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Multi-selection: the last id is the primary field (the reference for
+  // "match size" and the one the single-field properties panel edits).
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [preview, setPreview] = useState(false);
   // PDF print preview: the draft rendered with sample values to an A4
   // landscape PDF, shown in the browser's PDF viewer. Watermarked.
@@ -191,7 +223,7 @@ function CertificateTemplatesPage() {
     setPatches({});
     setPast([]);
     setFuture([]);
-    setSelectedId(null);
+    setSelectedIds([]);
   }, [type]);
 
   const [bgUrl, setBgUrl] = useState<string | null>(null);
@@ -214,7 +246,15 @@ function CertificateTemplatesPage() {
       (fieldsQuery.data ?? []).map((f) => ({ ...f, ...(patches[f.certificate_field_id] ?? {}) })),
     [fieldsQuery.data, patches],
   );
-  const selected = fields.find((f) => f.certificate_field_id === selectedId) ?? null;
+  const selectedFields = useMemo(
+    () => fields.filter((f) => selectedIds.includes(f.certificate_field_id)),
+    [fields, selectedIds],
+  );
+  const primaryId = selectedIds[selectedIds.length - 1] ?? null;
+  const selected =
+    selectedIds.length === 1
+      ? (fields.find((f) => f.certificate_field_id === primaryId) ?? null)
+      : null;
   const dirty = Object.keys(patches).length > 0;
 
   const pushHistory = useCallback((snap: Record<string, Partial<PlacedField>>) => {
@@ -227,6 +267,20 @@ function CertificateTemplatesPage() {
       setPatches((d) => {
         if (opts?.history !== false) pushHistory(d);
         return { ...d, [id]: { ...d[id], ...patch } };
+      });
+    },
+    [pushHistory],
+  );
+
+  /** One history step for a change that touches several fields at once. */
+  const patchMany = useCallback(
+    (updates: Record<string, Partial<PlacedField>>, opts?: { history?: boolean }) => {
+      if (!Object.keys(updates).length) return;
+      setPatches((d) => {
+        if (opts?.history !== false) pushHistory(d);
+        const next = { ...d };
+        for (const [id, p] of Object.entries(updates)) next[id] = { ...d[id], ...p };
+        return next;
       });
     },
     [pushHistory],
@@ -273,16 +327,25 @@ function CertificateTemplatesPage() {
 
   // Structural changes (add / remove a placement) go straight to the draft
   // table; geometry and style edits are batched in `patches` until Save.
-  const insertField = async (fieldKey: string, at?: { x: number; y: number }) => {
+  const insertField = async (
+    fieldKey: string,
+    opts?: { format?: FieldFormat; at?: { x: number; y: number } },
+  ) => {
     const isStatic = fieldKey === STATIC_FIELD_KEY;
     const def = isStatic ? null : certificateField(type, fieldKey);
     if (!isStatic && !def) return;
     const isImage = def?.kind === "image";
     const isQr = def?.kind === "qr";
+    const format = isStatic
+      ? "plain"
+      : opts?.format && formatsFor(def!.kind).includes(opts.format)
+        ? opts.format
+        : defaultFormat(def!.kind);
     const page = PAGE_MM[orientation];
     // A QR is placed physically square (25 mm) -- percent units differ per axis.
-    const width = isQr ? round2((25 / page.w) * 100) : isImage ? 18 : 30;
-    const height = isQr ? round2((25 / page.h) * 100) : isImage ? 9 : 3;
+    const width = isQr ? round2((25 / page.w) * 100) : isImage ? 18 : TEXT_DEFAULT_SIZE.width;
+    const height = isQr ? round2((25 / page.h) * 100) : isImage ? 9 : TEXT_DEFAULT_SIZE.height;
+    const at = opts?.at;
     const cx = at?.x ?? 50;
     const cy = at?.y ?? 50;
     const maxZ = fields.reduce((m, f) => Math.max(m, f.z_index), 0);
@@ -291,7 +354,7 @@ function CertificateTemplatesPage() {
       .insert({
         certificate_type: type,
         field_key: isStatic ? STATIC_FIELD_KEY : fieldKey,
-        format: isStatic ? "plain" : defaultFormat(def!.kind),
+        format,
         binding_mode: isStatic ? "static" : "data",
         static_value: isStatic ? "ጽሑፍ / Text" : null,
         x: round2(Math.max(0, Math.min(100 - width, cx - width / 2))),
@@ -308,45 +371,86 @@ function CertificateTemplatesPage() {
       toast.error(error?.message ?? "Could not add the field");
       return;
     }
-    await audit("CERTIFICATE_TEMPLATE_FIELD_ADDED", { field_key: fieldKey });
+    await audit("CERTIFICATE_TEMPLATE_FIELD_ADDED", { field_key: fieldKey, format });
     await qc.invalidateQueries({ queryKey: ["certificate-template-drafts", type] });
     qc.invalidateQueries({ queryKey: ["certificate-templates"] });
-    setSelectedId(data.certificate_field_id);
+    setSelectedIds([data.certificate_field_id]);
   };
 
   const deleteSelected = useCallback(async () => {
-    if (!selectedId) return;
-    const removed = fields.find((f) => f.certificate_field_id === selectedId);
+    if (!selectedIds.length) return;
+    const ids = [...selectedIds];
+    const removed = fields.filter((f) => ids.includes(f.certificate_field_id));
     const { data, error } = await db
       .from("certificate_template_field_draft")
       .delete()
-      .eq("certificate_field_id", selectedId)
-      .select("certificate_field_id")
-      .maybeSingle();
-    if (error || !data) {
+      .in("certificate_field_id", ids)
+      .select("certificate_field_id");
+    const gone = new Set(
+      ((data ?? []) as { certificate_field_id: string }[]).map((r) => r.certificate_field_id),
+    );
+    if (error || !gone.size) {
       toast.error(error?.message ?? "Could not remove the field");
       return;
     }
-    await audit("CERTIFICATE_TEMPLATE_FIELD_REMOVED", { field_key: removed?.field_key ?? null });
-    setPatches(({ [selectedId]: _removed, ...rest }) => rest);
-    setSelectedId(null);
+    if (gone.size < ids.length) {
+      toast.warning(`${gone.size} of ${ids.length} fields removed; reload to see the rest.`);
+    }
+    await audit("CERTIFICATE_TEMPLATE_FIELD_REMOVED", {
+      field_keys: removed.filter((f) => gone.has(f.certificate_field_id)).map((f) => f.field_key),
+    });
+    setPatches((d) => Object.fromEntries(Object.entries(d).filter(([id]) => !gone.has(id))));
+    setSelectedIds([]);
     qc.invalidateQueries({ queryKey: ["certificate-template-drafts", type] });
     qc.invalidateQueries({ queryKey: ["certificate-templates"] });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId, fields, type]);
+  }, [selectedIds, fields, type]);
+
+  const nudge = useCallback(
+    (dx: number, dy: number) => patchMany(moveBoxes(toBoxes(selectedFields), dx, dy)),
+    [patchMany, selectedFields],
+  );
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
-      if ((e.key === "Delete" || e.key === "Backspace") && selectedId) {
+      if (
+        t &&
+        (t.tagName === "INPUT" ||
+          t.tagName === "TEXTAREA" ||
+          t.tagName === "SELECT" ||
+          t.isContentEditable ||
+          t.closest("[role=dialog],[role=listbox],[role=menu]"))
+      ) {
+        return;
+      }
+      if ((e.key === "Delete" || e.key === "Backspace") && selectedIds.length) {
         e.preventDefault();
         void deleteSelected();
         return;
       }
+      if (e.key === "Escape" && selectedIds.length) {
+        setSelectedIds([]);
+        return;
+      }
+      const arrows: Record<string, [number, number]> = {
+        ArrowLeft: [-1, 0],
+        ArrowRight: [1, 0],
+        ArrowUp: [0, -1],
+        ArrowDown: [0, 1],
+      };
+      if (arrows[e.key] && selectedIds.length) {
+        e.preventDefault();
+        const step = e.shiftKey ? 1 : 0.1;
+        nudge(arrows[e.key][0] * step, arrows[e.key][1] * step);
+        return;
+      }
       if (!(e.ctrlKey || e.metaKey)) return;
       const k = e.key.toLowerCase();
-      if (k === "z" && !e.shiftKey) {
+      if (k === "a") {
+        e.preventDefault();
+        setSelectedIds(fields.map((f) => f.certificate_field_id));
+      } else if (k === "z" && !e.shiftKey) {
         e.preventDefault();
         undo();
       } else if ((k === "z" && e.shiftKey) || k === "y") {
@@ -356,7 +460,7 @@ function CertificateTemplatesPage() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [deleteSelected, selectedId, undo, redo]);
+  }, [deleteSelected, selectedIds, fields, nudge, undo, redo]);
 
   const flush = async () => {
     for (const [id, p] of Object.entries(patches)) {
@@ -424,7 +528,7 @@ function CertificateTemplatesPage() {
       const { error } = await db.rpc("discard_certificate_template_draft", { _type: type });
       if (error) throw new Error(error.message);
       resetHistory();
-      setSelectedId(null);
+      setSelectedIds([]);
       await qc.invalidateQueries({ queryKey: ["certificate-template-drafts", type] });
       qc.invalidateQueries({ queryKey: ["certificate-templates"] });
       toast.success("Draft reverted to the published version");
@@ -474,7 +578,13 @@ function CertificateTemplatesPage() {
     }
   };
 
-  const placedKeys = new Set(fields.map((f) => f.field_key));
+  // "<key>" for any placement of a field, "<key>:am" / "<key>:en" per language.
+  const placedKeys = new Set(
+    fields.flatMap((f) => {
+      const lang = formatLanguage(f.format);
+      return lang ? [f.field_key, `${f.field_key}:${lang}`] : [f.field_key];
+    }),
+  );
   const openPdfPreview = async () => {
     setPdfBusy(true);
     try {
@@ -624,7 +734,11 @@ function CertificateTemplatesPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)_280px]">
-        <FieldPalette type={type} placedKeys={placedKeys} onAdd={(k) => void insertField(k)} />
+        <FieldPalette
+          type={type}
+          placedKeys={placedKeys}
+          onAdd={(k, format) => void insertField(k, { format })}
+        />
 
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
           <p className="mb-2 text-xs text-slate-500">
@@ -637,22 +751,40 @@ function CertificateTemplatesPage() {
             fields={fields}
             backgroundUrl={bgUrl}
             preview={preview}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
+            selectedIds={selectedIds}
+            onSelect={setSelectedIds}
             onPatch={patchField}
+            onPatchMany={patchMany}
             onBeginGesture={beginGesture}
-            onDropInsert={(k, x, y) => void insertField(k, { x, y })}
+            onDropInsert={(k, format, x, y) => void insertField(k, { format, at: { x, y } })}
           />
+          <p className="mt-2 text-[11px] text-slate-500">
+            Shift- or Ctrl-click to select several fields, or drag a box around them on an empty
+            part of the page. Ctrl+A selects all, arrow keys nudge (Shift for larger steps), Esc
+            clears the selection.
+          </p>
           {fieldsQuery.isLoading && <p className="mt-2 text-xs text-slate-500">Loading…</p>}
         </div>
 
-        <PropertiesPanel
-          type={type}
-          orientation={orientation}
-          field={selected}
-          onPatch={(p) => selected && patchField(selected.certificate_field_id, p)}
-          onDelete={() => void deleteSelected()}
-        />
+        {selectedFields.length > 1 ? (
+          <MultiSelectionPanel
+            type={type}
+            fields={selectedFields}
+            primaryId={primaryId}
+            onPatchMany={patchMany}
+            onDelete={() => void deleteSelected()}
+            onClear={() => setSelectedIds([])}
+          />
+        ) : (
+          <PropertiesPanel
+            type={type}
+            orientation={orientation}
+            field={selected}
+            onPatch={(p) => selected && patchField(selected.certificate_field_id, p)}
+            onPatchMany={patchMany}
+            onDelete={() => void deleteSelected()}
+          />
+        )}
       </div>
 
       {/* Off-screen capture node for the PDF preview, at real A4 landscape size. */}
@@ -691,6 +823,9 @@ function CertificateTemplatesPage() {
   );
 }
 
+/** Drag payload: "<field key>" or "<field key>|<format>". */
+const DRAG_SEP = "|";
+
 function FieldPalette({
   type,
   placedKeys,
@@ -698,17 +833,30 @@ function FieldPalette({
 }: {
   type: CertificateType;
   placedKeys: Set<string>;
-  onAdd: (key: string) => void;
+  onAdd: (key: string, format?: FieldFormat) => void;
 }) {
   const [q, setQ] = useState("");
+  // Every group starts collapsed; a search opens the groups it matches in.
+  const [open, setOpen] = useState<Set<FieldGroup>>(() => new Set());
   const all = CERTIFICATE_FIELDS[type];
-  const match = (s: string) => s.toLowerCase().includes(q.trim().toLowerCase());
+  const needle = q.trim().toLowerCase();
+  const match = (s: string) => s.toLowerCase().includes(needle);
+  const toggle = (g: FieldGroup) =>
+    setOpen((cur) => {
+      const next = new Set(cur);
+      if (next.has(g)) next.delete(g);
+      else next.add(g);
+      return next;
+    });
   return (
     <div className="max-h-[78vh] overflow-y-auto rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
       <p className="text-sm font-semibold text-slate-800">
         <span className="font-am-heading">የመረጃ መስኮች</span> / Data fields
       </p>
-      <p className="mb-2 text-xs text-slate-500">Drag onto the page, or click to add.</p>
+      <p className="mb-2 text-xs text-slate-500">
+        Drag onto the page, or click to add. <b>አማ</b> places the Amharic value (Ethiopian date),{" "}
+        <b>EN</b> the English one (Gregorian date).
+      </p>
       <Input
         value={q}
         onChange={(e) => setQ(e.target.value)}
@@ -717,39 +865,41 @@ function FieldPalette({
         aria-label="Search fields"
       />
       {FIELD_GROUPS.map((g) => {
-        const items = all.filter((f) => f.group === g.key && (!q || match(f.am) || match(f.en)));
+        const items = all.filter(
+          (f) => f.group === g.key && (!needle || match(f.am) || match(f.en)),
+        );
         if (!items.length) return null;
+        const isOpen = needle ? true : open.has(g.key);
+        const placed = items.filter((f) => placedKeys.has(f.key)).length;
+        const panelId = `cert-group-${g.key}`;
         return (
-          <div key={g.key} className="mb-3">
-            <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-              <span className="font-am-body normal-case">{g.am}</span> / {g.en}
-            </p>
-            <ul className="space-y-1">
-              {items.map((f) => (
-                <li key={f.key}>
-                  <button
-                    type="button"
-                    draggable
-                    onDragStart={(e) => e.dataTransfer.setData("text/plain", f.key)}
-                    onClick={() => onAdd(f.key)}
-                    className="flex w-full items-start gap-1.5 rounded-md border border-slate-200 px-2 py-1.5 text-left text-xs hover:border-blue-400 hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
-                    title={`Add ${f.en}`}
-                  >
-                    <GripVertical className="mt-0.5 h-3.5 w-3.5 flex-none text-slate-400" />
-                    <span className="min-w-0 flex-1">
-                      <span className="font-am-body block truncate text-slate-800">{f.am}</span>
-                      <span className="block truncate text-slate-500">{f.en}</span>
-                    </span>
-                    {placedKeys.has(f.key) && (
-                      <CheckCircle2
-                        className="mt-0.5 h-3.5 w-3.5 flex-none text-emerald-600"
-                        aria-label="placed"
-                      />
-                    )}
-                  </button>
-                </li>
-              ))}
-            </ul>
+          <div key={g.key} className="mb-2 rounded-lg border border-slate-200">
+            <button
+              type="button"
+              onClick={() => toggle(g.key)}
+              aria-expanded={isOpen}
+              aria-controls={panelId}
+              className="flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-left hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
+            >
+              <ChevronRight
+                className={`h-3.5 w-3.5 flex-none text-slate-500 transition-transform ${
+                  isOpen ? "rotate-90" : ""
+                }`}
+              />
+              <span className="min-w-0 flex-1 text-[11px] font-semibold text-slate-700">
+                <span className="font-am-body">{g.am}</span> / {g.en}
+              </span>
+              <span className="rounded-full bg-slate-100 px-1.5 text-[10px] text-slate-600">
+                {placed}/{items.length}
+              </span>
+            </button>
+            {isOpen && (
+              <ul id={panelId} className="space-y-1 px-2 pb-2">
+                {items.map((f) => (
+                  <PaletteItem key={f.key} field={f} placedKeys={placedKeys} onAdd={onAdd} />
+                ))}
+              </ul>
+            )}
           </div>
         );
       })}
@@ -758,7 +908,7 @@ function FieldPalette({
         draggable
         onDragStart={(e) => e.dataTransfer.setData("text/plain", STATIC_FIELD_KEY)}
         onClick={() => onAdd(STATIC_FIELD_KEY)}
-        className="flex w-full items-center gap-1.5 rounded-md border border-dashed border-slate-300 px-2 py-1.5 text-xs hover:border-blue-400 hover:bg-blue-50"
+        className="mt-1 flex w-full items-center gap-1.5 rounded-md border border-dashed border-slate-300 px-2 py-1.5 text-xs hover:border-blue-400 hover:bg-blue-50"
       >
         <Type className="h-3.5 w-3.5 text-slate-500" />
         <span className="font-am-body">ቋሚ ጽሑፍ</span> / Static text
@@ -768,15 +918,85 @@ function FieldPalette({
   );
 }
 
+function PaletteItem({
+  field: f,
+  placedKeys,
+  onAdd,
+}: {
+  field: CertificateField;
+  placedKeys: Set<string>;
+  onAdd: (key: string, format?: FieldFormat) => void;
+}) {
+  const langs = (["am", "en"] as PlacementLanguage[])
+    .map((lang) => ({ lang, format: formatForLanguage(f, lang) }))
+    .filter((x): x is { lang: PlacementLanguage; format: FieldFormat } => x.format !== null);
+  return (
+    <li className="flex items-stretch gap-1">
+      <button
+        type="button"
+        draggable
+        onDragStart={(e) => e.dataTransfer.setData("text/plain", f.key)}
+        onClick={() => onAdd(f.key)}
+        className="flex min-w-0 flex-1 items-start gap-1.5 rounded-md border border-slate-200 px-2 py-1.5 text-left text-xs hover:border-blue-400 hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
+        title={`Add ${f.en}`}
+      >
+        <GripVertical className="mt-0.5 h-3.5 w-3.5 flex-none text-slate-400" />
+        <span className="min-w-0 flex-1">
+          <span className="font-am-body block truncate text-slate-800">{f.am}</span>
+          <span className="block truncate text-slate-500">{f.en}</span>
+        </span>
+        {!langs.length && placedKeys.has(f.key) && (
+          <CheckCircle2
+            className="mt-0.5 h-3.5 w-3.5 flex-none text-emerald-600"
+            aria-label="placed"
+          />
+        )}
+      </button>
+      {langs.length > 0 && (
+        <div className="flex flex-col gap-1">
+          {langs.map(({ lang, format }) => {
+            const placed = placedKeys.has(`${f.key}:${lang}`);
+            const name = lang === "am" ? f.am : f.en;
+            return (
+              <button
+                key={lang}
+                type="button"
+                draggable
+                onDragStart={(e) =>
+                  e.dataTransfer.setData("text/plain", `${f.key}${DRAG_SEP}${format}`)
+                }
+                onClick={() => onAdd(f.key, format)}
+                title={`Add "${name}" (${lang === "am" ? "Amharic" : "English"})`}
+                aria-label={`Add ${f.en}, ${lang === "am" ? "Amharic" : "English"}`}
+                className={`inline-flex min-w-[2.75rem] flex-1 items-center justify-center gap-0.5 rounded-md border px-1 text-[10px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 ${
+                  placed
+                    ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                    : "border-slate-200 text-slate-600 hover:border-blue-400 hover:bg-blue-50"
+                }`}
+              >
+                {placed && <CheckCircle2 className="h-3 w-3" aria-hidden />}
+                <span className={lang === "am" ? "font-am-body" : undefined}>
+                  {lang === "am" ? "አማ" : "EN"}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </li>
+  );
+}
+
 function EditorCanvas({
   type,
   orientation,
   fields,
   backgroundUrl,
   preview,
-  selectedId,
+  selectedIds,
   onSelect,
   onPatch,
+  onPatchMany,
   onBeginGesture,
   onDropInsert,
 }: {
@@ -785,14 +1005,16 @@ function EditorCanvas({
   fields: PlacedField[];
   backgroundUrl: string | null;
   preview: boolean;
-  selectedId: string | null;
-  onSelect: (id: string | null) => void;
+  selectedIds: string[];
+  onSelect: (ids: string[]) => void;
   onPatch: (id: string, patch: Partial<PlacedField>, opts?: { history?: boolean }) => void;
+  onPatchMany: (updates: Record<string, BoxPatch>, opts?: { history?: boolean }) => void;
   onBeginGesture: () => void;
-  onDropInsert: (key: string, x: number, y: number) => void;
+  onDropInsert: (key: string, format: FieldFormat | undefined, x: number, y: number) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const samples = useMemo(() => sampleValues(type), [type]);
+  const [marquee, setMarquee] = useState<Omit<Box, "id"> | null>(null);
 
   // pointer delta (px) -> percent of the page
   const toPct = (dxPx: number, dyPx: number) => {
@@ -800,27 +1022,94 @@ function EditorCanvas({
     if (!r) return { dx: 0, dy: 0 };
     return { dx: (dxPx / r.width) * 100, dy: (dyPx / r.height) * 100 };
   };
+  const pointPct = (clientX: number, clientY: number) => {
+    const r = ref.current?.getBoundingClientRect();
+    if (!r) return { x: 0, y: 0 };
+    return {
+      x: Math.max(0, Math.min(100, ((clientX - r.left) / r.width) * 100)),
+      y: Math.max(0, Math.min(100, ((clientY - r.top) / r.height) * 100)),
+    };
+  };
 
   const startDrag = (e: React.PointerEvent, f: PlacedField) => {
     e.stopPropagation();
     e.preventDefault();
-    onSelect(f.certificate_field_id);
-    onBeginGesture();
-    const start = { px: e.clientX, py: e.clientY, x: f.x, y: f.y };
-    const onMove = (ev: PointerEvent) => {
-      const { dx, dy } = toPct(ev.clientX - start.px, ev.clientY - start.py);
-      onPatch(
-        f.certificate_field_id,
-        {
-          x: round2(Math.max(0, Math.min(100 - f.width, start.x + dx))),
-          y: round2(Math.max(0, Math.min(100 - f.height, start.y + dy))),
-        },
-        { history: false },
+    const id = f.certificate_field_id;
+    // Shift / Ctrl / Cmd toggles the field in the selection; no drag.
+    if (e.shiftKey || e.ctrlKey || e.metaKey) {
+      onSelect(
+        selectedIds.includes(id) ? selectedIds.filter((x) => x !== id) : [...selectedIds, id],
       );
+      return;
+    }
+    const inSelection = selectedIds.includes(id);
+    // Dragging a selected field moves the whole selection; it stays primary.
+    const ids = inSelection ? [...selectedIds.filter((x) => x !== id), id] : [id];
+    onSelect(ids);
+    const start = fields
+      .filter((x) => ids.includes(x.certificate_field_id))
+      .map((x) => ({
+        id: x.certificate_field_id,
+        x: x.x,
+        y: x.y,
+        width: x.width,
+        height: x.height,
+      }));
+    const origin = { px: e.clientX, py: e.clientY };
+    let moved = false;
+    const onMove = (ev: PointerEvent) => {
+      if (!moved) {
+        if (Math.abs(ev.clientX - origin.px) + Math.abs(ev.clientY - origin.py) < 3) return;
+        moved = true;
+        onBeginGesture();
+      }
+      const { dx, dy } = toPct(ev.clientX - origin.px, ev.clientY - origin.py);
+      onPatchMany(moveBoxes(start, dx, dy), { history: false });
     };
     const onUp = () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
+      // A plain click on one field of a group narrows the selection to it.
+      if (!moved && inSelection && ids.length > 1) onSelect([id]);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
+
+  // Rubber-band selection from an empty part of the page.
+  const startMarquee = (e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    const additive = e.shiftKey || e.ctrlKey || e.metaKey;
+    const base = additive ? selectedIds : [];
+    if (!additive) onSelect([]);
+    const a = pointPct(e.clientX, e.clientY);
+    let rect: Omit<Box, "id"> | null = null;
+    const onMove = (ev: PointerEvent) => {
+      const b = pointPct(ev.clientX, ev.clientY);
+      rect = {
+        x: Math.min(a.x, b.x),
+        y: Math.min(a.y, b.y),
+        width: Math.abs(b.x - a.x),
+        height: Math.abs(b.y - a.y),
+      };
+      setMarquee(rect);
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      setMarquee(null);
+      if (!rect || rect.width + rect.height < 0.5) return;
+      const hit = boxesInRect(
+        fields.map((f) => ({
+          id: f.certificate_field_id,
+          x: f.x,
+          y: f.y,
+          width: f.width,
+          height: f.height,
+        })),
+        rect,
+      );
+      onSelect([...base, ...hit.filter((id) => !base.includes(id))]);
     };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
@@ -829,7 +1118,7 @@ function EditorCanvas({
   const startResize = (e: React.PointerEvent, f: PlacedField, h: Handle) => {
     e.stopPropagation();
     e.preventDefault();
-    onSelect(f.certificate_field_id);
+    onSelect([f.certificate_field_id]);
     onBeginGesture();
     const s = { px: e.clientX, py: e.clientY, x: f.x, y: f.y, w: f.width, h: f.height };
     const onMove = (ev: PointerEvent) => {
@@ -886,23 +1175,27 @@ function EditorCanvas({
     window.addEventListener("pointerup", onUp);
   };
 
+  const single = selectedIds.length === 1 ? selectedIds[0] : null;
+
   return (
     <div
       ref={ref}
-      onPointerDown={() => onSelect(null)}
+      onPointerDown={startMarquee}
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         e.preventDefault();
-        const key = e.dataTransfer.getData("text/plain");
+        const raw = e.dataTransfer.getData("text/plain");
         const r = ref.current?.getBoundingClientRect();
-        if (!key || !r) return;
+        if (!raw || !r) return;
+        const [key, format] = raw.split(DRAG_SEP);
         onDropInsert(
           key,
+          (format as FieldFormat | undefined) || undefined,
           ((e.clientX - r.left) / r.width) * 100,
           ((e.clientY - r.top) / r.height) * 100,
         );
       }}
-      className="mx-auto w-full max-w-[860px] select-none shadow-md ring-1 ring-slate-300"
+      className="relative mx-auto w-full max-w-[860px] select-none shadow-md ring-1 ring-slate-300"
     >
       <CertificatePage
         type={type}
@@ -911,7 +1204,8 @@ function EditorCanvas({
         values={preview ? samples : null}
         backgroundUrl={backgroundUrl}
         renderOverlay={(f) => {
-          const isSel = f.certificate_field_id === selectedId;
+          const isSel = selectedIds.includes(f.certificate_field_id);
+          const def = certificateField(type, f.field_key);
           return (
             <div
               onPointerDown={(e) => startDrag(e, f)}
@@ -920,9 +1214,9 @@ function EditorCanvas({
                   ? "border-2 border-blue-600 bg-blue-500/10"
                   : "border-dashed border-blue-400/70 hover:border-blue-500"
               }`}
-              title={certificateField(type, f.field_key)?.en ?? "Static text"}
+              title={def ? placeholderLabel(def, f.format) : "Static text"}
             >
-              {isSel &&
+              {single === f.certificate_field_id &&
                 (["nw", "n", "ne", "e", "se", "s", "sw", "w"] as Handle[]).map((h) => (
                   <ResizeHandle key={h} handle={h} onPointerDown={(e) => startResize(e, f, h)} />
                 ))}
@@ -930,6 +1224,18 @@ function EditorCanvas({
           );
         }}
       />
+      {marquee && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute z-[2000] border border-blue-600 bg-blue-500/10"
+          style={{
+            left: `${marquee.x}%`,
+            top: `${marquee.y}%`,
+            width: `${marquee.width}%`,
+            height: `${marquee.height}%`,
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -994,23 +1300,266 @@ function NumField({
   );
 }
 
+const toBoxes = (list: PlacedField[]): Box[] =>
+  list.map((f) => ({
+    id: f.certificate_field_id,
+    x: f.x,
+    y: f.y,
+    width: f.width,
+    height: f.height,
+  }));
+
+/**
+ * Align / distribute / match-size tools. One field aligns to the page;
+ * several align to their common bounds. Distribute needs three or more;
+ * match size copies the primary (last selected) field's width or height and
+ * leaves the QR, which must stay square, untouched.
+ */
+function AlignTools({
+  type,
+  fields,
+  primaryId,
+  onPatchMany,
+}: {
+  type: CertificateType;
+  fields: PlacedField[];
+  primaryId: string | null;
+  onPatchMany: (updates: Record<string, BoxPatch>) => void;
+}) {
+  const many = fields.length > 1;
+  const align: { mode: AlignMode; label: string; Icon: typeof AlignStartVertical }[] = [
+    { mode: "left", label: "Align left", Icon: AlignStartVertical },
+    { mode: "hcenter", label: "Align horizontal centres", Icon: AlignCenterVertical },
+    { mode: "right", label: "Align right", Icon: AlignEndVertical },
+    { mode: "top", label: "Align top", Icon: AlignStartHorizontal },
+    { mode: "vmiddle", label: "Align vertical middles", Icon: AlignCenterHorizontal },
+    { mode: "bottom", label: "Align bottom", Icon: AlignEndHorizontal },
+  ];
+  const distribute: { axis: Axis; label: string; Icon: typeof AlignStartVertical }[] = [
+    {
+      axis: "horizontal",
+      label: "Distribute horizontally",
+      Icon: AlignHorizontalDistributeCenter,
+    },
+    { axis: "vertical", label: "Distribute vertically", Icon: AlignVerticalDistributeCenter },
+  ];
+  const sizable = fields.filter((f) => certificateField(type, f.field_key)?.kind !== "qr");
+  const ref = sizable.find((f) => f.certificate_field_id === primaryId) ?? null;
+  const btn = "h-8 w-8 p-0";
+  return (
+    <div className="space-y-1.5">
+      <p className="text-xs text-slate-600">
+        <span className="font-am-body">አሰላለፍ</span> / Align {many ? "to selection" : "to page"}
+      </p>
+      <div className="flex flex-wrap gap-1">
+        {align.map(({ mode, label, Icon }) => (
+          <Button
+            key={mode}
+            type="button"
+            size="sm"
+            variant="outline"
+            className={btn}
+            title={label}
+            aria-label={label}
+            onClick={() => onPatchMany(alignBoxes(toBoxes(fields), mode))}
+          >
+            <Icon className="h-4 w-4" />
+          </Button>
+        ))}
+      </div>
+      {many && (
+        <div className="flex flex-wrap gap-1">
+          {distribute.map(({ axis, label, Icon }) => (
+            <Button
+              key={axis}
+              type="button"
+              size="sm"
+              variant="outline"
+              className={btn}
+              title={fields.length < 3 ? `${label} (select 3 or more)` : label}
+              aria-label={label}
+              disabled={fields.length < 3}
+              onClick={() => onPatchMany(distributeBoxes(toBoxes(fields), axis))}
+            >
+              <Icon className="h-4 w-4" />
+            </Button>
+          ))}
+          {(["width", "height"] as const).map((dim) => {
+            const Icon = dim === "width" ? StretchHorizontal : StretchVertical;
+            const label = `Match ${dim} of the last selected field`;
+            return (
+              <Button
+                key={dim}
+                type="button"
+                size="sm"
+                variant="outline"
+                className={btn}
+                title={label}
+                aria-label={label}
+                disabled={!ref || sizable.length < 2}
+                onClick={() =>
+                  ref && onPatchMany(matchSize(toBoxes(sizable), dim, ref.certificate_field_id))
+                }
+              >
+                <Icon className="h-4 w-4" />
+              </Button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Properties for several selected fields: alignment, shared text style, remove. */
+function MultiSelectionPanel({
+  type,
+  fields,
+  primaryId,
+  onPatchMany,
+  onDelete,
+  onClear,
+}: {
+  type: CertificateType;
+  fields: PlacedField[];
+  primaryId: string | null;
+  onPatchMany: (updates: Record<string, Partial<PlacedField>>) => void;
+  onDelete: () => void;
+  onClear: () => void;
+}) {
+  const textFields = fields.filter((f) => {
+    const kind = f.binding_mode === "data" ? certificateField(type, f.field_key)?.kind : "text";
+    return kind !== "image" && kind !== "qr";
+  });
+  const first = textFields[0];
+  const same = <K extends keyof PlacedField>(k: K): PlacedField[K] | undefined =>
+    first && textFields.every((f) => f[k] === first[k]) ? first[k] : undefined;
+  const patchText = (p: Partial<PlacedField>) =>
+    onPatchMany(Object.fromEntries(textFields.map((f) => [f.certificate_field_id, p])));
+  const weight = same("font_weight");
+  const style = same("font_style");
+  const textAlign = same("text_align");
+  return (
+    <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-sm font-semibold text-slate-900">
+            <span className="font-am-body">{fields.length} መስኮች ተመርጠዋል</span>
+          </p>
+          <p className="text-xs text-slate-500">{fields.length} fields selected</p>
+        </div>
+        <Button type="button" variant="ghost" size="sm" onClick={onClear}>
+          Clear
+        </Button>
+      </div>
+
+      <AlignTools type={type} fields={fields} primaryId={primaryId} onPatchMany={onPatchMany} />
+
+      {textFields.length > 0 && (
+        <div className="space-y-2 border-t border-slate-100 pt-3">
+          <p className="text-xs text-slate-600">
+            Text style ({textFields.length} text field{textFields.length === 1 ? "" : "s"})
+          </p>
+          <label className="block text-xs">
+            <span className="text-slate-600">Font</span>
+            <Select
+              value={same("font_family") ?? ""}
+              onValueChange={(v) => patchText({ font_family: v })}
+            >
+              <SelectTrigger className="mt-0.5 h-8">
+                <SelectValue placeholder="Mixed" />
+              </SelectTrigger>
+              <SelectContent>
+                {FONT_FAMILIES.map((f) => (
+                  <SelectItem key={f} value={f}>
+                    {f}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <NumField
+              label="Size (pt)"
+              value={same("font_size") ?? first.font_size}
+              min={4}
+              max={72}
+              step={0.5}
+              onChange={(v) => patchText({ font_size: v })}
+            />
+            <label className="block text-xs">
+              <span className="text-slate-600">Colour</span>
+              <Input
+                type="color"
+                className="mt-0.5 h-8 p-1"
+                value={same("color") ?? first.color}
+                onChange={(e) => patchText({ color: e.target.value })}
+              />
+            </label>
+          </div>
+          <div className="flex gap-1">
+            <Button
+              size="sm"
+              variant={weight === "bold" ? "default" : "outline"}
+              onClick={() => patchText({ font_weight: weight === "bold" ? "normal" : "bold" })}
+              aria-label="Bold"
+            >
+              <Bold className="h-4 w-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant={style === "italic" ? "default" : "outline"}
+              onClick={() => patchText({ font_style: style === "italic" ? "normal" : "italic" })}
+              aria-label="Italic"
+            >
+              <Italic className="h-4 w-4" />
+            </Button>
+            {(["left", "center", "right"] as const).map((a) => {
+              const Icon = a === "left" ? AlignLeft : a === "center" ? AlignCenter : AlignRight;
+              return (
+                <Button
+                  key={a}
+                  size="sm"
+                  variant={textAlign === a ? "default" : "outline"}
+                  onClick={() => patchText({ text_align: a })}
+                  aria-label={`Text align ${a}`}
+                >
+                  <Icon className="h-4 w-4" />
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <Button variant="outline" size="sm" className="w-full text-red-700" onClick={onDelete}>
+        <Trash2 className="mr-1 h-4 w-4" /> <span className="font-am-body">አስወግድ</span> / Remove{" "}
+        {fields.length}
+      </Button>
+    </div>
+  );
+}
+
 function PropertiesPanel({
   type,
   orientation,
   field,
   onPatch,
+  onPatchMany,
   onDelete,
 }: {
   type: CertificateType;
   orientation: Orientation;
   field: PlacedField | null;
   onPatch: (p: Partial<PlacedField>) => void;
+  onPatchMany: (updates: Record<string, Partial<PlacedField>>) => void;
   onDelete: () => void;
 }) {
   if (!field) {
     return (
       <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500 shadow-sm">
         <span className="font-am-body">መስክ ይምረጡ</span> / Select a field on the page to edit it.
+        Shift- or Ctrl-click (or drag a box) to select several and align them.
       </div>
     );
   }
@@ -1023,7 +1572,19 @@ function PropertiesPanel({
       <div>
         <p className="font-am-body text-sm font-semibold text-slate-900">{def?.am ?? "ቋሚ ጽሑፍ"}</p>
         <p className="text-xs text-slate-500">{def?.en ?? "Static text"}</p>
+        {def && (
+          <p className="mt-1 text-[11px] text-slate-500">
+            On the page: <span className="font-am-body">{placeholderLabel(def, field.format)}</span>
+          </p>
+        )}
       </div>
+
+      <AlignTools
+        type={type}
+        fields={[field]}
+        primaryId={field.certificate_field_id}
+        onPatchMany={onPatchMany}
+      />
 
       {qrMm !== null && (
         <p
@@ -1134,7 +1695,7 @@ function PropertiesPanel({
                   size="sm"
                   variant={field.text_align === a ? "default" : "outline"}
                   onClick={() => onPatch({ text_align: a })}
-                  aria-label={`Align ${a}`}
+                  aria-label={`Text align ${a}`}
                 >
                   <Icon className="h-4 w-4" />
                 </Button>
