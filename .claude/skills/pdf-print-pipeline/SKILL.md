@@ -44,17 +44,17 @@ import {
 } from "@/components/print/PrintDocumentShell";
 ```
 
-| Primitive | For | Notes |
-|---|---|---|
-| `PrintDocumentShell` | The whole page | Letterhead (logo, regional header, woreda name/contact), doc tag + doc number + date on the right, the Print button, your `children` in the middle, your `footer` at the bottom. |
-| `DocSection` | A numbered section (`01 —`, `02 —`...) | Bilingual title (`titleAm`/`titleEn`), wraps whatever content goes inside. |
-| `DocDivider` | Between sections | Just an `<hr>`. |
-| `DocFieldGrid` + `DocField` | Name/value pairs (a profile) | `DocFieldGrid cols={2\|3}`; each `DocField` is one label+value, `span={2\|3}` to widen. |
-| `DocStatGrid` + `DocStat` | Big-number KPI tiles (a report's "01 — Summary") | `DocStatGrid cols={2\|3\|4}`; each `DocStat` is one tile. |
-| `DocDataTable` | A Label/Count/Share table with an auto-computed Total row | Takes `rows: {name, value}[]` and an optional `valueLabel` (default `"Count"`, use `"ETB"` for money). This is the same row shape (`ReportSection["rows"]`) the Reports dashboard's charts already use — if you're printing something that also has an on-screen chart, reuse that same aggregate array instead of re-deriving it, so the printed numbers can never drift from what the screen showed. |
-| `DocSignatureBlock` | "Certification" section | `items` is exactly two `{labelAm, labelEn}` entries (e.g. Prepared by / Approved by); it always renders a third "Official Stamp" box itself. |
-| `DocRecordFooter` | Document-reference footer box | `refLabel`, `refId`, `printedOn`, optional `note`. There's no verification token/QR for internal documents (unlike issued letters) — don't invent one. |
-| `SystemAttributionFooter` | The closing "system-generated document" line | Takes `woredaNameAm`. |
+| Primitive                   | For                                                       | Notes                                                                                                                                                                                                                                                                                                                                                                                                  |
+| --------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `PrintDocumentShell`        | The whole page                                            | Letterhead (logo, regional header, woreda name/contact), doc tag + doc number + date on the right, the Print button, your `children` in the middle, your `footer` at the bottom.                                                                                                                                                                                                                       |
+| `DocSection`                | A numbered section (`01 —`, `02 —`...)                    | Bilingual title (`titleAm`/`titleEn`), wraps whatever content goes inside.                                                                                                                                                                                                                                                                                                                             |
+| `DocDivider`                | Between sections                                          | Just an `<hr>`.                                                                                                                                                                                                                                                                                                                                                                                        |
+| `DocFieldGrid` + `DocField` | Name/value pairs (a profile)                              | `DocFieldGrid cols={2\|3}`; each `DocField` is one label+value, `span={2\|3}` to widen.                                                                                                                                                                                                                                                                                                                |
+| `DocStatGrid` + `DocStat`   | Big-number KPI tiles (a report's "01 — Summary")          | `DocStatGrid cols={2\|3\|4}`; each `DocStat` is one tile.                                                                                                                                                                                                                                                                                                                                              |
+| `DocDataTable`              | A Label/Count/Share table with an auto-computed Total row | Takes `rows: {name, value}[]` and an optional `valueLabel` (default `"Count"`, use `"ETB"` for money). This is the same row shape (`ReportSection["rows"]`) the Reports dashboard's charts already use — if you're printing something that also has an on-screen chart, reuse that same aggregate array instead of re-deriving it, so the printed numbers can never drift from what the screen showed. |
+| `DocSignatureBlock`         | "Certification" section                                   | `items` is exactly two `{labelAm, labelEn}` entries (e.g. Prepared by / Approved by); it always renders a third "Official Stamp" box itself.                                                                                                                                                                                                                                                           |
+| `DocRecordFooter`           | Document-reference footer box                             | `refLabel`, `refId`, `printedOn`, optional `note`. There's no verification token/QR for internal documents (unlike issued letters) — don't invent one.                                                                                                                                                                                                                                                 |
+| `SystemAttributionFooter`   | The closing "system-generated document" line              | Takes `woredaNameAm`.                                                                                                                                                                                                                                                                                                                                                                                  |
 
 For branding (`logoDataUrl`, `woredaNameAm`, `woredaNameEn`, contact
 line), use `useReportBranding()` (`src/hooks/useReportBranding.ts`) —
@@ -125,7 +125,7 @@ const win = window.open("", "_blank");
 win.location.href = blobUrl; // <-- silently becomes "about:blank#blocked"
 ```
 
-Chromium blocks a *deferred* top-level navigation of an already-open
+Chromium blocks a _deferred_ top-level navigation of an already-open
 window to a `blob:`/`data:` URL. The click that opened the window
 carries a brief "user activation" window; by the time the async
 `html2canvas`/`jsPDF` work finishes and the code tries to navigate that
@@ -157,7 +157,7 @@ link.remove();
 setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
 ```
 
-An anchor-click-simulated new-tab-open is *not* subject to the same
+An anchor-click-simulated new-tab-open is _not_ subject to the same
 block, even from inside the same async continuation — Chromium treats
 it as a genuine open request rather than a deferred navigation of an
 existing window. This is what `PrintDocumentShell.handlePrint` and the
@@ -191,3 +191,16 @@ browser (e.g. Playwright):
   check under `xvfb-run` with `headless: false` before concluding
   anything is broken — that's what surfaced this whole issue in the
   first place, and what confirmed the fix.
+
+## Embedded PDF viewer (civil certificates)
+
+`woreda.civil.$eventId.certificate.tsx` and the certificate template
+builder show the generated PDF _inside the page_ in an `<iframe src={blobUrl}>`
+(the browser's own PDF viewer, with its print button), rather than only
+opening a new tab. That is not the blocked pattern above: the iframe's `src`
+is set from React state after the blob exists, not a deferred navigation of
+a pre-opened window. It needs `frame-src 'self' blob:` in
+`src/lib/security-headers.ts`. Certificates are A4 landscape and assembled
+by `src/lib/certificatePdf.ts`, which stamps every preview "PREVIEW - NOT
+VALID" and compresses the page image (an uncompressed 2.5x A4 capture is
+~17 MB). Reuse `captureCertificatePdf()` there rather than another copy.

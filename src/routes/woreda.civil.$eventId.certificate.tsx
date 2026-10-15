@@ -1,20 +1,21 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-// html2canvas-pro, not html2canvas: the Tailwind v4 build resolves colours to
-// oklch(), which plain html2canvas cannot parse (see pdf-print-pipeline skill).
-import html2canvas from "html2canvas-pro";
-import jsPDF from "jspdf";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Printer } from "lucide-react";
+import { ArrowLeft, ExternalLink, Loader2, Printer } from "lucide-react";
 
 import { CertificatePage } from "@/components/certificates/CertificatePage";
-import type { Orientation, PlacedField } from "@/components/certificates/certificateLayout";
+import {
+  CERTIFICATE_ORIENTATION,
+  PAGE_MM,
+  type PlacedField,
+} from "@/components/certificates/certificateLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CERTIFICATE_TYPE_LABELS } from "@/config/certificateFields";
 import { P } from "@/config/permissions";
 import { isCertificateType, resolveCertificateValues } from "@/lib/certificateData";
+import { captureCertificatePdf } from "@/lib/certificatePdf";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -106,7 +107,7 @@ function CertificatePrintPage() {
       const [tpl, fields, settings, woreda] = await Promise.all([
         db
           .from("certificate_template")
-          .select("certificate_type, background_path, orientation, published_at")
+          .select("certificate_type, background_path, published_at")
           .eq("certificate_type", event.event_type)
           .maybeSingle(),
         db
@@ -159,7 +160,6 @@ function CertificatePrintPage() {
         event,
         template: tpl.data as {
           background_path: string | null;
-          orientation: Orientation;
           published_at: string | null;
         } | null,
         fields: ((fields.data ?? []) as PlacedField[]).map((f) => ({
@@ -218,8 +218,65 @@ function CertificatePrintPage() {
       setDocTitle(`${CERTIFICATE_TYPE_LABELS[type].en} ${d.event.event_number ?? ""}`);
   }, [type, d]);
 
-  const nextFrame = () =>
-    new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+  // The PDF shown in the embedded viewer. A preview is watermarked; the
+  // issued copy is only produced after record_civil_certificate_print().
+  const [pdf, setPdf] = useState<{ url: string; preview: boolean } | null>(null);
+  const [rendering, setRendering] = useState(false);
+  // Once the issued copy is in the viewer, a later refetch must not swap it
+  // back for a watermarked preview.
+  const issuedShown = useRef(false);
+  const showPdf = (blob: Blob, preview: boolean) =>
+    setPdf((old) => {
+      if (old) URL.revokeObjectURL(old.url);
+      return { url: URL.createObjectURL(blob), preview };
+    });
+  useEffect(
+    () => () => {
+      setPdf((old) => {
+        if (old) URL.revokeObjectURL(old.url);
+        return null;
+      });
+    },
+    [],
+  );
+
+  const renderPdf = async (title: string, preview: boolean): Promise<Blob> => {
+    if (!printRef.current) throw new Error("Print surface unavailable");
+    return captureCertificatePdf(printRef.current, { title, preview });
+  };
+
+  const ready = !!(d?.template?.published_at && type && values && PRINTABLE.has(d.event.status));
+  // Build the watermarked preview once the data (and its images) are in.
+  useEffect(() => {
+    if (!ready || !docTitle || issuedShown.current) return;
+    let cancelled = false;
+    setRendering(true);
+    renderPdf(docTitle, true)
+      .then((blob) => {
+        if (!cancelled) showPdf(blob, true);
+      })
+      .catch((e: Error) => {
+        if (!cancelled) toast.error(`ቅድመ እይታ አልተዘጋጀም / Could not build the preview: ${e.message}`);
+      })
+      .finally(() => {
+        if (!cancelled) setRendering(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [ready, docTitle, dataQuery.dataUpdatedAt]);
+
+  const openInNewTab = (url: string) => {
+    // Anchor click, never a pre-opened window: Chromium silently blocks a
+    // deferred navigation of an already-open tab to a blob: URL.
+    const link = document.createElement("a");
+    link.href = url;
+    link.target = "_blank";
+    link.rel = "noopener";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  };
 
   const handlePrint = async () => {
     if (!printRef.current || !d?.template || !type) return;
@@ -233,7 +290,7 @@ function CertificatePrintPage() {
     try {
       // 1. Issue / log the print server-side first: permission, state,
       //    published template, print number and the QR token are decided
-      //    there, in one transaction. No PDF without a logged print.
+      //    there, in one transaction. No unwatermarked PDF without a logged print.
       const { data: rows, error } = await supabase.rpc(
         "record_civil_certificate_print" as never,
         { _vital_event_id: eventId, _reprint_reason: isReprint ? reason.trim() : null } as never,
@@ -244,45 +301,16 @@ function CertificatePrintPage() {
       )?.[0];
       if (!row?.certificate_token) throw new Error("No certificate token returned");
       setIssuedToken(row.certificate_token);
-      // 2. Let React render the QR with the token before capturing.
-      await nextFrame();
-      if (!printRef.current) throw new Error("Print surface unavailable");
-      const canvas = await html2canvas(printRef.current, {
-        scale: 2.5,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-      });
-      const landscape = d.template.orientation === "landscape";
-      const pdf = new jsPDF({
-        orientation: landscape ? "landscape" : "portrait",
-        unit: "mm",
-        format: "a4",
-      });
-      pdf.addImage(
-        canvas.toDataURL("image/png"),
-        "PNG",
-        0,
-        0,
-        landscape ? 297 : 210,
-        landscape ? 210 : 297,
-      );
-      pdf.setProperties({ title: `${docTitle} #${row.print_no}` });
-      const blobUrl = URL.createObjectURL(pdf.output("blob"));
-      // Anchor click, never a pre-opened window: Chromium silently blocks a
-      // deferred navigation of an already-open tab to a blob: URL.
-      const link = document.createElement("a");
-      link.href = blobUrl;
-      link.target = "_blank";
-      link.rel = "noopener";
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+      // 2. Re-render with the real QR, then show the issued copy in the viewer,
+      //    where its own print button sends it to the printer at A4 landscape.
+      const blob = await renderPdf(`${docTitle} #${row.print_no}`, false);
+      issuedShown.current = true;
+      showPdf(blob, false);
       setReason("");
       toast.success(
         isReprint
-          ? `ድጋሚ ታትሟል (#${row.print_no}) / Reprinted (#${row.print_no})`
-          : "የምስክር ወረቀቱ ተሰጥቷል / Certificate issued",
+          ? `ድጋሚ ታትሟል (#${row.print_no}) — ከተመልካቹ ያትሙ / Reprinted (#${row.print_no}) — print from the viewer`
+          : "የምስክር ወረቀቱ ተሰጥቷል — ከተመልካቹ ያትሙ / Certificate issued — print from the viewer",
       );
       void dataQuery.refetch();
     } catch (e) {
@@ -337,7 +365,7 @@ function CertificatePrintPage() {
   }
 
   const label = CERTIFICATE_TYPE_LABELS[type];
-  const orientation = d.template.orientation;
+  const page = PAGE_MM[CERTIFICATE_ORIENTATION];
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -346,6 +374,13 @@ function CertificatePrintPage() {
           <span className="font-am-heading">{label.am}</span>
           <span className="ml-2 text-sm font-normal text-slate-500">/ {label.en}</span>
         </h1>
+        {pdf && (
+          <Button type="button" size="sm" variant="outline" onClick={() => openInNewTab(pdf.url)}>
+            <ExternalLink className="mr-2 h-4 w-4" />
+            <span className="font-am-body">በአዲስ ትር ክፈት</span>
+            <span className="ml-1 opacity-80">/ Open in new tab</span>
+          </Button>
+        )}
         {isReprint && canPrint && (
           <Input
             value={reason}
@@ -361,7 +396,7 @@ function CertificatePrintPage() {
             type="button"
             size="sm"
             onClick={handlePrint}
-            disabled={printing || (isReprint && reason.trim().length < 5)}
+            disabled={printing || rendering || (isReprint && reason.trim().length < 5)}
             className="rounded-md bg-blue-700 text-white hover:bg-blue-800"
           >
             {printing ? (
@@ -381,25 +416,45 @@ function CertificatePrintPage() {
           </span>
         )}
       </div>
-      {isReprint && (
-        <p className="font-am-body text-xs text-slate-500">
-          ይህ የምስክር ወረቀት ተሰጥቷል፤ ድጋሚ ህትመት ከምክንያቱ ጋር ይመዘገባል።
-          <span className="ml-1">
-            / This certificate was already issued; a reprint is logged with its reason.
-          </span>
-        </p>
-      )}
+      <p className="font-am-body text-xs text-slate-500">
+        {pdf?.preview === false
+          ? "የተሰጠው ቅጂ ከታች ባለው ተመልካች ውስጥ ነው፤ በተመልካቹ የማተሚያ ቁልፍ A4 በአግድም ያትሙ።"
+          : "ከታች ያለው ቅድመ እይታ ነው (ልክ ያልሆነ)። ትክክለኛው ቅጂ የሚዘጋጀው «አትምና ስጥ» ሲጫን ነው።"}
+        <span className="ml-1">
+          /{" "}
+          {pdf?.preview === false
+            ? "The issued copy is in the viewer below; print it with the viewer's print button on A4 landscape."
+            : "Below is a preview (not valid). The valid copy is produced when you press “Print & issue”."}
+          {isReprint && " A reprint is logged with its reason."}
+        </span>
+      </p>
 
-      <div className="overflow-auto rounded-xl border border-slate-200 bg-slate-100 p-4">
-        {/* Dedicated capture node at real paper width, not the live page. */}
-        <div
-          ref={printRef}
-          className="mx-auto bg-white shadow-md"
-          style={{ width: orientation === "landscape" ? "297mm" : "210mm" }}
-        >
+      {/* PDF viewer: what the printer will receive, page for page. */}
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+        {pdf ? (
+          <iframe
+            key={pdf.url}
+            src={pdf.url}
+            title={pdf.preview ? `${docTitle} — preview` : docTitle}
+            className="block w-full"
+            style={{ height: "min(80vh, 760px)" }}
+          />
+        ) : (
+          <div className="flex h-64 items-center justify-center gap-2 text-sm text-slate-500">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="font-am-body">ፒዲኤፍ በመዘጋጀት ላይ…</span>
+            <span>/ Preparing PDF…</span>
+          </div>
+        )}
+      </div>
+
+      {/* Dedicated capture node at real A4 landscape size, kept off-screen:
+          only the PDF is shown. Never the live page (pdf-print-pipeline). */}
+      <div aria-hidden className="pointer-events-none fixed top-0 -left-[10000px]">
+        <div ref={printRef} className="bg-white" style={{ width: `${page.w}mm` }}>
           <CertificatePage
             type={type}
-            orientation={orientation}
+            orientation={CERTIFICATE_ORIENTATION}
             fields={d.fields ?? []}
             values={values}
             backgroundUrl={d.images.background}

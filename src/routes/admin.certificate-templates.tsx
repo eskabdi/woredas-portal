@@ -9,6 +9,7 @@ import {
   Bold,
   CheckCircle2,
   Eye,
+  FileDown,
   FileText,
   GripVertical,
   Italic,
@@ -33,10 +34,19 @@ import { CertificatePage } from "@/components/certificates/CertificatePage";
 import {
   PAGE_MM,
   STATIC_FIELD_KEY,
+  CERTIFICATE_ORIENTATION,
   type Orientation,
   type PlacedField,
 } from "@/components/certificates/certificateLayout";
+import { captureCertificatePdf, toDataUrl } from "@/lib/certificatePdf";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -96,7 +106,6 @@ type Handle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
 interface TemplateRow {
   certificate_type: CertificateType;
   background_path: string | null;
-  orientation: Orientation;
   is_published: boolean;
   published_at: string | null;
 }
@@ -128,6 +137,19 @@ function CertificateTemplatesPage() {
   const [future, setFuture] = useState<Record<string, Partial<PlacedField>>[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [preview, setPreview] = useState(false);
+  // PDF print preview: the draft rendered with sample values to an A4
+  // landscape PDF, shown in the browser's PDF viewer. Watermarked.
+  const pdfNodeRef = useRef<HTMLDivElement>(null);
+  const [pdfBg, setPdfBg] = useState<string | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  useEffect(
+    () => () => {
+      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+    },
+    [pdfUrl],
+  );
+  const pdfSamples = useMemo(() => sampleValues(type), [type]);
   const [busy, setBusy] = useState<null | "save" | "publish" | "discard" | "upload">(null);
 
   const templatesQuery = useQuery({
@@ -135,13 +157,14 @@ function CertificateTemplatesPage() {
     queryFn: async () => {
       const { data, error } = await db
         .from("certificate_template")
-        .select("certificate_type, background_path, orientation, is_published, published_at");
+        .select("certificate_type, background_path, is_published, published_at");
       if (error) throw error;
       return (data ?? []) as TemplateRow[];
     },
   });
   const template = templatesQuery.data?.find((t) => t.certificate_type === type) ?? null;
-  const orientation: Orientation = template?.orientation ?? "portrait";
+  // Certificates are A4 landscape only (migration 104 enforces it).
+  const orientation: Orientation = CERTIFICATE_ORIENTATION;
 
   const fieldsQuery = useQuery({
     queryKey: ["certificate-template-drafts", type],
@@ -451,16 +474,24 @@ function CertificateTemplatesPage() {
     }
   };
 
-  const setOrientation = async (o: Orientation) => {
+  const placedKeys = new Set(fields.map((f) => f.field_key));
+  const openPdfPreview = async () => {
+    setPdfBusy(true);
     try {
-      await updateTemplate({ orientation: o });
-      await audit("CERTIFICATE_TEMPLATE_ORIENTATION_CHANGED", { orientation: o });
+      setPdfBg(await toDataUrl(bgUrl));
+      if (!pdfNodeRef.current) throw new Error("Preview surface unavailable");
+      const blob = await captureCertificatePdf(pdfNodeRef.current, {
+        title: `${CERTIFICATE_TYPE_LABELS[type].en} template`,
+        preview: true,
+      });
+      setPdfUrl(URL.createObjectURL(blob));
     } catch (e) {
-      toast.error((e as Error).message);
+      toast.error(`Could not build the PDF preview: ${(e as Error).message}`);
+    } finally {
+      setPdfBusy(false);
     }
   };
 
-  const placedKeys = new Set(fields.map((f) => f.field_key));
   const typeLabel = CERTIFICATE_TYPE_LABELS[type];
 
   return (
@@ -509,16 +540,7 @@ function CertificateTemplatesPage() {
           )}
         </span>
         <div className="mx-2 h-5 w-px bg-slate-200" />
-        <Label className="text-xs">Page</Label>
-        <Select value={orientation} onValueChange={(v) => setOrientation(v as Orientation)}>
-          <SelectTrigger className="h-8 w-36">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="portrait">A4 portrait</SelectItem>
-            <SelectItem value="landscape">A4 landscape</SelectItem>
-          </SelectContent>
-        </Select>
+        <span className="text-xs text-slate-600">A4 landscape</span>
         <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs hover:bg-slate-50">
           {busy === "upload" ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -563,6 +585,20 @@ function CertificateTemplatesPage() {
           title="Show sample values instead of field names"
         >
           <Eye className="mr-1 h-4 w-4" /> Preview
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => void openPdfPreview()}
+          disabled={pdfBusy || fieldsQuery.isLoading}
+          title="Render the current draft, with sample values, as the A4 landscape PDF that prints"
+        >
+          {pdfBusy ? (
+            <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+          ) : (
+            <FileDown className="mr-1 h-4 w-4" />
+          )}
+          PDF print preview
         </Button>
         <div className="ml-auto flex gap-2">
           <Button variant="outline" size="sm" onClick={discard} disabled={busy !== null}>
@@ -618,6 +654,39 @@ function CertificateTemplatesPage() {
           onDelete={() => void deleteSelected()}
         />
       </div>
+
+      {/* Off-screen capture node for the PDF preview, at real A4 landscape size. */}
+      <div aria-hidden className="pointer-events-none fixed top-0 -left-[10000px]">
+        <div ref={pdfNodeRef} className="bg-white" style={{ width: `${PAGE_MM[orientation].w}mm` }}>
+          <CertificatePage
+            type={type}
+            orientation={orientation}
+            fields={fields}
+            values={pdfSamples}
+            backgroundUrl={pdfBg}
+          />
+        </div>
+      </div>
+
+      <Dialog open={!!pdfUrl} onOpenChange={(o) => !o && setPdfUrl(null)}>
+        <DialogContent className="max-w-6xl">
+          <DialogHeader>
+            <DialogTitle>{typeLabel.en} — PDF print preview (A4 landscape)</DialogTitle>
+            <DialogDescription>
+              The current draft with sample values, exactly as the print route renders it. Stamped
+              “PREVIEW - NOT VALID”; publish to make these placements live.
+            </DialogDescription>
+          </DialogHeader>
+          {pdfUrl && (
+            <iframe
+              src={pdfUrl}
+              title={`${typeLabel.en} PDF print preview`}
+              className="block w-full rounded border"
+              style={{ height: "75vh" }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -756,6 +756,12 @@ stamp. Every certificate carries a QR of
 `/verify/certificate/<token>` (`src/config/certificateVerify.ts`,
 `VITE_PUBLIC_SITE_URL`), backed by the public `verify_civil_certificate` RPC:
 the fourth public verification surface after cards, letters and receipts.
+Certificates are A4 landscape only (migration 104). The print page and the
+builder's "PDF print preview" show the generated PDF in the browser's own PDF
+viewer, embedded via a `blob:` iframe (hence `frame-src 'self' blob:` in
+`security-headers.ts`); every preview is watermarked "PREVIEW - NOT VALID"
+(`src/lib/certificatePdf.ts`), and only the copy produced after
+`record_civil_certificate_print()` is clean.
 
 Printed revenue receipts are the third: `receipt` carries its own
 `verification_token` (`00000000000013_receipt_verification.sql`), printed

@@ -37,6 +37,9 @@ export const PAGE_MM: Record<Orientation, { w: number; h: number }> = {
   landscape: { w: 297, h: 210 },
 };
 
+/** Every civil certificate is designed and printed on A4 landscape (migration 104). */
+export const CERTIFICATE_ORIENTATION: Orientation = "landscape";
+
 export const PT_TO_MM = 25.4 / 72;
 
 export const STATIC_FIELD_KEY = "static_text";

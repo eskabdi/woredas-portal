@@ -68,7 +68,7 @@ flowchart LR
   VE --> PT
   AU[(app_user: registrar, signature)] --> PT
   WS[(woreda_settings: seal)] --> PT
-  PT -->|html2canvas-pro + jsPDF, anchor click| PDF[A4 PDF]
+  PT -->|html2canvas-pro + jsPDF| PDF[A4 landscape PDF in the browser PDF viewer]
 ```
 
 ## Issuance workflow
@@ -143,7 +143,7 @@ erDiagram
   certificate_template {
     text certificate_type PK "birth|death|marriage|divorce|adoption"
     text background_path "certificate-templates/<type>/background.*"
-    text orientation "portrait|landscape (A4)"
+    text orientation "landscape only (A4, migration 104)"
     boolean is_published
     timestamptz published_at
     uuid updated_by FK
@@ -190,7 +190,7 @@ zero-fee `fee_schedule` rows that each woreda can price in Settings.
 | ------------------------------------------------------------------ | --------------------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | `certificate_template`, `certificate_template_field`               | PostgREST SELECT      | Private (authenticated) | Read by every signed-in user so woredas can print.                                                                                           |
 | `certificate_template_field_draft`                                 | PostgREST CRUD        | Private (console)       | RLS: `user_has_console_perm('console.certificate_template.manage')`.                                                                         |
-| `certificate_template` UPDATE                                      | PostgREST             | Private (console)       | Background path, orientation.                                                                                                                |
+| `certificate_template` UPDATE                                      | PostgREST             | Private (console)       | Background path.                                                                                                                             |
 | `publish_certificate_template(_type)`                              | RPC, SECURITY DEFINER | Private (console)       | Checks the console permission as the caller, replaces the live placements with the draft in one transaction, writes an audit row.            |
 | `discard_certificate_template_draft(_type)`                        | RPC, SECURITY DEFINER | Private (console)       | Restores the draft from live; audit row.                                                                                                     |
 | `vital_event.event_details.certificate`                            | PostgREST UPDATE      | Private (tenant)        | Existing `vital_event_update` policy (civil keys, own woreda); frozen once registered.                                                       |
@@ -221,15 +221,29 @@ zero-fee `fee_schedule` rows that each woreda can price in Settings.
   require a separate permission and a reason, and keep the original token.
 - **Verification**: 130-bit unguessable tokens; the public RPC returns only
   printed data and only for issued events; the page fails closed.
-- **Audit**: field add/remove, draft save, background upload, orientation,
+- **Audit**: field add/remove, draft save, background upload,
   publish, discard, certificate details saved, certificate issued and
   reprinted (with the print number and reason), plus the print log.
 - **Tenant isolation**: captured data inherits `vital_event` RLS (woreda +
   `civil.*` family, migration 99); registrar and seal are read from the
   caller's own woreda.
-- **Print pipeline**: dedicated capture node at paper width, `html2canvas-pro`,
-  images converted to data URLs first (no CORS dependency), PDF opened with an
-  anchor click (pdf-print-pipeline skill).
+- **Print pipeline**: A4 landscape only (migration 104 adds a CHECK that
+  rejects any other orientation; the builder no longer offers a choice). A
+  dedicated capture node at real paper size, kept off-screen, is rendered
+  with `html2canvas-pro` (images converted to data URLs first, so no CORS
+  dependency) and assembled by `src/lib/certificatePdf.ts` into a
+  deflate-compressed, lossless A4 landscape PDF (about 40 KB rather than
+  17 MB, and the QR stays crisp). The PDF is shown in the browser's own PDF
+  viewer, embedded in the page (`frame-src 'self' blob:` in the CSP). An
+  "Open in new tab" button uses the anchor-click pattern (pdf-print-pipeline
+  skill).
+- **Print preview is never a valid certificate**: the preview PDF, both on
+  the print page and from the builder's "PDF print preview", is stamped
+  "PREVIEW - NOT VALID" across the page. The clean copy exists only after
+  `record_civil_certificate_print()` has logged the print, and it replaces
+  the preview in the viewer, where the operator prints it with the viewer's
+  print button. A unit test checks the watermark is on every preview and
+  never on the issued copy.
 
 ## Open items
 
