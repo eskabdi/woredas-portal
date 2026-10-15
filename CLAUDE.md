@@ -570,6 +570,17 @@ per-module status-history table of their own the way credentials did — it
 does not replace `credential_request_status_history`/
 `credential_status_history`, which stay app-written.
 
+Since migration 105 (P1-4), what was approved is what takes effect:
+`pin_workflow_subject()` freezes each workflow table's subject columns
+(resident, type, event, letter text, fee) once a row leaves
+draft/submitted/under_review/returned, and a credential's identity columns
+from creation. A new column that defines _what_ is being approved belongs in
+its list. A registered death revokes every non-terminal card (a flag only
+`apply_death_on_approval()` sets, honoured by the engine for revoking), a
+deceased resident's card can't be re-activated, and `residency_status =
+'deceased'` is set only by the death side effect and left only through
+`correct_resident_deceased_status()` (tenant admin, reason, audit).
+
 A workflow/FSM migration and the frontend that expects its new states are
 **one deploy unit, not two independently-schedulable ones** — landing the
 schema change before the frontend broke live credential processing once
