@@ -82,6 +82,7 @@ const VITAL_EVENT_ACTION_TYPE: Record<string, string> = {
   death: "DEATH_REGISTERED",
   marriage: "MARRIAGE_REGISTERED",
   divorce: "DIVORCE_REGISTERED",
+  adoption: "ADOPTION_REGISTERED",
 };
 
 function auditActionTypeFor(item: QueueItem): string {

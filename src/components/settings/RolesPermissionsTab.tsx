@@ -70,6 +70,8 @@ export const PERMISSION_LABELS: Record<string, string> = {
   "civil.register": "Register",
   "civil.approve": "Approve",
   "civil.read": "Read",
+  "civil.print_certificate": "Print certificate",
+  "civil.authorize_reprint": "Authorize certificate reprint",
   "payment.collect": "Collect",
   "payment.read": "Read",
   "receipt.print": "Print",

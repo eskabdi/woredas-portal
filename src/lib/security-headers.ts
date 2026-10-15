@@ -43,7 +43,9 @@ function supabaseOrigin(): string {
  *   signed storage URLs (img), realtime (wss, unused today but harmless)
  * - data:/blob: images — QR canvas, Code 128 barcode, WebP conversion previews
  * - blob: workers — html5-qrcode camera scanning
- * - frame-src 'self' — react-to-print renders into a same-origin iframe
+ * - frame-src 'self' blob: — react-to-print renders into a same-origin iframe;
+ *   the civil-certificate print page shows its own generated PDF (a blob:
+ *   URL created by this origin) in the browser's PDF viewer
  */
 function contentSecurityPolicy(): string {
   const supabase = supabaseOrigin();
@@ -55,7 +57,7 @@ function contentSecurityPolicy(): string {
     `img-src 'self' data: blob: https://*.tile.openstreetmap.org ${supabase}`,
     `connect-src 'self' ${supabase} ${supabase.replace("https://", "wss://")}`,
     "worker-src 'self' blob:",
-    "frame-src 'self'",
+    "frame-src 'self' blob:",
     "frame-ancestors 'self'",
     "object-src 'none'",
     "base-uri 'self'",

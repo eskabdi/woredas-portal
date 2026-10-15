@@ -446,6 +446,7 @@ export function CivilEventsTab({
           { value: "death", am: "ሞት", en: "Death" },
           { value: "marriage", am: "ጋብቻ", en: "Marriage" },
           { value: "divorce", am: "ፍቺ", en: "Divorce" },
+          { value: "adoption", am: "ጉዲፈቻ", en: "Adoption" },
         ]}
         resultCount={rows.length}
       />

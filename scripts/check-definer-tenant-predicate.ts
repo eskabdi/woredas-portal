@@ -142,6 +142,10 @@ export const REVIEWED_BASELINE: Record<string, string> = {
     "trigger-fk; joined on the service_request's own woreda",
   "validate_credential_fee_amount:vital_event": "trigger-fk: NEW.vital_event_id",
   "validate_receipt_amount:payment": "trigger-fk: NEW.payment_id",
+  "verify_civil_certificate:vital_event":
+    "public certificate verifier keyed by the 130-bit certificate_token, issued certificates only; cross-tenant by design (migration 102)",
+  "verify_civil_certificate:woreda_settings":
+    "public certificate verifier: the issuing woreda's display name, joined on the matched event's own woreda_id",
   "verify_receipt:household":
     "public verifier keyed by the receipt's verification_token; cross-tenant by design",
   "verify_receipt:kebele":

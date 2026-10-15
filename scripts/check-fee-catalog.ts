@@ -41,6 +41,9 @@ export const MAPPED_SERVICE_TYPES = [
   "Civil Registration - Birth",
   "Civil Registration - Death",
   "Civil Registration - Marriage",
+  // Migration 101: divorce (previously unmapped) and the new adoption event.
+  "Civil Registration - Divorce",
+  "Civil Registration - Adoption",
 ];
 
 export interface FeeRow {

@@ -8,6 +8,7 @@ import {
   HeartCrack,
   Heart,
   Scale,
+  HandHeart,
   ChevronDown,
   ShieldCheck,
   Gavel,
@@ -45,6 +46,7 @@ const EVENT_TYPE_OPTIONS = [
   { value: "death", label: "ሞት / Death" },
   { value: "marriage", label: "ጋብቻ / Marriage" },
   { value: "divorce", label: "ፍቺ / Divorce" },
+  { value: "adoption", label: "ጉዲፈቻ / Adoption" },
 ];
 
 const STATUS_OPTIONS = [
@@ -55,7 +57,8 @@ const STATUS_OPTIONS = [
   { value: "approved", label: "ፀድቋል / Approved" },
   { value: "awaiting_payment", label: "ክፍያ በመጠባበቅ ላይ / Awaiting Payment" },
   { value: "paid", label: "ተከፍሏል / Paid" },
-  { value: "registered", label: "ተመዝግቧል / Registered" },
+  { value: "registered", label: "ተመዝግቧል — ለህትመት / Registered — to print" },
+  { value: "issued", label: "የምስክር ወረቀት ተሰጥቷል / Certificate issued" },
   { value: "returned", label: "ተመልሷል / Returned" },
   { value: "rejected", label: "ውድቅ / Rejected" },
 ];
@@ -65,6 +68,7 @@ const EVENT_TYPE_LABEL: Record<string, string> = {
   death: "ሞት / Death",
   marriage: "ጋብቻ / Marriage",
   divorce: "ፍቺ / Divorce",
+  adoption: "ጉዲፈቻ / Adoption",
 };
 
 const SORT_COLUMN: Record<string, string> = {
@@ -437,6 +441,11 @@ function CivilListPage() {
                     <Scale className="mr-2 h-4 w-4 text-amber-600" />
                     <span className="font-am-body">ፍቺ</span>
                     <span className="ml-auto text-xs text-slate-500">Divorce</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate({ to: "/woreda/civil/adoption/new" })}>
+                    <HandHeart className="mr-2 h-4 w-4 text-emerald-600" />
+                    <span className="font-am-body">ጉዲፈቻ</span>
+                    <span className="ml-auto text-xs text-slate-500">Adoption</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
