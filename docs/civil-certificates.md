@@ -130,7 +130,7 @@ same token for manual entry.
   Name" for an English one, the part in brackets for a day / month / year
   box. Language-neutral fields (numbers, images, the QR) keep both names.
 - **Default size.** A new text placement (data or static) is 8 % of the page
-  wide and 10 % high (`TEXT_DEFAULT_SIZE`, about 23.8 × 21 mm on A4
+  wide and 5 % high (`TEXT_DEFAULT_SIZE`, about 23.8 × 10.5 mm on A4
   landscape). Images stay 18 × 9 %, the QR 25 mm square.
 - **Multi-selection.** Shift-, Ctrl- or Cmd-click toggles a field; dragging a
   box on an empty part of the page selects every field it touches; Ctrl+A

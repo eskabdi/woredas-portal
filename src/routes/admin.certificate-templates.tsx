@@ -130,7 +130,7 @@ const BUCKET = "certificate-templates";
 const FONT_FAMILIES = ["Tayitu", "Jiret", "Noto Sans Ethiopic", "Times New Roman", "Arial"];
 const MIN_PCT = 1;
 /** Default box for a new text placement (data or static), in percent of the page. */
-const TEXT_DEFAULT_SIZE = { width: 8, height: 10 };
+const TEXT_DEFAULT_SIZE = { width: 8, height: 5 };
 type Handle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
 
 interface TemplateRow {
