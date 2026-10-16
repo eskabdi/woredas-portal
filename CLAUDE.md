@@ -72,6 +72,35 @@ rotate the token in the Supabase or Vercel dashboard, then rewrite or discard th
 branch. A rotated token in a public commit is an embarrassment; an unrotated one
 is an incident.
 
+## Nothing deploys before the review gate
+
+**Hard rule, owner-set, no exceptions for "small", "config-only" or
+"urgent".** Nothing reaches production (`eharari.gov.et`, the one Supabase
+project) until every step below has run on the exact change being shipped
+and every finding is fixed and re-verified:
+
+1. `code-review` (correctness).
+2. `security-review` (pending-changes security pass).
+3. `tenant-isolation-review` subagent (RLS, permissions, module gating,
+   storage path prefix).
+4. This repo's `review` skill (dispatches the other specialist subagents by
+   what changed: `workflow-fsm-review`, `rbac-escalation-review`,
+   `card-print-review`, `portal-conventions-review`, ...).
+5. The `verify` skill (runtime check: build, launch, drive the change), plus
+   `bun run lint`, `npx tsc --noEmit`, `bun run test` and the `check:*`
+   scripts.
+
+Only then: merge, and deploy with the `deploy` skill. "Deploy" covers every
+production change, not only the frontend: a migration or SQL applied through
+the Management API, an Edge Function deploy, an Edge Function secret,
+Supabase Auth settings, a Vercel environment variable, and **merging to
+`main`**, because Vercel builds and promotes every commit on `main` to
+production without waiting for CI. A gate step that cannot run (for example
+`verify` needs a signed-in session that isn't available) is reported to the
+owner as not run, with the reason, before deploying; it is never silently
+skipped. The full sequence is also in the `main-logic-authority-review`
+agent's "Pre-merge gate" and in the `deploy` skill.
+
 ## Commands
 
 Package manager is **bun** (`bun.lock`, `bunfig.toml`). A `package-lock.json` used
@@ -183,7 +212,10 @@ ready, but no staging project has actually been provisioned yet (real infra
 cost, needs a deliberate go-ahead). `docs/go-live-declaration.md` is the
 production-readiness declaration (dimension scoreboard, invariant table,
 go-live plan, rollback path) — proposed, awaiting the system owner's
-signature, not a self-certification.
+signature, not a self-certification. Everything in production today is
+pilot/test data (owner decision, 15 Oct 2026); `docs/go-live-reset-runbook.md`
+and `scripts/go-live-reset/` reset it to configuration only on go-live day,
+after a verified backup, never before.
 
 ### Routing
 

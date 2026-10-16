@@ -15,6 +15,17 @@ looks like a working system until someone hits the missing piece.
 | Edge Functions            | `scripts/deploy-functions.sh` | `404 NOT_FOUND` from `/functions/v1/*`     |
 | Frontend                  | `vercel deploy`               | stale UI, or a project with no deployments |
 
+## Gate: nothing deploys before review
+
+Before any step below, the change must have passed the review gate in
+`CLAUDE.md` ("Nothing deploys before the review gate"): `code-review`,
+`security-review`, the `tenant-isolation-review` subagent, this repo's
+`review` skill, and the `verify` skill, with every finding fixed and
+re-verified. This applies to migrations, Edge Functions, secrets, Auth
+settings, Vercel env vars and merges to `main` (Vercel auto-deploys `main`
+to production). If a gate step cannot run, tell the owner which one and why
+before deploying.
+
 Read `CLAUDE.md` first if you are in a sandboxed environment — Postgres ports
 are blocked there and the CLIs fail in ways whose error messages point at the
 wrong cause.
